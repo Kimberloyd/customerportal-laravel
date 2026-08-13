@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'external_id', 'sku', 'product_name', 'category', 'generic_name',
-    'description', 'unit', 'unit_price', 'is_active',
+    'description', 'unit', 'unit_price', 'is_active', 'created_at',
 ])]
 class Product extends Model
 {

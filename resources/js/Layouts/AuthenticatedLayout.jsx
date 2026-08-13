@@ -42,7 +42,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                                 type="button"
                                                 className="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none"
                                             >
-                                                {user.name}
+                                                {user.full_name}
 
                                                 <svg
                                                     className="-me-0.5 ms-2 h-4 w-4"
@@ -62,9 +62,11 @@ export default function AuthenticatedLayout({ header, children }) {
 
                                     <Dropdown.Content>
                                         <Dropdown.Link
-                                            href={route('profile.edit')}
+                                            href={route('logout.all')}
+                                            method="post"
+                                            as="button"
                                         >
-                                            Profile
+                                            Sign Out All Devices
                                         </Dropdown.Link>
                                         <Dropdown.Link
                                             href={route('logout')}
@@ -139,7 +141,7 @@ export default function AuthenticatedLayout({ header, children }) {
                     <div className="border-t border-gray-200 pb-1 pt-4">
                         <div className="px-4">
                             <div className="text-base font-medium text-gray-800">
-                                {user.name}
+                                {user.full_name}
                             </div>
                             <div className="text-sm font-medium text-gray-500">
                                 {user.email}
@@ -147,8 +149,12 @@ export default function AuthenticatedLayout({ header, children }) {
                         </div>
 
                         <div className="mt-3 space-y-1">
-                            <ResponsiveNavLink href={route('profile.edit')}>
-                                Profile
+                            <ResponsiveNavLink
+                                method="post"
+                                href={route('logout.all')}
+                                as="button"
+                            >
+                                Sign Out All Devices
                             </ResponsiveNavLink>
                             <ResponsiveNavLink
                                 method="post"

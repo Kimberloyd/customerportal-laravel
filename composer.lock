@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a8ad694a33082ee5f7d180402a687961",
+    "content-hash": "0ad5bfa64f1df8b9813eeeb2352dd5ca",
     "packages": [
         {
             "name": "brick/math",
@@ -6045,6 +6045,45 @@
                 "source": "https://github.com/tijsverkoyen/CssToInlineStyles/tree/v2.4.0"
             },
             "time": "2025-12-02T11:56:42+00:00"
+        },
+        {
+            "name": "vinsaj9/scrypt",
+            "version": "v1.4",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/vinsaj9/scrypt.git",
+                "reference": "b1a7ccdb5e67dae22a84e70c04271a293eda1ee6"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/vinsaj9/scrypt/zipball/b1a7ccdb5e67dae22a84e70c04271a293eda1ee6",
+                "reference": "b1a7ccdb5e67dae22a84e70c04271a293eda1ee6",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.1"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^9"
+            },
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "src/functions.php"
+                ],
+                "classmap": [
+                    "src/"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Fork of https://github.com/windlace/scrypt to support PHP 8.1. Scrypt, pure PHP based on https://github.com/MPOS/php-mpos/blob/236cccd5d3178e99504bf2665db8bddfed6aa176/include/lib/scrypt.php",
+            "support": {
+                "source": "https://github.com/vinsaj9/scrypt/tree/v1.4"
+            },
+            "time": "2022-08-23T07:59:31+00:00"
         },
         {
             "name": "vlucas/phpdotenv",

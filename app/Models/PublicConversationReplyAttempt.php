@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['customer_message_id', 'client_key'])]
+#[Fillable(['customer_message_id', 'client_key', 'attempted_at'])]
 class PublicConversationReplyAttempt extends Model
 {
     public $timestamps = false;

@@ -7,7 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['po_number', 'customer_id', 'po_file', 'status', 'remarks'])]
+#[Fillable([
+    'po_number', 'customer_id', 'po_file', 'status', 'remarks',
+    'submitted_at', 'updated_at', 'completed_at',
+])]
 class PurchaseOrder extends Model
 {
     public $timestamps = false;

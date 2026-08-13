@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'public_token_revoked_at', 'status', 'error_message', 'channel',
     'external_sender_id', 'external_sender_name',
     'external_sender_profile_checked_at', 'external_page_id',
-    'external_message_id', 'sent_at',
+    'external_message_id', 'sent_at', 'created_at', 'updated_at',
 ])]
 class CustomerMessage extends Model
 {

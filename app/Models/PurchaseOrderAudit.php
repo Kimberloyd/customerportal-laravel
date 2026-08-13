@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'purchase_order_id', 'action', 'details', 'remarks',
-    'actor_user_id', 'actor_role', 'ip_address', 'request_id',
+    'actor_user_id', 'actor_role', 'ip_address', 'request_id', 'created_at',
 ])]
 class PurchaseOrderAudit extends Model
 {
