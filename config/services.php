@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    // See App\Support\OrderNotifications. email/facebook stay disabled
+    // until real SMTP/Meta Graph API credentials exist to verify
+    // delivery against -- both flags default false intentionally.
+    'po_notifications' => [
+        'public_conversation_link_ttl_hours' => env('PUBLIC_CONVERSATION_LINK_TTL_HOURS', 720),
+        'email_enabled' => env('PO_NOTIFICATIONS_EMAIL_ENABLED', false),
+        'facebook_enabled' => env('PO_NOTIFICATIONS_FACEBOOK_ENABLED', false),
+    ],
+
 ];

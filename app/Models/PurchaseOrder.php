@@ -76,4 +76,33 @@ class PurchaseOrder extends Model
 
         return (int) $this->items->sum(fn ($item) => $item->pending_quantity);
     }
+
+    /**
+     * Ports update_order_delivery_status() from
+     * app/purchase_orders/purchase_order_routes.py -- derives status
+     * purely from quantities, no explicit state machine. Mutates in
+     * place; caller is responsible for save().
+     */
+    public function updateDeliveryStatus(): void
+    {
+        if ($this->items->isEmpty()) {
+            $this->status = self::STATUS_SUBMITTED;
+
+            return;
+        }
+
+        $totalOrdered = (int) $this->items->sum('quantity');
+        $totalDelivered = (int) $this->items->sum(fn ($item) => $item->delivered_quantity ?? 0);
+
+        if ($totalDelivered <= 0) {
+            $this->status = self::STATUS_SUBMITTED;
+        } elseif ($totalDelivered < $totalOrdered) {
+            $this->status = self::STATUS_PARTIAL;
+        } else {
+            $this->status = self::STATUS_COMPLETED;
+            if ($this->completed_at === null) {
+                $this->completed_at = now();
+            }
+        }
+    }
 }

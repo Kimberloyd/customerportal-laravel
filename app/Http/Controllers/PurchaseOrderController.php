@@ -8,6 +8,7 @@ use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Support\CustomerScope;
 use App\Support\OrderAudit;
+use App\Support\OrderNotifications;
 use App\Support\PoAttachment;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -20,9 +21,9 @@ use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Ports app/purchase_orders/purchase_order_routes.py (po_list,
- * po_create, po_view, po_attachment only -- po_edit/po_complete/
- * po_receive/po_cancel/po_print and order notifications are Phase 4).
+ * Ports app/purchase_orders/purchase_order_routes.py: po_list,
+ * po_create, po_view, po_attachment, po_edit, po_complete, po_receive,
+ * po_cancel. po_print is deferred to a later phase.
  */
 class PurchaseOrderController extends Controller
 {
@@ -258,11 +259,255 @@ class PurchaseOrderController extends Controller
             throw $e;
         }
 
-        // Phase 4: notify_purchase_order_submitted() equivalent plugs in
-        // here for customer-initiated orders (email/portal-message/
-        // Messenger) -- not built yet, deliberately deferred.
+        if ($customer) {
+            OrderNotifications::submitted($order);
+        }
 
         return redirect()->route('purchase-orders.index')->with('success', 'Order created successfully.');
+    }
+
+    public function edit(PurchaseOrder $order): Response
+    {
+        $this->authorizeOrderAccess($order);
+
+        $order->load(['customer', 'items.product']);
+
+        $customer = CustomerScope::forCurrentUser();
+        $customers = $customer
+            ? [['id' => $customer->id, 'company_name' => $customer->company_name]]
+            : Customer::query()->orderBy('company_name')->get(['id', 'company_name'])->toArray();
+
+        $isTerminal = in_array($order->status, PurchaseOrder::TERMINAL_STATUSES, true);
+
+        return Inertia::render('PurchaseOrders/Edit', [
+            'order' => [
+                'id' => $order->id,
+                'po_number' => $order->po_number,
+                'customer_id' => $order->customer_id,
+                'remarks' => $order->remarks,
+                'has_attachment' => (bool) $order->po_file,
+                'is_terminal' => $isTerminal,
+                'items' => $order->items->map(fn (PurchaseOrderItem $item) => [
+                    'id' => $item->id,
+                    'display_name' => $item->display_name,
+                    'quantity' => $item->quantity,
+                    'delivered_quantity' => $item->delivered_quantity,
+                ]),
+            ],
+            'customers' => $customers,
+            'lockedCustomerId' => $customer?->id,
+        ]);
+    }
+
+    public function update(Request $request, PurchaseOrder $order)
+    {
+        $this->authorizeOrderAccess($order);
+
+        try {
+            DB::transaction(function () use ($request, $order) {
+                $locked = PurchaseOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
+                $locked->load(['items.product', 'customer']);
+
+                $isTerminal = in_array($locked->status, PurchaseOrder::TERMINAL_STATUSES, true);
+                $changes = [];
+                $customer = CustomerScope::forCurrentUser();
+
+                if (! $isTerminal) {
+                    $customerId = $customer?->id ?? (int) $request->input('customer_id');
+                    $newCustomer = Customer::find($customerId);
+                    if (! $newCustomer) {
+                        throw new \RuntimeException('Select a valid customer.');
+                    }
+
+                    $proposedQuantities = [];
+                    foreach ($locked->items as $item) {
+                        $quantity = (int) $request->input("quantity_{$item->id}", 0);
+                        $delivered = $item->delivered_quantity ?? 0;
+
+                        if ($quantity < 1) {
+                            throw new \RuntimeException('Ordered quantity must be at least 1.');
+                        }
+                        if ($quantity < $delivered) {
+                            throw new \RuntimeException(
+                                "{$item->product->product_name} quantity cannot be lower than {$delivered} already delivered."
+                            );
+                        }
+                        $proposedQuantities[$item->id] = $quantity;
+                    }
+
+                    if ($locked->customer_id !== $newCustomer->id) {
+                        $changes[] = "Customer changed from {$locked->customer->company_name} to {$newCustomer->company_name}.";
+                        $locked->customer_id = $newCustomer->id;
+                    }
+
+                    foreach ($locked->items as $item) {
+                        $quantity = $proposedQuantities[$item->id];
+                        if ($item->quantity !== $quantity) {
+                            $changes[] = "{$item->product->product_name} quantity changed from {$item->quantity} to {$quantity}.";
+                            $item->quantity = $quantity;
+                            $item->line_total = $quantity * ($item->unit_price ?? 0);
+                            $item->save();
+                        }
+                    }
+
+                    $locked->load('items');
+                    $locked->updateDeliveryStatus();
+                }
+
+                $newRemarks = trim((string) $request->input('remarks', '')) ?: null;
+                if ($locked->remarks !== $newRemarks) {
+                    $changes[] = 'Remarks updated.';
+                    $locked->remarks = $newRemarks;
+                }
+
+                $attachmentToDeleteAfterCommit = null;
+                $newlySavedAttachment = null;
+
+                if (! $isTerminal) {
+                    if ($request->boolean('remove_attachment') && $locked->po_file) {
+                        $attachmentToDeleteAfterCommit = $locked->po_file;
+                        $locked->po_file = null;
+                        $changes[] = 'Attachment removed.';
+                    }
+
+                    $newAttachment = $request->file('po_attachment');
+                    if ($newAttachment) {
+                        try {
+                            $newlySavedAttachment = PoAttachment::save($newAttachment, $locked->po_number);
+                        } catch (\InvalidArgumentException $e) {
+                            throw new \RuntimeException($e->getMessage());
+                        }
+                        if ($locked->po_file) {
+                            $attachmentToDeleteAfterCommit = $locked->po_file;
+                        }
+                        $locked->po_file = $newlySavedAttachment;
+                        $changes[] = 'Attachment updated.';
+                    }
+                }
+
+                if ($changes === []) {
+                    throw new \RuntimeException('No order changes were detected.');
+                }
+
+                $locked->save();
+                OrderAudit::record($locked, 'Order Updated', implode(' ', $changes), $request);
+
+                if ($attachmentToDeleteAfterCommit) {
+                    PoAttachment::delete($attachmentToDeleteAfterCommit);
+                }
+            });
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('purchase-orders.show', $order->id)->with('success', 'Order updated successfully.');
+    }
+
+    public function complete(Request $request, PurchaseOrder $order)
+    {
+        $this->authorizeOrderAccess($order);
+        abort_if(Auth::user()->role === 'customer', 403);
+
+        try {
+            DB::transaction(function () use ($request, $order) {
+                $locked = PurchaseOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
+                $locked->load('items');
+
+                if (in_array($locked->status, PurchaseOrder::TERMINAL_STATUSES, true)) {
+                    throw new \RuntimeException("This order is already {$locked->status} and cannot be completed.");
+                }
+
+                foreach ($locked->items as $item) {
+                    $item->delivered_quantity = $item->quantity;
+                    $item->save();
+                }
+
+                $locked->status = PurchaseOrder::STATUS_COMPLETED;
+                $locked->completed_at = now();
+                $locked->save();
+
+                OrderAudit::record($locked, 'Order Completed', 'All ordered quantities were marked delivered.', $request);
+            });
+        } catch (\RuntimeException $e) {
+            return redirect()->route('purchase-orders.show', $order->id)->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('purchase-orders.index')->with('success', 'Order marked as completed.');
+    }
+
+    public function receive(Request $request, PurchaseOrder $order)
+    {
+        $this->authorizeOrderAccess($order);
+        abort_if(Auth::user()->role === 'customer', 403);
+
+        try {
+            DB::transaction(function () use ($request, $order) {
+                $locked = PurchaseOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
+                $locked->load('items.product');
+
+                if (in_array($locked->status, PurchaseOrder::TERMINAL_STATUSES, true)) {
+                    throw new \RuntimeException("This order is already {$locked->status} and cannot receive deliveries.");
+                }
+
+                $receivedAny = false;
+                $deliveryChanges = [];
+
+                foreach ($locked->items as $item) {
+                    $receiveQuantity = (int) $request->input("received_{$item->id}", 0);
+
+                    if ($receiveQuantity < 0) {
+                        continue;
+                    }
+                    if ($receiveQuantity > $item->pending_quantity) {
+                        throw new \RuntimeException('Received quantity cannot exceed pending quantity.');
+                    }
+                    if ($receiveQuantity > 0) {
+                        $item->delivered_quantity = ($item->delivered_quantity ?? 0) + $receiveQuantity;
+                        $item->save();
+                        $receivedAny = true;
+                        $deliveryChanges[] = "{$item->product->product_name}: {$receiveQuantity} unit(s) delivered.";
+                    }
+                }
+
+                if (! $receivedAny) {
+                    throw new \RuntimeException('Enter at least one received quantity.');
+                }
+
+                $locked->load('items');
+                $locked->updateDeliveryStatus();
+                $locked->save();
+
+                OrderAudit::record($locked, 'Fulfillment Updated', implode(' ', $deliveryChanges), $request);
+            });
+        } catch (\RuntimeException $e) {
+            return redirect()->route('purchase-orders.show', $order->id)->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('purchase-orders.show', $order->id)->with('success', 'Delivery quantities updated.');
+    }
+
+    public function cancel(Request $request, PurchaseOrder $order)
+    {
+        $this->authorizeOrderAccess($order);
+
+        try {
+            DB::transaction(function () use ($request, $order) {
+                $locked = PurchaseOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
+
+                if (in_array($locked->status, PurchaseOrder::TERMINAL_STATUSES, true)) {
+                    throw new \RuntimeException("This order is already {$locked->status} and cannot be cancelled.");
+                }
+
+                $locked->status = PurchaseOrder::STATUS_CANCELLED;
+                $locked->save();
+
+                OrderAudit::record($locked, 'Order Cancelled', 'Order status changed to Cancelled.', $request);
+            });
+        } catch (\RuntimeException $e) {
+            return redirect()->route('purchase-orders.show', $order->id)->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('purchase-orders.index')->with('success', 'Order cancelled.');
     }
 
     public function show(PurchaseOrder $order): Response
@@ -272,6 +517,7 @@ class PurchaseOrderController extends Controller
         $order->load(['customer', 'items.product', 'auditLogs.actor']);
 
         $isCustomerViewer = Auth::user()->role === 'customer';
+        $isTerminal = in_array($order->status, PurchaseOrder::TERMINAL_STATUSES, true);
 
         return Inertia::render('PurchaseOrders/Show', [
             'order' => [
@@ -280,6 +526,7 @@ class PurchaseOrderController extends Controller
                 'submitted_at' => $order->submitted_at?->toIso8601String(),
                 'updated_at' => $order->updated_at?->toIso8601String(),
                 'status' => $order->status,
+                'is_terminal' => $isTerminal,
                 'remarks' => $order->remarks,
                 'total' => $order->total,
                 'has_attachment' => (bool) $order->po_file,
@@ -306,6 +553,9 @@ class PurchaseOrderController extends Controller
                 ]),
             ],
             'isCustomerViewer' => $isCustomerViewer,
+            'canManageFulfillment' => ! $isCustomerViewer,
+            'canComplete' => ! $isCustomerViewer && ! $isTerminal,
+            'canCancel' => ! $isTerminal,
         ]);
     }
 

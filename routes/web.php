@@ -24,6 +24,11 @@ Route::middleware('auth')->prefix('purchase-orders')->name('purchase-orders.')->
     Route::post('/', [PurchaseOrderController::class, 'store'])->name('store');
     Route::get('/{order}', [PurchaseOrderController::class, 'show'])->name('show');
     Route::get('/{order}/attachment', [PurchaseOrderController::class, 'attachment'])->name('attachment');
+    Route::get('/{order}/edit', [PurchaseOrderController::class, 'edit'])->name('edit');
+    Route::put('/{order}', [PurchaseOrderController::class, 'update'])->name('update');
+    Route::post('/{order}/complete', [PurchaseOrderController::class, 'complete'])->name('complete');
+    Route::post('/{order}/receive', [PurchaseOrderController::class, 'receive'])->name('receive');
+    Route::post('/{order}/cancel', [PurchaseOrderController::class, 'cancel'])->name('cancel');
 });
 
 require __DIR__.'/auth.php';
