@@ -2,49 +2,16 @@
 
 namespace Tests\Feature;
 
-use App\Models\Customer;
 use App\Models\PurchaseOrder;
-use App\Models\PurchaseOrderItem;
-use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\CreatesOrderFixtures;
 use Tests\TestCase;
 
 class DashboardTest extends TestCase
 {
     use RefreshDatabase;
-
-    private function makeProduct(string $name = 'Widget'): Product
-    {
-        return Product::create(['product_name' => $name, 'is_active' => true]);
-    }
-
-    private function makeCustomer(string $name = 'Acme Co', ?User $user = null): Customer
-    {
-        return Customer::create([
-            'company_name' => $name,
-            'is_active' => true,
-            'user_id' => $user?->id,
-        ]);
-    }
-
-    private function makeOrder(Customer $customer, string $status, \DateTimeInterface|string $submittedAt, array $items = []): PurchaseOrder
-    {
-        $order = PurchaseOrder::create([
-            'po_number' => 'PO-'.uniqid(),
-            'customer_id' => $customer->id,
-            'status' => $status,
-            'submitted_at' => $submittedAt,
-        ]);
-
-        foreach ($items as $item) {
-            PurchaseOrderItem::create(array_merge([
-                'purchase_order_id' => $order->id,
-            ], $item));
-        }
-
-        return $order;
-    }
+    use CreatesOrderFixtures;
 
     public function test_staff_user_sees_global_kpis_and_customers_card(): void
     {
