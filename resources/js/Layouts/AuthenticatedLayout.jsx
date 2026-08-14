@@ -89,12 +89,12 @@ export default function AuthenticatedLayout({ header, children }) {
                                 </Link>
                             </div>
 
-                            <div className="hidden sm:ms-10 sm:flex sm:items-center sm:gap-6">
+                            <div className="hidden sm:-my-px sm:ms-10 sm:flex sm:gap-6">
                                 {navTabs.map((tab) => (
                                     <Link
                                         key={tab.key}
                                         href={tab.href}
-                                        className={`min-h-[44px] -mb-px inline-flex items-center border-b pb-2.5 pt-1 text-sm font-medium transition-colors ${
+                                        className={`inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium transition-colors ${
                                             tab.active
                                                 ? 'border-indigo-500 text-gray-900'
                                                 : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
