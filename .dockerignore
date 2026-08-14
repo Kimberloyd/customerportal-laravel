@@ -1,0 +1,26 @@
+.git
+.github
+
+# Real secrets must never enter a build context -- keep only the
+# non-secret production template, same convention as the sibling
+# Flask app's .dockerignore.
+.env
+.env.*
+!.env.production.example
+
+node_modules
+vendor
+
+tests/
+.phpunit.cache
+.phpunit.result.cache
+
+database/*.sqlite
+storage/*.key
+storage/logs/*.log
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+
+*.log
+.DS_Store
