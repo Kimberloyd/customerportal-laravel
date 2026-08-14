@@ -46,6 +46,24 @@ class User extends Authenticatable
         return 'password_hash';
     }
 
+    /**
+     * There is no remember_token column on this table (see the users
+     * migration) -- Authenticatable's default setRememberToken() would
+     * try to persist one and crash with an "unknown column" error the
+     * moment anyone checks "Remember Me" on login. No-op it instead: a
+     * checked "Remember Me" degrades to a normal session-lifetime login
+     * rather than a persistent one.
+     */
+    public function getRememberToken(): ?string
+    {
+        return null;
+    }
+
+    public function setRememberToken($value): void
+    {
+        //
+    }
+
     public function customer(): HasOne
     {
         return $this->hasOne(Customer::class);
