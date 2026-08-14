@@ -23,6 +23,7 @@ RUN apk add --no-cache \
         libpng \
         libjpeg-turbo \
         freetype \
+        su-exec \
     && apk add --no-cache --virtual .build-deps \
         icu-dev \
         libzip-dev \
@@ -57,8 +58,18 @@ RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framewor
     && chown -R app:app storage bootstrap/cache \
     && chmod -R u+rwX storage bootstrap/cache
 
-USER app
+COPY docker/app/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Deliberately stay root here, not `USER app` -- the tmpfs mounts for
+# storage/framework/{cache,sessions,views} and bootstrap/cache
+# (docker-compose.yml) are recreated fresh, owned by root, on every
+# container start, so something has to re-chown them before the app
+# user can write to them. entrypoint.sh does that chown, then drops
+# to the app user via su-exec before actually running php-fpm --
+# php-fpm itself never runs as root.
 
 EXPOSE 9000
 
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["php-fpm"]

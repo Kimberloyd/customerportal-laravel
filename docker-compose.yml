@@ -25,6 +25,15 @@ services:
     read_only: true
     cap_drop:
       - ALL
+    cap_add:
+      # entrypoint.sh starts as root specifically to chown the tmpfs
+      # mounts above (fresh, root-owned on every start) before dropping
+      # to the unprivileged `app` user via su-exec -- php-fpm itself
+      # never runs as root. Same pattern the proxy service already
+      # uses for its own root-then-drop nginx startup.
+      - CHOWN
+      - SETGID
+      - SETUID
     security_opt:
       - no-new-privileges:true
     mem_limit: 512m
