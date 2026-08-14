@@ -2,8 +2,7 @@ import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import FlashBanner from '@/Components/FlashBanner';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
-import { Tabs, TabsList, TabsTrigger } from '@/components/motion/tabs';
-import { Link, router, usePage } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 
 export default function AuthenticatedLayout({ header, children }) {
@@ -78,9 +77,6 @@ export default function AuthenticatedLayout({ header, children }) {
         [user.role, unreadCount],
     );
 
-    const activeTab = navTabs.find((tab) => tab.active)?.key;
-    const navHrefs = useMemo(() => Object.fromEntries(navTabs.map((tab) => [tab.key, tab.href])), [navTabs]);
-
     return (
         <div className="min-h-screen bg-gray-100">
             <nav className="border-b border-gray-100 bg-white">
@@ -93,20 +89,20 @@ export default function AuthenticatedLayout({ header, children }) {
                                 </Link>
                             </div>
 
-                            <div className="hidden sm:ms-10 sm:flex sm:items-center">
-                                <Tabs
-                                    value={activeTab}
-                                    onValueChange={(key) => router.visit(navHrefs[key])}
-                                    variant="underline"
-                                >
-                                    <TabsList className="gap-6 border-b-0">
-                                        {navTabs.map((tab) => (
-                                            <TabsTrigger key={tab.key} value={tab.key} className="px-0">
-                                                {tab.label}
-                                            </TabsTrigger>
-                                        ))}
-                                    </TabsList>
-                                </Tabs>
+                            <div className="hidden sm:ms-10 sm:flex sm:items-center sm:gap-6">
+                                {navTabs.map((tab) => (
+                                    <Link
+                                        key={tab.key}
+                                        href={tab.href}
+                                        className={`min-h-[44px] -mb-px inline-flex items-center border-b pb-2.5 pt-1 text-sm font-medium transition-colors ${
+                                            tab.active
+                                                ? 'border-indigo-500 text-gray-900'
+                                                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                                        }`}
+                                    >
+                                        {tab.label}
+                                    </Link>
+                                ))}
                             </div>
                         </div>
 
