@@ -1,6 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Table } from '@/components/motion/table';
 import { statusBadge, formatDateTime } from '@/utils/orderDisplay';
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import { useMemo } from 'react';
 
 export default function Show({ order, isCustomerViewer, canManageFulfillment, canComplete, canCancel }) {
     const badge = statusBadge(order.status);
@@ -34,6 +36,68 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
         if (!confirm('Cancel this order?')) return;
         router.post(route('purchase-orders.cancel', order.id));
     };
+
+    const itemColumns = useMemo(
+        () => [
+            { key: 'display_name', header: 'Product' },
+            { key: 'quantity', header: 'Ordered' },
+            {
+                key: 'delivered_quantity',
+                header: 'Delivered',
+                cell: (item) => item.delivered_quantity ?? 0,
+            },
+            { key: 'pending_quantity', header: 'Pending' },
+            ...(showDeliverColumn
+                ? [
+                      {
+                          key: 'deliver_now',
+                          header: 'Deliver Now',
+                          cell: (item) => (
+                              <input
+                                  type="number"
+                                  min={0}
+                                  max={item.pending_quantity}
+                                  disabled={item.pending_quantity === 0}
+                                  value={data.received[item.id]}
+                                  onChange={(e) =>
+                                      setData('received', {
+                                          ...data.received,
+                                          [item.id]: e.target.value,
+                                      })
+                                  }
+                                  className="w-20 rounded-md border-gray-300 text-sm disabled:bg-gray-100"
+                              />
+                          ),
+                      },
+                  ]
+                : []),
+        ],
+        [showDeliverColumn, data.received],
+    );
+
+    const auditLogsRows = useMemo(
+        () => order.audit_logs.map((audit, index) => ({ ...audit, __rowId: String(index) })),
+        [order.audit_logs],
+    );
+
+    const auditLogColumns = useMemo(
+        () => [
+            { key: 'created_at', header: 'Updated At', cell: (audit) => formatDateTime(audit.created_at) },
+            ...(!isCustomerViewer
+                ? [
+                      {
+                          key: 'actor_name',
+                          header: 'By',
+                          cell: (audit) => (audit.actor_name ? `${audit.actor_name} (${audit.actor_role})` : '-'),
+                      },
+                  ]
+                : []),
+            { key: 'action', header: 'Action' },
+            { key: 'details', header: 'Change Details', cell: (audit) => audit.details ?? '-' },
+            { key: 'remarks', header: 'Remarks', cell: (audit) => audit.remarks ?? '-' },
+        ],
+        [isCustomerViewer],
+    );
 
     return (
         <AuthenticatedLayout
@@ -139,110 +203,47 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
                 </div>
 
                 <div className="rounded-lg bg-white p-6 shadow-sm">
-                    <div className="mb-3 flex items-center justify-between">
+                    <div className="flex items-center justify-between">
                         <h3 className="text-lg font-semibold text-gray-900">Items and Fulfillment</h3>
                         {showDeliverColumn && (
                             <span className="text-sm text-gray-500">Enter the quantity delivered in this batch.</span>
                         )}
                     </div>
-                    <form onSubmit={submitFulfillment}>
-                        <table className="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead>
-                                <tr className="text-left text-gray-500">
-                                    <th className="py-2 pr-4">Product</th>
-                                    <th className="py-2 pr-4">Ordered</th>
-                                    <th className="py-2 pr-4">Delivered</th>
-                                    <th className="py-2 pr-4">Pending</th>
-                                    {showDeliverColumn && <th className="py-2 pr-4">Deliver Now</th>}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {order.items.length === 0 && (
-                                    <tr>
-                                        <td colSpan={showDeliverColumn ? 5 : 4} className="py-4 text-center text-gray-400">
-                                            No items found for this order.
-                                        </td>
-                                    </tr>
-                                )}
-                                {order.items.map((item) => (
-                                    <tr key={item.id}>
-                                        <td className="py-2 pr-4">{item.display_name}</td>
-                                        <td className="py-2 pr-4">{item.quantity}</td>
-                                        <td className="py-2 pr-4">{item.delivered_quantity ?? 0}</td>
-                                        <td className="py-2 pr-4">{item.pending_quantity}</td>
-                                        {showDeliverColumn && (
-                                            <td className="py-2 pr-4">
-                                                <input
-                                                    type="number"
-                                                    min={0}
-                                                    max={item.pending_quantity}
-                                                    disabled={item.pending_quantity === 0}
-                                                    value={data.received[item.id]}
-                                                    onChange={(e) =>
-                                                        setData('received', {
-                                                            ...data.received,
-                                                            [item.id]: e.target.value,
-                                                        })
-                                                    }
-                                                    className="w-20 rounded-md border-gray-300 text-sm disabled:bg-gray-100"
-                                                />
-                                            </td>
-                                        )}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                        {showDeliverColumn && (
-                            <div className="mt-4">
-                                <button
-                                    type="submit"
-                                    disabled={processing}
-                                    className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-                                >
-                                    Save Fulfillment
-                                </button>
-                            </div>
-                        )}
-                    </form>
                 </div>
+                <form onSubmit={submitFulfillment}>
+                    <Table
+                        data={order.items}
+                        columns={itemColumns}
+                        getRowId={(item) => String(item.id)}
+                        resizable
+                        reorderable
+                        emptyState="No items found for this order."
+                    />
+                    {showDeliverColumn && (
+                        <div className="mt-4">
+                            <button
+                                type="submit"
+                                disabled={processing}
+                                className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+                            >
+                                Save Fulfillment
+                            </button>
+                        </div>
+                    )}
+                </form>
 
                 <div className="rounded-lg bg-white p-6 shadow-sm">
                     <h3 className="mb-1 text-lg font-semibold text-gray-900">Update History</h3>
-                    <p className="mb-3 text-sm text-gray-500">Remarks and changes recorded by update time.</p>
-                    <table className="min-w-full divide-y divide-gray-200 text-sm">
-                        <thead>
-                            <tr className="text-left text-gray-500">
-                                <th className="py-2 pr-4">Updated At</th>
-                                {!isCustomerViewer && <th className="py-2 pr-4">By</th>}
-                                <th className="py-2 pr-4">Action</th>
-                                <th className="py-2 pr-4">Change Details</th>
-                                <th className="py-2 pr-4">Remarks</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {order.audit_logs.length === 0 && (
-                                <tr>
-                                    <td colSpan={isCustomerViewer ? 4 : 5} className="py-4 text-center text-gray-400">
-                                        No updates recorded yet.
-                                    </td>
-                                </tr>
-                            )}
-                            {order.audit_logs.map((audit, index) => (
-                                <tr key={index}>
-                                    <td className="py-2 pr-4">{formatDateTime(audit.created_at)}</td>
-                                    {!isCustomerViewer && (
-                                        <td className="py-2 pr-4">
-                                            {audit.actor_name ? `${audit.actor_name} (${audit.actor_role})` : '-'}
-                                        </td>
-                                    )}
-                                    <td className="py-2 pr-4">{audit.action}</td>
-                                    <td className="py-2 pr-4">{audit.details ?? '-'}</td>
-                                    <td className="py-2 pr-4">{audit.remarks ?? '-'}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                    <p className="text-sm text-gray-500">Remarks and changes recorded by update time.</p>
                 </div>
+                <Table
+                    data={auditLogsRows}
+                    columns={auditLogColumns}
+                    getRowId={(audit) => audit.__rowId}
+                    resizable
+                    reorderable
+                    emptyState="No updates recorded yet."
+                />
             </div>
         </AuthenticatedLayout>
     );

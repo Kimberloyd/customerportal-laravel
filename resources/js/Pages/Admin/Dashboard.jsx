@@ -1,6 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Table } from '@/components/motion/table';
 import { statusBadge, formatDateTime } from '@/utils/orderDisplay';
 import { Head, Link } from '@inertiajs/react';
+import { useMemo } from 'react';
 
 function Tile({ label, value }) {
     return (
@@ -12,6 +14,79 @@ function Tile({ label, value }) {
 }
 
 export default function Dashboard({ totalCustomers, totalProducts, totalOrders, openMessages, recentCustomers, recentProducts, recentOrders }) {
+    const customerColumns = useMemo(
+        () => [
+            { key: 'customer_code', header: 'Code', cell: (c) => c.customer_code ?? '-' },
+            {
+                key: 'company_name',
+                header: 'Company',
+                cell: (c) => (
+                    <Link href={route('customers.edit', c.id)} className="text-indigo-600 hover:underline">
+                        {c.company_name}
+                    </Link>
+                ),
+            },
+            { key: 'contact_person', header: 'Contact', cell: (c) => c.contact_person ?? '-' },
+            { key: 'email', header: 'Email', cell: (c) => c.email ?? '-' },
+            { key: 'phone', header: 'Phone', cell: (c) => c.phone ?? '-' },
+        ],
+        [],
+    );
+
+    const productColumns = useMemo(
+        () => [
+            { key: 'generic_name', header: 'Generic Name', cell: (p) => p.generic_name ?? '-' },
+            {
+                key: 'product_name',
+                header: 'Brand Name',
+                cell: (p) => (
+                    <Link href={route('products.edit', p.id)} className="text-indigo-600 hover:underline">
+                        {p.product_name}
+                    </Link>
+                ),
+            },
+            { key: 'sku', header: 'SKU', cell: (p) => p.sku ?? '-' },
+            { key: 'unit', header: 'Unit', cell: (p) => p.unit ?? '-' },
+            {
+                key: 'is_active',
+                header: 'Status',
+                cell: (p) => (
+                    <span className={`rounded-full px-2 py-0.5 text-xs ${p.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-700'}`}>
+                        {p.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                ),
+            },
+        ],
+        [],
+    );
+
+    const orderColumns = useMemo(
+        () => [
+            {
+                key: 'po_number',
+                header: 'PO Number',
+                cell: (order) => (
+                    <Link href={route('purchase-orders.show', order.id)} className="text-indigo-600 hover:underline">
+                        {order.po_number}
+                    </Link>
+                ),
+            },
+            { key: 'submitted_at', header: 'Date', cell: (order) => formatDateTime(order.submitted_at) },
+            { key: 'customer_name', header: 'Customer' },
+            { key: 'ordered_units', header: 'Ordered' },
+            { key: 'balance_units', header: 'Balance' },
+            {
+                key: 'status',
+                header: 'Status',
+                cell: (order) => {
+                    const badge = statusBadge(order.status);
+                    return <span className={`rounded-full px-2 py-0.5 text-xs ${badge.className}`}>{badge.label}</span>;
+                },
+            },
+        ],
+        [],
+    );
+
     return (
         <AuthenticatedLayout
             header={<h2 className="text-xl font-semibold leading-tight text-gray-800">Administration</h2>}
@@ -27,120 +102,49 @@ export default function Dashboard({ totalCustomers, totalProducts, totalOrders, 
                 </div>
 
                 <section className="rounded-lg bg-white p-4 shadow-sm">
-                    <div className="mb-3 flex items-center justify-between">
+                    <div className="flex items-center justify-between">
                         <h3 className="text-lg font-semibold text-gray-900">Recent Customers</h3>
                         <Link href={route('customers.index')} className="text-sm text-indigo-600 hover:underline">View All</Link>
                     </div>
-                    <table className="min-w-full divide-y divide-gray-200 text-sm">
-                        <thead>
-                            <tr className="text-left text-gray-500">
-                                <th className="py-2 pr-4">Code</th>
-                                <th className="py-2 pr-4">Company</th>
-                                <th className="py-2 pr-4">Contact</th>
-                                <th className="py-2 pr-4">Email</th>
-                                <th className="py-2 pr-4">Phone</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {recentCustomers.length === 0 && (
-                                <tr><td colSpan={5} className="py-4 text-center text-gray-400">No customers found.</td></tr>
-                            )}
-                            {recentCustomers.map((c) => (
-                                <tr key={c.id}>
-                                    <td className="py-2 pr-4">{c.customer_code ?? '-'}</td>
-                                    <td className="py-2 pr-4">
-                                        <Link href={route('customers.edit', c.id)} className="text-indigo-600 hover:underline">{c.company_name}</Link>
-                                    </td>
-                                    <td className="py-2 pr-4">{c.contact_person ?? '-'}</td>
-                                    <td className="py-2 pr-4">{c.email ?? '-'}</td>
-                                    <td className="py-2 pr-4">{c.phone ?? '-'}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
                 </section>
+                <Table
+                    data={recentCustomers}
+                    columns={customerColumns}
+                    getRowId={(c) => String(c.id)}
+                    resizable
+                    reorderable
+                    emptyState="No customers found."
+                />
 
                 <section className="rounded-lg bg-white p-4 shadow-sm">
-                    <div className="mb-3 flex items-center justify-between">
+                    <div className="flex items-center justify-between">
                         <h3 className="text-lg font-semibold text-gray-900">Recent Products</h3>
                         <Link href={route('products.index')} className="text-sm text-indigo-600 hover:underline">View All</Link>
                     </div>
-                    <table className="min-w-full divide-y divide-gray-200 text-sm">
-                        <thead>
-                            <tr className="text-left text-gray-500">
-                                <th className="py-2 pr-4">Generic Name</th>
-                                <th className="py-2 pr-4">Brand Name</th>
-                                <th className="py-2 pr-4">SKU</th>
-                                <th className="py-2 pr-4">Unit</th>
-                                <th className="py-2 pr-4">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {recentProducts.length === 0 && (
-                                <tr><td colSpan={5} className="py-4 text-center text-gray-400">No products found.</td></tr>
-                            )}
-                            {recentProducts.map((p) => (
-                                <tr key={p.id}>
-                                    <td className="py-2 pr-4">{p.generic_name ?? '-'}</td>
-                                    <td className="py-2 pr-4">
-                                        <Link href={route('products.edit', p.id)} className="text-indigo-600 hover:underline">{p.product_name}</Link>
-                                    </td>
-                                    <td className="py-2 pr-4">{p.sku ?? '-'}</td>
-                                    <td className="py-2 pr-4">{p.unit ?? '-'}</td>
-                                    <td className="py-2 pr-4">
-                                        <span className={`rounded-full px-2 py-0.5 text-xs ${p.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-700'}`}>
-                                            {p.is_active ? 'Active' : 'Inactive'}
-                                        </span>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
                 </section>
+                <Table
+                    data={recentProducts}
+                    columns={productColumns}
+                    getRowId={(p) => String(p.id)}
+                    resizable
+                    reorderable
+                    emptyState="No products found."
+                />
 
                 <section className="rounded-lg bg-white p-4 shadow-sm">
-                    <div className="mb-3 flex items-center justify-between">
+                    <div className="flex items-center justify-between">
                         <h3 className="text-lg font-semibold text-gray-900">Recent Orders</h3>
                         <Link href={route('purchase-orders.index')} className="text-sm text-indigo-600 hover:underline">View All</Link>
                     </div>
-                    <table className="min-w-full divide-y divide-gray-200 text-sm">
-                        <thead>
-                            <tr className="text-left text-gray-500">
-                                <th className="py-2 pr-4">PO Number</th>
-                                <th className="py-2 pr-4">Date</th>
-                                <th className="py-2 pr-4">Customer</th>
-                                <th className="py-2 pr-4">Ordered</th>
-                                <th className="py-2 pr-4">Balance</th>
-                                <th className="py-2 pr-4">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {recentOrders.length === 0 && (
-                                <tr><td colSpan={6} className="py-4 text-center text-gray-400">No orders found.</td></tr>
-                            )}
-                            {recentOrders.map((order) => {
-                                const badge = statusBadge(order.status);
-
-                                return (
-                                    <tr key={order.id}>
-                                        <td className="py-2 pr-4">
-                                            <Link href={route('purchase-orders.show', order.id)} className="text-indigo-600 hover:underline">
-                                                {order.po_number}
-                                            </Link>
-                                        </td>
-                                        <td className="py-2 pr-4">{formatDateTime(order.submitted_at)}</td>
-                                        <td className="py-2 pr-4">{order.customer_name}</td>
-                                        <td className="py-2 pr-4">{order.ordered_units}</td>
-                                        <td className="py-2 pr-4">{order.balance_units}</td>
-                                        <td className="py-2 pr-4">
-                                            <span className={`rounded-full px-2 py-0.5 text-xs ${badge.className}`}>{badge.label}</span>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
                 </section>
+                <Table
+                    data={recentOrders}
+                    columns={orderColumns}
+                    getRowId={(order) => String(order.id)}
+                    resizable
+                    reorderable
+                    emptyState="No orders found."
+                />
 
                 <section className="rounded-lg bg-white p-4 shadow-sm">
                     <h3 className="mb-3 text-lg font-semibold text-gray-900">System Tools</h3>

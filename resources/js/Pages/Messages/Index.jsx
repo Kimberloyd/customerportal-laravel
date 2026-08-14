@@ -1,7 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Table } from '@/components/motion/table';
 import { formatDateTime } from '@/utils/orderDisplay';
 import { Head, Link, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 const STATUS_OPTIONS = [
     { value: 'all', label: 'All' },
@@ -17,6 +18,57 @@ export default function Index({ threads, filters }) {
         setStatus(value);
         router.get(route('messages.index'), { status: value }, { preserveState: true });
     };
+
+    const columns = useMemo(
+        () => [
+            {
+                key: 'customer_name',
+                header: 'Conversation',
+                cell: (thread) => (
+                    <span className={thread.has_unread ? 'font-semibold' : ''}>
+                        <Link href={route('messages.show', thread.id)} className="text-indigo-600 hover:underline">
+                            {thread.customer_name}
+                        </Link>
+                        {thread.is_facebook && (
+                            <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-normal text-blue-700">
+                                Facebook Messenger
+                            </span>
+                        )}
+                    </span>
+                ),
+            },
+            { key: 'subject', header: 'Subject' },
+            {
+                key: 'latest_preview',
+                header: 'Latest Message',
+                cell: (thread) => (
+                    <span className="block max-w-xs truncate text-gray-600">{thread.latest_preview ?? '-'}</span>
+                ),
+            },
+            { key: 'reply_count', header: 'Replies' },
+            {
+                key: 'status',
+                header: 'Status',
+                cell: (thread) => (
+                    <span
+                        className={`rounded-full px-2 py-0.5 text-xs ${
+                            thread.status === 'open'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-gray-200 text-gray-700'
+                        }`}
+                    >
+                        {thread.status}
+                    </span>
+                ),
+            },
+            {
+                key: 'updated_at',
+                header: 'Updated',
+                cell: (thread) => formatDateTime(thread.updated_at),
+            },
+        ],
+        [],
+    );
 
     return (
         <AuthenticatedLayout
@@ -53,61 +105,15 @@ export default function Index({ threads, filters }) {
                     ))}
                 </div>
 
-                <div className="rounded-lg bg-white p-4 shadow-sm">
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead>
-                                <tr className="text-left text-gray-500">
-                                    <th className="py-2 pr-4">Conversation</th>
-                                    <th className="py-2 pr-4">Subject</th>
-                                    <th className="py-2 pr-4">Latest Message</th>
-                                    <th className="py-2 pr-4">Replies</th>
-                                    <th className="py-2 pr-4">Status</th>
-                                    <th className="py-2 pr-4">Updated</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {threads.data.length === 0 && (
-                                    <tr>
-                                        <td colSpan={6} className="py-4 text-center text-gray-400">
-                                            No conversations match this filter.
-                                        </td>
-                                    </tr>
-                                )}
-                                {threads.data.map((thread) => (
-                                    <tr key={thread.id} className={thread.has_unread ? 'font-semibold' : ''}>
-                                        <td className="py-2 pr-4">
-                                            <Link href={route('messages.show', thread.id)} className="text-indigo-600 hover:underline">
-                                                {thread.customer_name}
-                                            </Link>
-                                            {thread.is_facebook && (
-                                                <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-normal text-blue-700">
-                                                    Facebook Messenger
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td className="py-2 pr-4 font-normal">{thread.subject}</td>
-                                        <td className="max-w-xs truncate py-2 pr-4 font-normal text-gray-600">
-                                            {thread.latest_preview ?? '-'}
-                                        </td>
-                                        <td className="py-2 pr-4 font-normal">{thread.reply_count}</td>
-                                        <td className="py-2 pr-4 font-normal">
-                                            <span
-                                                className={`rounded-full px-2 py-0.5 text-xs ${
-                                                    thread.status === 'open'
-                                                        ? 'bg-blue-100 text-blue-800'
-                                                        : 'bg-gray-200 text-gray-700'
-                                                }`}
-                                            >
-                                                {thread.status}
-                                            </span>
-                                        </td>
-                                        <td className="py-2 pr-4 font-normal">{formatDateTime(thread.updated_at)}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                <>
+                    <Table
+                        data={threads.data}
+                        columns={columns}
+                        getRowId={(thread) => String(thread.id)}
+                        resizable
+                        reorderable
+                        emptyState="No conversations match this filter."
+                    />
 
                     {threads.last_page > 1 && (
                         <nav className="mt-4 flex flex-wrap items-center gap-1 text-sm">
@@ -128,7 +134,7 @@ export default function Index({ threads, filters }) {
                             ))}
                         </nav>
                     )}
-                </div>
+                </>
             </div>
         </AuthenticatedLayout>
     );

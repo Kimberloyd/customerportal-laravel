@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Table } from '@/components/motion/table';
 import { Head, Link, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 const SOURCE_OPTIONS = [
     { value: 'all', label: 'All Sources' },
@@ -12,14 +13,6 @@ const STATUS_OPTIONS = [
     { value: 'active', label: 'Active' },
     { value: 'inactive', label: 'Inactive' },
     { value: 'all', label: 'All' },
-];
-
-const SORT_COLUMNS = [
-    { key: 'brand', label: 'Brand Name' },
-    { key: 'generic', label: 'Generic Name' },
-    { key: 'category', label: 'Category' },
-    { key: 'unit', label: 'Unit' },
-    { key: 'description', label: 'Description' },
 ];
 
 export default function Index({ products, filters, canManage }) {
@@ -42,16 +35,6 @@ export default function Index({ products, filters, canManage }) {
         );
     };
 
-    const toggleSort = (column) => {
-        const nextDir = filters.sort_by === column && filters.sort_dir === 'asc' ? 'desc' : 'asc';
-        applyFilters({ sort_by: column, sort_dir: nextDir });
-    };
-
-    const sortArrow = (column) => {
-        if (filters.sort_by !== column) return '';
-        return filters.sort_dir === 'asc' ? ' ↑' : ' ↓';
-    };
-
     const deleteProduct = (product) => {
         if (!confirm(`Delete ${product.product_name}?`)) return;
         router.delete(route('products.destroy', product.id));
@@ -60,6 +43,80 @@ export default function Index({ products, filters, canManage }) {
     const toggleActive = (product) => {
         router.post(route('products.toggle-active', product.id));
     };
+
+    const columns = useMemo(
+        () => [
+            { key: 'product_name', header: 'Brand Name', sortable: true },
+            {
+                key: 'generic_name',
+                header: 'Generic Name',
+                sortable: true,
+                cell: (product) => product.generic_name ?? '-',
+            },
+            { key: 'category', header: 'Category', sortable: true },
+            { key: 'unit', header: 'Unit', sortable: true, cell: (product) => product.unit ?? '-' },
+            {
+                key: 'description',
+                header: 'Description',
+                sortable: true,
+                cell: (product) => product.description ?? '-',
+            },
+            { key: 'sku', header: 'SKU', cell: (product) => product.sku ?? '-' },
+            {
+                key: 'unit_price',
+                header: 'Price',
+                sortable: true,
+                align: 'right',
+                cell: (product) => Number(product.unit_price ?? 0).toFixed(2),
+            },
+            ...(canManage
+                ? [
+                      {
+                          key: 'is_active',
+                          header: 'Status',
+                          cell: (product) => (
+                              <span
+                                  className={`rounded-full px-2 py-0.5 text-xs ${
+                                      product.is_active
+                                          ? 'bg-green-100 text-green-800'
+                                          : 'bg-gray-200 text-gray-700'
+                                  }`}
+                              >
+                                  {product.is_active ? 'Active' : 'Inactive'}
+                              </span>
+                          ),
+                      },
+                      {
+                          key: 'actions',
+                          header: 'Actions',
+                          cell: (product) => (
+                              <div className="space-x-2 whitespace-nowrap">
+                                  <Link
+                                      href={route('products.edit', product.id)}
+                                      className="text-indigo-600 hover:underline"
+                                  >
+                                      Edit
+                                  </Link>
+                                  <button
+                                      onClick={() => toggleActive(product)}
+                                      className="text-gray-600 hover:underline"
+                                  >
+                                      {product.is_active ? 'Deactivate' : 'Reactivate'}
+                                  </button>
+                                  <button
+                                      onClick={() => deleteProduct(product)}
+                                      className="text-red-600 hover:underline"
+                                  >
+                                      Delete
+                                  </button>
+                              </div>
+                          ),
+                      },
+                  ]
+                : []),
+        ],
+        [canManage],
+    );
 
     return (
         <AuthenticatedLayout
@@ -136,84 +193,15 @@ export default function Index({ products, filters, canManage }) {
                     </button>
                 </form>
 
-                <div className="rounded-lg bg-white p-4 shadow-sm">
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead>
-                                <tr className="text-left text-gray-500">
-                                    {SORT_COLUMNS.map((col) => (
-                                        <th
-                                            key={col.key}
-                                            className="cursor-pointer select-none py-2 pr-4"
-                                            onClick={() => toggleSort(col.key)}
-                                        >
-                                            {col.label}
-                                            {sortArrow(col.key)}
-                                        </th>
-                                    ))}
-                                    <th className="py-2 pr-4">SKU</th>
-                                    <th className="py-2 pr-4">Price</th>
-                                    {canManage && <th className="py-2 pr-4">Status</th>}
-                                    {canManage && <th className="py-2 pr-4">Actions</th>}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {products.data.length === 0 && (
-                                    <tr>
-                                        <td colSpan={canManage ? 8 : 6} className="py-4 text-center text-gray-400">
-                                            No products match these filters.
-                                        </td>
-                                    </tr>
-                                )}
-                                {products.data.map((product) => (
-                                    <tr key={product.id}>
-                                        <td className="py-2 pr-4">{product.product_name}</td>
-                                        <td className="py-2 pr-4">{product.generic_name ?? '-'}</td>
-                                        <td className="py-2 pr-4">{product.category}</td>
-                                        <td className="py-2 pr-4">{product.unit ?? '-'}</td>
-                                        <td className="py-2 pr-4">{product.description ?? '-'}</td>
-                                        <td className="py-2 pr-4">{product.sku ?? '-'}</td>
-                                        <td className="py-2 pr-4">{Number(product.unit_price ?? 0).toFixed(2)}</td>
-                                        {canManage && (
-                                            <td className="py-2 pr-4">
-                                                <span
-                                                    className={`rounded-full px-2 py-0.5 text-xs ${
-                                                        product.is_active
-                                                            ? 'bg-green-100 text-green-800'
-                                                            : 'bg-gray-200 text-gray-700'
-                                                    }`}
-                                                >
-                                                    {product.is_active ? 'Active' : 'Inactive'}
-                                                </span>
-                                            </td>
-                                        )}
-                                        {canManage && (
-                                            <td className="space-x-2 py-2 pr-4 whitespace-nowrap">
-                                                <Link
-                                                    href={route('products.edit', product.id)}
-                                                    className="text-indigo-600 hover:underline"
-                                                >
-                                                    Edit
-                                                </Link>
-                                                <button
-                                                    onClick={() => toggleActive(product)}
-                                                    className="text-gray-600 hover:underline"
-                                                >
-                                                    {product.is_active ? 'Deactivate' : 'Reactivate'}
-                                                </button>
-                                                <button
-                                                    onClick={() => deleteProduct(product)}
-                                                    className="text-red-600 hover:underline"
-                                                >
-                                                    Delete
-                                                </button>
-                                            </td>
-                                        )}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                <>
+                    <Table
+                        data={products.data}
+                        columns={columns}
+                        getRowId={(product) => String(product.id)}
+                        resizable
+                        reorderable
+                        emptyState="No products match these filters."
+                    />
 
                     {products.last_page > 1 && (
                         <nav className="mt-4 flex flex-wrap items-center gap-1 text-sm">
@@ -234,7 +222,7 @@ export default function Index({ products, filters, canManage }) {
                             ))}
                         </nav>
                     )}
-                </div>
+                </>
             </div>
         </AuthenticatedLayout>
     );

@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Table } from '@/components/motion/table';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 export default function Index({ users, filters, roleLabels }) {
     const { auth } = usePage().props;
@@ -23,6 +24,75 @@ export default function Index({ users, filters, roleLabels }) {
     const toggleActive = (user) => {
         router.post(route('admin.users.toggle-active', user.id));
     };
+
+    const columns = useMemo(
+        () => [
+            { key: 'full_name', header: 'Name', sortable: true },
+            { key: 'email', header: 'Email', sortable: true },
+            {
+                key: 'role',
+                header: 'Role',
+                sortable: true,
+                sortValue: (user) => roleLabels[user.role] ?? user.role,
+                cell: (user) => roleLabels[user.role],
+            },
+            {
+                key: 'linked_customer_name',
+                header: 'Linked Customer',
+                sortable: true,
+                cell: (user) => user.linked_customer_name ?? '-',
+            },
+            {
+                key: 'is_active',
+                header: 'Status',
+                cell: (user) => (
+                    <span
+                        className={`rounded-full px-2 py-0.5 text-xs ${
+                            user.is_active
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-gray-200 text-gray-700'
+                        }`}
+                    >
+                        {user.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                ),
+            },
+            {
+                key: 'actions',
+                header: 'Actions',
+                cell: (user) => {
+                    const isSelf = user.id === auth.user.id;
+                    return (
+                        <div className="space-x-2 whitespace-nowrap">
+                            <Link
+                                href={route('admin.users.edit', user.id)}
+                                className="text-indigo-600 hover:underline"
+                            >
+                                Edit
+                            </Link>
+                            {!isSelf && (
+                                <>
+                                    <button
+                                        onClick={() => toggleActive(user)}
+                                        className="text-gray-600 hover:underline"
+                                    >
+                                        {user.is_active ? 'Deactivate' : 'Reactivate'}
+                                    </button>
+                                    <button
+                                        onClick={() => deleteUser(user)}
+                                        className="text-red-600 hover:underline"
+                                    >
+                                        Delete
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    );
+                },
+            },
+        ],
+        [auth.user.id, roleLabels],
+    );
 
     return (
         <AuthenticatedLayout
@@ -82,77 +152,15 @@ export default function Index({ users, filters, roleLabels }) {
                     </button>
                 </form>
 
-                <div className="rounded-lg bg-white p-4 shadow-sm">
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead>
-                                <tr className="text-left text-gray-500">
-                                    <th className="py-2 pr-4">Name</th>
-                                    <th className="py-2 pr-4">Email</th>
-                                    <th className="py-2 pr-4">Role</th>
-                                    <th className="py-2 pr-4">Linked Customer</th>
-                                    <th className="py-2 pr-4">Status</th>
-                                    <th className="py-2 pr-4">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {users.data.length === 0 && (
-                                    <tr>
-                                        <td colSpan={6} className="py-4 text-center text-gray-400">
-                                            No users match these filters.
-                                        </td>
-                                    </tr>
-                                )}
-                                {users.data.map((user) => {
-                                    const isSelf = user.id === auth.user.id;
-
-                                    return (
-                                        <tr key={user.id}>
-                                            <td className="py-2 pr-4">{user.full_name}</td>
-                                            <td className="py-2 pr-4">{user.email}</td>
-                                            <td className="py-2 pr-4">{roleLabels[user.role]}</td>
-                                            <td className="py-2 pr-4">{user.linked_customer_name ?? '-'}</td>
-                                            <td className="py-2 pr-4">
-                                                <span
-                                                    className={`rounded-full px-2 py-0.5 text-xs ${
-                                                        user.is_active
-                                                            ? 'bg-green-100 text-green-800'
-                                                            : 'bg-gray-200 text-gray-700'
-                                                    }`}
-                                                >
-                                                    {user.is_active ? 'Active' : 'Inactive'}
-                                                </span>
-                                            </td>
-                                            <td className="space-x-2 py-2 pr-4 whitespace-nowrap">
-                                                <Link
-                                                    href={route('admin.users.edit', user.id)}
-                                                    className="text-indigo-600 hover:underline"
-                                                >
-                                                    Edit
-                                                </Link>
-                                                {!isSelf && (
-                                                    <>
-                                                        <button
-                                                            onClick={() => toggleActive(user)}
-                                                            className="text-gray-600 hover:underline"
-                                                        >
-                                                            {user.is_active ? 'Deactivate' : 'Reactivate'}
-                                                        </button>
-                                                        <button
-                                                            onClick={() => deleteUser(user)}
-                                                            className="text-red-600 hover:underline"
-                                                        >
-                                                            Delete
-                                                        </button>
-                                                    </>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
+                <>
+                    <Table
+                        data={users.data}
+                        columns={columns}
+                        getRowId={(user) => String(user.id)}
+                        resizable
+                        reorderable
+                        emptyState="No users match these filters."
+                    />
 
                     {users.last_page > 1 && (
                         <nav className="mt-4 flex flex-wrap items-center gap-1 text-sm">
@@ -173,7 +181,7 @@ export default function Index({ users, filters, roleLabels }) {
                             ))}
                         </nav>
                     )}
-                </div>
+                </>
             </div>
         </AuthenticatedLayout>
     );

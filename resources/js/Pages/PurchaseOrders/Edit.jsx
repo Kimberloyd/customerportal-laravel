@@ -1,5 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Table } from '@/components/motion/table';
 import { Head, useForm } from '@inertiajs/react';
+import { useMemo } from 'react';
 
 export default function Edit({ order, customers, lockedCustomerId }) {
     const { data, setData, put, processing, errors } = useForm({
@@ -32,6 +34,37 @@ export default function Edit({ order, customers, lockedCustomerId }) {
             forceFormData: true,
         });
     };
+
+    const itemColumns = useMemo(
+        () => [
+            { key: 'display_name', header: 'Product' },
+            {
+                key: 'delivered_quantity',
+                header: 'Delivered',
+                cell: (item) => item.delivered_quantity ?? 0,
+            },
+            {
+                key: 'quantity',
+                header: 'Quantity',
+                cell: (item) => (
+                    <input
+                        type="number"
+                        min={item.delivered_quantity ?? 1}
+                        disabled={order.is_terminal}
+                        value={data.quantities[item.id]}
+                        onChange={(e) =>
+                            setData('quantities', {
+                                ...data.quantities,
+                                [item.id]: e.target.value,
+                            })
+                        }
+                        className="w-24 rounded-md border-gray-300 text-sm disabled:bg-gray-100"
+                    />
+                ),
+            },
+        ],
+        [order.is_terminal, data.quantities],
+    );
 
     return (
         <AuthenticatedLayout
@@ -109,38 +142,14 @@ export default function Edit({ order, customers, lockedCustomerId }) {
 
                     <div>
                         <label className="mb-2 block text-sm font-medium text-gray-700">Product Lines</label>
-                        <table className="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead>
-                                <tr className="text-left text-gray-500">
-                                    <th className="py-2 pr-4">Product</th>
-                                    <th className="py-2 pr-4">Delivered</th>
-                                    <th className="py-2 pr-4">Quantity</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {order.items.map((item) => (
-                                    <tr key={item.id}>
-                                        <td className="py-2 pr-4">{item.display_name}</td>
-                                        <td className="py-2 pr-4">{item.delivered_quantity ?? 0}</td>
-                                        <td className="py-2 pr-4">
-                                            <input
-                                                type="number"
-                                                min={item.delivered_quantity ?? 1}
-                                                disabled={order.is_terminal}
-                                                value={data.quantities[item.id]}
-                                                onChange={(e) =>
-                                                    setData('quantities', {
-                                                        ...data.quantities,
-                                                        [item.id]: e.target.value,
-                                                    })
-                                                }
-                                                className="w-24 rounded-md border-gray-300 text-sm disabled:bg-gray-100"
-                                            />
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                        <Table
+                            data={order.items}
+                            columns={itemColumns}
+                            getRowId={(item) => String(item.id)}
+                            resizable
+                            reorderable
+                            emptyState="No items on this order."
+                        />
                     </div>
 
                     <div className="flex justify-end">

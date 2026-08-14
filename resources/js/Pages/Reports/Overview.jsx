@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Table } from '@/components/motion/table';
 import { Head, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 const RANGE_OPTIONS = [
     { value: '3', label: '3 Months' },
@@ -40,6 +41,40 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
             { preserveState: true },
         );
     };
+
+    const productPerformanceRows = useMemo(
+        () => productPerformance.map((p, i) => ({ ...p, __rowId: String(i) })),
+        [productPerformance],
+    );
+
+    const productPerformanceColumns = useMemo(
+        () => [
+            { key: 'generic_name', header: 'Generic Name' },
+            { key: 'product_name', header: 'Brand Name' },
+            { key: 'ordered', header: 'Ordered' },
+            { key: 'delivered', header: 'Delivered' },
+            { key: 'backlog', header: 'Backlog' },
+            { key: 'rate', header: 'Fulfillment %', cell: (p) => `${p.rate}%` },
+        ],
+        [],
+    );
+
+    const customerPerformanceRows = useMemo(
+        () => customerPerformance.map((c, i) => ({ ...c, __rowId: String(i) })),
+        [customerPerformance],
+    );
+
+    const customerPerformanceColumns = useMemo(
+        () => [
+            { key: 'name', header: 'Customer' },
+            { key: 'orders', header: 'Orders' },
+            { key: 'ordered', header: 'Ordered' },
+            { key: 'delivered', header: 'Delivered' },
+            { key: 'backlog', header: 'Backlog' },
+            { key: 'completion_rate', header: 'Completion %', cell: (c) => `${c.completion_rate}%` },
+        ],
+        [],
+    );
 
     return (
         <AuthenticatedLayout
@@ -140,67 +175,31 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                 </div>
 
                 <section className="rounded-lg bg-white p-4 shadow-sm">
-                    <h3 className="mb-3 text-lg font-semibold text-gray-900">Product Fulfillment Gaps</h3>
-                    <table className="min-w-full divide-y divide-gray-200 text-sm">
-                        <thead>
-                            <tr className="text-left text-gray-500">
-                                <th className="py-2 pr-4">Generic Name</th>
-                                <th className="py-2 pr-4">Brand Name</th>
-                                <th className="py-2 pr-4">Ordered</th>
-                                <th className="py-2 pr-4">Delivered</th>
-                                <th className="py-2 pr-4">Backlog</th>
-                                <th className="py-2 pr-4">Fulfillment %</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {productPerformance.length === 0 && (
-                                <tr><td colSpan={6} className="py-4 text-center text-gray-400">No data for this period.</td></tr>
-                            )}
-                            {productPerformance.map((p, i) => (
-                                <tr key={i}>
-                                    <td className="py-2 pr-4">{p.generic_name}</td>
-                                    <td className="py-2 pr-4">{p.product_name}</td>
-                                    <td className="py-2 pr-4">{p.ordered}</td>
-                                    <td className="py-2 pr-4">{p.delivered}</td>
-                                    <td className="py-2 pr-4">{p.backlog}</td>
-                                    <td className="py-2 pr-4">{p.rate}%</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                    <h3 className="text-lg font-semibold text-gray-900">Product Fulfillment Gaps</h3>
                 </section>
+                <Table
+                    data={productPerformanceRows}
+                    columns={productPerformanceColumns}
+                    getRowId={(p) => p.__rowId}
+                    resizable
+                    reorderable
+                    emptyState="No data for this period."
+                />
 
                 {!isCustomerView && (
-                    <section className="rounded-lg bg-white p-4 shadow-sm">
-                        <h3 className="mb-3 text-lg font-semibold text-gray-900">Customer Performance</h3>
-                        <table className="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead>
-                                <tr className="text-left text-gray-500">
-                                    <th className="py-2 pr-4">Customer</th>
-                                    <th className="py-2 pr-4">Orders</th>
-                                    <th className="py-2 pr-4">Ordered</th>
-                                    <th className="py-2 pr-4">Delivered</th>
-                                    <th className="py-2 pr-4">Backlog</th>
-                                    <th className="py-2 pr-4">Completion %</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {customerPerformance.length === 0 && (
-                                    <tr><td colSpan={6} className="py-4 text-center text-gray-400">No data for this period.</td></tr>
-                                )}
-                                {customerPerformance.map((c, i) => (
-                                    <tr key={i}>
-                                        <td className="py-2 pr-4">{c.name}</td>
-                                        <td className="py-2 pr-4">{c.orders}</td>
-                                        <td className="py-2 pr-4">{c.ordered}</td>
-                                        <td className="py-2 pr-4">{c.delivered}</td>
-                                        <td className="py-2 pr-4">{c.backlog}</td>
-                                        <td className="py-2 pr-4">{c.completion_rate}%</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </section>
+                    <>
+                        <section className="rounded-lg bg-white p-4 shadow-sm">
+                            <h3 className="text-lg font-semibold text-gray-900">Customer Performance</h3>
+                        </section>
+                        <Table
+                            data={customerPerformanceRows}
+                            columns={customerPerformanceColumns}
+                            getRowId={(c) => c.__rowId}
+                            resizable
+                            reorderable
+                            emptyState="No data for this period."
+                        />
+                    </>
                 )}
             </div>
         </AuthenticatedLayout>

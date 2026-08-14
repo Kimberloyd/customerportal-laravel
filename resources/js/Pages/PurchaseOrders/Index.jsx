@@ -1,7 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Table } from '@/components/motion/table';
 import { statusBadge, formatDateTime } from '@/utils/orderDisplay';
 import { Head, Link, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 const STATUS_OPTIONS = [
     { value: 'all', label: 'All Statuses' },
@@ -33,6 +34,57 @@ export default function Index({ orders, filters }) {
             { preserveState: true, preserveScroll: true },
         );
     };
+
+    const columns = useMemo(
+        () => [
+            {
+                key: 'po_number',
+                header: 'PO Number',
+                sortable: true,
+                cell: (order) => (
+                    <>
+                        <Link href={route('purchase-orders.show', order.id)} className="font-medium text-indigo-600">
+                            {order.po_number}
+                        </Link>
+                        {order.is_awaiting_fulfillment && (
+                            <span className="ml-2 rounded-full bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700">
+                                {order.is_processing ? 'Processing' : 'New Order'}
+                            </span>
+                        )}
+                    </>
+                ),
+            },
+            {
+                key: 'submitted_at',
+                header: 'Date',
+                sortable: true,
+                cell: (order) => formatDateTime(order.submitted_at),
+            },
+            { key: 'customer_name', header: 'Customer', sortable: true },
+            {
+                key: 'item_display_name',
+                header: 'Product',
+                sortable: true,
+                cell: (order) => order.item_display_name ?? '-',
+            },
+            { key: 'ordered_quantity', header: 'Ordered', sortable: true, align: 'right' },
+            { key: 'delivered_quantity', header: 'Delivered', sortable: true, align: 'right' },
+            { key: 'balance_units', header: 'Balance', sortable: true, align: 'right' },
+            {
+                key: 'status',
+                header: 'Status',
+                cell: (order) => {
+                    const badge = statusBadge(order.status);
+                    return (
+                        <span className={`rounded-full px-2 py-0.5 text-xs ${badge.className}`}>
+                            {badge.label}
+                        </span>
+                    );
+                },
+            },
+        ],
+        [],
+    );
 
     return (
         <AuthenticatedLayout
@@ -137,61 +189,15 @@ export default function Index({ orders, filters }) {
                     </button>
                 </form>
 
-                <div className="rounded-lg bg-white p-4 shadow-sm">
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead>
-                                <tr className="text-left text-gray-500">
-                                    <th className="py-2 pr-4">PO Number</th>
-                                    <th className="py-2 pr-4">Date</th>
-                                    <th className="py-2 pr-4">Customer</th>
-                                    <th className="py-2 pr-4">Product</th>
-                                    <th className="py-2 pr-4">Ordered</th>
-                                    <th className="py-2 pr-4">Delivered</th>
-                                    <th className="py-2 pr-4">Balance</th>
-                                    <th className="py-2 pr-4">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {orders.data.length === 0 && (
-                                    <tr>
-                                        <td colSpan={8} className="py-4 text-center text-gray-400">
-                                            No orders match these filters.
-                                        </td>
-                                    </tr>
-                                )}
-                                {orders.data.map((order) => {
-                                    const badge = statusBadge(order.status);
-
-                                    return (
-                                        <tr key={order.id}>
-                                            <td className="py-2 pr-4 font-medium text-indigo-600">
-                                                <Link href={route('purchase-orders.show', order.id)}>
-                                                    {order.po_number}
-                                                </Link>
-                                                {order.is_awaiting_fulfillment && (
-                                                    <span className="ml-2 rounded-full bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700">
-                                                        {order.is_processing ? 'Processing' : 'New Order'}
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="py-2 pr-4">{formatDateTime(order.submitted_at)}</td>
-                                            <td className="py-2 pr-4">{order.customer_name}</td>
-                                            <td className="py-2 pr-4">{order.item_display_name ?? '-'}</td>
-                                            <td className="py-2 pr-4">{order.ordered_quantity}</td>
-                                            <td className="py-2 pr-4">{order.delivered_quantity}</td>
-                                            <td className="py-2 pr-4">{order.balance_units}</td>
-                                            <td className="py-2 pr-4">
-                                                <span className={`rounded-full px-2 py-0.5 text-xs ${badge.className}`}>
-                                                    {badge.label}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
+                <>
+                    <Table
+                        data={orders.data}
+                        columns={columns}
+                        getRowId={(order) => String(order.id)}
+                        resizable
+                        reorderable
+                        emptyState="No orders match these filters."
+                    />
 
                     {orders.last_page > 1 && (
                         <nav className="mt-4 flex flex-wrap items-center gap-1 text-sm">
@@ -212,7 +218,7 @@ export default function Index({ orders, filters }) {
                             ))}
                         </nav>
                     )}
-                </div>
+                </>
             </div>
         </AuthenticatedLayout>
     );

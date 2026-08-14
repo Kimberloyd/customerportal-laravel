@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Table } from '@/components/motion/table';
 import { Head, Link, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 const STATUS_OPTIONS = [
     { value: 'active', label: 'Active' },
@@ -28,6 +29,64 @@ export default function Index({ customers, filters }) {
     const toggleActive = (customer) => {
         router.post(route('customers.toggle-active', customer.id));
     };
+
+    const columns = useMemo(
+        () => [
+            { key: 'customer_code', header: 'Code', sortable: true },
+            { key: 'company_name', header: 'Company', sortable: true },
+            { key: 'channel', header: 'Channel', sortable: true },
+            {
+                key: 'contact_person',
+                header: 'Contact',
+                sortable: true,
+                cell: (customer) => customer.contact_person ?? '-',
+            },
+            { key: 'email', header: 'Email', cell: (customer) => customer.email ?? '-' },
+            { key: 'phone', header: 'Phone', cell: (customer) => customer.phone ?? '-' },
+            {
+                key: 'is_active',
+                header: 'Status',
+                cell: (customer) => (
+                    <span
+                        className={`rounded-full px-2 py-0.5 text-xs ${
+                            customer.is_active
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-gray-200 text-gray-700'
+                        }`}
+                    >
+                        {customer.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                ),
+            },
+            {
+                key: 'actions',
+                header: 'Actions',
+                cell: (customer) => (
+                    <div className="space-x-2 whitespace-nowrap">
+                        <Link
+                            href={route('customers.edit', customer.id)}
+                            className="text-indigo-600 hover:underline"
+                        >
+                            Edit
+                        </Link>
+                        <button
+                            onClick={() => toggleActive(customer)}
+                            className="text-gray-600 hover:underline"
+                        >
+                            {customer.is_active ? 'Deactivate' : 'Reactivate'}
+                        </button>
+                        <button
+                            onClick={() => deleteCustomer(customer)}
+                            className="text-red-600 hover:underline"
+                        >
+                            Delete
+                        </button>
+                    </div>
+                ),
+            },
+        ],
+        [],
+    );
 
     return (
         <AuthenticatedLayout
@@ -86,73 +145,15 @@ export default function Index({ customers, filters }) {
                     </button>
                 </form>
 
-                <div className="rounded-lg bg-white p-4 shadow-sm">
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead>
-                                <tr className="text-left text-gray-500">
-                                    <th className="py-2 pr-4">Code</th>
-                                    <th className="py-2 pr-4">Company</th>
-                                    <th className="py-2 pr-4">Channel</th>
-                                    <th className="py-2 pr-4">Contact</th>
-                                    <th className="py-2 pr-4">Email</th>
-                                    <th className="py-2 pr-4">Phone</th>
-                                    <th className="py-2 pr-4">Status</th>
-                                    <th className="py-2 pr-4">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {customers.data.length === 0 && (
-                                    <tr>
-                                        <td colSpan={8} className="py-4 text-center text-gray-400">
-                                            No customers match these filters.
-                                        </td>
-                                    </tr>
-                                )}
-                                {customers.data.map((customer) => (
-                                    <tr key={customer.id}>
-                                        <td className="py-2 pr-4">{customer.customer_code}</td>
-                                        <td className="py-2 pr-4">{customer.company_name}</td>
-                                        <td className="py-2 pr-4">{customer.channel}</td>
-                                        <td className="py-2 pr-4">{customer.contact_person ?? '-'}</td>
-                                        <td className="py-2 pr-4">{customer.email ?? '-'}</td>
-                                        <td className="py-2 pr-4">{customer.phone ?? '-'}</td>
-                                        <td className="py-2 pr-4">
-                                            <span
-                                                className={`rounded-full px-2 py-0.5 text-xs ${
-                                                    customer.is_active
-                                                        ? 'bg-green-100 text-green-800'
-                                                        : 'bg-gray-200 text-gray-700'
-                                                }`}
-                                            >
-                                                {customer.is_active ? 'Active' : 'Inactive'}
-                                            </span>
-                                        </td>
-                                        <td className="space-x-2 py-2 pr-4 whitespace-nowrap">
-                                            <Link
-                                                href={route('customers.edit', customer.id)}
-                                                className="text-indigo-600 hover:underline"
-                                            >
-                                                Edit
-                                            </Link>
-                                            <button
-                                                onClick={() => toggleActive(customer)}
-                                                className="text-gray-600 hover:underline"
-                                            >
-                                                {customer.is_active ? 'Deactivate' : 'Reactivate'}
-                                            </button>
-                                            <button
-                                                onClick={() => deleteCustomer(customer)}
-                                                className="text-red-600 hover:underline"
-                                            >
-                                                Delete
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                <>
+                    <Table
+                        data={customers.data}
+                        columns={columns}
+                        getRowId={(customer) => String(customer.id)}
+                        resizable
+                        reorderable
+                        emptyState="No customers match these filters."
+                    />
 
                     {customers.last_page > 1 && (
                         <nav className="mt-4 flex flex-wrap items-center gap-1 text-sm">
@@ -173,7 +174,7 @@ export default function Index({ customers, filters }) {
                             ))}
                         </nav>
                     )}
-                </div>
+                </>
             </div>
         </AuthenticatedLayout>
     );

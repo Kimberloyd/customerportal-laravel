@@ -1,7 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Table } from '@/components/motion/table';
 import { statusBadge, formatDateTime } from '@/utils/orderDisplay';
 import { Head, Link, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 const STATUS_OPTIONS = [
     { value: 'all', label: 'All Statuses' },
@@ -36,6 +37,38 @@ export default function Orders({ orders, filters, customers, summary }) {
         customer_id: customerId,
         status,
     });
+
+    const columns = useMemo(
+        () => [
+            {
+                key: 'po_number',
+                header: 'PO Number',
+                cell: (order) => (
+                    <Link href={`/purchase-orders/${order.id}`} className="font-medium text-indigo-600">
+                        {order.po_number}
+                    </Link>
+                ),
+            },
+            { key: 'submitted_at', header: 'Date', cell: (order) => formatDateTime(order.submitted_at) },
+            { key: 'customer_name', header: 'Customer' },
+            { key: 'products', header: 'Products' },
+            { key: 'ordered_units', header: 'Ordered' },
+            { key: 'delivered_units', header: 'Delivered' },
+            { key: 'balance_units', header: 'Balance' },
+            {
+                key: 'status',
+                header: 'Status',
+                cell: (order) => {
+                    const badge = statusBadge(order.status);
+                    return (
+                        <span className={`rounded-full px-2 py-0.5 text-xs ${badge.className}`}>{badge.label}</span>
+                    );
+                },
+            },
+            { key: 'remarks', header: 'Remarks', cell: (order) => order.remarks ?? '-' },
+        ],
+        [],
+    );
 
     return (
         <AuthenticatedLayout
@@ -133,50 +166,15 @@ export default function Orders({ orders, filters, customers, summary }) {
                     </div>
                 </div>
 
-                <div className="rounded-lg bg-white p-4 shadow-sm">
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead>
-                                <tr className="text-left text-gray-500">
-                                    <th className="py-2 pr-4">PO Number</th>
-                                    <th className="py-2 pr-4">Date</th>
-                                    <th className="py-2 pr-4">Customer</th>
-                                    <th className="py-2 pr-4">Products</th>
-                                    <th className="py-2 pr-4">Ordered</th>
-                                    <th className="py-2 pr-4">Delivered</th>
-                                    <th className="py-2 pr-4">Balance</th>
-                                    <th className="py-2 pr-4">Status</th>
-                                    <th className="py-2 pr-4">Remarks</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {orders.data.length === 0 && (
-                                    <tr><td colSpan={9} className="py-4 text-center text-gray-400">No orders match these filters.</td></tr>
-                                )}
-                                {orders.data.map((order) => {
-                                    const badge = statusBadge(order.status);
-
-                                    return (
-                                        <tr key={order.id}>
-                                            <td className="py-2 pr-4 font-medium text-indigo-600">
-                                                <Link href={`/purchase-orders/${order.id}`}>{order.po_number}</Link>
-                                            </td>
-                                            <td className="py-2 pr-4">{formatDateTime(order.submitted_at)}</td>
-                                            <td className="py-2 pr-4">{order.customer_name}</td>
-                                            <td className="py-2 pr-4">{order.products}</td>
-                                            <td className="py-2 pr-4">{order.ordered_units}</td>
-                                            <td className="py-2 pr-4">{order.delivered_units}</td>
-                                            <td className="py-2 pr-4">{order.balance_units}</td>
-                                            <td className="py-2 pr-4">
-                                                <span className={`rounded-full px-2 py-0.5 text-xs ${badge.className}`}>{badge.label}</span>
-                                            </td>
-                                            <td className="py-2 pr-4">{order.remarks ?? '-'}</td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
+                <>
+                    <Table
+                        data={orders.data}
+                        columns={columns}
+                        getRowId={(order) => String(order.id)}
+                        resizable
+                        reorderable
+                        emptyState="No orders match these filters."
+                    />
 
                     {orders.last_page > 1 && (
                         <nav className="no-print mt-4 flex flex-wrap items-center gap-1 text-sm">
@@ -197,7 +195,7 @@ export default function Orders({ orders, filters, customers, summary }) {
                             ))}
                         </nav>
                     )}
-                </div>
+                </>
             </div>
         </AuthenticatedLayout>
     );
