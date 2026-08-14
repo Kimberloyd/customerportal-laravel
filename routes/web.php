@@ -10,17 +10,13 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PublicConversationController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\ReportController;
-use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
-Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
-});
+// Matches Flask's dashboard_bp, which handles both "/" and "/dashboard"
+// with the same view (no separate marketing/welcome page in this app) --
+// real visitors land on "/" and either see the dashboard or get bounced
+// to /login by the 'auth' middleware on the dashboard route itself.
+Route::redirect('/', '/dashboard');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware('auth')
