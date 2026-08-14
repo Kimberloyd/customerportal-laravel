@@ -1,10 +1,10 @@
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import FlashBanner from '@/Components/FlashBanner';
-import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
-import { Link, usePage } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/motion/tabs';
+import { Link, router, usePage } from '@inertiajs/react';
+import { useEffect, useMemo, useState } from 'react';
 
 export default function AuthenticatedLayout({ header, children }) {
     const user = usePage().props.auth.user;
@@ -26,6 +26,61 @@ export default function AuthenticatedLayout({ header, children }) {
         return () => clearInterval(interval);
     }, []);
 
+    const navTabs = useMemo(
+        () => [
+            { key: 'dashboard', href: route('dashboard'), active: route().current('dashboard'), label: 'Dashboard' },
+            {
+                key: 'purchase-orders',
+                href: route('purchase-orders.index'),
+                active: route().current('purchase-orders.*'),
+                label: 'Purchase Orders',
+            },
+            { key: 'products', href: route('products.index'), active: route().current('products.*'), label: 'Products' },
+            {
+                key: 'overview',
+                href: route('reports.overview'),
+                active: route().current('reports.overview'),
+                label: 'Overview',
+            },
+            { key: 'reports', href: route('reports.orders'), active: route().current('reports.orders'), label: 'Reports' },
+            {
+                key: 'messages',
+                href: route('messages.index'),
+                active: route().current('messages.*'),
+                label: (
+                    <>
+                        Messages
+                        {unreadCount > 0 && (
+                            <span className="ml-1.5 rounded-full bg-indigo-600 px-1.5 py-0.5 text-xs font-semibold text-white">
+                                {unreadCount}
+                            </span>
+                        )}
+                    </>
+                ),
+            },
+            ...(user.role === 'admin'
+                ? [
+                      {
+                          key: 'admin.dashboard',
+                          href: route('admin.dashboard'),
+                          active: route().current('admin.dashboard'),
+                          label: 'Administration',
+                      },
+                      {
+                          key: 'admin.users',
+                          href: route('admin.users.index'),
+                          active: route().current('admin.users.*'),
+                          label: 'Accounts',
+                      },
+                  ]
+                : []),
+        ],
+        [user.role, unreadCount],
+    );
+
+    const activeTab = navTabs.find((tab) => tab.active)?.key;
+    const navHrefs = useMemo(() => Object.fromEntries(navTabs.map((tab) => [tab.key, tab.href])), [navTabs]);
+
     return (
         <div className="min-h-screen bg-gray-100">
             <nav className="border-b border-gray-100 bg-white">
@@ -38,64 +93,20 @@ export default function AuthenticatedLayout({ header, children }) {
                                 </Link>
                             </div>
 
-                            <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink
-                                    href={route('dashboard')}
-                                    active={route().current('dashboard')}
+                            <div className="hidden sm:ms-10 sm:flex sm:items-center">
+                                <Tabs
+                                    value={activeTab}
+                                    onValueChange={(key) => router.visit(navHrefs[key])}
+                                    variant="underline"
                                 >
-                                    Dashboard
-                                </NavLink>
-                                <NavLink
-                                    href={route('purchase-orders.index')}
-                                    active={route().current('purchase-orders.*')}
-                                >
-                                    Purchase Orders
-                                </NavLink>
-                                <NavLink
-                                    href={route('products.index')}
-                                    active={route().current('products.*')}
-                                >
-                                    Products
-                                </NavLink>
-                                <NavLink
-                                    href={route('reports.overview')}
-                                    active={route().current('reports.overview')}
-                                >
-                                    Overview
-                                </NavLink>
-                                <NavLink
-                                    href={route('reports.orders')}
-                                    active={route().current('reports.orders')}
-                                >
-                                    Reports
-                                </NavLink>
-                                <NavLink
-                                    href={route('messages.index')}
-                                    active={route().current('messages.*')}
-                                >
-                                    Messages
-                                    {unreadCount > 0 && (
-                                        <span className="ml-1.5 rounded-full bg-indigo-600 px-1.5 py-0.5 text-xs font-semibold text-white">
-                                            {unreadCount}
-                                        </span>
-                                    )}
-                                </NavLink>
-                                {user.role === 'admin' && (
-                                    <NavLink
-                                        href={route('admin.dashboard')}
-                                        active={route().current('admin.dashboard')}
-                                    >
-                                        Administration
-                                    </NavLink>
-                                )}
-                                {user.role === 'admin' && (
-                                    <NavLink
-                                        href={route('admin.users.index')}
-                                        active={route().current('admin.users.*')}
-                                    >
-                                        Accounts
-                                    </NavLink>
-                                )}
+                                    <TabsList className="gap-6 border-b-0">
+                                        {navTabs.map((tab) => (
+                                            <TabsTrigger key={tab.key} value={tab.key} className="px-0">
+                                                {tab.label}
+                                            </TabsTrigger>
+                                        ))}
+                                    </TabsList>
+                                </Tabs>
                             </div>
                         </div>
 
