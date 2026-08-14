@@ -18,4 +18,13 @@ do
     fi
 done
 
-exec su-exec app "$@"
+# Stay root to exec php-fpm itself -- its master process must open
+# error_log (/proc/self/fd/2, php-fpm's default) as root, since that's
+# a real open() on Docker's stderr pipe, which is root-owned at
+# creation time regardless of who the entrypoint later becomes; a
+# non-root master fails with "Permission denied" trying to reopen it.
+# Worker processes (the ones that actually run PHP/Laravel code) still
+# drop to the unprivileged `app` user, via the pool's user/group
+# directives (docker/app/www.conf) -- same division of privilege the
+# proxy service's nginx master/worker split already uses.
+exec "$@"

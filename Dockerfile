@@ -23,7 +23,6 @@ RUN apk add --no-cache \
         libpng \
         libjpeg-turbo \
         freetype \
-        su-exec \
     && apk add --no-cache --virtual .build-deps \
         icu-dev \
         libzip-dev \
@@ -42,6 +41,16 @@ RUN apk add --no-cache \
     && apk del .build-deps
 
 RUN addgroup -S app && adduser -S -G app -h /app app
+
+# Base image's default pool runs workers as www-data, which doesn't
+# exist in this image -- point it at the `app` user/group created
+# above. Master process itself stays root (see entrypoint.sh) so it
+# can still open error_log (/proc/self/fd/2); only workers, which run
+# the actual PHP/Laravel request code, drop to `app`.
+RUN sed -i \
+        -e 's/^user = .*/user = app/' \
+        -e 's/^group = .*/group = app/' \
+        /usr/local/etc/php-fpm.d/www.conf
 
 WORKDIR /app
 
@@ -65,9 +74,11 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 # storage/framework/{cache,sessions,views} and bootstrap/cache
 # (docker-compose.yml) are recreated fresh, owned by root, on every
 # container start, so something has to re-chown them before the app
-# user can write to them. entrypoint.sh does that chown, then drops
-# to the app user via su-exec before actually running php-fpm --
-# php-fpm itself never runs as root.
+# user can write to them. entrypoint.sh does that chown, then execs
+# php-fpm still as root -- its master process needs root to open
+# error_log (/proc/self/fd/2); only its worker processes (which run
+# the actual PHP/Laravel code, per www.conf's user/group above) drop
+# to the unprivileged `app` user.
 
 EXPOSE 9000
 
