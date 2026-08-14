@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
@@ -31,6 +32,7 @@ Route::middleware('auth')->prefix('purchase-orders')->name('purchase-orders.')->
     Route::post('/', [PurchaseOrderController::class, 'store'])->name('store');
     Route::get('/{order}', [PurchaseOrderController::class, 'show'])->name('show');
     Route::get('/{order}/attachment', [PurchaseOrderController::class, 'attachment'])->name('attachment');
+    Route::get('/{order}/print', [PurchaseOrderController::class, 'print'])->name('print');
     Route::get('/{order}/edit', [PurchaseOrderController::class, 'edit'])->name('edit');
     Route::put('/{order}', [PurchaseOrderController::class, 'update'])->name('update');
     Route::post('/{order}/complete', [PurchaseOrderController::class, 'complete'])->name('complete');
@@ -57,6 +59,10 @@ Route::middleware('auth')->prefix('customers')->name('customers.')->group(functi
     Route::delete('/{customer}', [CustomerController::class, 'destroy'])->name('destroy');
     Route::post('/{customer}/toggle-active', [CustomerController::class, 'toggleActive'])->name('toggle-active');
 });
+
+Route::get('/admin', [AdminDashboardController::class, 'index'])
+    ->middleware('auth')
+    ->name('admin.dashboard');
 
 Route::middleware('auth')->prefix('admin/users')->name('admin.users.')->group(function () {
     Route::get('/', [UserController::class, 'index'])->name('index');

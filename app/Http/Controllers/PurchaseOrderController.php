@@ -23,7 +23,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /**
  * Ports app/purchase_orders/purchase_order_routes.py: po_list,
  * po_create, po_view, po_attachment, po_edit, po_complete, po_receive,
- * po_cancel. po_print is deferred to a later phase.
+ * po_cancel, po_print.
  */
 class PurchaseOrderController extends Controller
 {
@@ -556,6 +556,54 @@ class PurchaseOrderController extends Controller
             'canManageFulfillment' => ! $isCustomerViewer,
             'canComplete' => ! $isCustomerViewer && ! $isTerminal,
             'canCancel' => ! $isTerminal,
+        ]);
+    }
+
+    public function print(Request $request, PurchaseOrder $order): Response
+    {
+        $this->authorizeOrderAccess($order);
+
+        $order->load(['customer', 'items.product', 'auditLogs.actor']);
+
+        $output = strtolower(trim((string) $request->query('output', 'printer')));
+        if (! in_array($output, ['printer', 'pdf'], true)) {
+            $output = 'printer';
+        }
+        $autoPrint = (string) $request->query('auto_print', '1') === '1';
+
+        return Inertia::render('PurchaseOrders/Print', [
+            'output' => $output,
+            'autoPrint' => $autoPrint,
+            'order' => [
+                'id' => $order->id,
+                'po_number' => $order->po_number,
+                'submitted_at' => $order->submitted_at?->toIso8601String(),
+                'updated_at' => $order->updated_at?->toIso8601String(),
+                'status' => $order->status,
+                'remarks' => $order->remarks,
+                'total' => $order->total,
+                'customer' => [
+                    'name' => $order->customer->company_name,
+                    'email' => $order->customer->email,
+                    'phone' => $order->customer->phone,
+                    'address' => $order->customer->address,
+                ],
+                'items' => $order->items->map(fn (PurchaseOrderItem $item) => [
+                    'id' => $item->id,
+                    'display_name' => $item->display_name,
+                    'quantity' => $item->quantity,
+                    'delivered_quantity' => $item->delivered_quantity,
+                    'pending_quantity' => $item->pending_quantity,
+                    'unit_price' => $item->unit_price,
+                    'line_total' => $item->line_total,
+                ]),
+                'audit_logs' => $order->auditLogs->map(fn ($audit) => [
+                    'created_at' => $audit->created_at?->toIso8601String(),
+                    'action' => $audit->action,
+                    'details' => $audit->details,
+                    'remarks' => $audit->remarks,
+                ]),
+            ],
         ]);
     }
 

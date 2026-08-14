@@ -59,6 +59,22 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
                                 Mark Completed
                             </button>
                         )}
+                        <a
+                            href={`${route('purchase-orders.print', order.id)}?output=printer&auto_print=1`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200"
+                        >
+                            Printer
+                        </a>
+                        <a
+                            href={`${route('purchase-orders.print', order.id)}?output=pdf&auto_print=1`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200"
+                        >
+                            PDF
+                        </a>
                         <Link
                             href={route('purchase-orders.edit', order.id)}
                             className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200"
