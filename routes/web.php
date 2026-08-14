@@ -3,7 +3,10 @@
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FacebookWebhookController;
+use App\Http\Controllers\MessageController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\PublicConversationController;
 use App\Http\Controllers\PurchaseOrderController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -63,5 +66,29 @@ Route::middleware('auth')->prefix('admin/users')->name('admin.users.')->group(fu
     Route::delete('/{user}', [UserController::class, 'destroy'])->name('destroy');
     Route::post('/{user}/toggle-active', [UserController::class, 'toggleActive'])->name('toggle-active');
 });
+
+Route::middleware('auth')->prefix('messages')->name('messages.')->group(function () {
+    Route::get('/', [MessageController::class, 'index'])->name('index');
+    Route::get('/new', [MessageController::class, 'create'])->name('create');
+    Route::post('/', [MessageController::class, 'store'])->name('store');
+    Route::get('/unread-count', [MessageController::class, 'unreadCount'])->name('unread-count');
+    Route::get('/{thread}', [MessageController::class, 'show'])->name('show');
+    Route::post('/{thread}/reply', [MessageController::class, 'reply'])->name('reply');
+    Route::post('/{thread}/status', [MessageController::class, 'status'])->name('status');
+    Route::post('/{thread}/delete', [MessageController::class, 'destroy'])->name('destroy');
+    Route::post('/{thread}/customer', [MessageController::class, 'customerLink'])->name('customer-link');
+    Route::post('/{thread}/sender-name', [MessageController::class, 'senderName'])->name('sender-name');
+    Route::post('/{thread}/public-link', [MessageController::class, 'publicLink'])->name('public-link');
+});
+
+// Unauthenticated guest conversation link -- token-gated, not session-based.
+Route::get('/messages/customer/{token}', [PublicConversationController::class, 'show'])
+    ->name('messages.customer-conversation');
+Route::post('/messages/customer/{token}', [PublicConversationController::class, 'reply'])
+    ->name('messages.customer-conversation.reply');
+
+// Facebook webhook -- Meta calls this directly, no session/CSRF.
+Route::get('/webhooks/facebook/messenger', [FacebookWebhookController::class, 'verify']);
+Route::post('/webhooks/facebook/messenger', [FacebookWebhookController::class, 'receive']);
 
 require __DIR__.'/auth.php';

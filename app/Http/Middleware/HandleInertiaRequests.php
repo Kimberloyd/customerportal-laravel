@@ -37,6 +37,11 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
+                // A one-time raw guest-conversation link (see
+                // MessageController::store()/publicLink()) -- only the
+                // hash is ever persisted, so this is the only chance to
+                // show staff the real bearer token.
+                'link' => fn () => $request->session()->get('link'),
             ],
         ];
     }

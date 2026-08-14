@@ -4,13 +4,27 @@ import FlashBanner from '@/Components/FlashBanner';
 import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import { Link, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function AuthenticatedLayout({ header, children }) {
     const user = usePage().props.auth.user;
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    useEffect(() => {
+        const fetchUnreadCount = () => {
+            fetch(route('messages.unread-count'))
+                .then((res) => (res.ok ? res.json() : null))
+                .then((data) => data && setUnreadCount(data.count))
+                .catch(() => {});
+        };
+
+        fetchUnreadCount();
+        const interval = setInterval(fetchUnreadCount, 30000);
+        return () => clearInterval(interval);
+    }, []);
 
     return (
         <div className="min-h-screen bg-gray-100">
@@ -30,6 +44,17 @@ export default function AuthenticatedLayout({ header, children }) {
                                     active={route().current('dashboard')}
                                 >
                                     Dashboard
+                                </NavLink>
+                                <NavLink
+                                    href={route('messages.index')}
+                                    active={route().current('messages.*')}
+                                >
+                                    Messages
+                                    {unreadCount > 0 && (
+                                        <span className="ml-1.5 rounded-full bg-indigo-600 px-1.5 py-0.5 text-xs font-semibold text-white">
+                                            {unreadCount}
+                                        </span>
+                                    )}
                                 </NavLink>
                             </div>
                         </div>

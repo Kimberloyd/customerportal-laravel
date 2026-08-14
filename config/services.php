@@ -44,4 +44,21 @@ return [
         'facebook_enabled' => env('PO_NOTIFICATIONS_FACEBOOK_ENABLED', false),
     ],
 
+    // See App\Support\FacebookMessenger and FacebookWebhookController.
+    // No live credentials configured in this environment -- the
+    // webhook/outbound-send code paths exist but stay dormant until
+    // real values are set.
+    'facebook' => [
+        'page_access_token' => env('META_MESSENGER_PAGE_ACCESS_TOKEN'),
+        'app_secret' => env('META_MESSENGER_APP_SECRET'),
+        'webhook_verify_token' => env('META_MESSENGER_WEBHOOK_VERIFY_TOKEN'),
+        'graph_api_version' => env('META_MESSENGER_GRAPH_API_VERSION', 'v19.0'),
+    ],
+
+    'messages' => [
+        'public_reply_max_length' => env('PUBLIC_CONVERSATION_REPLY_MAX_LENGTH', 2000),
+        'public_reply_window_seconds' => env('PUBLIC_CONVERSATION_REPLY_WINDOW_SECONDS', 900),
+        'public_reply_limit' => env('PUBLIC_CONVERSATION_REPLY_LIMIT', 5),
+    ],
+
 ];

@@ -60,4 +60,41 @@ class CustomerMessage extends Model
     {
         return hash('sha256', $rawToken);
     }
+
+    public function isRoot(): bool
+    {
+        return $this->parent_id === null;
+    }
+
+    public function isFacebookMessenger(): bool
+    {
+        return $this->channel === 'facebook_messenger';
+    }
+
+    public function conversationName(): string
+    {
+        if ($this->customer) {
+            return $this->customer->company_name;
+        }
+        if ($this->external_sender_name) {
+            return $this->external_sender_name;
+        }
+        if ($this->external_sender_id) {
+            return 'Facebook customer · '.substr($this->external_sender_id, -8);
+        }
+
+        return 'Unassigned customer';
+    }
+
+    public function publicLinkIsActive(?\Carbon\CarbonImmutable $now = null): bool
+    {
+        $now = $now ?? \Carbon\CarbonImmutable::now();
+
+        return $this->isRoot()
+            && $this->channel === 'portal'
+            && $this->public_token !== null
+            && $this->public_token_expires_at !== null
+            && $now->lt($this->public_token_expires_at)
+            && $this->public_token_revoked_at === null;
+    }
 }

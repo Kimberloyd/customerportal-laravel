@@ -3,6 +3,7 @@
 namespace Tests\Concerns;
 
 use App\Models\Customer;
+use App\Models\CustomerMessage;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
@@ -43,5 +44,22 @@ trait CreatesOrderFixtures
         }
 
         return $order;
+    }
+
+    protected function makeThread(?Customer $customer = null, array $overrides = []): CustomerMessage
+    {
+        $now = now();
+
+        return CustomerMessage::create(array_merge([
+            'customer_id' => $customer?->id,
+            'subject' => 'Test Subject',
+            'body' => 'Test body',
+            'sender_type' => 'company',
+            'is_read' => false,
+            'status' => 'open',
+            'channel' => 'portal',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ], $overrides));
     }
 }

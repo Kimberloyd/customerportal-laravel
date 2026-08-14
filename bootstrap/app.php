@@ -18,6 +18,15 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\EnsureSessionVersionMatches::class,
         ]);
 
+        // The Facebook Messenger webhook is Meta's server calling us
+        // directly -- it authenticates via HMAC signature verification
+        // (see FacebookWebhookController::receive()), not a CSRF token
+        // it has no way to obtain. Matches Flask's one CSRF exemption
+        // in this app.
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/facebook/messenger',
+        ]);
+
         //
     })
     ->withExceptions(function (Exceptions $exceptions): void {
