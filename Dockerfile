@@ -20,15 +20,23 @@ FROM php:8.4-fpm-alpine AS runtime
 RUN apk add --no-cache \
         icu-libs \
         libzip \
+        libpng \
+        libjpeg-turbo \
+        freetype \
     && apk add --no-cache --virtual .build-deps \
         icu-dev \
         libzip-dev \
         oniguruma-dev \
+        libpng-dev \
+        libjpeg-turbo-dev \
+        freetype-dev \
+    && docker-php-ext-configure gd --with-jpeg --with-freetype \
     && docker-php-ext-install -j"$(nproc)" \
         pdo_mysql \
         mbstring \
         bcmath \
         zip \
+        gd \
         opcache \
     && apk del .build-deps
 
