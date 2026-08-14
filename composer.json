@@ -11,6 +11,7 @@
         "laravel/framework": "^13.17",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
+        "phpoffice/phpspreadsheet": "^5.9",
         "tightenco/ziggy": "^2.0",
         "vinsaj9/scrypt": "^1.4"
     },

@@ -8,6 +8,7 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PublicConversationController;
 use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\ReportController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -79,6 +80,12 @@ Route::middleware('auth')->prefix('messages')->name('messages.')->group(function
     Route::post('/{thread}/customer', [MessageController::class, 'customerLink'])->name('customer-link');
     Route::post('/{thread}/sender-name', [MessageController::class, 'senderName'])->name('sender-name');
     Route::post('/{thread}/public-link', [MessageController::class, 'publicLink'])->name('public-link');
+});
+
+Route::middleware('auth')->prefix('reports')->name('reports.')->group(function () {
+    Route::get('/overview', [ReportController::class, 'overview'])->name('overview');
+    Route::get('/orders', [ReportController::class, 'orders'])->name('orders');
+    Route::get('/orders/export', [ReportController::class, 'exportOrders'])->name('orders.export');
 });
 
 // Unauthenticated guest conversation link -- token-gated, not session-based.

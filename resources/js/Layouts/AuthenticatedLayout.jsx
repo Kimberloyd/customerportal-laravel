@@ -46,6 +46,18 @@ export default function AuthenticatedLayout({ header, children }) {
                                     Dashboard
                                 </NavLink>
                                 <NavLink
+                                    href={route('reports.overview')}
+                                    active={route().current('reports.overview')}
+                                >
+                                    Overview
+                                </NavLink>
+                                <NavLink
+                                    href={route('reports.orders')}
+                                    active={route().current('reports.orders')}
+                                >
+                                    Reports
+                                </NavLink>
+                                <NavLink
                                     href={route('messages.index')}
                                     active={route().current('messages.*')}
                                 >

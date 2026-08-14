@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Support\CustomerScope;
+use App\Support\ReportPeriod;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -114,40 +115,6 @@ class DashboardController extends Controller
     }
 
     /**
-     * Carbon::createFromFormat() throws on malformed input rather than
-     * returning false (unlike PHP's native DateTime::createFromFormat)
-     * -- this normalizes that to null so callers can fall back the same
-     * way Flask's `except ValueError` does for bad custom-range input.
-     */
-    private function parseDateOrNull(string $value): ?CarbonImmutable
-    {
-        if ($value === '') {
-            return null;
-        }
-
-        try {
-            $date = CarbonImmutable::createFromFormat('!Y-m-d', $value, 'UTC');
-        } catch (\Throwable) {
-            return null;
-        }
-
-        return $date ?: null;
-    }
-
-    private function monthsAgoStart(CarbonImmutable $current, int $monthsAgo): CarbonImmutable
-    {
-        $monthIndex = $current->year * 12 + $current->month - 1 - $monthsAgo;
-        $year = intdiv($monthIndex, 12);
-        $zeroBasedMonth = $monthIndex % 12;
-        if ($zeroBasedMonth < 0) {
-            $zeroBasedMonth += 12;
-            $year--;
-        }
-
-        return CarbonImmutable::create($year, $zeroBasedMonth + 1, 1, 0, 0, 0, 'UTC');
-    }
-
-    /**
      * @return array{0: string, 1: string, 2: string, 3: CarbonImmutable, 4: CarbonImmutable, 5: string}
      */
     private function dashboardPeriod(Request $request, CarbonImmutable $now): array
@@ -160,10 +127,10 @@ class DashboardController extends Controller
 
         $presets = [
             'month' => [$now->startOfMonth(), $tomorrowStart, $now->format('F Y')],
-            '3_months' => [$this->monthsAgoStart($now, 2), $tomorrowStart, 'Past 3 Months'],
-            '6_months' => [$this->monthsAgoStart($now, 5), $tomorrowStart, 'Past 6 Months'],
-            '9_months' => [$this->monthsAgoStart($now, 8), $tomorrowStart, 'Past 9 Months'],
-            '12_months' => [$this->monthsAgoStart($now, 11), $tomorrowStart, 'Past 12 Months'],
+            '3_months' => [ReportPeriod::monthsAgoStart($now, 2), $tomorrowStart, 'Past 3 Months'],
+            '6_months' => [ReportPeriod::monthsAgoStart($now, 5), $tomorrowStart, 'Past 6 Months'],
+            '9_months' => [ReportPeriod::monthsAgoStart($now, 8), $tomorrowStart, 'Past 9 Months'],
+            '12_months' => [ReportPeriod::monthsAgoStart($now, 11), $tomorrowStart, 'Past 12 Months'],
         ];
 
         if ($selectedRange !== 'custom') {
@@ -182,8 +149,8 @@ class DashboardController extends Controller
             ];
         }
 
-        $periodStart = $this->parseDateOrNull($startValue);
-        $selectedEnd = $this->parseDateOrNull($endValue);
+        $periodStart = ReportPeriod::parseDateOrNull($startValue);
+        $selectedEnd = ReportPeriod::parseDateOrNull($endValue);
 
         if (! $periodStart || ! $selectedEnd || $selectedEnd->lt($periodStart)) {
             [$periodStart, $periodEnd, $periodLabel] = $presets['month'];
@@ -225,7 +192,7 @@ class DashboardController extends Controller
 
         if (isset($presetMonths[$selectedRange])) {
             $monthCount = $presetMonths[$selectedRange];
-            $periodStart = $this->monthsAgoStart($now, $monthCount - 1);
+            $periodStart = ReportPeriod::monthsAgoStart($now, $monthCount - 1);
 
             return [
                 $selectedRange,
@@ -238,8 +205,8 @@ class DashboardController extends Controller
         }
 
         if ($selectedRange === 'custom') {
-            $periodStart = $this->parseDateOrNull($startValue);
-            $selectedEnd = $this->parseDateOrNull($endValue);
+            $periodStart = ReportPeriod::parseDateOrNull($startValue);
+            $selectedEnd = ReportPeriod::parseDateOrNull($endValue);
 
             if ($periodStart && $selectedEnd && $selectedEnd->gte($periodStart)) {
                 $periodStart = $periodStart->startOfDay();
@@ -256,7 +223,7 @@ class DashboardController extends Controller
             }
         }
 
-        $periodStart = $this->monthsAgoStart($now, 5);
+        $periodStart = ReportPeriod::monthsAgoStart($now, 5);
 
         return [
             '6',
