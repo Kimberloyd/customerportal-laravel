@@ -22,5 +22,16 @@ storage/framework/cache/*
 storage/framework/sessions/*
 storage/framework/views/*
 
+# Build-time caches from local sandbox testing in this repo -- these
+# contain absolute paths and a package/provider manifest baked in at
+# generation time, and must never be copied into a fresh image (a
+# stale one here breaks provider registration in a way that's very
+# hard to diagnose: even Laravel's own error handler fails to render
+# a page, since it can't resolve the `view` binding either). Kept out
+# of git via bootstrap/cache/.gitignore already, but .dockerignore
+# doesn't know about nested .gitignore files -- has to be listed here
+# too, explicitly.
+bootstrap/cache/*.php
+
 *.log
 .DS_Store
