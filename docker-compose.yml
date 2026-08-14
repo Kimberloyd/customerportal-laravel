@@ -86,6 +86,20 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    networks:
+      default:
+      # Joins the same network the shared cloudflared tunnel container
+      # is on, exactly like the Flask app's own `proxy` service does --
+      # this is what lets the tunnel's public-hostname route reach this
+      # container by name. The alias is the value to put in Cloudflare's
+      # Zero Trust dashboard as the route's target service
+      # (http://customerportal-laravel-proxy:8080), the same way
+      # `customerportal-proxy` is presumably already the Flask target
+      # today (confirm the current value there before changing it, so
+      # the cutover is a one-line revert if anything goes wrong).
+      cloudflare:
+        aliases:
+          - customerportal-laravel-proxy
 
 volumes:
   laravel_storage:
@@ -101,3 +115,12 @@ networks:
   flask:
     external: true
     name: ${FLASK_NETWORK_NAME:-customerportal_default}
+  # The network cloudflared-wtms (the shared Cloudflare Tunnel
+  # container, /workspace/cloudflared/compose.yaml) and Flask's own
+  # `proxy` service are already both on -- same external network,
+  # same env var name (CLOUDFLARE_NETWORK) Flask's docker-compose.yml
+  # already uses, so both stacks agree on the same override if it's
+  # ever set.
+  cloudflare:
+    external: true
+    name: ${CLOUDFLARE_NETWORK:-theomeds-coverage_theomeds}
