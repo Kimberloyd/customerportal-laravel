@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PurchaseOrderController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -29,6 +30,16 @@ Route::middleware('auth')->prefix('purchase-orders')->name('purchase-orders.')->
     Route::post('/{order}/complete', [PurchaseOrderController::class, 'complete'])->name('complete');
     Route::post('/{order}/receive', [PurchaseOrderController::class, 'receive'])->name('receive');
     Route::post('/{order}/cancel', [PurchaseOrderController::class, 'cancel'])->name('cancel');
+});
+
+Route::middleware('auth')->prefix('products')->name('products.')->group(function () {
+    Route::get('/', [ProductController::class, 'index'])->name('index');
+    Route::get('/create', [ProductController::class, 'create'])->name('create');
+    Route::post('/', [ProductController::class, 'store'])->name('store');
+    Route::get('/{product}/edit', [ProductController::class, 'edit'])->name('edit');
+    Route::put('/{product}', [ProductController::class, 'update'])->name('update');
+    Route::delete('/{product}', [ProductController::class, 'destroy'])->name('destroy');
+    Route::post('/{product}/toggle-active', [ProductController::class, 'toggleActive'])->name('toggle-active');
 });
 
 require __DIR__.'/auth.php';
