@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Table } from '@/components/motion/table';
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 
 const RANGE_OPTIONS = [
@@ -82,7 +82,31 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
         >
             <Head title="Analytics Overview" />
 
-            <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+            <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-4 py-8 sm:px-6 lg:grid-cols-12 lg:px-8">
+                <nav className="space-y-4 lg:col-span-2">
+                    <Link
+                        href={route('reports.overview')}
+                        className={`block text-sm ${
+                            route().current('reports.overview')
+                                ? 'font-semibold text-gray-900'
+                                : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                    >
+                        Overview
+                    </Link>
+                    <Link
+                        href={route('reports.orders')}
+                        className={`block text-sm ${
+                            route().current('reports.orders')
+                                ? 'font-semibold text-gray-900'
+                                : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                    >
+                        Reports
+                    </Link>
+                </nav>
+
+                <div className="space-y-6 lg:col-span-10">
                 <form onSubmit={applyFilters} className="flex flex-wrap items-end gap-3 rounded-lg bg-white p-4 shadow-sm">
                     <label className="flex flex-col text-sm text-gray-600">
                         Period
@@ -201,6 +225,7 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                         />
                     </>
                 )}
+                </div>
             </div>
         </AuthenticatedLayout>
     );

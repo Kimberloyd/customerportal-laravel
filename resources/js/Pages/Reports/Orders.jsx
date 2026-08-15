@@ -95,7 +95,31 @@ export default function Orders({ orders, filters, customers, summary }) {
             <Head title="Orders Report" />
             <style>{'@media print { .no-print { display: none !important; } }'}</style>
 
-            <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+            <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-4 py-8 sm:px-6 lg:grid-cols-12 lg:px-8">
+                <nav className="no-print space-y-4 lg:col-span-2">
+                    <Link
+                        href={route('reports.overview')}
+                        className={`block text-sm ${
+                            route().current('reports.overview')
+                                ? 'font-semibold text-gray-900'
+                                : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                    >
+                        Overview
+                    </Link>
+                    <Link
+                        href={route('reports.orders')}
+                        className={`block text-sm ${
+                            route().current('reports.orders')
+                                ? 'font-semibold text-gray-900'
+                                : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                    >
+                        Reports
+                    </Link>
+                </nav>
+
+                <div className="space-y-6 lg:col-span-10">
                 <form onSubmit={applyFilters} className="no-print flex flex-wrap items-end gap-3 rounded-lg bg-white p-4 shadow-sm">
                     <label className="flex flex-col text-sm text-gray-600">
                         Date filter
@@ -196,6 +220,7 @@ export default function Orders({ orders, filters, customers, summary }) {
                         </nav>
                     )}
                 </>
+                </div>
             </div>
         </AuthenticatedLayout>
     );
