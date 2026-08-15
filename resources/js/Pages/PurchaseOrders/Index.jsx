@@ -119,6 +119,7 @@ export default function Index({ orders, filters }) {
                         onChange={setSearch}
                         placeholder="Company name"
                         leftIcon={<Search className="h-4 w-4" />}
+                        classNames={{ field: 'h-9 rounded-none' }}
                     />
                     <label className="flex flex-col text-sm text-gray-600">
                         Date filter
