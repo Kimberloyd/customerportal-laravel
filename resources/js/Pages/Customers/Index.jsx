@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/motion/input';
 import { Head, Link, router } from '@inertiajs/react';
 import { Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const STATUS_OPTIONS = [
     { value: 'active', label: 'Active' },
@@ -16,13 +16,24 @@ export default function Index({ customers, filters }) {
     const [search, setSearch] = useState(filters.search);
     const [status, setStatus] = useState(filters.status);
 
-    const applyFilters = () => {
+    const applyFilters = (overrides = {}) => {
         router.get(
             route('customers.index'),
-            { search, status },
+            { search, status, ...overrides },
             { preserveState: true, preserveScroll: true },
         );
     };
+
+    const isFirstRender = useRef(true);
+    useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
+        const timeout = setTimeout(() => applyFilters({ search }), 400);
+        return () => clearTimeout(timeout);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [search]);
 
     const deleteCustomer = (customer) => {
         if (!confirm(`Delete ${customer.company_name}?`)) return;
@@ -107,13 +118,7 @@ export default function Index({ customers, filters }) {
             <Head title="Customers" />
 
             <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-                <form
-                    onSubmit={(e) => {
-                        e.preventDefault();
-                        applyFilters();
-                    }}
-                    className="flex flex-wrap items-end gap-3 bg-white"
-                >
+                <div className="flex flex-wrap items-end gap-3 bg-white">
                     <Input
                         label="Search"
                         type="text"
@@ -126,7 +131,10 @@ export default function Index({ customers, filters }) {
                         Status
                         <select
                             value={status}
-                            onChange={(e) => setStatus(e.target.value)}
+                            onChange={(e) => {
+                                setStatus(e.target.value);
+                                applyFilters({ status: e.target.value });
+                            }}
                             className="mt-1 rounded-md border-gray-300 text-sm"
                         >
                             {STATUS_OPTIONS.map((opt) => (
@@ -136,10 +144,7 @@ export default function Index({ customers, filters }) {
                             ))}
                         </select>
                     </label>
-                    <Button type="submit" variant="secondary" size="compact">
-                        Apply
-                    </Button>
-                </form>
+                </div>
 
                 <>
                     <Table

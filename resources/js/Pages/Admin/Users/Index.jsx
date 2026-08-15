@@ -4,20 +4,31 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/motion/input';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 export default function Index({ users, filters, roleLabels }) {
     const { auth } = usePage().props;
     const [search, setSearch] = useState(filters.search);
     const [role, setRole] = useState(filters.role);
 
-    const applyFilters = () => {
+    const applyFilters = (overrides = {}) => {
         router.get(
             route('admin.users.index'),
-            { search, role },
+            { search, role, ...overrides },
             { preserveState: true, preserveScroll: true },
         );
     };
+
+    const isFirstRender = useRef(true);
+    useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
+        const timeout = setTimeout(() => applyFilters({ search }), 400);
+        return () => clearTimeout(timeout);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [search]);
 
     const deleteUser = (user) => {
         if (!confirm(`Delete ${user.full_name}?`)) return;
@@ -113,13 +124,7 @@ export default function Index({ users, filters, roleLabels }) {
             <Head title="Users" />
 
             <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-                <form
-                    onSubmit={(e) => {
-                        e.preventDefault();
-                        applyFilters();
-                    }}
-                    className="flex flex-wrap items-end gap-3 bg-white"
-                >
+                <div className="flex flex-wrap items-end gap-3 bg-white">
                     <Input
                         label="Search"
                         type="text"
@@ -132,7 +137,10 @@ export default function Index({ users, filters, roleLabels }) {
                         Role
                         <select
                             value={role}
-                            onChange={(e) => setRole(e.target.value)}
+                            onChange={(e) => {
+                                setRole(e.target.value);
+                                applyFilters({ role: e.target.value });
+                            }}
                             className="mt-1 rounded-md border-gray-300 text-sm"
                         >
                             <option value="all">All Roles</option>
@@ -143,10 +151,7 @@ export default function Index({ users, filters, roleLabels }) {
                             ))}
                         </select>
                     </label>
-                    <Button type="submit" variant="secondary" size="compact">
-                        Apply
-                    </Button>
-                </form>
+                </div>
 
                 <>
                     <Table

@@ -5,7 +5,7 @@ import { Input } from '@/components/motion/input';
 import { statusBadge, formatDateTime } from '@/utils/orderDisplay';
 import { Head, Link, router } from '@inertiajs/react';
 import { Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const STATUS_OPTIONS = [
     { value: 'all', label: 'All Statuses' },
@@ -23,7 +23,7 @@ export default function Index({ orders, filters }) {
     const [endDate, setEndDate] = useState(filters.end_date);
     const [status, setStatus] = useState(filters.status);
 
-    const applyFilters = () => {
+    const applyFilters = (overrides = {}) => {
         router.get(
             route('purchase-orders.index'),
             {
@@ -33,10 +33,22 @@ export default function Index({ orders, filters }) {
                 start_date: startDate,
                 end_date: endDate,
                 status,
+                ...overrides,
             },
             { preserveState: true, preserveScroll: true },
         );
     };
+
+    const isFirstRender = useRef(true);
+    useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
+        const timeout = setTimeout(() => applyFilters({ search }), 400);
+        return () => clearTimeout(timeout);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [search]);
 
     const columns = useMemo(
         () => [
@@ -105,13 +117,7 @@ export default function Index({ orders, filters }) {
             <Head title="Orders" />
 
             <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-                <form
-                    onSubmit={(e) => {
-                        e.preventDefault();
-                        applyFilters();
-                    }}
-                    className="flex flex-wrap items-end gap-3 bg-white"
-                >
+                <div className="flex flex-wrap items-end gap-3 bg-white">
                     <Input
                         label="Customer search"
                         type="text"
@@ -125,7 +131,10 @@ export default function Index({ orders, filters }) {
                         Date filter
                         <select
                             value={dateFilter}
-                            onChange={(e) => setDateFilter(e.target.value)}
+                            onChange={(e) => {
+                                setDateFilter(e.target.value);
+                                applyFilters({ date_filter: e.target.value });
+                            }}
                             className="mt-1 rounded-md border-gray-300 text-sm"
                         >
                             <option value="all">All Time</option>
@@ -134,19 +143,46 @@ export default function Index({ orders, filters }) {
                         </select>
                     </label>
                     {dateFilter === 'month' && (
-                        <Input label="Month" type="month" value={month} onChange={setMonth} />
+                        <Input
+                            label="Month"
+                            type="month"
+                            value={month}
+                            onChange={(value) => {
+                                setMonth(value);
+                                applyFilters({ month: value });
+                            }}
+                        />
                     )}
                     {dateFilter === 'custom' && (
                         <>
-                            <Input label="From" type="date" value={startDate} onChange={setStartDate} />
-                            <Input label="To" type="date" value={endDate} onChange={setEndDate} />
+                            <Input
+                                label="From"
+                                type="date"
+                                value={startDate}
+                                onChange={(value) => {
+                                    setStartDate(value);
+                                    applyFilters({ start_date: value });
+                                }}
+                            />
+                            <Input
+                                label="To"
+                                type="date"
+                                value={endDate}
+                                onChange={(value) => {
+                                    setEndDate(value);
+                                    applyFilters({ end_date: value });
+                                }}
+                            />
                         </>
                     )}
                     <label className="flex flex-col text-sm text-gray-600">
                         Status
                         <select
                             value={status}
-                            onChange={(e) => setStatus(e.target.value)}
+                            onChange={(e) => {
+                                setStatus(e.target.value);
+                                applyFilters({ status: e.target.value });
+                            }}
                             className="mt-1 rounded-md border-gray-300 text-sm"
                         >
                             {STATUS_OPTIONS.map((opt) => (
@@ -156,10 +192,7 @@ export default function Index({ orders, filters }) {
                             ))}
                         </select>
                     </label>
-                    <Button type="submit" variant="secondary" size="compact">
-                        Apply
-                    </Button>
-                </form>
+                </div>
 
                 <>
                     <Table
