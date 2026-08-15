@@ -33,6 +33,7 @@ export default {
                 accent: 'var(--accent)',
                 hover: 'var(--hover)',
                 active: 'var(--active)',
+                destructive: 'var(--destructive)',
             },
         },
     },

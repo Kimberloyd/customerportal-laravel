@@ -24,6 +24,8 @@
         --accent: hsl(240 4.8% 95.9%);
         --hover: hsl(240 5.9% 90%);
         --active: hsl(240 5.9% 85%);
+        --destructive: hsl(0 84% 60%);
+        --color-success: hsl(142 71% 45%);
     }
 }
 
