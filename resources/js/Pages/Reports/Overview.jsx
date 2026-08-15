@@ -82,7 +82,7 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
         >
             <Head title="Analytics Overview" />
 
-            <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-4 py-8 sm:px-6 lg:grid-cols-12 lg:px-8">
+            <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-8 sm:px-6 lg:grid-cols-12 lg:px-8">
                 <nav className="space-y-4 lg:col-span-2">
                     <Link
                         href={route('reports.overview')}
