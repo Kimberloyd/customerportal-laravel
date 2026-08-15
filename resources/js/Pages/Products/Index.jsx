@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Table } from '@/components/motion/table';
+import { Button } from '@/components/ui/button';
 import { Head, Link, router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 
@@ -90,25 +91,25 @@ export default function Index({ products, filters, canManage }) {
                           key: 'actions',
                           header: 'Actions',
                           cell: (product) => (
-                              <div className="space-x-2 whitespace-nowrap">
-                                  <Link
-                                      href={route('products.edit', product.id)}
-                                      className="text-indigo-600 hover:underline"
-                                  >
-                                      Edit
-                                  </Link>
-                                  <button
+                              <div className="flex items-center gap-1 whitespace-nowrap">
+                                  <Button asChild variant="ghost" size="compact">
+                                      <Link href={route('products.edit', product.id)}>Edit</Link>
+                                  </Button>
+                                  <Button
+                                      variant="ghost"
+                                      size="compact"
                                       onClick={() => toggleActive(product)}
-                                      className="text-gray-600 hover:underline"
                                   >
                                       {product.is_active ? 'Deactivate' : 'Reactivate'}
-                                  </button>
-                                  <button
+                                  </Button>
+                                  <Button
+                                      variant="ghost"
+                                      size="compact"
+                                      className="text-red-600 hover:text-red-700"
                                       onClick={() => deleteProduct(product)}
-                                      className="text-red-600 hover:underline"
                                   >
                                       Delete
-                                  </button>
+                                  </Button>
                               </div>
                           ),
                       },
@@ -126,12 +127,9 @@ export default function Index({ products, filters, canManage }) {
                         Products
                     </h2>
                     {canManage && (
-                        <Link
-                            href={route('products.create')}
-                            className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500"
-                        >
-                            Add Product
-                        </Link>
+                        <Button asChild variant="primary">
+                            <Link href={route('products.create')}>Add Product</Link>
+                        </Button>
                     )}
                 </div>
             }
@@ -185,12 +183,9 @@ export default function Index({ products, filters, canManage }) {
                             </select>
                         </label>
                     )}
-                    <button
-                        type="submit"
-                        className="rounded-md bg-gray-800 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700"
-                    >
+                    <Button type="submit" variant="secondary" size="compact">
                         Apply
-                    </button>
+                    </Button>
                 </form>
 
                 <>

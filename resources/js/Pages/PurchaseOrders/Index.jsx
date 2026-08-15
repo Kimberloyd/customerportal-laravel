@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Table } from '@/components/motion/table';
+import { Button } from '@/components/ui/button';
 import { statusBadge, formatDateTime } from '@/utils/orderDisplay';
 import { Head, Link, router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
@@ -93,12 +94,9 @@ export default function Index({ orders, filters }) {
                     <h2 className="text-xl font-semibold leading-tight text-gray-800">
                         Orders
                     </h2>
-                    <Link
-                        href={route('purchase-orders.create')}
-                        className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500"
-                    >
-                        Create Order
-                    </Link>
+                    <Button asChild variant="primary">
+                        <Link href={route('purchase-orders.create')}>Create Order</Link>
+                    </Button>
                 </div>
             }
         >
@@ -181,12 +179,9 @@ export default function Index({ orders, filters }) {
                             ))}
                         </select>
                     </label>
-                    <button
-                        type="submit"
-                        className="rounded-md bg-gray-800 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700"
-                    >
+                    <Button type="submit" variant="secondary" size="compact">
                         Apply
-                    </button>
+                    </Button>
                 </form>
 
                 <>

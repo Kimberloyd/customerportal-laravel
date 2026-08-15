@@ -1,4 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Button } from '@/components/ui/button';
 import { Head, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 
@@ -151,13 +152,9 @@ export default function Create({ customers, products, lockedCustomerId }) {
                     <div>
                         <div className="mb-2 flex items-center justify-between">
                             <label className="block text-sm font-medium text-gray-700">Product Lines</label>
-                            <button
-                                type="button"
-                                onClick={addLine}
-                                className="rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
-                            >
+                            <Button type="button" variant="tertiary" size="compact" onClick={addLine}>
                                 + Add Line
-                            </button>
+                            </Button>
                         </div>
 
                         <div className="space-y-3">
@@ -175,13 +172,15 @@ export default function Create({ customers, products, lockedCustomerId }) {
                                                 className="block w-full rounded-md border-gray-300 text-sm"
                                             />
                                             {line.product_id && (
-                                                <button
+                                                <Button
                                                     type="button"
+                                                    variant="ghost"
+                                                    size="compact"
+                                                    className="mt-1"
                                                     onClick={() => clearProduct(line.key)}
-                                                    className="mt-1 text-xs text-indigo-600 hover:underline"
                                                 >
                                                     Clear selection
-                                                </button>
+                                                </Button>
                                             )}
                                             {suggestions.length > 0 && (
                                                 <ul className="absolute z-10 mt-1 w-full rounded-md border border-gray-200 bg-white text-sm shadow-lg">
@@ -211,13 +210,15 @@ export default function Create({ customers, products, lockedCustomerId }) {
                                             onChange={(e) => updateLine(line.key, { quantity: e.target.value })}
                                             className="w-24 rounded-md border-gray-300 text-sm"
                                         />
-                                        <button
+                                        <Button
                                             type="button"
+                                            variant="tertiary"
+                                            size="compact"
+                                            className="text-red-600 hover:text-red-700"
                                             onClick={() => removeLine(line.key)}
-                                            className="rounded-md bg-red-50 px-2 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100"
                                         >
                                             Remove
-                                        </button>
+                                        </Button>
                                     </div>
                                 );
                             })}
@@ -225,13 +226,9 @@ export default function Create({ customers, products, lockedCustomerId }) {
                     </div>
 
                     <div className="flex justify-end">
-                        <button
-                            type="submit"
-                            disabled={processing}
-                            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-                        >
+                        <Button type="submit" variant="primary" disabled={processing}>
                             Create Order
-                        </button>
+                        </Button>
                     </div>
                 </form>
             </div>

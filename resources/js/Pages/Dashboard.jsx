@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Table } from '@/components/motion/table';
+import { Button } from '@/components/ui/button';
 import MonthlyVolumeChart from '@/Components/MonthlyVolumeChart';
 import { statusBadge, formatDateTime } from '@/utils/orderDisplay';
 import { Head, Link, router } from '@inertiajs/react';
@@ -267,12 +268,9 @@ export default function Dashboard({ kpis, recentOrders, monthlyVolume, topProduc
                             </label>
                         </>
                     )}
-                    <button
-                        type="submit"
-                        className="rounded-md bg-gray-800 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700"
-                    >
+                    <Button type="submit" variant="secondary" size="compact">
                         Apply
-                    </button>
+                    </Button>
                 </form>
 
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
@@ -364,12 +362,9 @@ export default function Dashboard({ kpis, recentOrders, monthlyVolume, topProduc
                                         </label>
                                     </>
                                 )}
-                                <button
-                                    type="submit"
-                                    className="rounded-md bg-gray-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-700"
-                                >
+                                <Button type="submit" variant="secondary" size="compact">
                                     Apply
-                                </button>
+                                </Button>
                             </form>
 
                             <MonthlyVolumeChart months={monthlyVolume.months} periodLabel={monthlyVolume.periodLabel} />
@@ -417,12 +412,9 @@ export default function Dashboard({ kpis, recentOrders, monthlyVolume, topProduc
                                     ))}
                                 </select>
                             </label>
-                            <button
-                                type="submit"
-                                className="rounded-md bg-gray-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-700"
-                            >
+                            <Button type="submit" variant="secondary" size="compact">
                                 Apply
-                            </button>
+                            </Button>
                         </form>
                     </div>
                 </section>

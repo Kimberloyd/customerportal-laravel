@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Table } from '@/components/motion/table';
+import { Button } from '@/components/ui/button';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 
@@ -63,27 +64,27 @@ export default function Index({ users, filters, roleLabels }) {
                 cell: (user) => {
                     const isSelf = user.id === auth.user.id;
                     return (
-                        <div className="space-x-2 whitespace-nowrap">
-                            <Link
-                                href={route('admin.users.edit', user.id)}
-                                className="text-indigo-600 hover:underline"
-                            >
-                                Edit
-                            </Link>
+                        <div className="flex items-center gap-1 whitespace-nowrap">
+                            <Button asChild variant="ghost" size="compact">
+                                <Link href={route('admin.users.edit', user.id)}>Edit</Link>
+                            </Button>
                             {!isSelf && (
                                 <>
-                                    <button
+                                    <Button
+                                        variant="ghost"
+                                        size="compact"
                                         onClick={() => toggleActive(user)}
-                                        className="text-gray-600 hover:underline"
                                     >
                                         {user.is_active ? 'Deactivate' : 'Reactivate'}
-                                    </button>
-                                    <button
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="compact"
+                                        className="text-red-600 hover:text-red-700"
                                         onClick={() => deleteUser(user)}
-                                        className="text-red-600 hover:underline"
                                     >
                                         Delete
-                                    </button>
+                                    </Button>
                                 </>
                             )}
                         </div>
@@ -101,12 +102,9 @@ export default function Index({ users, filters, roleLabels }) {
                     <h2 className="text-xl font-semibold leading-tight text-gray-800">
                         Users
                     </h2>
-                    <Link
-                        href={route('admin.users.create')}
-                        className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500"
-                    >
-                        Add User
-                    </Link>
+                    <Button asChild variant="primary">
+                        <Link href={route('admin.users.create')}>Add User</Link>
+                    </Button>
                 </div>
             }
         >
@@ -144,12 +142,9 @@ export default function Index({ users, filters, roleLabels }) {
                             ))}
                         </select>
                     </label>
-                    <button
-                        type="submit"
-                        className="rounded-md bg-gray-800 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700"
-                    >
+                    <Button type="submit" variant="secondary" size="compact">
                         Apply
-                    </button>
+                    </Button>
                 </form>
 
                 <>

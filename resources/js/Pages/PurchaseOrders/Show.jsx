@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Table } from '@/components/motion/table';
+import { Button } from '@/components/ui/button';
 import { statusBadge, formatDateTime } from '@/utils/orderDisplay';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useMemo } from 'react';
@@ -108,49 +109,49 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
                     </h2>
                     <div className="flex flex-wrap items-center gap-2">
                         {canCancel && (
-                            <button
+                            <Button
+                                variant="tertiary"
+                                size="compact"
+                                className="text-red-600 hover:text-red-700"
                                 onClick={cancel}
-                                className="rounded-md bg-red-50 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-100"
                             >
                                 Cancel Order
-                            </button>
+                            </Button>
                         )}
                         {canComplete && (
-                            <button
+                            <Button
+                                variant="tertiary"
+                                size="compact"
+                                className="text-green-700 hover:text-green-800"
                                 onClick={complete}
-                                className="rounded-md bg-green-50 px-3 py-1.5 text-sm font-medium text-green-700 hover:bg-green-100"
                             >
                                 Mark Completed
-                            </button>
+                            </Button>
                         )}
-                        <a
-                            href={`${route('purchase-orders.print', order.id)}?output=printer&auto_print=1`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200"
-                        >
-                            Printer
-                        </a>
-                        <a
-                            href={`${route('purchase-orders.print', order.id)}?output=pdf&auto_print=1`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200"
-                        >
-                            PDF
-                        </a>
-                        <Link
-                            href={route('purchase-orders.edit', order.id)}
-                            className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200"
-                        >
-                            Edit Order
-                        </Link>
-                        <Link
-                            href={route('purchase-orders.index')}
-                            className="text-sm text-gray-600 hover:underline"
-                        >
-                            Back to Orders
-                        </Link>
+                        <Button asChild variant="tertiary" size="compact">
+                            <a
+                                href={`${route('purchase-orders.print', order.id)}?output=printer&auto_print=1`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                Printer
+                            </a>
+                        </Button>
+                        <Button asChild variant="tertiary" size="compact">
+                            <a
+                                href={`${route('purchase-orders.print', order.id)}?output=pdf&auto_print=1`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                PDF
+                            </a>
+                        </Button>
+                        <Button asChild variant="tertiary" size="compact">
+                            <Link href={route('purchase-orders.edit', order.id)}>Edit Order</Link>
+                        </Button>
+                        <Button asChild variant="ghost" size="compact">
+                            <Link href={route('purchase-orders.index')}>Back to Orders</Link>
+                        </Button>
                     </div>
                 </div>
             }
@@ -221,13 +222,9 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
                     />
                     {showDeliverColumn && (
                         <div className="mt-4">
-                            <button
-                                type="submit"
-                                disabled={processing}
-                                className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-                            >
+                            <Button type="submit" variant="primary" disabled={processing}>
                                 Save Fulfillment
-                            </button>
+                            </Button>
                         </div>
                     )}
                 </form>

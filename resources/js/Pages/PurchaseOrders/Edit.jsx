@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Table } from '@/components/motion/table';
+import { Button } from '@/components/ui/button';
 import { Head, useForm } from '@inertiajs/react';
 import { useMemo } from 'react';
 
@@ -153,13 +154,9 @@ export default function Edit({ order, customers, lockedCustomerId }) {
                     </div>
 
                     <div className="flex justify-end">
-                        <button
-                            type="submit"
-                            disabled={processing}
-                            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-                        >
+                        <Button type="submit" variant="primary" disabled={processing}>
                             Save Changes
-                        </button>
+                        </Button>
                     </div>
                 </form>
             </div>

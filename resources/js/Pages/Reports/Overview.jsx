@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Table } from '@/components/motion/table';
+import { Button } from '@/components/ui/button';
 import { Head, Link, router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 
@@ -139,9 +140,9 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                             </select>
                         </label>
                     )}
-                    <button type="submit" className="rounded-md bg-gray-800 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700">
+                    <Button type="submit" variant="secondary" size="compact">
                         Apply
-                    </button>
+                    </Button>
                 </form>
 
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

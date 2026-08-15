@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Table } from '@/components/motion/table';
+import { Button } from '@/components/ui/button';
 import { statusBadge, formatDateTime } from '@/utils/orderDisplay';
 import { Head, Link } from '@inertiajs/react';
 import { useMemo } from 'react';
@@ -104,7 +105,9 @@ export default function Dashboard({ totalCustomers, totalProducts, totalOrders, 
                 <section className="rounded-lg bg-white p-4 shadow-sm">
                     <div className="flex items-center justify-between">
                         <h3 className="text-lg font-semibold text-gray-900">Recent Customers</h3>
-                        <Link href={route('customers.index')} className="text-sm text-indigo-600 hover:underline">View All</Link>
+                        <Button asChild variant="ghost" size="compact">
+                            <Link href={route('customers.index')}>View All</Link>
+                        </Button>
                     </div>
                 </section>
                 <Table
@@ -119,7 +122,9 @@ export default function Dashboard({ totalCustomers, totalProducts, totalOrders, 
                 <section className="rounded-lg bg-white p-4 shadow-sm">
                     <div className="flex items-center justify-between">
                         <h3 className="text-lg font-semibold text-gray-900">Recent Products</h3>
-                        <Link href={route('products.index')} className="text-sm text-indigo-600 hover:underline">View All</Link>
+                        <Button asChild variant="ghost" size="compact">
+                            <Link href={route('products.index')}>View All</Link>
+                        </Button>
                     </div>
                 </section>
                 <Table
@@ -134,7 +139,9 @@ export default function Dashboard({ totalCustomers, totalProducts, totalOrders, 
                 <section className="rounded-lg bg-white p-4 shadow-sm">
                     <div className="flex items-center justify-between">
                         <h3 className="text-lg font-semibold text-gray-900">Recent Orders</h3>
-                        <Link href={route('purchase-orders.index')} className="text-sm text-indigo-600 hover:underline">View All</Link>
+                        <Button asChild variant="ghost" size="compact">
+                            <Link href={route('purchase-orders.index')}>View All</Link>
+                        </Button>
                     </div>
                 </section>
                 <Table

@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Table } from '@/components/motion/table';
+import { Button } from '@/components/ui/button';
 import { statusBadge, formatDateTime } from '@/utils/orderDisplay';
 import { Head, Link, router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
@@ -76,18 +77,12 @@ export default function Orders({ orders, filters, customers, summary }) {
                 <div className="no-print flex flex-wrap items-center justify-between gap-3">
                     <h2 className="text-xl font-semibold leading-tight text-gray-800">Orders Report</h2>
                     <div className="flex gap-2">
-                        <button
-                            onClick={() => window.print()}
-                            className="rounded-md bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
-                        >
+                        <Button variant="tertiary" size="compact" onClick={() => window.print()}>
                             Print
-                        </button>
-                        <a
-                            href={exportUrl}
-                            className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500"
-                        >
-                            Export Spreadsheet
-                        </a>
+                        </Button>
+                        <Button asChild variant="primary" size="compact">
+                            <a href={exportUrl}>Export Spreadsheet</a>
+                        </Button>
                     </div>
                 </div>
             }
@@ -166,9 +161,9 @@ export default function Orders({ orders, filters, customers, summary }) {
                             ))}
                         </select>
                     </label>
-                    <button type="submit" className="rounded-md bg-gray-800 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700">
+                    <Button type="submit" variant="secondary" size="compact">
                         Apply
-                    </button>
+                    </Button>
                 </form>
 
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

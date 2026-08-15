@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Table } from '@/components/motion/table';
+import { Button } from '@/components/ui/button';
 import { Head, Link, router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 
@@ -62,25 +63,25 @@ export default function Index({ customers, filters }) {
                 key: 'actions',
                 header: 'Actions',
                 cell: (customer) => (
-                    <div className="space-x-2 whitespace-nowrap">
-                        <Link
-                            href={route('customers.edit', customer.id)}
-                            className="text-indigo-600 hover:underline"
-                        >
-                            Edit
-                        </Link>
-                        <button
+                    <div className="flex items-center gap-1 whitespace-nowrap">
+                        <Button asChild variant="ghost" size="compact">
+                            <Link href={route('customers.edit', customer.id)}>Edit</Link>
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="compact"
                             onClick={() => toggleActive(customer)}
-                            className="text-gray-600 hover:underline"
                         >
                             {customer.is_active ? 'Deactivate' : 'Reactivate'}
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="compact"
+                            className="text-red-600 hover:text-red-700"
                             onClick={() => deleteCustomer(customer)}
-                            className="text-red-600 hover:underline"
                         >
                             Delete
-                        </button>
+                        </Button>
                     </div>
                 ),
             },
@@ -95,12 +96,9 @@ export default function Index({ customers, filters }) {
                     <h2 className="text-xl font-semibold leading-tight text-gray-800">
                         Customers
                     </h2>
-                    <Link
-                        href={route('customers.create')}
-                        className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500"
-                    >
-                        Add Customer
-                    </Link>
+                    <Button asChild variant="primary">
+                        <Link href={route('customers.create')}>Add Customer</Link>
+                    </Button>
                 </div>
             }
         >
@@ -137,12 +135,9 @@ export default function Index({ customers, filters }) {
                             ))}
                         </select>
                     </label>
-                    <button
-                        type="submit"
-                        className="rounded-md bg-gray-800 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700"
-                    >
+                    <Button type="submit" variant="secondary" size="compact">
                         Apply
-                    </button>
+                    </Button>
                 </form>
 
                 <>

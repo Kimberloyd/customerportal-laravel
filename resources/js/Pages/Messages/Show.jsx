@@ -1,4 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Button } from '@/components/ui/button';
 import { formatDateTime } from '@/utils/orderDisplay';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 
@@ -53,24 +54,23 @@ export default function Show({ thread, messages, isCustomerViewer, facebookCusto
                     </h2>
                     <div className="flex flex-wrap gap-2">
                         {!isCustomerViewer && (
-                            <button
-                                onClick={toggleStatus}
-                                className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200"
-                            >
+                            <Button variant="tertiary" size="compact" onClick={toggleStatus}>
                                 Mark {thread.status === 'open' ? 'Closed' : 'Open'}
-                            </button>
+                            </Button>
                         )}
                         {!isCustomerViewer && thread.status === 'closed' && (
-                            <button
+                            <Button
+                                variant="tertiary"
+                                size="compact"
+                                className="text-red-600 hover:text-red-700"
                                 onClick={deleteThread}
-                                className="rounded-md bg-red-50 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-100"
                             >
                                 Delete
-                            </button>
+                            </Button>
                         )}
-                        <Link href={route('messages.index')} className="text-sm text-gray-600 hover:underline">
-                            Back to Messages
-                        </Link>
+                        <Button asChild variant="ghost" size="compact">
+                            <Link href={route('messages.index')}>Back to Messages</Link>
+                        </Button>
                     </div>
                 </div>
             }
@@ -94,13 +94,18 @@ export default function Show({ thread, messages, isCustomerViewer, facebookCusto
                         <span className="text-sm text-gray-600">
                             Guest link: {thread.public_link_active ? 'active' : 'inactive'}
                         </span>
-                        <button onClick={rotateLink} className="rounded-md bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200">
+                        <Button variant="tertiary" size="compact" onClick={rotateLink}>
                             Rotate customer link
-                        </button>
+                        </Button>
                         {thread.public_link_active && (
-                            <button onClick={revokeLink} className="rounded-md bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100">
+                            <Button
+                                variant="tertiary"
+                                size="compact"
+                                className="text-red-600 hover:text-red-700"
+                                onClick={revokeLink}
+                            >
                                 Revoke
-                            </button>
+                            </Button>
                         )}
                     </div>
                 )}
@@ -117,9 +122,9 @@ export default function Show({ thread, messages, isCustomerViewer, facebookCusto
                                     className="mt-1 rounded-md border-gray-300 text-sm"
                                 />
                             </label>
-                            <button type="submit" className="rounded-md bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200">
+                            <Button type="submit" variant="tertiary" size="compact">
                                 Save
-                            </button>
+                            </Button>
                         </form>
 
                         <form onSubmit={submitCustomerLink} className="flex items-end gap-2">
@@ -138,9 +143,9 @@ export default function Show({ thread, messages, isCustomerViewer, facebookCusto
                                     ))}
                                 </select>
                             </label>
-                            <button type="submit" className="rounded-md bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200">
+                            <Button type="submit" variant="tertiary" size="compact">
                                 Save
-                            </button>
+                            </Button>
                         </form>
                     </div>
                 )}
@@ -175,13 +180,9 @@ export default function Show({ thread, messages, isCustomerViewer, facebookCusto
                             className="block w-full rounded-md border-gray-300 text-sm"
                         />
                         <div className="flex justify-end">
-                            <button
-                                type="submit"
-                                disabled={processing}
-                                className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-                            >
+                            <Button type="submit" variant="primary" disabled={processing}>
                                 Send Reply
-                            </button>
+                            </Button>
                         </div>
                     </form>
                 ) : (

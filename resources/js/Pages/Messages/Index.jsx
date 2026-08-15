@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Table } from '@/components/motion/table';
+import { Button } from '@/components/ui/button';
 import { formatDateTime } from '@/utils/orderDisplay';
 import { Head, Link, router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
@@ -77,12 +78,9 @@ export default function Index({ threads, filters }) {
                     <h2 className="text-xl font-semibold leading-tight text-gray-800">
                         Messages
                     </h2>
-                    <Link
-                        href={route('messages.create')}
-                        className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500"
-                    >
-                        New Conversation
-                    </Link>
+                    <Button asChild variant="primary">
+                        <Link href={route('messages.create')}>New Conversation</Link>
+                    </Button>
                 </div>
             }
         >
@@ -91,17 +89,15 @@ export default function Index({ threads, filters }) {
             <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
                 <div className="flex gap-2 rounded-lg bg-white p-4 shadow-sm">
                     {STATUS_OPTIONS.map((opt) => (
-                        <button
+                        <Button
                             key={opt.value}
+                            variant="tertiary"
+                            size="compact"
+                            active={status === opt.value}
                             onClick={() => applyFilter(opt.value)}
-                            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                                status === opt.value
-                                    ? 'bg-gray-800 text-white'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
                         >
                             {opt.label}
-                        </button>
+                        </Button>
                     ))}
                 </div>
 
