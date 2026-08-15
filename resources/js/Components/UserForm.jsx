@@ -1,3 +1,5 @@
+import { Input } from '@/components/motion/input';
+
 const ROLE_LABELS = { employee: 'Employee', customer: 'Customer', admin: 'Admin' };
 
 export default function UserForm({ data, setData, errors, allowAdminCreation, customers, isEdit, isSelf, editingUserId }) {
@@ -10,50 +12,44 @@ export default function UserForm({ data, setData, errors, allowAdminCreation, cu
             ))}
 
             <div>
-                <label className="block text-sm font-medium text-gray-700">Full Name</label>
-                <input
+                <Input
+                    label="Full Name"
                     type="text"
                     required
                     value={data.full_name}
-                    onChange={(e) => setData('full_name', e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                    onChange={(value) => setData('full_name', value)}
                 />
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700">Email</label>
-                <input
+                <Input
+                    label="Email"
                     type="email"
                     required
                     value={data.email}
-                    onChange={(e) => setData('email', e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                    onChange={(value) => setData('email', value)}
                 />
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700">
-                    {isEdit ? 'New Password' : 'Password'}
-                </label>
                 {isEdit && (
                     <p className="text-xs text-gray-500">Leave blank to keep the current password.</p>
                 )}
-                <input
+                <Input
+                    label={isEdit ? 'New Password' : 'Password'}
                     type="password"
                     value={data.password}
-                    onChange={(e) => setData('password', e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                    onChange={(value) => setData('password', value)}
                 />
                 <p className="mt-1 text-xs text-gray-500">At least 12 characters.</p>
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700">Confirm Password</label>
-                <input
+                <Input
+                    label="Confirm Password"
                     type="password"
                     value={data.password_confirmation}
-                    onChange={(e) => setData('password_confirmation', e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                    onChange={(value) => setData('password_confirmation', value)}
                 />
             </div>
 

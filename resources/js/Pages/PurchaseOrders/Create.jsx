@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/motion/input';
 import { Head, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 
@@ -164,12 +165,11 @@ export default function Create({ customers, products, lockedCustomerId }) {
                                 return (
                                     <div key={line.key} className="flex items-start gap-2 rounded-md border border-gray-200 p-3">
                                         <div className="relative flex-1">
-                                            <input
+                                            <Input
                                                 type="text"
                                                 value={line.product_search}
-                                                onChange={(e) => updateLine(line.key, { product_search: e.target.value, product_id: '' })}
+                                                onChange={(value) => updateLine(line.key, { product_search: value, product_id: '' })}
                                                 placeholder="Search product name, generic name, or SKU"
-                                                className="block w-full rounded-md border-gray-300 text-sm"
                                             />
                                             {line.product_id && (
                                                 <Button
@@ -203,12 +203,12 @@ export default function Create({ customers, products, lockedCustomerId }) {
                                                 </ul>
                                             )}
                                         </div>
-                                        <input
+                                        <Input
                                             type="number"
                                             min={1}
                                             value={line.quantity}
-                                            onChange={(e) => updateLine(line.key, { quantity: e.target.value })}
-                                            className="w-24 rounded-md border-gray-300 text-sm"
+                                            onChange={(value) => updateLine(line.key, { quantity: value })}
+                                            className="w-24"
                                         />
                                         <Button
                                             type="button"

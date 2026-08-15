@@ -1,3 +1,5 @@
+import { Input } from '@/components/motion/input';
+
 export default function CustomerForm({ data, setData, errors, channelOptions, customerCode }) {
     return (
         <>
@@ -13,13 +15,12 @@ export default function CustomerForm({ data, setData, errors, channelOptions, cu
             )}
 
             <div>
-                <label className="block text-sm font-medium text-gray-700">Company Name</label>
-                <input
+                <Input
+                    label="Company Name"
                     type="text"
                     required
                     value={data.company_name}
-                    onChange={(e) => setData('company_name', e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                    onChange={(value) => setData('company_name', value)}
                 />
             </div>
 
@@ -39,32 +40,29 @@ export default function CustomerForm({ data, setData, errors, channelOptions, cu
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700">Contact Person</label>
-                <input
+                <Input
+                    label="Contact Person"
                     type="text"
                     value={data.contact_person}
-                    onChange={(e) => setData('contact_person', e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                    onChange={(value) => setData('contact_person', value)}
                 />
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700">Email</label>
-                <input
+                <Input
+                    label="Email"
                     type="email"
                     value={data.email}
-                    onChange={(e) => setData('email', e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                    onChange={(value) => setData('email', value)}
                 />
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700">Phone</label>
-                <input
+                <Input
+                    label="Phone"
                     type="text"
                     value={data.phone}
-                    onChange={(e) => setData('phone', e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                    onChange={(value) => setData('phone', value)}
                 />
             </div>
 

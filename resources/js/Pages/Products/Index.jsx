@@ -1,7 +1,9 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Table } from '@/components/motion/table';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/motion/input';
 import { Head, Link, router } from '@inertiajs/react';
+import { Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 const SOURCE_OPTIONS = [
@@ -144,15 +146,13 @@ export default function Index({ products, filters, canManage }) {
                     }}
                     className="flex flex-wrap items-end gap-3 rounded-lg bg-white p-4 shadow-sm"
                 >
-                    <label className="flex flex-col text-sm text-gray-600">
-                        Search
-                        <input
-                            type="text"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="mt-1 rounded-md border-gray-300 text-sm"
-                        />
-                    </label>
+                    <Input
+                        label="Search"
+                        type="text"
+                        value={search}
+                        onChange={setSearch}
+                        leftIcon={<Search className="h-4 w-4" />}
+                    />
                     <label className="flex flex-col text-sm text-gray-600">
                         Source
                         <select

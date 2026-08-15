@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/motion/input';
 import { Head, useForm } from '@inertiajs/react';
 
 export default function Create({ recipients, linkedCustomer, selectedCustomerId }) {
@@ -51,13 +52,12 @@ export default function Create({ recipients, linkedCustomer, selectedCustomerId 
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Subject</label>
-                        <input
+                        <Input
+                            label="Subject"
                             type="text"
                             required
                             value={data.subject}
-                            onChange={(e) => setData('subject', e.target.value)}
-                            className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                            onChange={(value) => setData('subject', value)}
                         />
                     </div>
 

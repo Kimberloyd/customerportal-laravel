@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Table } from '@/components/motion/table';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/motion/input';
 import { statusBadge, formatDateTime } from '@/utils/orderDisplay';
 import { Head, Link, router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
@@ -125,21 +126,12 @@ export default function Orders({ orders, filters, customers, summary }) {
                         </select>
                     </label>
                     {dateFilter === 'month' && (
-                        <label className="flex flex-col text-sm text-gray-600">
-                            Month
-                            <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="mt-1 rounded-md border-gray-300 text-sm" />
-                        </label>
+                        <Input label="Month" type="month" value={month} onChange={setMonth} />
                     )}
                     {dateFilter === 'custom' && (
                         <>
-                            <label className="flex flex-col text-sm text-gray-600">
-                                From
-                                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="mt-1 rounded-md border-gray-300 text-sm" />
-                            </label>
-                            <label className="flex flex-col text-sm text-gray-600">
-                                To
-                                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="mt-1 rounded-md border-gray-300 text-sm" />
-                            </label>
+                            <Input label="From" type="date" value={startDate} onChange={setStartDate} />
+                            <Input label="To" type="date" value={endDate} onChange={setEndDate} />
                         </>
                     )}
                     {customers.length > 1 && (

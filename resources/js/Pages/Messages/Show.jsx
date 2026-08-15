@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/motion/input';
 import { formatDateTime } from '@/utils/orderDisplay';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 
@@ -113,15 +114,12 @@ export default function Show({ thread, messages, isCustomerViewer, facebookCusto
                 {!isCustomerViewer && thread.is_facebook && (
                     <div className="space-y-4 rounded-lg bg-white p-4 shadow-sm">
                         <form onSubmit={submitSenderName} className="flex items-end gap-2">
-                            <label className="flex flex-col text-sm text-gray-600">
-                                Display name override
-                                <input
-                                    type="text"
-                                    value={senderNameForm.data.sender_name}
-                                    onChange={(e) => senderNameForm.setData('sender_name', e.target.value)}
-                                    className="mt-1 rounded-md border-gray-300 text-sm"
-                                />
-                            </label>
+                            <Input
+                                label="Display name override"
+                                type="text"
+                                value={senderNameForm.data.sender_name}
+                                onChange={(value) => senderNameForm.setData('sender_name', value)}
+                            />
                             <Button type="submit" variant="tertiary" size="compact">
                                 Save
                             </Button>

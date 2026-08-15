@@ -1,3 +1,5 @@
+import { Input } from '@/components/motion/input';
+
 export default function ProductForm({ data, setData, errors, categoryOptions, showActiveToggle }) {
     return (
         <>
@@ -6,23 +8,21 @@ export default function ProductForm({ data, setData, errors, categoryOptions, sh
             ))}
 
             <div>
-                <label className="block text-sm font-medium text-gray-700">SKU</label>
-                <input
+                <Input
+                    label="SKU"
                     type="text"
                     value={data.sku}
-                    onChange={(e) => setData('sku', e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                    onChange={(value) => setData('sku', value)}
                 />
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700">Product Name</label>
-                <input
+                <Input
+                    label="Product Name"
                     type="text"
                     required
                     value={data.product_name}
-                    onChange={(e) => setData('product_name', e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                    onChange={(value) => setData('product_name', value)}
                 />
             </div>
 
@@ -42,35 +42,32 @@ export default function ProductForm({ data, setData, errors, categoryOptions, sh
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700">Generic Name</label>
-                <input
+                <Input
+                    label="Generic Name"
                     type="text"
                     value={data.generic_name}
-                    onChange={(e) => setData('generic_name', e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                    onChange={(value) => setData('generic_name', value)}
                 />
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700">Unit</label>
-                <input
+                <Input
+                    label="Unit"
                     type="text"
                     value={data.unit}
-                    onChange={(e) => setData('unit', e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                    onChange={(value) => setData('unit', value)}
                 />
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700">Unit Price</label>
-                <input
+                <Input
+                    label="Unit Price"
                     type="number"
                     step="0.01"
                     min="0"
                     required
                     value={data.unit_price}
-                    onChange={(e) => setData('unit_price', e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                    onChange={(value) => setData('unit_price', value)}
                 />
             </div>
 
