@@ -200,7 +200,7 @@ export default function Dashboard({ kpis, recentOrders, monthlyVolume, topProduc
             <Head title="Dashboard" />
 
             <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-8 sm:px-6 lg:grid-cols-12 lg:px-8">
-                <nav className="space-y-4 lg:col-span-4">
+                <nav className="space-y-4 lg:col-span-2">
                     <Link
                         href={route('reports.overview')}
                         className={`block text-sm ${
@@ -223,7 +223,7 @@ export default function Dashboard({ kpis, recentOrders, monthlyVolume, topProduc
                     </Link>
                 </nav>
 
-                <div className="space-y-6 lg:col-span-8">
+                <div className="space-y-6 lg:col-span-10">
                 <form
                     onSubmit={(e) => {
                         e.preventDefault();
