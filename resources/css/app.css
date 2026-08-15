@@ -4,13 +4,41 @@
 
 @layer base {
     :root {
-        --background: 0 0% 100%;
-        --foreground: 240 10% 3.9%;
-        --border: 240 5.9% 90%;
-        --ring: 240 5.9% 10%;
-        --muted: 240 4.8% 95.9%;
-        --muted-foreground: 240 3.8% 46.1%;
-        --primary: 240 5.9% 10%;
-        --primary-foreground: 0 0% 98%;
+        /*
+         * Full CSS color values (not bare HSL triplets) -- the beUI
+         * table/tabs components read these through Tailwind's
+         * `bg-foreground`-style utilities (see tailwind.config.js), while
+         * the Fluid Functionalism button reads several of them directly
+         * as `var(--foreground)` etc. in inline styles. A bare "240 10%
+         * 3.9%" triplet would be invalid CSS used that way, so every
+         * token here has to be a complete color on its own.
+         */
+        --background: hsl(0 0% 100%);
+        --foreground: hsl(240 10% 3.9%);
+        --border: hsl(240 5.9% 90%);
+        --ring: hsl(240 5.9% 10%);
+        --muted: hsl(240 4.8% 95.9%);
+        --muted-foreground: hsl(240 3.8% 46.1%);
+        --primary: hsl(240 5.9% 10%);
+        --primary-foreground: hsl(0 0% 98%);
+        --accent: hsl(240 4.8% 95.9%);
+        --hover: hsl(240 5.9% 90%);
+        --active: hsl(240 5.9% 85%);
+    }
+}
+
+@keyframes spinner-move {
+    to {
+        stroke-dashoffset: -100;
+    }
+}
+
+@keyframes spinner-dash {
+    0%,
+    100% {
+        stroke-dasharray: 15 85;
+    }
+    50% {
+        stroke-dasharray: 40 60;
     }
 }
