@@ -251,7 +251,7 @@ export default function AuthenticatedLayout({ header, children }) {
 
             <FlashBanner />
 
-            <main>{children}</main>
+            <main className="bg-white">{children}</main>
         </div>
     );
 }
