@@ -199,13 +199,13 @@ export default function Dashboard({ kpis, recentOrders, monthlyVolume, topProduc
         >
             <Head title="Dashboard" />
 
-            <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+            <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-8 sm:px-6 lg:grid-cols-2 lg:px-8">
                 <form
                     onSubmit={(e) => {
                         e.preventDefault();
                         applyFilters();
                     }}
-                    className="flex flex-wrap items-end gap-3 rounded-lg bg-white p-4 shadow-sm"
+                    className="flex flex-wrap items-end gap-3 rounded-lg bg-white p-4 shadow-sm lg:col-span-2"
                 >
                     <label className="flex flex-col text-sm text-gray-600">
                         Date period
@@ -251,7 +251,7 @@ export default function Dashboard({ kpis, recentOrders, monthlyVolume, topProduc
                     </button>
                 </form>
 
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:col-span-2">
                     <KpiCard label="Total Orders" value={kpis.total_orders} />
                     <KpiCard
                         label="Total New Orders"
@@ -266,23 +266,22 @@ export default function Dashboard({ kpis, recentOrders, monthlyVolume, topProduc
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                    <section className="lg:col-span-2">
-                        <div className="mb-3 flex items-center justify-between">
-                            <div>
-                                <h2 className="text-lg font-semibold text-gray-900">Recent Orders</h2>
-                                <span className="text-sm text-gray-500">{filters.period_label}</span>
-                            </div>
+                <section>
+                    <div className="mb-3 flex items-center justify-between">
+                        <div>
+                            <h2 className="text-lg font-semibold text-gray-900">Recent Orders</h2>
+                            <span className="text-sm text-gray-500">{filters.period_label}</span>
                         </div>
-                        <Table
-                            data={recentOrders}
-                            columns={recentOrdersColumns}
-                            getRowId={(order) => String(order.id)}
-                            resizable
-                            reorderable
-                            emptyState={`No orders found for ${filters.period_label}.`}
-                        />
-                    </section>
+                    </div>
+                    <Table
+                        data={recentOrders}
+                        columns={recentOrdersColumns}
+                        getRowId={(order) => String(order.id)}
+                        resizable
+                        reorderable
+                        emptyState={`No orders found for ${filters.period_label}.`}
+                    />
+                </section>
 
                     <div className="space-y-6">
                         <section className="rounded-lg bg-white p-4 shadow-sm">
@@ -364,9 +363,8 @@ export default function Dashboard({ kpis, recentOrders, monthlyVolume, topProduc
                             emptyState="No product volume for this period."
                         />
                     </div>
-                </div>
 
-                <section className="rounded-lg bg-white p-4 shadow-sm">
+                <section className="rounded-lg bg-white p-4 shadow-sm lg:col-span-2">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                             <h2 className="text-lg font-semibold text-gray-900">Pending Orders</h2>
@@ -403,34 +401,36 @@ export default function Dashboard({ kpis, recentOrders, monthlyVolume, topProduc
                     </div>
                 </section>
 
-                <Table
-                    data={pendingOrders.data}
-                    columns={pendingOrdersColumns}
-                    getRowId={(order) => String(order.id)}
-                    resizable
-                    reorderable
-                    emptyState="No pending orders match this status."
-                />
+                <div className="lg:col-span-2">
+                    <Table
+                        data={pendingOrders.data}
+                        columns={pendingOrdersColumns}
+                        getRowId={(order) => String(order.id)}
+                        resizable
+                        reorderable
+                        emptyState="No pending orders match this status."
+                    />
 
-                {pendingOrders.last_page > 1 && (
-                    <nav className="mt-4 flex flex-wrap items-center gap-1 text-sm">
-                        {pendingOrders.links.map((link, index) => (
-                            <Link
-                                key={index}
-                                href={link.url ?? '#'}
-                                preserveScroll
-                                className={`rounded px-3 py-1 ${
-                                    link.active
-                                        ? 'bg-gray-800 text-white'
-                                        : link.url
-                                          ? 'text-gray-600 hover:bg-gray-100'
-                                          : 'cursor-not-allowed text-gray-300'
-                                }`}
-                                dangerouslySetInnerHTML={{ __html: link.label }}
-                            />
-                        ))}
-                    </nav>
-                )}
+                    {pendingOrders.last_page > 1 && (
+                        <nav className="mt-4 flex flex-wrap items-center gap-1 text-sm">
+                            {pendingOrders.links.map((link, index) => (
+                                <Link
+                                    key={index}
+                                    href={link.url ?? '#'}
+                                    preserveScroll
+                                    className={`rounded px-3 py-1 ${
+                                        link.active
+                                            ? 'bg-gray-800 text-white'
+                                            : link.url
+                                              ? 'text-gray-600 hover:bg-gray-100'
+                                              : 'cursor-not-allowed text-gray-300'
+                                    }`}
+                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                />
+                            ))}
+                        </nav>
+                    )}
+                </div>
             </div>
         </AuthenticatedLayout>
     );
