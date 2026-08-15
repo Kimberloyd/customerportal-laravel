@@ -199,7 +199,31 @@ export default function Dashboard({ kpis, recentOrders, monthlyVolume, topProduc
         >
             <Head title="Dashboard" />
 
-            <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+            <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-8 sm:px-6 lg:grid-cols-12 lg:px-8">
+                <nav className="space-y-4 lg:col-span-4">
+                    <Link
+                        href={route('reports.overview')}
+                        className={`block text-sm ${
+                            route().current('reports.overview')
+                                ? 'font-semibold text-gray-900'
+                                : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                    >
+                        Overview
+                    </Link>
+                    <Link
+                        href={route('reports.orders')}
+                        className={`block text-sm ${
+                            route().current('reports.orders')
+                                ? 'font-semibold text-gray-900'
+                                : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                    >
+                        Reports
+                    </Link>
+                </nav>
+
+                <div className="space-y-6 lg:col-span-8">
                 <form
                     onSubmit={(e) => {
                         e.preventDefault();
@@ -431,6 +455,7 @@ export default function Dashboard({ kpis, recentOrders, monthlyVolume, topProduc
                         ))}
                     </nav>
                 )}
+                </div>
             </div>
         </AuthenticatedLayout>
     );

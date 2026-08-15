@@ -36,13 +36,6 @@ export default function AuthenticatedLayout({ header, children }) {
             },
             { key: 'products', href: route('products.index'), active: route().current('products.*'), label: 'Products' },
             {
-                key: 'overview',
-                href: route('reports.overview'),
-                active: route().current('reports.overview'),
-                label: 'Overview',
-            },
-            { key: 'reports', href: route('reports.orders'), active: route().current('reports.orders'), label: 'Reports' },
-            {
                 key: 'messages',
                 href: route('messages.index'),
                 active: route().current('messages.*'),
