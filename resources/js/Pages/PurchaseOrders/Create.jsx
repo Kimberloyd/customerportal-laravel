@@ -85,11 +85,11 @@ export default function Create({ customers, products, lockedCustomerId }) {
         <AuthenticatedLayout
             header={
                 <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    Create Purchase Order
+                    Create Order
                 </h2>
             }
         >
-            <Head title="Create Purchase Order" />
+            <Head title="Create Order" />
 
             <div className="mx-auto max-w-4xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
                 <form onSubmit={submit} className="space-y-6 rounded-lg bg-white p-6 shadow-sm">

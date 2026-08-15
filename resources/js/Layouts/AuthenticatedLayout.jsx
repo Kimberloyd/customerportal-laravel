@@ -32,7 +32,7 @@ export default function AuthenticatedLayout({ header, children }) {
                 key: 'purchase-orders',
                 href: route('purchase-orders.index'),
                 active: route().current('purchase-orders.*'),
-                label: 'Purchase Orders',
+                label: 'Orders',
             },
             { key: 'products', href: route('products.index'), active: route().current('products.*'), label: 'Products' },
             {

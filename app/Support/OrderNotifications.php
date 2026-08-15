@@ -52,8 +52,8 @@ class OrderNotifications
 
         CustomerMessage::create([
             'customer_id' => $order->customer_id,
-            'subject' => "Purchase Order {$order->po_number} Submitted",
-            'body' => "Thank you. Your purchase order has been successfully submitted.\n\n"
+            'subject' => "Order {$order->po_number} Submitted",
+            'body' => "Thank you. Your order has been successfully submitted.\n\n"
                 ."PO Number: {$order->po_number}\n\n"
                 ."Our team has been notified and will review your order shortly.\n"
                 ."You will receive another update once your order is processed.",

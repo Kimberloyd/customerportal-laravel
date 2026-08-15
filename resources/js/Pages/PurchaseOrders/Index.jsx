@@ -91,7 +91,7 @@ export default function Index({ orders, filters }) {
             header={
                 <div className="flex items-center justify-between">
                     <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                        Purchase Orders
+                        Orders
                     </h2>
                     <Link
                         href={route('purchase-orders.create')}
@@ -102,7 +102,7 @@ export default function Index({ orders, filters }) {
                 </div>
             }
         >
-            <Head title="Purchase Orders" />
+            <Head title="Orders" />
 
             <div className="space-y-6 px-4 py-8 sm:px-6 lg:px-8">
                 <form

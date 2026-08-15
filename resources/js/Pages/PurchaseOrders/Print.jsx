@@ -41,7 +41,7 @@ export default function Print({ order, output, autoPrint }) {
 
             <div className="mx-auto max-w-3xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
                 <section>
-                    <h2 className="text-lg font-semibold text-gray-900">Purchase Order {order.po_number}</h2>
+                    <h2 className="text-lg font-semibold text-gray-900">Order {order.po_number}</h2>
                     <p className="text-sm text-gray-600">
                         Submitted {formatDateTime(order.submitted_at)}
                         {output === 'pdf' && ' | Save destination as PDF.'}
