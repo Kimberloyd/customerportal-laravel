@@ -157,7 +157,7 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
         >
             <Head title={order.po_number} />
 
-            <div className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
                 <div className="grid grid-cols-1 gap-6 rounded-lg bg-white p-6 shadow-sm sm:grid-cols-2">
                     <div>
                         <h3 className="text-sm font-semibold text-gray-500">Customer</h3>
