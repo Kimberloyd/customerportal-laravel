@@ -78,26 +78,7 @@ export default function AuthenticatedLayout({ header, children }) {
     );
 
     return (
-        <div className="flex min-h-screen bg-gray-100">
-            <aside className="hidden w-56 shrink-0 pt-8 md:block">
-                <nav className="space-y-6 px-6">
-                    {navTabs.map((tab) => (
-                        <Link
-                            key={tab.key}
-                            href={tab.href}
-                            className={`block text-sm ${
-                                tab.active
-                                    ? 'font-semibold text-gray-900'
-                                    : 'text-gray-500 hover:text-gray-700'
-                            }`}
-                        >
-                            {tab.label}
-                        </Link>
-                    ))}
-                </nav>
-            </aside>
-
-            <div className="flex min-w-0 flex-1 flex-col">
+        <div className="min-h-screen bg-gray-100">
             <nav className="border-b border-gray-100 bg-white">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="flex h-16 justify-between">
@@ -271,7 +252,6 @@ export default function AuthenticatedLayout({ header, children }) {
             <FlashBanner />
 
             <main className="bg-white">{children}</main>
-            </div>
         </div>
     );
 }
