@@ -73,7 +73,7 @@ export default function Orders({ orders, filters, customers, summary }) {
     return (
         <AuthenticatedLayout
             header={
-                <div className="no-print flex items-center justify-between">
+                <div className="no-print flex flex-wrap items-center justify-between gap-3">
                     <h2 className="text-xl font-semibold leading-tight text-gray-800">Orders Report</h2>
                     <div className="flex gap-2">
                         <button
