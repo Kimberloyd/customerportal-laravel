@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/motion/input';
 import { Head, Link, router } from '@inertiajs/react';
 import { Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const SOURCE_OPTIONS = [
     { value: 'all', label: 'All Sources' },
@@ -37,6 +37,17 @@ export default function Index({ products, filters, canManage }) {
             { preserveState: true, preserveScroll: true },
         );
     };
+
+    const isFirstRender = useRef(true);
+    useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
+        const timeout = setTimeout(() => applyFilters({ search }), 400);
+        return () => clearTimeout(timeout);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [search]);
 
     const deleteProduct = (product) => {
         if (!confirm(`Delete ${product.product_name}?`)) return;
@@ -139,13 +150,7 @@ export default function Index({ products, filters, canManage }) {
             <Head title="Products" />
 
             <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-                <form
-                    onSubmit={(e) => {
-                        e.preventDefault();
-                        applyFilters();
-                    }}
-                    className="flex flex-wrap items-end gap-3 bg-white"
-                >
+                <div className="flex flex-wrap items-end gap-3 bg-white">
                     <Input
                         label="Search"
                         type="text"
@@ -158,7 +163,10 @@ export default function Index({ products, filters, canManage }) {
                         Source
                         <select
                             value={source}
-                            onChange={(e) => setSource(e.target.value)}
+                            onChange={(e) => {
+                                setSource(e.target.value);
+                                applyFilters({ source: e.target.value });
+                            }}
                             className="mt-1 rounded-md border-gray-300 text-sm"
                         >
                             {SOURCE_OPTIONS.map((opt) => (
@@ -173,7 +181,10 @@ export default function Index({ products, filters, canManage }) {
                             Status
                             <select
                                 value={status}
-                                onChange={(e) => setStatus(e.target.value)}
+                                onChange={(e) => {
+                                    setStatus(e.target.value);
+                                    applyFilters({ status: e.target.value });
+                                }}
                                 className="mt-1 rounded-md border-gray-300 text-sm"
                             >
                                 {STATUS_OPTIONS.map((opt) => (
@@ -184,10 +195,7 @@ export default function Index({ products, filters, canManage }) {
                             </select>
                         </label>
                     )}
-                    <Button type="submit" variant="secondary" size="compact">
-                        Apply
-                    </Button>
-                </form>
+                </div>
 
                 <>
                     <Table
