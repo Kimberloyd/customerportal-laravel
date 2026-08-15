@@ -110,7 +110,7 @@ export default function Index({ orders, filters }) {
                         e.preventDefault();
                         applyFilters();
                     }}
-                    className="flex flex-wrap items-end gap-3 rounded-lg bg-white p-4 shadow-sm"
+                    className="flex flex-wrap items-end gap-3 bg-white"
                 >
                     <label className="flex flex-col text-sm text-gray-600">
                         Customer search
