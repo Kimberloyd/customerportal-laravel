@@ -8,7 +8,7 @@ export default function FlashBanner() {
     }
 
     return (
-        <div className="mx-auto max-w-7xl space-y-2 px-4 pt-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl space-y-2 px-4 pt-4 pb-4 sm:px-6 lg:px-8">
             {flash.success && (
                 <div className="rounded-md bg-green-50 p-3 text-sm text-green-700">
                     {flash.success}
