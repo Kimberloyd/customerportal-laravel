@@ -1,0 +1,76 @@
+# Standalone local development stack -- NOT the NAS deployment config
+# (see docker-compose.yml for that). This one is fully self-contained:
+# its own MySQL, no external Flask network, no Cloudflare tunnel, no
+# read-only/hardened production settings. Source is bind-mounted so
+# edits on your machine show up immediately -- no image rebuild needed
+# for PHP or JS changes.
+#
+# Usage:
+#   docker compose -f docker-compose.local.yml up
+#
+# First time only, in another terminal while it's running:
+#   docker compose -f docker-compose.local.yml exec app composer install
+#   docker compose -f docker-compose.local.yml exec app php artisan key:generate
+#   docker compose -f docker-compose.local.yml exec app php artisan migrate   # only if using a fresh/empty DB, see README notes
+#   docker compose -f docker-compose.local.yml exec vite npm install
+#
+# App: http://localhost:8000
+# Vite dev server (HMR): http://localhost:5173 -- app.blade.php's @vite
+# directive talks to it automatically in APP_ENV=local.
+
+services:
+    db:
+        image: mysql:8
+        environment:
+            MYSQL_ROOT_PASSWORD: root
+            MYSQL_DATABASE: customer_portal
+            MYSQL_USER: customer_portal
+            MYSQL_PASSWORD: localdev
+        ports:
+            # Host port 3307, not 3306 -- avoids clashing with any MySQL
+            # you might already have running locally.
+            - '3307:3306'
+        volumes:
+            - customerportal_local_db:/var/lib/mysql
+        healthcheck:
+            test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+            interval: 5s
+            timeout: 5s
+            retries: 10
+
+    app:
+        image: php:8.4-cli-alpine
+        working_dir: /app
+        volumes:
+            - .:/app
+        ports:
+            - '8000:8000'
+        depends_on:
+            db:
+                condition: service_healthy
+        # Installs the PHP extensions this app needs (matches Dockerfile's
+        # runtime image) plus Composer itself, then serves via artisan.
+        # Re-runs on every `up`, but apk/composer both no-op quickly once
+        # cached in the image layer... except this is a bind-mounted plain
+        # php image with no custom layer caching, so it does redo the
+        # apk install each start. Acceptable for local dev; not what
+        # production uses.
+        command: >
+            sh -c "
+              apk add --no-cache icu-libs icu-dev libzip-dev oniguruma-dev &&
+              docker-php-ext-install pdo_mysql mbstring bcmath zip &&
+              (php -r \"file_exists('/usr/local/bin/composer') || copy('https://getcomposer.org/installer', '/tmp/composer-setup.php');\" && [ -f /usr/local/bin/composer ] || php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer) &&
+              php artisan serve --host=0.0.0.0 --port=8000
+            "
+
+    vite:
+        image: node:20-slim
+        working_dir: /app
+        volumes:
+            - .:/app
+        ports:
+            - '5173:5173'
+        command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+
+volumes:
+    customerportal_local_db:
