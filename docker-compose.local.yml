@@ -59,8 +59,9 @@ services:
         # production uses.
         command: >
             sh -c "
-              apk add --no-cache icu-libs icu-dev libzip-dev oniguruma-dev &&
-              docker-php-ext-install pdo_mysql mbstring bcmath zip &&
+              apk add --no-cache icu-libs libzip libpng libjpeg-turbo freetype icu-dev libzip-dev oniguruma-dev libpng-dev libjpeg-turbo-dev freetype-dev &&
+              docker-php-ext-configure gd --with-jpeg --with-freetype &&
+              docker-php-ext-install pdo_mysql mbstring bcmath zip gd &&
               ([ -f /usr/local/bin/composer ] || (php -r \"copy('https://getcomposer.org/installer', '/tmp/composer-setup.php');\" && php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer)) &&
               composer install --no-interaction &&
               [ -f .env ] || cp .env.example .env &&
