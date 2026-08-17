@@ -4,7 +4,9 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/docker-start.ps1",
+        "stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/docker-stop.ps1"
     },
     "dependencies": {
         "@base-ui/react": "^1.7.0",

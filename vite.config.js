@@ -20,5 +20,6 @@ export default defineConfig({
         // an actual address). HMR_HOST lets this stay localhost for a
         // plain non-Docker `npm run dev` too.
         origin: `http://${process.env.VITE_HMR_HOST ?? 'localhost'}:5173`,
+        cors: true,
     },
 });
