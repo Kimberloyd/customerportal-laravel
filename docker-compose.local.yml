@@ -14,7 +14,7 @@
 #   docker compose -f docker-compose.local.yml exec app php artisan migrate   # only if using a fresh/empty DB, see README notes
 #   docker compose -f docker-compose.local.yml exec vite npm install
 #
-# App: http://localhost:8000
+# App: http://localhost:8010
 # Vite dev server (HMR): http://localhost:5173 -- app.blade.php's @vite
 # directive talks to it automatically in APP_ENV=local.
 
@@ -44,7 +44,7 @@ services:
         volumes:
             - .:/app
         ports:
-            - '8000:8000'
+            - '8010:8000'
         depends_on:
             db:
                 condition: service_healthy
