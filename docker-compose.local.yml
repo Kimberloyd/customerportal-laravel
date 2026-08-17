@@ -8,11 +8,13 @@
 # Usage:
 #   docker compose -f docker-compose.local.yml up
 #
-# First time only, in another terminal while it's running:
-#   docker compose -f docker-compose.local.yml exec app composer install
-#   docker compose -f docker-compose.local.yml exec app php artisan key:generate
-#   docker compose -f docker-compose.local.yml exec app php artisan migrate   # only if using a fresh/empty DB, see README notes
-#   docker compose -f docker-compose.local.yml exec vite npm install
+# The app container installs Composer deps, copies .env.example -> .env
+# (only if .env doesn't already exist) and generates an APP_KEY (only if
+# unset) automatically on every start -- see its command below. The one
+# thing still manual, since it depends on which database path you're
+# using (see the setup instructions you were given):
+#   docker compose -f docker-compose.local.yml exec app php artisan migrate   # only for a fresh/empty DB
+#   docker compose -f docker-compose.local.yml exec vite npm install          # first time only, for the Vite container
 #
 # App: http://localhost:8090
 # Vite dev server (HMR): http://localhost:5173 -- app.blade.php's @vite
@@ -59,7 +61,10 @@ services:
             sh -c "
               apk add --no-cache icu-libs icu-dev libzip-dev oniguruma-dev &&
               docker-php-ext-install pdo_mysql mbstring bcmath zip &&
-              (php -r \"file_exists('/usr/local/bin/composer') || copy('https://getcomposer.org/installer', '/tmp/composer-setup.php');\" && [ -f /usr/local/bin/composer ] || php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer) &&
+              ([ -f /usr/local/bin/composer ] || (php -r \"copy('https://getcomposer.org/installer', '/tmp/composer-setup.php');\" && php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer)) &&
+              composer install --no-interaction &&
+              [ -f .env ] || cp .env.example .env &&
+              grep -q '^APP_KEY=base64:' .env || php artisan key:generate &&
               php artisan serve --host=0.0.0.0 --port=8000
             "
 
