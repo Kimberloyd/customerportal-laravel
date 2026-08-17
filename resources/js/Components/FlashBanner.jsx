@@ -8,20 +8,26 @@ export default function FlashBanner() {
     }
 
     return (
-        <div className="mx-auto max-w-7xl space-y-2 px-4 pt-4 pb-4 sm:px-6 lg:px-8">
+        <div>
             {flash.success && (
-                <div className="rounded-md bg-green-50 p-3 text-sm text-green-700">
-                    {flash.success}
+                <div className="bg-green-50">
+                    <div className="mx-auto max-w-7xl px-4 py-3 text-sm text-green-700 sm:px-6 lg:px-8">
+                        {flash.success}
+                    </div>
                 </div>
             )}
             {flash.error && (
-                <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
-                    {flash.error}
+                <div className="bg-red-50">
+                    <div className="mx-auto max-w-7xl px-4 py-3 text-sm text-red-700 sm:px-6 lg:px-8">
+                        {flash.error}
+                    </div>
                 </div>
             )}
             {flash.link && (
-                <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
-                    {flash.link}
+                <div className="border-y border-amber-300 bg-amber-50">
+                    <div className="mx-auto max-w-7xl px-4 py-3 text-sm text-amber-800 sm:px-6 lg:px-8">
+                        {flash.link}
+                    </div>
                 </div>
             )}
         </div>
