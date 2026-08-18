@@ -215,7 +215,18 @@ class PurchaseOrderController extends Controller
             ]);
         }
 
-        $poNumber = 'PO-'.now()->format('YmdHis').'-'.bin2hex(random_bytes(2));
+        $poNumber = trim((string) $request->input('po_number', ''));
+        if ($poNumber === '') {
+            throw ValidationException::withMessages([
+                'po_number' => 'Enter a PO number.',
+            ]);
+        }
+        if (PurchaseOrder::where('po_number', $poNumber)->exists()) {
+            throw ValidationException::withMessages([
+                'po_number' => 'This PO number is already in use.',
+            ]);
+        }
+
         $storedAttachment = null;
 
         if ($attachmentFile) {
@@ -549,6 +560,8 @@ class PurchaseOrderController extends Controller
                     'quantity' => $item->quantity,
                     'delivered_quantity' => $item->delivered_quantity,
                     'pending_quantity' => $item->pending_quantity,
+                    'unit_price' => $item->unit_price,
+                    'line_total' => $item->line_total,
                 ]),
                 'audit_logs' => $order->auditLogs->map(fn ($audit) => [
                     'created_at' => $audit->created_at?->toIso8601String(),

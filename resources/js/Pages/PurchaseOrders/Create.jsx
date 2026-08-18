@@ -26,6 +26,7 @@ export default function Create({ customers, products, lockedCustomerId }) {
     const [clientError, setClientError] = useState(null);
     const { data, setData, post, processing, errors } = useForm({
         customer_id: lockedCustomerId ?? '',
+        po_number: '',
         remarks: '',
         po_attachment: null,
     });
@@ -53,6 +54,11 @@ export default function Create({ customers, products, lockedCustomerId }) {
     const submit = (e) => {
         e.preventDefault();
 
+        if (data.po_number.trim() === '') {
+            setClientError('Enter a PO number.');
+            return;
+        }
+
         if (unresolvedLines.length > 0) {
             setClientError('One or more product lines have a search typed but no product selected. Pick a suggestion from the list, or clear the field.');
             return;
@@ -67,6 +73,7 @@ export default function Create({ customers, products, lockedCustomerId }) {
 
         const formData = new FormData();
         formData.append('customer_id', data.customer_id);
+        formData.append('po_number', data.po_number ?? '');
         formData.append('remarks', data.remarks ?? '');
         if (data.po_attachment) {
             formData.append('po_attachment', data.po_attachment);
@@ -108,13 +115,9 @@ export default function Create({ customers, products, lockedCustomerId }) {
                         <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{errors.po_attachment}</div>
                     )}
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Customer</label>
-                        {lockedCustomerId ? (
-                            <p className="mt-1 text-sm text-gray-900">
-                                {customers.find((c) => c.id === lockedCustomerId)?.company_name}
-                            </p>
-                        ) : (
+                    {!lockedCustomerId && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Customer</label>
                             <select
                                 value={data.customer_id}
                                 onChange={(e) => setData('customer_id', e.target.value)}
@@ -127,7 +130,18 @@ export default function Create({ customers, products, lockedCustomerId }) {
                                     </option>
                                 ))}
                             </select>
-                        )}
+                        </div>
+                    )}
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">PO Number</label>
+                        <Input
+                            type="text"
+                            value={data.po_number}
+                            onChange={(value) => setData('po_number', value)}
+                            placeholder="Enter your PO number"
+                            error={errors.po_number}
+                        />
                     </div>
 
                     <div>

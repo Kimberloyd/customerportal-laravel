@@ -28,11 +28,15 @@ class EnsureSessionVersionMatches
         $user = Auth::user();
 
         if ($user && (! $user->is_active || $request->session()->get('session_version') !== $user->session_version)) {
+            $message = ! $user->is_active
+                ? 'Your account has been deactivated. Please contact an administrator.'
+                : 'Your session has expired. Please log in again.';
+
             Auth::guard('web')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            return redirect()->route('login');
+            return redirect()->route('login')->withErrors(['email' => $message]);
         }
 
         return $next($request);
