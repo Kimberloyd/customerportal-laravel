@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Support\CustomerScope;
+use App\Support\InventoryApiClient;
 use App\Support\ReportPeriod;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -24,6 +25,8 @@ use Inertia\Response;
 class DashboardController extends Controller
 {
     private const DEFAULT_PAGE_SIZE = 25;
+
+    public function __construct(private readonly InventoryApiClient $inventory) {}
 
     public function index(Request $request): Response
     {
@@ -316,8 +319,10 @@ class DashboardController extends Controller
      */
     private function topProductsByVolume(CarbonImmutable $periodStart, CarbonImmutable $periodEnd, ?int $customerId, int $limit = 10): array
     {
+        // Products no longer live in a local table (see InventoryApiClient),
+        // so this reads the name snapshotted onto each order line at
+        // order-creation time instead of joining a `products` row.
         $query = DB::table('purchase_order_items')
-            ->join('products', 'products.id', '=', 'purchase_order_items.product_id')
             ->join('purchase_orders', 'purchase_orders.id', '=', 'purchase_order_items.purchase_order_id')
             ->where('purchase_orders.submitted_at', '>=', $periodStart)
             ->where('purchase_orders.submitted_at', '<', $periodEnd);
@@ -326,19 +331,18 @@ class DashboardController extends Controller
         }
 
         $rows = $query
-            ->groupBy('products.id', 'products.product_name', 'products.generic_name')
+            ->groupBy('purchase_order_items.product_name')
             ->orderByDesc(DB::raw('SUM(purchase_order_items.quantity)'))
-            ->orderBy('products.product_name')
+            ->orderBy('purchase_order_items.product_name')
             ->limit($limit)
             ->get([
-                'products.product_name as product_name',
-                'products.generic_name as generic_name',
+                'purchase_order_items.product_name as product_name',
                 DB::raw('SUM(purchase_order_items.quantity) as ordered_units'),
             ]);
 
         return $rows->map(fn ($row) => [
             'product_name' => $row->product_name,
-            'generic_name' => $row->generic_name,
+            'generic_name' => null,
             'ordered_units' => (int) $row->ordered_units,
         ])->all();
     }
@@ -432,7 +436,7 @@ class DashboardController extends Controller
     private function dashboardTotals(?int $customerScopeId): array
     {
         $totalCustomers = $customerScopeId ? 1 : Customer::query()->count();
-        $totalProducts = \App\Models\Product::query()->count();
+        $totalProducts = $this->inventory->request(['limit' => 1])['meta']['total'] ?? 0;
         $totalOrders = $customerScopeId
             ? PurchaseOrder::query()->where('customer_id', $customerScopeId)->count()
             : PurchaseOrder::query()->count();

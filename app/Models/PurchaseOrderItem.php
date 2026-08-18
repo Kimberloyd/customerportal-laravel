@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
-    'purchase_order_id', 'product_id', 'quantity', 'delivered_quantity',
+    'purchase_order_id', 'quantity', 'delivered_quantity',
     'unit_price', 'line_total', 'product_name', 'sku', 'unit', 'description',
 ])]
 class PurchaseOrderItem extends Model
@@ -27,11 +27,6 @@ class PurchaseOrderItem extends Model
         return $this->belongsTo(PurchaseOrder::class);
     }
 
-    public function product(): BelongsTo
-    {
-        return $this->belongsTo(Product::class);
-    }
-
     public function getPendingQuantityAttribute(): int
     {
         return max($this->quantity - ($this->delivered_quantity ?? 0), 0);
@@ -39,10 +34,6 @@ class PurchaseOrderItem extends Model
 
     public function getDisplayNameAttribute(): string
     {
-        if ($this->product_name) {
-            return $this->product_name;
-        }
-
-        return $this->product?->product_name ?? 'Unknown product';
+        return $this->product_name ?? 'Unknown product';
     }
 }

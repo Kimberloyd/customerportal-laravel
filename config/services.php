@@ -61,4 +61,11 @@ return [
         'public_reply_limit' => env('PUBLIC_CONVERSATION_REPLY_LIMIT', 5),
     ],
 
+    // See App\Support\InventoryApiClient. Products now come live from the
+    // inventoryapp service instead of a local table.
+    'inventory_api' => [
+        'base_url' => env('INVENTORY_API_BASE_URL', 'https://inventoryapp.theomeds.com/theomeds/inventoryapp/v1'),
+        'token' => env('INVENTORY_API_TOKEN'),
+    ],
+
 ];

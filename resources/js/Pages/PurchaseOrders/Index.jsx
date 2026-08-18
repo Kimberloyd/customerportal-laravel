@@ -1,4 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Dropdown } from '@/Components/interior/dropdown';
 import { Table } from '@/components/motion/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/motion/input';
@@ -7,8 +8,14 @@ import { Head, Link, router } from '@inertiajs/react';
 import { Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+const DATE_FILTER_OPTIONS = [
+    { value: 'all', label: 'All Time', hint: 'default' },
+    { value: 'month', label: 'By Month' },
+    { value: 'custom', label: 'Custom Range' },
+];
+
 const STATUS_OPTIONS = [
-    { value: 'all', label: 'All Statuses' },
+    { value: 'all', label: 'All Statuses', hint: 'default' },
     { value: 'active', label: 'Active (Submitted + In Progress)' },
     { value: 'partial', label: 'Partial' },
     { value: 'submitted', label: 'Submitted' },
@@ -97,15 +104,6 @@ export default function Index({ orders, filters }) {
                     </Button>
                 ),
             },
-            {
-                key: 'item_display_name',
-                header: 'Product',
-                sortable: true,
-                cell: (order) => order.item_display_name ?? '-',
-            },
-            { key: 'ordered_quantity', header: 'Ordered', sortable: true, align: 'right' },
-            { key: 'delivered_quantity', header: 'Delivered', sortable: true, align: 'right' },
-            { key: 'balance_units', header: 'Balance', sortable: true, align: 'right' },
         ],
         [],
     );
@@ -128,29 +126,32 @@ export default function Index({ orders, filters }) {
             <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
                 <div className="flex flex-wrap items-end gap-3 bg-white">
                     <Input
-                        label="Customer search"
+                        label="Search"
                         type="text"
                         value={search}
                         onChange={setSearch}
-                        placeholder="Company name"
+                        placeholder="Search by PO Number, Customer"
                         leftIcon={<Search className="h-4 w-4" />}
-                        classNames={{ field: 'h-9 rounded-none ring-0 border-border' }}
+                        classNames={{
+                            field: 'h-9 w-80 rounded-[9px] border-border ring-0 shadow-none',
+                        }}
                     />
-                    <label className="flex flex-col text-sm text-gray-600">
-                        Date filter
-                        <select
+                    <div className="flex flex-col text-sm text-gray-600">
+                        <span>Date filter</span>
+                        <Dropdown
+                            items={DATE_FILTER_OPTIONS}
                             value={dateFilter}
-                            onChange={(e) => {
-                                setDateFilter(e.target.value);
-                                applyFilters({ date_filter: e.target.value });
+                            onChange={(value) => {
+                                setDateFilter(value);
+                                applyFilters({ date_filter: value });
                             }}
-                            className="mt-1 rounded-md border-gray-300 text-sm"
-                        >
-                            <option value="all">All Time</option>
-                            <option value="month">By Month</option>
-                            <option value="custom">Custom Range</option>
-                        </select>
-                    </label>
+                            label={
+                                DATE_FILTER_OPTIONS.find((option) => option.value === dateFilter)
+                                    ?.label ?? 'Select date filter'
+                            }
+                            className="mt-1"
+                        />
+                    </div>
                     {dateFilter === 'month' && (
                         <Input
                             label="Month"
@@ -184,23 +185,22 @@ export default function Index({ orders, filters }) {
                             />
                         </>
                     )}
-                    <label className="flex flex-col text-sm text-gray-600">
-                        Status
-                        <select
+                    <div className="flex flex-col text-sm text-gray-600">
+                        <span>Status</span>
+                        <Dropdown
+                            items={STATUS_OPTIONS}
                             value={status}
-                            onChange={(e) => {
-                                setStatus(e.target.value);
-                                applyFilters({ status: e.target.value });
+                            onChange={(value) => {
+                                setStatus(value);
+                                applyFilters({ status: value });
                             }}
-                            className="mt-1 rounded-md border-gray-300 text-sm"
-                        >
-                            {STATUS_OPTIONS.map((opt) => (
-                                <option key={opt.value} value={opt.value}>
-                                    {opt.label}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
+                            label={
+                                STATUS_OPTIONS.find((option) => option.value === status)?.label ??
+                                'Select status'
+                            }
+                            className="mt-1"
+                        />
+                    </div>
                 </div>
 
                 <>
@@ -209,6 +209,7 @@ export default function Index({ orders, filters }) {
                         columns={columns}
                         getRowId={(order) => String(order.id)}
                         defaultSort={{ key: 'submitted_at', direction: 'desc' }}
+                        className="rounded-[9px] [&_td:not(:last-child)]:border-r [&_td:not(:last-child)]:border-border/60 [&_th:not(:last-child)]:border-r [&_th:not(:last-child)]:border-border/60"
                         resizable
                         reorderable
                         emptyState="No orders match these filters."

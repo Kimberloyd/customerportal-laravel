@@ -38,12 +38,6 @@ Route::middleware('auth')->prefix('purchase-orders')->name('purchase-orders.')->
 
 Route::middleware('auth')->prefix('products')->name('products.')->group(function () {
     Route::get('/', [ProductController::class, 'index'])->name('index');
-    Route::get('/create', [ProductController::class, 'create'])->name('create');
-    Route::post('/', [ProductController::class, 'store'])->name('store');
-    Route::get('/{product}/edit', [ProductController::class, 'edit'])->name('edit');
-    Route::put('/{product}', [ProductController::class, 'update'])->name('update');
-    Route::delete('/{product}', [ProductController::class, 'destroy'])->name('destroy');
-    Route::post('/{product}/toggle-active', [ProductController::class, 'toggleActive'])->name('toggle-active');
 });
 
 Route::middleware('auth')->prefix('customers')->name('customers.')->group(function () {

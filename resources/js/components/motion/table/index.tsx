@@ -155,6 +155,28 @@ export function Table<T>({
     }
   }, [onEndReached, loading, rowHeight]);
 
+  // Vertical and horizontal scroll share one container, so a trackpad swipe
+  // that's meant to be purely vertical (but reports a tiny stray deltaX, as
+  // most trackpads do) would otherwise nudge scrollLeft too. Lock each wheel
+  // gesture to its dominant axis instead of letting the browser apply both.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        if (e.deltaX !== 0) {
+          e.preventDefault();
+          el.scrollTop += e.deltaY;
+        }
+      } else if (e.deltaY !== 0) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaX;
+      }
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
   const [activeColumn, setActiveColumn] = useState<string | null>(null);
   // Small delay on leave so the pointer can cross the gap from the header cell
   // to the portal handle without the column deactivating.
@@ -203,7 +225,10 @@ export function Table<T>({
         <table
           className="min-w-full border-collapse"
           style={{
-            tableLayout: "fixed",
+            // Only pin to "fixed" once every column has a resolved pixel
+            // width (a resize snapshot or an explicit column.width) --
+            // otherwise let the browser auto-size columns to their content.
+            tableLayout: fixedTableWidth == null ? "auto" : "fixed",
             width:
               fixedTableWidth == null
                 ? undefined

@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
-use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Support\CustomerScope;
+use App\Support\InventoryApiClient;
 use App\Support\OrderAudit;
 use App\Support\OrderNotifications;
 use App\Support\PoAttachment;
@@ -33,6 +33,8 @@ class PurchaseOrderController extends Controller
         PurchaseOrder::STATUS_PROCESSING,
     ];
 
+    public function __construct(private readonly InventoryApiClient $inventory) {}
+
     public function index(Request $request): Response
     {
         $customer = CustomerScope::forCurrentUser();
@@ -50,8 +52,12 @@ class PurchaseOrderController extends Controller
         }
 
         if ($search !== '') {
-            $query->whereHas('customer', function ($q) use ($search) {
-                $q->whereRaw('LOWER(company_name) LIKE ?', ['%'.strtolower($search).'%']);
+            $pattern = '%'.strtolower($search).'%';
+            $query->where(function ($q) use ($pattern) {
+                $q->whereRaw('LOWER(po_number) LIKE ?', [$pattern])
+                    ->orWhereHas('customer', function ($q) use ($pattern) {
+                        $q->whereRaw('LOWER(company_name) LIKE ?', [$pattern]);
+                    });
             });
         }
 
@@ -113,11 +119,10 @@ class PurchaseOrderController extends Controller
             ? [['id' => $customer->id, 'company_name' => $customer->company_name]]
             : Customer::query()->orderBy('company_name')->get(['id', 'company_name'])->toArray();
 
-        $products = Product::query()
-            ->where('is_active', true)
-            ->orderBy('product_name')
-            ->get(['id', 'product_name', 'generic_name', 'sku', 'unit', 'description', 'unit_price'])
-            ->toArray();
+        $products = $this->activeProducts()
+            ->sortBy('product_name', SORT_STRING | SORT_FLAG_CASE)
+            ->values()
+            ->all();
 
         return Inertia::render('PurchaseOrders/Create', [
             'customers' => $customers,
@@ -136,6 +141,7 @@ class PurchaseOrderController extends Controller
 
         $lineCount = max(count($productIds), count($productSearches), count($quantities));
         $lineItems = [];
+        $products = null;
 
         for ($i = 0; $i < $lineCount; $i++) {
             $productId = $productIds[$i] ?? null;
@@ -144,24 +150,25 @@ class PurchaseOrderController extends Controller
 
             $product = null;
 
+            if ($productId || $productSearch !== '') {
+                $products ??= $this->activeProducts();
+            }
+
             if ($productId) {
-                $product = Product::find($productId);
+                $product = $products->firstWhere('id', (int) $productId);
                 if (! $product) {
                     throw ValidationException::withMessages([
                         "items.{$i}" => 'Selected product no longer exists.',
                     ]);
                 }
             } elseif ($productSearch !== '') {
-                $pattern = '%'.strtolower($productSearch).'%';
-                $matches = Product::query()
-                    ->where('is_active', true)
-                    ->where(function ($q) use ($pattern) {
-                        $q->whereRaw('LOWER(product_name) LIKE ?', [$pattern])
-                            ->orWhereRaw('LOWER(generic_name) LIKE ?', [$pattern])
-                            ->orWhereRaw('LOWER(sku) LIKE ?', [$pattern])
-                            ->orWhereRaw('LOWER(unit) LIKE ?', [$pattern]);
-                    })
-                    ->get();
+                $needle = strtolower($productSearch);
+                $matches = $products->filter(
+                    fn ($p) => str_contains(strtolower((string) $p->product_name), $needle)
+                        || str_contains(strtolower((string) $p->generic_name), $needle)
+                        || str_contains(strtolower((string) $p->sku), $needle)
+                        || str_contains(strtolower((string) $p->unit), $needle),
+                );
 
                 if ($matches->count() === 1) {
                     $product = $matches->first();
@@ -270,7 +277,7 @@ class PurchaseOrderController extends Controller
     {
         $this->authorizeOrderAccess($order);
 
-        $order->load(['customer', 'items.product']);
+        $order->load(['customer', 'items']);
 
         $customer = CustomerScope::forCurrentUser();
         $customers = $customer
@@ -306,7 +313,7 @@ class PurchaseOrderController extends Controller
         try {
             DB::transaction(function () use ($request, $order) {
                 $locked = PurchaseOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
-                $locked->load(['items.product', 'customer']);
+                $locked->load(['items', 'customer']);
 
                 $isTerminal = in_array($locked->status, PurchaseOrder::TERMINAL_STATUSES, true);
                 $changes = [];
@@ -329,7 +336,7 @@ class PurchaseOrderController extends Controller
                         }
                         if ($quantity < $delivered) {
                             throw new \RuntimeException(
-                                "{$item->product->product_name} quantity cannot be lower than {$delivered} already delivered."
+                                "{$item->display_name} quantity cannot be lower than {$delivered} already delivered."
                             );
                         }
                         $proposedQuantities[$item->id] = $quantity;
@@ -343,7 +350,7 @@ class PurchaseOrderController extends Controller
                     foreach ($locked->items as $item) {
                         $quantity = $proposedQuantities[$item->id];
                         if ($item->quantity !== $quantity) {
-                            $changes[] = "{$item->product->product_name} quantity changed from {$item->quantity} to {$quantity}.";
+                            $changes[] = "{$item->display_name} quantity changed from {$item->quantity} to {$quantity}.";
                             $item->quantity = $quantity;
                             $item->line_total = $quantity * ($item->unit_price ?? 0);
                             $item->save();
@@ -443,7 +450,7 @@ class PurchaseOrderController extends Controller
         try {
             DB::transaction(function () use ($request, $order) {
                 $locked = PurchaseOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
-                $locked->load('items.product');
+                $locked->load('items');
 
                 if (in_array($locked->status, PurchaseOrder::TERMINAL_STATUSES, true)) {
                     throw new \RuntimeException("This order is already {$locked->status} and cannot receive deliveries.");
@@ -465,7 +472,7 @@ class PurchaseOrderController extends Controller
                         $item->delivered_quantity = ($item->delivered_quantity ?? 0) + $receiveQuantity;
                         $item->save();
                         $receivedAny = true;
-                        $deliveryChanges[] = "{$item->product->product_name}: {$receiveQuantity} unit(s) delivered.";
+                        $deliveryChanges[] = "{$item->display_name}: {$receiveQuantity} unit(s) delivered.";
                     }
                 }
 
@@ -514,7 +521,7 @@ class PurchaseOrderController extends Controller
     {
         $this->authorizeOrderAccess($order);
 
-        $order->load(['customer', 'items.product', 'auditLogs.actor']);
+        $order->load(['customer', 'items', 'auditLogs.actor']);
 
         $isCustomerViewer = Auth::user()->role === 'customer';
         $isTerminal = in_array($order->status, PurchaseOrder::TERMINAL_STATUSES, true);
@@ -563,7 +570,7 @@ class PurchaseOrderController extends Controller
     {
         $this->authorizeOrderAccess($order);
 
-        $order->load(['customer', 'items.product', 'auditLogs.actor']);
+        $order->load(['customer', 'items', 'auditLogs.actor']);
 
         $output = strtolower(trim((string) $request->query('output', 'printer')));
         if (! in_array($output, ['printer', 'pdf'], true)) {
@@ -648,6 +655,15 @@ class PurchaseOrderController extends Controller
         if ($customer && $order->customer_id !== $customer->id) {
             abort(403);
         }
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, object>
+     */
+    private function activeProducts(): \Illuminate\Support\Collection
+    {
+        return collect($this->inventory->allProducts(['status' => 'active']))
+            ->map(fn (array $product) => (object) InventoryApiClient::mapProduct($product));
     }
 
     private function parseDateOrNull(string $value): ?CarbonImmutable

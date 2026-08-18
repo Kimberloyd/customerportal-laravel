@@ -37,15 +37,7 @@ export default function Dashboard({ totalCustomers, totalProducts, totalOrders, 
     const productColumns = useMemo(
         () => [
             { key: 'generic_name', header: 'Generic Name', cell: (p) => p.generic_name ?? '-' },
-            {
-                key: 'product_name',
-                header: 'Brand Name',
-                cell: (p) => (
-                    <Link href={route('products.edit', p.id)} className="text-indigo-600 hover:underline">
-                        {p.product_name}
-                    </Link>
-                ),
-            },
+            { key: 'product_name', header: 'Product Name' },
             { key: 'sku', header: 'SKU', cell: (p) => p.sku ?? '-' },
             { key: 'unit', header: 'Unit', cell: (p) => p.unit ?? '-' },
             {

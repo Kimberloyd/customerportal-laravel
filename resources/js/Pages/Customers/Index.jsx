@@ -125,7 +125,7 @@ export default function Index({ customers, filters }) {
                         value={search}
                         onChange={setSearch}
                         leftIcon={<Search className="h-4 w-4" />}
-                        classNames={{ field: 'h-9 rounded-none' }}
+                        classNames={{ field: 'h-9 w-80 rounded-none' }}
                     />
                     <label className="flex flex-col text-sm text-gray-600">
                         Status
