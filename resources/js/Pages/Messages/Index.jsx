@@ -86,7 +86,7 @@ export default function Index({ threads, filters }) {
         >
             <Head title="Messages" />
 
-            <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
                 <div className="flex gap-2 rounded-lg bg-white p-4 shadow-sm">
                     {STATUS_OPTIONS.map((opt) => (
                         <Button

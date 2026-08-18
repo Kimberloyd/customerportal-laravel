@@ -166,7 +166,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
             onBlur?.(event);
           }}
           className={cn(
-            "peer h-full w-full border-0 bg-transparent text-base leading-6 text-foreground caret-foreground outline-none ring-0 focus:border-0 focus:shadow-none focus:outline-none focus:ring-0",
+            "peer h-full w-full border-0 bg-transparent text-base leading-6 text-foreground caret-foreground outline-none ring-0 focus:border-0 focus:shadow-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0",
             "placeholder:text-muted-foreground/60",
             leftIcon ? "pl-10" : "pl-3.5",
             rightSlot || success ? "pr-10" : "pr-3.5",

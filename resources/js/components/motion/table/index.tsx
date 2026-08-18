@@ -119,11 +119,26 @@ export function Table<T>({
 
   const hasRowMenu = !!(onInsertRow || onDeleteRow);
   const hasColumnMenu = !!(onInsertColumn || onDeleteColumn);
-  // Only shrink-wrap (w-max) once every column has an explicit resized width;
-  // otherwise stay fill-width so a flexible column can't size to cell content.
-  const sized =
-    orderedColumns.length > 0 &&
-    orderedColumns.every((c) => widths[c.key] != null);
+  // A fixed table width prevents virtualized row swaps from changing the
+  // horizontal scroll range. It is available after a resize snapshot or when
+  // every column declares a pixel width.
+  const fixedTableWidth = useMemo(() => {
+    let total = selectable ? CHECKBOX_WIDTH : 0;
+
+    for (const column of orderedColumns) {
+      const resizedWidth = widths[column.key];
+      if (resizedWidth != null) {
+        total += resizedWidth;
+        continue;
+      }
+
+      const pixelWidth = column.width?.trim().match(/^(\d+(?:\.\d+)?)px$/);
+      if (!pixelWidth) return null;
+      total += Number(pixelWidth[1]);
+    }
+
+    return total;
+  }, [orderedColumns, selectable, widths]);
 
   // Infinite scroll: fire onEndReached once per near-bottom dwell, paused while
   // loading; the guard resets when the load completes.
@@ -139,6 +154,7 @@ export function Table<T>({
       onEndReached();
     }
   }, [onEndReached, loading, rowHeight]);
+
   const [activeColumn, setActiveColumn] = useState<string | null>(null);
   // Small delay on leave so the pointer can cross the gap from the header cell
   // to the portal handle without the column deactivating.
@@ -185,8 +201,14 @@ export function Table<T>({
         style={{ height }}
       >
         <table
-          className={cn("border-collapse", sized ? "w-max min-w-full" : "min-w-full")}
-          style={{ tableLayout: "fixed" }}
+          className="min-w-full border-collapse"
+          style={{
+            tableLayout: "fixed",
+            width:
+              fixedTableWidth == null
+                ? undefined
+                : `max(100%, ${fixedTableWidth}px)`,
+          }}
         >
           <colgroup>
             {selectable ? <col style={{ width: CHECKBOX_WIDTH }} /> : null}

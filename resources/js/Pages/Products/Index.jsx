@@ -1,4 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Dropdown } from '@/Components/interior/dropdown';
 import { Table } from '@/components/motion/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/motion/input';
@@ -7,13 +8,13 @@ import { Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 const SOURCE_OPTIONS = [
-    { value: 'all', label: 'All Sources' },
+    { value: 'all', label: 'All Sources', hint: 'default' },
     { value: 'generic', label: 'Generic Alias' },
     { value: 'standard', label: 'Standard' },
 ];
 
 const STATUS_OPTIONS = [
-    { value: 'active', label: 'Active' },
+    { value: 'active', label: 'Active', hint: 'default' },
     { value: 'inactive', label: 'Inactive' },
     { value: 'all', label: 'All' },
 ];
@@ -60,27 +61,46 @@ export default function Index({ products, filters, canManage }) {
 
     const columns = useMemo(
         () => [
-            { key: 'product_name', header: 'Brand Name', sortable: true },
+            {
+                key: 'product_name',
+                header: 'Brand Name',
+                sortable: true,
+                width: '300px',
+            },
             {
                 key: 'generic_name',
                 header: 'Generic Name',
                 sortable: true,
+                width: '300px',
                 cell: (product) => product.generic_name ?? '-',
             },
-            { key: 'category', header: 'Category', sortable: true },
-            { key: 'unit', header: 'Unit', sortable: true, cell: (product) => product.unit ?? '-' },
+            { key: 'category', header: 'Category', sortable: true, width: '160px' },
+            {
+                key: 'unit',
+                header: 'Unit',
+                sortable: true,
+                width: '120px',
+                cell: (product) => product.unit?.toUpperCase() ?? '-',
+            },
             {
                 key: 'description',
                 header: 'Description',
                 sortable: true,
+                width: '400px',
                 cell: (product) => product.description ?? '-',
             },
-            { key: 'sku', header: 'SKU', cell: (product) => product.sku ?? '-' },
+            {
+                key: 'sku',
+                header: 'SKU',
+                width: '160px',
+                cell: (product) => product.sku ?? '-',
+            },
             {
                 key: 'unit_price',
                 header: 'Price',
                 sortable: true,
                 align: 'right',
+                width: '130px',
                 cell: (product) => Number(product.unit_price ?? 0).toFixed(2),
             },
             ...(canManage
@@ -88,6 +108,7 @@ export default function Index({ products, filters, canManage }) {
                       {
                           key: 'is_active',
                           header: 'Status',
+                          width: '120px',
                           cell: (product) => (
                               <span
                                   className={`rounded-full px-2 py-0.5 text-xs ${
@@ -103,6 +124,7 @@ export default function Index({ products, filters, canManage }) {
                       {
                           key: 'actions',
                           header: 'Actions',
+                          width: '280px',
                           cell: (product) => (
                               <div className="flex items-center gap-1 whitespace-nowrap">
                                   <Button asChild variant="ghost" size="compact">
@@ -157,76 +179,55 @@ export default function Index({ products, filters, canManage }) {
                         value={search}
                         onChange={setSearch}
                         leftIcon={<Search className="h-4 w-4" />}
-                        classNames={{ field: 'h-9 rounded-none' }}
+                        classNames={{
+                            field: 'h-9 rounded-[9px] border-border ring-0 shadow-none',
+                        }}
                     />
-                    <label className="flex flex-col text-sm text-gray-600">
-                        Source
-                        <select
+                    <div className="flex flex-col text-sm text-gray-600">
+                        <span>Source</span>
+                        <Dropdown
+                            items={SOURCE_OPTIONS}
                             value={source}
-                            onChange={(e) => {
-                                setSource(e.target.value);
-                                applyFilters({ source: e.target.value });
+                            onChange={(value) => {
+                                setSource(value);
+                                applyFilters({ source: value });
                             }}
-                            className="mt-1 rounded-md border-gray-300 text-sm"
-                        >
-                            {SOURCE_OPTIONS.map((opt) => (
-                                <option key={opt.value} value={opt.value}>
-                                    {opt.label}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
+                            label={
+                                SOURCE_OPTIONS.find((option) => option.value === source)?.label ??
+                                'Select source'
+                            }
+                            className="mt-1"
+                        />
+                    </div>
                     {canManage && (
-                        <label className="flex flex-col text-sm text-gray-600">
-                            Status
-                            <select
+                        <div className="flex flex-col text-sm text-gray-600">
+                            <span>Status</span>
+                            <Dropdown
+                                items={STATUS_OPTIONS}
                                 value={status}
-                                onChange={(e) => {
-                                    setStatus(e.target.value);
-                                    applyFilters({ status: e.target.value });
+                                onChange={(value) => {
+                                    setStatus(value);
+                                    applyFilters({ status: value });
                                 }}
-                                className="mt-1 rounded-md border-gray-300 text-sm"
-                            >
-                                {STATUS_OPTIONS.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>
-                                        {opt.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
+                                label={
+                                    STATUS_OPTIONS.find((option) => option.value === status)?.label ??
+                                    'Select status'
+                                }
+                                className="mt-1"
+                            />
+                        </div>
                     )}
                 </div>
 
-                <>
-                    <Table
-                        data={products.data}
-                        columns={columns}
-                        getRowId={(product) => String(product.id)}
-                        resizable
-                        reorderable
-                        emptyState="No products match these filters."
-                    />
-
-                    {products.last_page > 1 && (
-                        <nav className="mt-4 flex flex-wrap items-center gap-1 text-sm">
-                            {products.links.map((link, index) => (
-                                <Link
-                                    key={index}
-                                    href={link.url ?? '#'}
-                                    preserveScroll
-                                    className={`rounded px-3 py-1 ${
-                                        link.active
-                                            ? 'bg-gray-800 text-white'
-                                            : link.url
-                                              ? 'text-gray-600 hover:bg-gray-100'
-                                              : 'cursor-not-allowed text-gray-300'
-                                    }`}
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
-                                />
-                            ))}
-                        </nav>
-                    )}
-                </>
+                <Table
+                    data={products}
+                    columns={columns}
+                    getRowId={(product) => String(product.id)}
+                    className="rounded-[9px] [&_td:not(:last-child)]:border-r [&_td:not(:last-child)]:border-border/60 [&_th:not(:last-child)]:border-r [&_th:not(:last-child)]:border-border/60"
+                    resizable
+                    reorderable
+                    emptyState="No products match these filters."
+                />
             </div>
         </AuthenticatedLayout>
     );

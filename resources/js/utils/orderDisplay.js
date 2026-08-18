@@ -17,5 +17,11 @@ export function statusBadge(status) {
 
 export function formatDateTime(iso) {
     if (!iso) return '-';
-    return new Date(iso).toISOString().slice(0, 16).replace('T', ' ');
+    return new Date(iso).toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+    });
 }

@@ -41,8 +41,8 @@ class ListTest extends TestCase
         $response = $this->actingAsUser($staff)->get('/products?search=amox');
 
         $response->assertInertia(fn ($page) => $page
-            ->where('products.total', 1)
-            ->where('products.data.0.product_name', 'Amoxicillin')
+            ->has('products', 1)
+            ->where('products.0.product_name', 'Amoxicillin')
         );
     }
 
@@ -55,8 +55,8 @@ class ListTest extends TestCase
         $response = $this->actingAsUser($staff)->get('/products?source=generic');
 
         $response->assertInertia(fn ($page) => $page
-            ->where('products.total', 1)
-            ->where('products.data.0.product_name', 'Generic Alias')
+            ->has('products', 1)
+            ->where('products.0.product_name', 'Generic Alias')
         );
     }
 
@@ -68,10 +68,10 @@ class ListTest extends TestCase
 
         $response = $this->actingAsUser($staff)->get('/products');
 
-        $response->assertInertia(fn ($page) => $page->where('products.total', 1));
+        $response->assertInertia(fn ($page) => $page->has('products', 1));
 
         $allResponse = $this->actingAsUser($staff)->get('/products?status=all');
-        $allResponse->assertInertia(fn ($page) => $page->where('products.total', 2));
+        $allResponse->assertInertia(fn ($page) => $page->has('products', 2));
     }
 
     public function test_sort_by_brand_desc_orders_correctly(): void
@@ -82,10 +82,10 @@ class ListTest extends TestCase
 
         $response = $this->actingAsUser($staff)->get('/products?sort_by=brand&sort_dir=desc');
 
-        $response->assertInertia(fn ($page) => $page->where('products.data.0.product_name', 'Zulu'));
+        $response->assertInertia(fn ($page) => $page->where('products.0.product_name', 'Zulu'));
     }
 
-    public function test_list_paginates(): void
+    public function test_list_returns_all_matching_products(): void
     {
         $staff = User::factory()->create(['role' => 'employee']);
         for ($i = 0; $i < 30; $i++) {
@@ -94,9 +94,6 @@ class ListTest extends TestCase
 
         $response = $this->actingAsUser($staff)->get('/products');
 
-        $response->assertInertia(fn ($page) => $page
-            ->where('products.total', 30)
-            ->where('products.last_page', 2)
-        );
+        $response->assertInertia(fn ($page) => $page->has('products', 30));
     }
 }

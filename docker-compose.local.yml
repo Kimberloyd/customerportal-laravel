@@ -2,8 +2,15 @@
 # (see docker-compose.yml for that). This one is fully self-contained:
 # its own MySQL, no external Flask network, no Cloudflare tunnel, no
 # read-only/hardened production settings. Source is bind-mounted so
-# edits on your machine show up immediately -- no image rebuild needed
-# for PHP or JS changes.
+# edits on your machine show up immediately for JS (Vite HMR).
+#
+# PHP is different: opcache.revalidate_freq is set high (see the app
+# command below) because on Windows, bind-mounted file I/O into the
+# container is slow enough that Laravel's framework boot (stat-ing
+# thousands of vendor/ files every request) can take 5-10+ seconds
+# without it. The tradeoff: after editing a .php file, restart the app
+# container to see the change --
+#   docker compose -f docker-compose.local.yml restart app
 #
 # Usage:
 #   docker compose -f docker-compose.local.yml up
@@ -62,21 +69,52 @@ services:
               apk add --no-cache icu-libs libzip libpng libjpeg-turbo freetype icu-dev libzip-dev oniguruma-dev libpng-dev libjpeg-turbo-dev freetype-dev &&
               docker-php-ext-configure gd --with-jpeg --with-freetype &&
               docker-php-ext-install pdo_mysql mbstring bcmath zip gd &&
+              printf 'opcache.enable_cli=1\\nopcache.revalidate_freq=3600\\n' > /usr/local/etc/php/conf.d/local-opcache-cli.ini &&
               ([ -f /usr/local/bin/composer ] || (php -r \"copy('https://getcomposer.org/installer', '/tmp/composer-setup.php');\" && php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer)) &&
               composer install --no-interaction &&
               [ -f .env ] || cp .env.example .env &&
               grep -q '^APP_KEY=base64:' .env || php artisan key:generate &&
-              php artisan serve --host=0.0.0.0 --port=8000
+              PHP_CLI_SERVER_WORKERS=4 php artisan serve --host=0.0.0.0 --port=8000 --no-reload
             "
+        # start_period is generous because the whole apk/composer install
+        # sequence above (no layer caching -- see the comment on it) can
+        # take several minutes on a cold start; failed checks during that
+        # window count as "starting", not "unhealthy".
+        healthcheck:
+            test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:8000/login']
+            interval: 5s
+            timeout: 5s
+            retries: 3
+            start_period: 360s
 
     vite:
         image: node:20-slim
         working_dir: /app
         volumes:
             - .:/app
+            # Keep Linux dependencies off the Windows bind mount. Vite reads
+            # thousands of these files while optimizing a cold dependency
+            # graph, and doing that through Docker Desktop can take minutes.
+            - customerportal_local_node_modules:/app/node_modules
         ports:
             - '5173:5173'
         command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+        healthcheck:
+            test:
+                [
+                    'CMD',
+                    'node',
+                    '-e',
+                    "(async () => { for (const path of ['/resources/js/app.jsx', '/resources/css/app.css', '/resources/js/Pages/Auth/Login.jsx']) { const response = await fetch('http://127.0.0.1:5173' + path); if (!response.ok) process.exit(1); await response.arrayBuffer(); } })().then(() => process.exit(0)).catch(() => process.exit(1))",
+                ]
+            interval: 5s
+            # Dependency optimization and Tailwind's first compile are
+            # intentionally part of readiness; either can be slow on a
+            # cold Windows bind mount.
+            timeout: 120s
+            retries: 3
+            start_period: 120s
 
 volumes:
     customerportal_local_db:
+    customerportal_local_node_modules:

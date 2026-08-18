@@ -21,5 +21,24 @@ export default defineConfig({
         // plain non-Docker `npm run dev` too.
         origin: `http://${process.env.VITE_HMR_HOST ?? 'localhost'}:5173`,
         cors: true,
+        // Docker Desktop on Windows doesn't forward native filesystem
+        // change events from a bind-mounted host directory into the
+        // Linux container, so chokidar's default watcher never fires --
+        // edits silently don't trigger HMR. Polling works around that by
+        // having chokidar stat files on an interval instead of waiting
+        // for events.
+        watch: {
+            usePolling: true,
+            // Poll only at a human-scale HMR cadence, and skip the large
+            // backend/generated trees that never contain frontend source.
+            // Scanning them every 100ms can starve Tailwind's first compile
+            // on Docker Desktop and leave the browser on a blank page.
+            interval: 500,
+            ignored: [
+                '**/vendor/**',
+                '**/storage/**',
+                '**/public/build/**',
+            ],
+        },
     },
 });

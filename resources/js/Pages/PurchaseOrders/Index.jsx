@@ -53,6 +53,12 @@ export default function Index({ orders, filters }) {
     const columns = useMemo(
         () => [
             {
+                key: 'submitted_at',
+                header: 'Date',
+                sortable: true,
+                cell: (order) => formatDateTime(order.submitted_at),
+            },
+            {
                 key: 'po_number',
                 header: 'PO Number',
                 sortable: true,
@@ -69,22 +75,7 @@ export default function Index({ orders, filters }) {
                     </>
                 ),
             },
-            {
-                key: 'submitted_at',
-                header: 'Date',
-                sortable: true,
-                cell: (order) => formatDateTime(order.submitted_at),
-            },
             { key: 'customer_name', header: 'Customer', sortable: true },
-            {
-                key: 'item_display_name',
-                header: 'Product',
-                sortable: true,
-                cell: (order) => order.item_display_name ?? '-',
-            },
-            { key: 'ordered_quantity', header: 'Ordered', sortable: true, align: 'right' },
-            { key: 'delivered_quantity', header: 'Delivered', sortable: true, align: 'right' },
-            { key: 'balance_units', header: 'Balance', sortable: true, align: 'right' },
             {
                 key: 'status',
                 header: 'Status',
@@ -97,6 +88,24 @@ export default function Index({ orders, filters }) {
                     );
                 },
             },
+            {
+                key: 'actions',
+                header: 'Actions',
+                cell: (order) => (
+                    <Button asChild variant="ghost" size="compact">
+                        <Link href={route('purchase-orders.show', order.id)}>View</Link>
+                    </Button>
+                ),
+            },
+            {
+                key: 'item_display_name',
+                header: 'Product',
+                sortable: true,
+                cell: (order) => order.item_display_name ?? '-',
+            },
+            { key: 'ordered_quantity', header: 'Ordered', sortable: true, align: 'right' },
+            { key: 'delivered_quantity', header: 'Delivered', sortable: true, align: 'right' },
+            { key: 'balance_units', header: 'Balance', sortable: true, align: 'right' },
         ],
         [],
     );
@@ -125,7 +134,7 @@ export default function Index({ orders, filters }) {
                         onChange={setSearch}
                         placeholder="Company name"
                         leftIcon={<Search className="h-4 w-4" />}
-                        classNames={{ field: 'h-9 rounded-none' }}
+                        classNames={{ field: 'h-9 rounded-none ring-0 border-border' }}
                     />
                     <label className="flex flex-col text-sm text-gray-600">
                         Date filter
@@ -199,6 +208,7 @@ export default function Index({ orders, filters }) {
                         data={orders.data}
                         columns={columns}
                         getRowId={(order) => String(order.id)}
+                        defaultSort={{ key: 'submitted_at', direction: 'desc' }}
                         resizable
                         reorderable
                         emptyState="No orders match these filters."

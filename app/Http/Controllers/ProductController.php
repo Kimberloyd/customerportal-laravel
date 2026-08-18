@@ -82,7 +82,7 @@ class ProductController extends Controller
         $query->orderByRaw("LOWER(COALESCE({$column}, '')) {$sortDir}")
             ->orderBy('id', $sortDir);
 
-        $products = $query->paginate(25)->withQueryString();
+        $products = $query->get();
 
         return Inertia::render('Products/Index', [
             'products' => $products,
