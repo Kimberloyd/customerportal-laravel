@@ -1,0 +1,66 @@
+import { usePage } from '@inertiajs/react';
+import { X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+
+export default function FlashBanner() {
+    const { flash } = usePage().props;
+    const [dismissed, setDismissed] = useState(false);
+
+    useEffect(() => {
+        setDismissed(false);
+    }, [flash?.success, flash?.error, flash?.link]);
+
+    if (dismissed || (!flash?.success && !flash?.error && !flash?.link)) {
+        return null;
+    }
+
+    return (
+        <div className="sticky top-16 z-30">
+            {flash.success && (
+                <div className="bg-green-50">
+                    <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 text-sm text-green-700 sm:px-6 lg:px-8">
+                        <span>{flash.success}</span>
+                        <button
+                            type="button"
+                            onClick={() => setDismissed(true)}
+                            className="ml-4 shrink-0 text-green-700 hover:text-green-900"
+                            aria-label="Dismiss"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                    </div>
+                </div>
+            )}
+            {flash.error && (
+                <div className="bg-red-50">
+                    <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 text-sm text-red-700 sm:px-6 lg:px-8">
+                        <span>{flash.error}</span>
+                        <button
+                            type="button"
+                            onClick={() => setDismissed(true)}
+                            className="ml-4 shrink-0 text-red-700 hover:text-red-900"
+                            aria-label="Dismiss"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                    </div>
+                </div>
+            )}
+            {flash.link && (
+                <div className="border-y border-amber-300 bg-amber-50">
+                    <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 text-sm text-amber-800 sm:px-6 lg:px-8">
+                        <span>{flash.link}</span>
+                        <button
+                            type="button"
+                            onClick={() => setDismissed(true)}
+                            className="ml-4 shrink-0 text-amber-800 hover:text-amber-950"
+                            aria-label="Dismiss"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
