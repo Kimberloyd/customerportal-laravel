@@ -24,6 +24,8 @@ export type TableColumn<T> = {
   editable?: boolean;
   /** Value used for sorting. Falls back to `row[key]`. */
   sortValue?: (row: T) => string | number;
+  /** Opt this column out of the table-wide `reorderable` grip handle. */
+  reorderable?: boolean;
 };
 
 export type InsertPosition = "before" | "after";
@@ -75,6 +77,8 @@ export interface TableProps<T> {
   skeletonRows?: number;
   emptyState?: ReactNode;
   className?: string;
+  /** Makes each row clickable; receives the row data and stable id. */
+  onRowClick?: (row: T, id: string) => void;
 }
 
 /** A data row paired with its stable id. */

@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Table } from '@/components/motion/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/motion/input';
-import MonthlyVolumeChart from '@/Components/MonthlyVolumeChart';
+import MonthlyVolumeChart from '@/components/MonthlyVolumeChart';
 import { statusBadge, formatDateTime } from '@/utils/orderDisplay';
 import { Head, Link, router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';

@@ -2,7 +2,7 @@
 // beui.dev/components/motion/table
 
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useReducedMotion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Checkbox } from "@/components/motion/checkbox";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,9 @@ import { useColumnResize } from "./use-column-resize";
 import { useColumnSort } from "./use-column-sort";
 import { useRowSelection } from "./use-row-selection";
 import { CHECKBOX_WIDTH, alignText, readCell } from "./utils";
+
+const ROW_HOVER_SLIDE = { type: "spring", stiffness: 700, damping: 46, mass: 0.5 } as const;
+const ROW_HOVER_NONE = { duration: 0 } as const;
 
 export type {
   SortDirection,
@@ -54,6 +57,7 @@ export function Table<T>({
   skeletonRows = 3,
   emptyState = "No data",
   className,
+  onRowClick,
 }: TableProps<T>) {
   const reduce = useReducedMotion();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -206,6 +210,8 @@ export function Table<T>({
     rowTimer.current = setTimeout(() => setActiveRow(null), 100);
   }, []);
   const activeRowEl = activeRow ? rowRefs.current[activeRow.id] : null;
+
+  const [hoveredRowIndex, setHoveredRowIndex] = useState<number | null>(null);
   // Real columns + checkbox; the trailing spacer adds one more in colSpans.
   const leadColumns = columns.length + (selectable ? 1 : 0);
 
@@ -219,11 +225,25 @@ export function Table<T>({
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="overflow-auto"
-        style={{ height }}
+        onPointerLeave={() => setHoveredRowIndex(null)}
+        className="relative overflow-auto"
+        style={{ maxHeight: height }}
       >
+        {hoveredRowIndex != null ? (
+          <motion.div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 z-0 bg-muted/50"
+            initial={false}
+            animate={{
+              top: rowHeight + hoveredRowIndex * rowHeight,
+              opacity: 1,
+            }}
+            transition={reduce ? ROW_HOVER_NONE : ROW_HOVER_SLIDE}
+            style={{ height: rowHeight }}
+          />
+        ) : null}
         <table
-          className="min-w-full border-collapse"
+          className="relative z-10 min-w-full border-collapse"
           style={{
             // Only pin to "fixed" once every column has a resolved pixel
             // width (a resize snapshot or an explicit column.width) --
@@ -314,16 +334,22 @@ export function Table<T>({
                       }}
                       data-selected={isSelected}
                       style={{ height: rowHeight }}
-                      onPointerEnter={
-                        hasRowMenu
-                          ? () => activateRow(entry.id, vItem.index)
+                      onPointerEnter={(e) => {
+                        if (hasRowMenu) activateRow(entry.id, vItem.index);
+                        if (e.pointerType !== "touch") setHoveredRowIndex(vItem.index);
+                      }}
+                      onPointerLeave={() => {
+                        if (hasRowMenu) deactivateRow();
+                      }}
+                      onClick={
+                        onRowClick
+                          ? () => onRowClick(entry.row, entry.id)
                           : undefined
                       }
-                      onPointerLeave={hasRowMenu ? deactivateRow : undefined}
                       className={cn(
-                        "border-border/60 border-b transition-colors",
+                        "border-border/60 border-b",
                         "data-[selected=true]:bg-primary/5",
-                        "hover:bg-muted/50",
+                        onRowClick && "cursor-pointer",
                       )}
                     >
                       {selectable ? (

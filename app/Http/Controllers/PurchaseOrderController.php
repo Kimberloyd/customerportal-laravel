@@ -548,11 +548,13 @@ class PurchaseOrderController extends Controller
                 'remarks' => $order->remarks,
                 'total' => $order->total,
                 'has_attachment' => (bool) $order->po_file,
+                'attachment_kind' => $order->po_file
+                    ? (in_array(strtolower(pathinfo($order->po_file, PATHINFO_EXTENSION)), ['png', 'jpg', 'jpeg'], true)
+                        ? 'image'
+                        : (strtolower(pathinfo($order->po_file, PATHINFO_EXTENSION)) === 'pdf' ? 'pdf' : 'other'))
+                    : null,
                 'customer' => [
                     'name' => $order->customer->company_name,
-                    'email' => $order->customer->email,
-                    'phone' => $order->customer->phone,
-                    'address' => $order->customer->address,
                 ],
                 'items' => $order->items->map(fn (PurchaseOrderItem $item) => [
                     'id' => $item->id,
@@ -604,9 +606,6 @@ class PurchaseOrderController extends Controller
                 'total' => $order->total,
                 'customer' => [
                     'name' => $order->customer->company_name,
-                    'email' => $order->customer->email,
-                    'phone' => $order->customer->phone,
-                    'address' => $order->customer->address,
                 ],
                 'items' => $order->items->map(fn (PurchaseOrderItem $item) => [
                     'id' => $item->id,

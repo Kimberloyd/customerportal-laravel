@@ -23,7 +23,7 @@ class CompleteTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 3],
         ]);
 
-        $response = $this->actingAsUser($staff)->post("/purchase-orders/{$order->id}/complete");
+        $response = $this->actingAsUser($staff)->post("/orders/{$order->id}/complete");
 
         $response->assertSessionHas('error', 'This order is already cancelled and cannot be completed.');
         $this->assertSame(PurchaseOrder::STATUS_CANCELLED, $order->fresh()->status);
@@ -38,7 +38,7 @@ class CompleteTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 3],
         ]);
 
-        $this->actingAsUser($user)->post("/purchase-orders/{$order->id}/complete")->assertStatus(403);
+        $this->actingAsUser($user)->post("/orders/{$order->id}/complete")->assertStatus(403);
     }
 
     public function test_marks_every_item_fully_delivered_and_writes_audit(): void
@@ -52,7 +52,7 @@ class CompleteTest extends TestCase
             ['product_id' => $productB->id, 'quantity' => 4, 'delivered_quantity' => 0],
         ]);
 
-        $response = $this->actingAsUser($staff)->post("/purchase-orders/{$order->id}/complete");
+        $response = $this->actingAsUser($staff)->post("/orders/{$order->id}/complete");
 
         $response->assertRedirect(route('purchase-orders.index'));
         $order->refresh();

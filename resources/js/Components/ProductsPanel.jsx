@@ -1,8 +1,7 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Dropdown } from '@/Components/interior/dropdown';
+import { Dropdown } from '@/components/interior/dropdown';
 import { Table } from '@/components/motion/table';
 import { Input } from '@/components/motion/input';
-import { Head, router } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import { Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -12,18 +11,19 @@ const STATUS_OPTIONS = [
     { value: 'all', label: 'All' },
 ];
 
-export default function Index({ products, filters }) {
+export function ProductsPanel({ products, filters, filterRouteName, filterExtraParams = {} }) {
     const [search, setSearch] = useState(filters.search);
     const [status, setStatus] = useState(filters.status);
 
     const applyFilters = (overrides = {}) => {
         router.get(
-            route('products.index'),
+            route(filterRouteName),
             {
                 search,
                 status,
                 sort_by: filters.sort_by,
                 sort_dir: filters.sort_dir,
+                ...filterExtraParams,
                 ...overrides,
             },
             { preserveState: true, preserveScroll: true },
@@ -72,6 +72,7 @@ export default function Index({ products, filters }) {
                 key: 'description',
                 header: 'Description',
                 sortable: true,
+                width: '320px',
                 cell: (product) => product.description ?? '-',
             },
             {
@@ -108,55 +109,45 @@ export default function Index({ products, filters }) {
     );
 
     return (
-        <AuthenticatedLayout
-            header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    Products
-                </h2>
-            }
-        >
-            <Head title="Products" />
-
-            <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-                <div className="flex flex-wrap items-end gap-3 bg-white">
-                    <Input
-                        label="Search"
-                        type="text"
-                        value={search}
-                        onChange={setSearch}
-                        leftIcon={<Search className="h-4 w-4" />}
-                        classNames={{
-                            field: 'h-9 w-80 rounded-[9px] border-border ring-0 shadow-none',
-                        }}
-                    />
-                    <div className="flex flex-col text-sm text-gray-600">
-                        <span>Status</span>
-                        <Dropdown
-                            items={STATUS_OPTIONS}
-                            value={status}
-                            onChange={(value) => {
-                                setStatus(value);
-                                applyFilters({ status: value });
-                            }}
-                            label={
-                                STATUS_OPTIONS.find((option) => option.value === status)?.label ??
-                                'Select status'
-                            }
-                            className="mt-1"
-                        />
-                    </div>
-                </div>
-
-                <Table
-                    data={products}
-                    columns={columns}
-                    getRowId={(product) => String(product.id)}
-                    className="rounded-[9px] [&_td:not(:last-child)]:border-r [&_td:not(:last-child)]:border-border/60 [&_th:not(:last-child)]:border-r [&_th:not(:last-child)]:border-border/60"
-                    resizable
-                    reorderable
-                    emptyState="No products match these filters."
+        <div className="space-y-6">
+            <div className="flex flex-wrap items-end gap-3 bg-white">
+                <Input
+                    label="Search"
+                    type="text"
+                    value={search}
+                    onChange={setSearch}
+                    leftIcon={<Search className="h-4 w-4" />}
+                    classNames={{
+                        field: 'h-9 w-80 rounded-[9px] border-border ring-0 shadow-none',
+                    }}
                 />
+                <div className="flex flex-col text-sm text-gray-600">
+                    <span>Status</span>
+                    <Dropdown
+                        items={STATUS_OPTIONS}
+                        value={status}
+                        onChange={(value) => {
+                            setStatus(value);
+                            applyFilters({ status: value });
+                        }}
+                        label={
+                            STATUS_OPTIONS.find((option) => option.value === status)?.label ??
+                            'Select status'
+                        }
+                        className="mt-1"
+                    />
+                </div>
             </div>
-        </AuthenticatedLayout>
+
+            <Table
+                data={products}
+                columns={columns}
+                getRowId={(product) => String(product.id)}
+                className="rounded-[9px] [&>div]:overflow-hidden [&_td:not(:nth-last-child(-n+2))]:border-r [&_td:not(:nth-last-child(-n+2))]:border-border/60 [&_th:not(:nth-last-child(-n+2))]:border-r [&_th:not(:nth-last-child(-n+2))]:border-border/60"
+                resizable
+                reorderable
+                emptyState="No products match these filters."
+            />
+        </div>
     );
 }

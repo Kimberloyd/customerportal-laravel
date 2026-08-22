@@ -158,6 +158,7 @@ export default function Index({ users, filters, roleLabels }) {
                         data={users.data}
                         columns={columns}
                         getRowId={(user) => String(user.id)}
+                        className="rounded-[9px] [&>div]:overflow-hidden [&_td:not(:nth-last-child(-n+2))]:border-r [&_td:not(:nth-last-child(-n+2))]:border-border/60 [&_th:not(:nth-last-child(-n+2))]:border-r [&_th:not(:nth-last-child(-n+2))]:border-border/60"
                         resizable
                         reorderable
                         emptyState="No users match these filters."

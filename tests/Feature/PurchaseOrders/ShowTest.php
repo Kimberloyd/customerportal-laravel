@@ -24,7 +24,7 @@ class ShowTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 2],
         ]);
 
-        $response = $this->actingAsUser($user)->get("/purchase-orders/{$order->id}");
+        $response = $this->actingAsUser($user)->get("/orders/{$order->id}");
 
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
@@ -44,7 +44,7 @@ class ShowTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
-        $this->actingAsUser($user)->get("/purchase-orders/{$order->id}")->assertStatus(403);
+        $this->actingAsUser($user)->get("/orders/{$order->id}")->assertStatus(403);
     }
 
     public function test_staff_can_view_any_order(): void
@@ -56,7 +56,7 @@ class ShowTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
-        $response = $this->actingAsUser($staff)->get("/purchase-orders/{$order->id}");
+        $response = $this->actingAsUser($staff)->get("/orders/{$order->id}");
 
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page->where('isCustomerViewer', false));
@@ -73,12 +73,12 @@ class ShowTest extends TestCase
         $this->actingAsUser($staff);
         OrderAudit::record($order, 'Order Created', 'Created with 1 product line(s).', Request::create('/'));
 
-        $staffResponse = $this->actingAsUser($staff)->get("/purchase-orders/{$order->id}");
+        $staffResponse = $this->actingAsUser($staff)->get("/orders/{$order->id}");
         $staffResponse->assertInertia(fn ($page) => $page->where('order.audit_logs.0.actor_name', 'Jane Staff'));
 
         $customerUser = User::factory()->create(['role' => 'customer']);
         $customer->update(['user_id' => $customerUser->id]);
-        $customerResponse = $this->actingAsUser($customerUser)->get("/purchase-orders/{$order->id}");
+        $customerResponse = $this->actingAsUser($customerUser)->get("/orders/{$order->id}");
         $customerResponse->assertInertia(fn ($page) => $page->where('order.audit_logs.0.actor_name', null));
     }
 
@@ -92,7 +92,7 @@ class ShowTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
-        $this->actingAsUser($user)->get("/purchase-orders/{$order->id}/attachment")->assertStatus(403);
+        $this->actingAsUser($user)->get("/orders/{$order->id}/attachment")->assertStatus(403);
     }
 
     public function test_attachment_route_404s_when_no_file(): void
@@ -104,6 +104,6 @@ class ShowTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
-        $this->actingAsUser($staff)->get("/purchase-orders/{$order->id}/attachment")->assertStatus(404);
+        $this->actingAsUser($staff)->get("/orders/{$order->id}/attachment")->assertStatus(404);
     }
 }

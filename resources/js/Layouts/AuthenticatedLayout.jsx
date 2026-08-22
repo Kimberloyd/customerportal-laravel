@@ -1,6 +1,7 @@
-import Dropdown from '@/Components/Dropdown';
-import FlashBanner from '@/Components/FlashBanner';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
+import Dropdown from '@/components/Dropdown';
+import FlashBanner from '@/components/FlashBanner';
+import ResponsiveNavLink from '@/components/ResponsiveNavLink';
+import { FooterSimple } from '@/components/smoothui/footer-1';
 import { Link, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -33,7 +34,6 @@ export default function AuthenticatedLayout({ header, children }) {
                 active: route().current('purchase-orders.*'),
                 label: 'Orders',
             },
-            { key: 'products', href: route('products.index'), active: route().current('products.*'), label: 'Products' },
             {
                 key: 'messages',
                 href: route('messages.index'),
@@ -55,13 +55,7 @@ export default function AuthenticatedLayout({ header, children }) {
                           key: 'admin.dashboard',
                           href: route('admin.dashboard'),
                           active: route().current('admin.dashboard'),
-                          label: 'Administration',
-                      },
-                      {
-                          key: 'admin.users',
-                          href: route('admin.users.index'),
-                          active: route().current('admin.users.*'),
-                          label: 'Accounts',
+                          label: 'Admin',
                       },
                   ]
                 : []),
@@ -71,7 +65,7 @@ export default function AuthenticatedLayout({ header, children }) {
 
     return (
         <div className="min-h-screen bg-white">
-            <nav className="border-b border-gray-100 bg-white">
+            <nav className="sticky top-0 z-40 border-b border-gray-100 bg-white">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="flex h-16 justify-between">
                         <div className="flex">
@@ -237,6 +231,8 @@ export default function AuthenticatedLayout({ header, children }) {
                 </div>
             </nav>
 
+            <FlashBanner />
+
             {header && (
                 <header className="border-b border-gray-100 bg-white">
                     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
@@ -245,9 +241,25 @@ export default function AuthenticatedLayout({ header, children }) {
                 </header>
             )}
 
-            <FlashBanner />
-
             <main className="bg-white">{children}</main>
+
+            <FooterSimple
+                companyName="Theomeds Marketing Inc."
+                logoSrc="/images/TM Horizontal Lockup_Transparent BG.png"
+                description="Delay is not an Option"
+                linkGroups={[
+                    {
+                        heading: 'Navigate',
+                        items: [
+                            { name: 'Dashboard', url: route('dashboard') },
+                            { name: 'Orders', url: route('purchase-orders.index') },
+                            { name: 'Messages', url: route('messages.index') },
+                        ],
+                    },
+                ]}
+                social={{ facebook: 'https://www.facebook.com/profile.php?id=61560877803829' }}
+                copyright={`© ${new Date().getFullYear()} Theomeds Marketing Inc. All rights reserved.`}
+            />
         </div>
     );
 }

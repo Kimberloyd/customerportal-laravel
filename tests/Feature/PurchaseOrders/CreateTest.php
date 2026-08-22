@@ -29,7 +29,7 @@ class CreateTest extends TestCase
         $customer = $this->makeCustomer();
         $product = $this->makeProduct('Amoxicillin 500mg', ['unit_price' => 12.50]);
 
-        $response = $this->actingAsUser($staff)->post('/purchase-orders', [
+        $response = $this->actingAsUser($staff)->post('/orders', [
             'customer_id' => $customer->id,
             'remarks' => 'Rush order',
             'product_id' => [$product->id],
@@ -57,7 +57,7 @@ class CreateTest extends TestCase
         $customer = $this->makeCustomer();
         $this->makeProduct('Paracetamol 500mg', ['sku' => 'PARA-500']);
 
-        $response = $this->actingAsUser($staff)->post('/purchase-orders', [
+        $response = $this->actingAsUser($staff)->post('/orders', [
             'customer_id' => $customer->id,
             'product_id' => [''],
             'product_search' => ['paracetamol'],
@@ -75,7 +75,7 @@ class CreateTest extends TestCase
         $this->makeProduct('Amoxicillin 500mg Capsule');
         $this->makeProduct('Amoxicillin 250mg Capsule');
 
-        $response = $this->actingAsUser($staff)->post('/purchase-orders', [
+        $response = $this->actingAsUser($staff)->post('/orders', [
             'customer_id' => $customer->id,
             'product_id' => [''],
             'product_search' => ['amoxicillin'],
@@ -91,7 +91,7 @@ class CreateTest extends TestCase
         $staff = User::factory()->create(['role' => 'employee']);
         $customer = $this->makeCustomer();
 
-        $response = $this->actingAsUser($staff)->post('/purchase-orders', [
+        $response = $this->actingAsUser($staff)->post('/orders', [
             'customer_id' => $customer->id,
             'product_id' => [''],
             'product_search' => ['nonexistent-drug'],
@@ -108,7 +108,7 @@ class CreateTest extends TestCase
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
 
-        $response = $this->actingAsUser($staff)->post('/purchase-orders', [
+        $response = $this->actingAsUser($staff)->post('/orders', [
             'customer_id' => $customer->id,
             'product_id' => [$product->id],
             'product_search' => [''],
@@ -124,7 +124,7 @@ class CreateTest extends TestCase
         $staff = User::factory()->create(['role' => 'employee']);
         $customer = $this->makeCustomer();
 
-        $response = $this->actingAsUser($staff)->post('/purchase-orders', [
+        $response = $this->actingAsUser($staff)->post('/orders', [
             'customer_id' => $customer->id,
             'product_id' => [''],
             'product_search' => [''],
@@ -142,7 +142,7 @@ class CreateTest extends TestCase
         $other = $this->makeCustomer('Other Co');
         $product = $this->makeProduct();
 
-        $this->actingAsUser($user)->post('/purchase-orders', [
+        $this->actingAsUser($user)->post('/orders', [
             'customer_id' => $other->id,
             'product_id' => [$product->id],
             'product_search' => [''],
@@ -159,7 +159,7 @@ class CreateTest extends TestCase
         $customer = $this->makeCustomer();
         $product = $this->makeProduct('Original Name', ['sku' => 'ORIG-1']);
 
-        $this->actingAsUser($staff)->post('/purchase-orders', [
+        $this->actingAsUser($staff)->post('/orders', [
             'customer_id' => $customer->id,
             'product_id' => [$product->id],
             'product_search' => [''],
@@ -178,7 +178,7 @@ class CreateTest extends TestCase
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
 
-        $this->actingAsUser($staff)->post('/purchase-orders', [
+        $this->actingAsUser($staff)->post('/orders', [
             'customer_id' => $customer->id,
             'product_id' => [$product->id],
             'product_search' => [''],
@@ -200,7 +200,7 @@ class CreateTest extends TestCase
 
         $file = UploadedFile::fake()->createWithContent('order.pdf', "%PDF-1.4\n%fake pdf content for testing");
 
-        $response = $this->actingAsUser($staff)->post('/purchase-orders', [
+        $response = $this->actingAsUser($staff)->post('/orders', [
             'customer_id' => $customer->id,
             'product_id' => [$product->id],
             'product_search' => [''],
@@ -222,7 +222,7 @@ class CreateTest extends TestCase
 
         $file = UploadedFile::fake()->createWithContent('order.pdf', 'just plain text, not a real pdf');
 
-        $response = $this->actingAsUser($staff)->post('/purchase-orders', [
+        $response = $this->actingAsUser($staff)->post('/orders', [
             'customer_id' => $customer->id,
             'product_id' => [$product->id],
             'product_search' => [''],
@@ -238,7 +238,7 @@ class CreateTest extends TestCase
     {
         $user = User::factory()->create(['role' => 'customer']);
 
-        $this->actingAsUser($user)->get('/purchase-orders/create')->assertStatus(403);
-        $this->actingAsUser($user)->post('/purchase-orders', [])->assertStatus(403);
+        $this->actingAsUser($user)->get('/orders/create')->assertStatus(403);
+        $this->actingAsUser($user)->post('/orders', [])->assertStatus(403);
     }
 }

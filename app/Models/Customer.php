@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
-    'user_id', 'customer_code', 'company_name', 'channel',
-    'contact_person', 'email', 'phone', 'address', 'is_active', 'created_at',
+    'user_id', 'external_id', 'customer_code', 'company_name', 'channel', 'is_active', 'created_at',
 ])]
 class Customer extends Model
 {

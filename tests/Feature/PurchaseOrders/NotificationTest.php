@@ -20,7 +20,7 @@ class NotificationTest extends TestCase
         $customer = $this->makeCustomer('Own Co', $user);
         $product = Product::create(['product_name' => 'Widget', 'is_active' => true]);
 
-        $this->actingAsUser($user)->post('/purchase-orders', [
+        $this->actingAsUser($user)->post('/orders', [
             'customer_id' => $customer->id,
             'product_id' => [$product->id],
             'product_search' => [''],
@@ -44,7 +44,7 @@ class NotificationTest extends TestCase
         $customer = $this->makeCustomer();
         $product = Product::create(['product_name' => 'Widget', 'is_active' => true]);
 
-        $this->actingAsUser($staff)->post('/purchase-orders', [
+        $this->actingAsUser($staff)->post('/orders', [
             'customer_id' => $customer->id,
             'product_id' => [$product->id],
             'product_search' => [''],

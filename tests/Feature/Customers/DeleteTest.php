@@ -36,7 +36,7 @@ class DeleteTest extends TestCase
 
         $response = $this->actingAsUser($staff)->delete("/customers/{$customer->id}");
 
-        $response->assertRedirect(route('customers.index'));
+        $response->assertRedirect(route('admin.dashboard', ['tab' => 'customers']));
         $this->assertNull(Customer::find($customer->id));
     }
 
@@ -62,7 +62,7 @@ class DeleteTest extends TestCase
 
         $response = $this->actingAsUser($staff)->delete("/customers/{$customer->id}");
 
-        $response->assertRedirect(route('customers.index'));
+        $response->assertRedirect(route('admin.dashboard', ['tab' => 'customers']));
         $this->assertNull(Customer::find($customer->id));
     }
 

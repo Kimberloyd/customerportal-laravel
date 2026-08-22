@@ -25,7 +25,7 @@ class EditTest extends TestCase
         ]);
         $item = $order->items->first();
 
-        $response = $this->actingAsUser($staff)->put("/purchase-orders/{$order->id}", [
+        $response = $this->actingAsUser($staff)->put("/orders/{$order->id}", [
             'customer_id' => $customer->id,
             'remarks' => '',
             "quantity_{$item->id}" => 3,
@@ -45,7 +45,7 @@ class EditTest extends TestCase
         ]);
         $item = $order->items->first();
 
-        $this->actingAsUser($staff)->put("/purchase-orders/{$order->id}", [
+        $this->actingAsUser($staff)->put("/orders/{$order->id}", [
             'customer_id' => $customer->id,
             'remarks' => '',
             "quantity_{$item->id}" => 0,
@@ -64,7 +64,7 @@ class EditTest extends TestCase
         ]);
         $item = $order->items->first();
 
-        $response = $this->actingAsUser($staff)->put("/purchase-orders/{$order->id}", [
+        $response = $this->actingAsUser($staff)->put("/orders/{$order->id}", [
             'customer_id' => $customer->id,
             'remarks' => $order->remarks ?? '',
             "quantity_{$item->id}" => 5,
@@ -85,7 +85,7 @@ class EditTest extends TestCase
         ]);
         $item = $order->items->first();
 
-        $this->actingAsUser($staff)->put("/purchase-orders/{$order->id}", [
+        $this->actingAsUser($staff)->put("/orders/{$order->id}", [
             'customer_id' => $other->id,
             'remarks' => 'Closing note',
             "quantity_{$item->id}" => 99,
@@ -108,7 +108,7 @@ class EditTest extends TestCase
         ]);
         $item = $order->items->first();
 
-        $this->actingAsUser($staff)->put("/purchase-orders/{$order->id}", [
+        $this->actingAsUser($staff)->put("/orders/{$order->id}", [
             'customer_id' => $newCustomer->id,
             'remarks' => 'Updated remarks',
             "quantity_{$item->id}" => 8,
@@ -132,7 +132,7 @@ class EditTest extends TestCase
         ]);
         $item = $order->items->first();
 
-        $this->actingAsUser($staff)->put("/purchase-orders/{$order->id}", [
+        $this->actingAsUser($staff)->put("/orders/{$order->id}", [
             'customer_id' => $customer->id,
             'remarks' => '',
             "quantity_{$item->id}" => 5,
@@ -150,6 +150,6 @@ class EditTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
-        $this->actingAsUser($user)->get("/purchase-orders/{$order->id}/edit")->assertStatus(403);
+        $this->actingAsUser($user)->get("/orders/{$order->id}/edit")->assertStatus(403);
     }
 }

@@ -23,7 +23,7 @@ class CancelTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
-        $response = $this->actingAsUser($user)->post("/purchase-orders/{$order->id}/cancel");
+        $response = $this->actingAsUser($user)->post("/orders/{$order->id}/cancel");
 
         $response->assertRedirect(route('purchase-orders.index'));
         $this->assertSame(PurchaseOrder::STATUS_CANCELLED, $order->fresh()->status);
@@ -38,7 +38,7 @@ class CancelTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 1, 'delivered_quantity' => 1],
         ]);
 
-        $response = $this->actingAsUser($staff)->post("/purchase-orders/{$order->id}/cancel");
+        $response = $this->actingAsUser($staff)->post("/orders/{$order->id}/cancel");
 
         $response->assertSessionHas('error', 'This order is already completed and cannot be cancelled.');
         $this->assertSame(PurchaseOrder::STATUS_COMPLETED, $order->fresh()->status);
@@ -53,7 +53,7 @@ class CancelTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 5, 'delivered_quantity' => 2],
         ]);
 
-        $this->actingAsUser($staff)->post("/purchase-orders/{$order->id}/cancel");
+        $this->actingAsUser($staff)->post("/orders/{$order->id}/cancel");
 
         $this->assertSame(PurchaseOrder::STATUS_CANCELLED, $order->fresh()->status);
     }
@@ -67,7 +67,7 @@ class CancelTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
-        $this->actingAsUser($staff)->post("/purchase-orders/{$order->id}/cancel");
+        $this->actingAsUser($staff)->post("/orders/{$order->id}/cancel");
 
         $audit = PurchaseOrderAudit::first();
         $this->assertSame('Order Cancelled', $audit->action);
@@ -84,6 +84,6 @@ class CancelTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
-        $this->actingAsUser($user)->post("/purchase-orders/{$order->id}/cancel")->assertStatus(403);
+        $this->actingAsUser($user)->post("/orders/{$order->id}/cancel")->assertStatus(403);
     }
 }

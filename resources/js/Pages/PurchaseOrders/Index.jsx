@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Dropdown } from '@/Components/interior/dropdown';
+import { Dropdown } from '@/components/interior/dropdown';
 import { Table } from '@/components/motion/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/motion/input';
@@ -71,9 +71,7 @@ export default function Index({ orders, filters }) {
                 sortable: true,
                 cell: (order) => (
                     <>
-                        <Link href={route('purchase-orders.show', order.id)} className="font-medium text-indigo-600">
-                            {order.po_number}
-                        </Link>
+                        <span className="font-medium text-gray-900">{order.po_number}</span>
                         {order.is_awaiting_fulfillment && (
                             <span className="ml-2 rounded-full bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700">
                                 {order.is_processing ? 'Processing' : 'New Order'}
@@ -95,18 +93,11 @@ export default function Index({ orders, filters }) {
                     );
                 },
             },
-            {
-                key: 'actions',
-                header: 'Actions',
-                cell: (order) => (
-                    <Button asChild variant="ghost" size="compact">
-                        <Link href={route('purchase-orders.show', order.id)}>View</Link>
-                    </Button>
-                ),
-            },
         ],
         [],
     );
+
+    const goToOrder = (order) => router.visit(route('purchase-orders.show', order.id));
 
     return (
         <AuthenticatedLayout
@@ -209,9 +200,10 @@ export default function Index({ orders, filters }) {
                         columns={columns}
                         getRowId={(order) => String(order.id)}
                         defaultSort={{ key: 'submitted_at', direction: 'desc' }}
-                        className="rounded-[9px] [&_td:not(:last-child)]:border-r [&_td:not(:last-child)]:border-border/60 [&_th:not(:last-child)]:border-r [&_th:not(:last-child)]:border-border/60"
+                        className="rounded-[9px] [&>div]:overflow-hidden [&_td:not(:nth-last-child(-n+2))]:border-r [&_td:not(:nth-last-child(-n+2))]:border-border/60 [&_th:not(:nth-last-child(-n+2))]:border-r [&_th:not(:nth-last-child(-n+2))]:border-border/60"
                         resizable
                         reorderable
+                        onRowClick={goToOrder}
                         emptyState="No orders match these filters."
                     />
 

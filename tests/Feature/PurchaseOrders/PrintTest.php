@@ -23,7 +23,7 @@ class PrintTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
-        $this->actingAsUser($user)->get("/purchase-orders/{$order->id}/print")->assertStatus(403);
+        $this->actingAsUser($user)->get("/orders/{$order->id}/print")->assertStatus(403);
     }
 
     public function test_owning_customer_and_staff_can_view(): void
@@ -35,10 +35,10 @@ class PrintTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
-        $this->actingAsUser($user)->get("/purchase-orders/{$order->id}/print")->assertOk();
+        $this->actingAsUser($user)->get("/orders/{$order->id}/print")->assertOk();
 
         $staff = User::factory()->create(['role' => 'employee']);
-        $this->actingAsUser($staff)->get("/purchase-orders/{$order->id}/print")->assertOk();
+        $this->actingAsUser($staff)->get("/orders/{$order->id}/print")->assertOk();
     }
 
     public function test_output_and_auto_print_params_reach_the_page(): void
@@ -50,7 +50,7 @@ class PrintTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
-        $response = $this->actingAsUser($staff)->get("/purchase-orders/{$order->id}/print?output=pdf&auto_print=0");
+        $response = $this->actingAsUser($staff)->get("/orders/{$order->id}/print?output=pdf&auto_print=0");
 
         $response->assertInertia(fn ($page) => $page
             ->where('output', 'pdf')
@@ -67,7 +67,7 @@ class PrintTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
-        $response = $this->actingAsUser($staff)->get("/purchase-orders/{$order->id}/print?output=nonsense");
+        $response = $this->actingAsUser($staff)->get("/orders/{$order->id}/print?output=nonsense");
 
         $response->assertInertia(fn ($page) => $page->where('output', 'printer'));
     }

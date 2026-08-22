@@ -6,7 +6,6 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FacebookWebhookController;
 use App\Http\Controllers\MessageController;
-use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PublicConversationController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\ReportController;
@@ -22,7 +21,7 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware('auth')
     ->name('dashboard');
 
-Route::middleware('auth')->prefix('purchase-orders')->name('purchase-orders.')->group(function () {
+Route::middleware('auth')->prefix('orders')->name('purchase-orders.')->group(function () {
     Route::get('/', [PurchaseOrderController::class, 'index'])->name('index');
     Route::get('/create', [PurchaseOrderController::class, 'create'])->name('create');
     Route::post('/', [PurchaseOrderController::class, 'store'])->name('store');
@@ -36,16 +35,7 @@ Route::middleware('auth')->prefix('purchase-orders')->name('purchase-orders.')->
     Route::post('/{order}/cancel', [PurchaseOrderController::class, 'cancel'])->name('cancel');
 });
 
-Route::middleware('auth')->prefix('products')->name('products.')->group(function () {
-    Route::get('/', [ProductController::class, 'index'])->name('index');
-});
-
 Route::middleware('auth')->prefix('customers')->name('customers.')->group(function () {
-    Route::get('/', [CustomerController::class, 'index'])->name('index');
-    Route::get('/create', [CustomerController::class, 'create'])->name('create');
-    Route::post('/', [CustomerController::class, 'store'])->name('store');
-    Route::get('/{customer}/edit', [CustomerController::class, 'edit'])->name('edit');
-    Route::put('/{customer}', [CustomerController::class, 'update'])->name('update');
     Route::delete('/{customer}', [CustomerController::class, 'destroy'])->name('destroy');
     Route::post('/{customer}/toggle-active', [CustomerController::class, 'toggleActive'])->name('toggle-active');
 });

@@ -26,7 +26,7 @@ class ReceiveTest extends TestCase
         ]);
         [$itemA, $itemB] = $order->items;
 
-        $response = $this->actingAsUser($staff)->post("/purchase-orders/{$order->id}/receive", [
+        $response = $this->actingAsUser($staff)->post("/orders/{$order->id}/receive", [
             "received_{$itemA->id}" => 3,
             "received_{$itemB->id}" => 999,
         ]);
@@ -46,7 +46,7 @@ class ReceiveTest extends TestCase
         ]);
         $item = $order->items->first();
 
-        $response = $this->actingAsUser($staff)->post("/purchase-orders/{$order->id}/receive", [
+        $response = $this->actingAsUser($staff)->post("/orders/{$order->id}/receive", [
             "received_{$item->id}" => 0,
         ]);
 
@@ -63,12 +63,12 @@ class ReceiveTest extends TestCase
         ]);
         $item = $order->items->first();
 
-        $this->actingAsUser($staff)->post("/purchase-orders/{$order->id}/receive", [
+        $this->actingAsUser($staff)->post("/orders/{$order->id}/receive", [
             "received_{$item->id}" => 4,
         ]);
         $this->assertSame(PurchaseOrder::STATUS_PARTIAL, $order->fresh()->status);
 
-        $this->actingAsUser($staff)->post("/purchase-orders/{$order->id}/receive", [
+        $this->actingAsUser($staff)->post("/orders/{$order->id}/receive", [
             "received_{$item->id}" => 6,
         ]);
         $order->refresh();
@@ -88,7 +88,7 @@ class ReceiveTest extends TestCase
         ]);
         [$itemA, $itemB] = $order->items;
 
-        $this->actingAsUser($staff)->post("/purchase-orders/{$order->id}/receive", [
+        $this->actingAsUser($staff)->post("/orders/{$order->id}/receive", [
             "received_{$itemA->id}" => 2,
             "received_{$itemB->id}" => 0,
         ]);
@@ -108,7 +108,7 @@ class ReceiveTest extends TestCase
         ]);
         $item = $order->items->first();
 
-        $this->actingAsUser($user)->post("/purchase-orders/{$order->id}/receive", [
+        $this->actingAsUser($user)->post("/orders/{$order->id}/receive", [
             "received_{$item->id}" => 1,
         ])->assertStatus(403);
     }

@@ -244,7 +244,7 @@ export function TableHeader<T>({
                 }
                 transition={SPRING_PRESS}
               >
-                {reorderable ? (
+                {reorderable && column.reorderable !== false ? (
                   <button
                     type="button"
                     aria-label={`Reorder ${column.key} column`}

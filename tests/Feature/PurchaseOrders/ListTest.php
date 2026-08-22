@@ -27,7 +27,7 @@ class ListTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
-        $response = $this->actingAsUser($user)->get('/purchase-orders');
+        $response = $this->actingAsUser($user)->get('/orders');
 
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
@@ -40,7 +40,7 @@ class ListTest extends TestCase
     {
         $user = User::factory()->create(['role' => 'customer']);
 
-        $this->actingAsUser($user)->get('/purchase-orders')->assertStatus(403);
+        $this->actingAsUser($user)->get('/orders')->assertStatus(403);
     }
 
     public function test_search_filters_by_customer_name(): void
@@ -57,7 +57,7 @@ class ListTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
-        $response = $this->actingAsUser($staff)->get('/purchase-orders?search=acme');
+        $response = $this->actingAsUser($staff)->get('/orders?search=acme');
 
         $response->assertInertia(fn ($page) => $page
             ->where('orders.total', 1)
@@ -84,7 +84,7 @@ class ListTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
-        $response = $this->actingAsUser($staff)->get('/purchase-orders?status=active');
+        $response = $this->actingAsUser($staff)->get('/orders?status=active');
 
         $response->assertInertia(fn ($page) => $page->where('orders.total', 2));
     }
@@ -102,7 +102,7 @@ class ListTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
-        $response = $this->actingAsUser($staff)->get('/purchase-orders?date_filter=month&month=2026-03');
+        $response = $this->actingAsUser($staff)->get('/orders?date_filter=month&month=2026-03');
 
         $response->assertInertia(fn ($page) => $page->where('orders.total', 1));
     }
@@ -119,7 +119,7 @@ class ListTest extends TestCase
             ]);
         }
 
-        $response = $this->actingAsUser($staff)->get('/purchase-orders');
+        $response = $this->actingAsUser($staff)->get('/orders');
 
         $response->assertInertia(fn ($page) => $page
             ->where('orders.total', 30)

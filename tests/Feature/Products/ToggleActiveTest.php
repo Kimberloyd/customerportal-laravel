@@ -51,12 +51,12 @@ class ToggleActiveTest extends TestCase
         $staff = User::factory()->create(['role' => 'employee']);
         $product = $this->makeProduct('Visible Product');
 
-        $before = $this->actingAsUser($staff)->get('/purchase-orders/create');
+        $before = $this->actingAsUser($staff)->get('/orders/create');
         $before->assertInertia(fn ($page) => $page->has('products', 1));
 
         $this->actingAsUser($staff)->post("/products/{$product->id}/toggle-active");
 
-        $after = $this->actingAsUser($staff)->get('/purchase-orders/create');
+        $after = $this->actingAsUser($staff)->get('/orders/create');
         $after->assertInertia(fn ($page) => $page->has('products', 0));
     }
 }

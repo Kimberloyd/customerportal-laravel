@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import UserForm from '@/Components/UserForm';
+import UserForm from '@/components/UserForm';
 import { Button } from '@/components/ui/button';
 import { Head, useForm } from '@inertiajs/react';
 

@@ -52,9 +52,6 @@ export default function Print({ order, output, autoPrint }) {
                     <div>
                         <h3 className="text-sm font-semibold text-gray-500">Customer</h3>
                         <p className="mt-1 text-gray-900">{order.customer.name}</p>
-                        {order.customer.email && <p className="text-sm text-gray-500">{order.customer.email}</p>}
-                        {order.customer.phone && <p className="text-sm text-gray-500">{order.customer.phone}</p>}
-                        {order.customer.address && <p className="text-sm text-gray-500">{order.customer.address}</p>}
                     </div>
                     <div>
                         <h3 className="text-sm font-semibold text-gray-500">Order</h3>

@@ -29,6 +29,36 @@
     }
 }
 
+@layer base {
+    /*
+     * @tailwindcss/forms (base strategy) hardcodes a blue focus ring/border
+     * on every native input/select/textarea/checkbox/radio. Override just
+     * the color to the app's neutral --ring/--border tokens instead of
+     * disabling the plugin's reset (which also drives checkbox/select
+     * appearance elsewhere in the app).
+     */
+    [type='text']:focus,
+    [type='email']:focus,
+    [type='url']:focus,
+    [type='password']:focus,
+    [type='number']:focus,
+    [type='date']:focus,
+    [type='datetime-local']:focus,
+    [type='month']:focus,
+    [type='search']:focus,
+    [type='tel']:focus,
+    [type='time']:focus,
+    [type='week']:focus,
+    [type='checkbox']:focus,
+    [type='radio']:focus,
+    [multiple]:focus,
+    textarea:focus,
+    select:focus {
+        --tw-ring-color: var(--ring);
+        border-color: var(--border);
+    }
+}
+
 @keyframes spinner-move {
     to {
         stroke-dashoffset: -100;

@@ -1,4 +1,4 @@
-import Checkbox from '@/Components/Checkbox';
+import Checkbox from '@/components/Checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/motion/input';
 import GuestLayout from '@/Layouts/GuestLayout';
