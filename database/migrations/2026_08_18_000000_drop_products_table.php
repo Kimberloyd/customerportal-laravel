@@ -16,6 +16,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // The product_id foreign key has to go before the column itself.
+        // SQLite (used by the test suite) refuses a native DROP COLUMN while
+        // any foreign key still references that column, so this is required
+        // on every driver -- not just MySQL -- for the migration to run.
         if (DB::connection()->getDriverName() === 'mysql') {
             // The FK constraint's real name doesn't follow Laravel's default
             // naming convention on this database (fk_po_items_product_id,
@@ -35,6 +39,13 @@ return new class extends Migration
                     $table->dropForeign($constraint->CONSTRAINT_NAME);
                 });
             }
+        } else {
+            // Laravel's SQLite grammar only supports dropping a foreign key by
+            // column, never by name, and routes that through a full table
+            // rebuild that omits the constraint.
+            Schema::table('purchase_order_items', function (Blueprint $table) {
+                $table->dropForeign(['product_id']);
+            });
         }
 
         Schema::table('purchase_order_items', function (Blueprint $table) {

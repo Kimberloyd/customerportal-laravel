@@ -4,17 +4,34 @@ namespace Tests\Concerns;
 
 use App\Models\Customer;
 use App\Models\CustomerMessage;
-use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\User;
+use Illuminate\Support\Fluent;
 
 trait CreatesOrderFixtures
 {
-    protected function makeProduct(string $name = 'Widget', array $overrides = []): Product
+    /**
+     * Products live in the inventoryapp API rather than this database (see
+     * the 2026_08_18 migration that dropped the local `products` table), so
+     * there is nothing to persist here. This returns a plain value object
+     * standing in for one catalogue row -- enough for fixtures that only
+     * need an id and the snapshot fields copied onto an order item.
+     *
+     * Tests that exercise order *creation* need the API itself faked, since
+     * PurchaseOrderController resolves products through InventoryApiClient.
+     */
+    protected function makeProduct(string $name = 'Widget', array $overrides = []): Fluent
     {
-        return Product::create(array_merge([
+        static $nextId = 1;
+
+        return new Fluent(array_merge([
+            'id' => $nextId++,
             'product_name' => $name,
+            'sku' => null,
+            'unit' => null,
+            'description' => null,
+            'unit_price' => 0,
             'is_active' => true,
         ], $overrides));
     }
