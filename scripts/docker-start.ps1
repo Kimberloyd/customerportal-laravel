@@ -27,6 +27,14 @@ if (-not (Test-DockerReady)) {
 }
 
 Set-Location -LiteralPath $root
+
+# Port 5173 can fall inside a Windows/Hyper-V excluded port range, which
+# prevents Docker Desktop from publishing it even when no process owns it.
+# Keep the host port overridable while using a safer local default.
+if ([string]::IsNullOrWhiteSpace($env:VITE_HOST_PORT)) {
+  $env:VITE_HOST_PORT = "5273"
+}
+
 docker compose -f $composeFile up -d
 if ($LASTEXITCODE -ne 0) {
   Write-Error "docker compose up failed -- see the output above."
@@ -122,7 +130,7 @@ while ($true) {
 Write-Host ""
 Write-Host "Customer Portal is running:"
 Write-Host "  App:  http://localhost:8090"
-Write-Host "  Vite: http://localhost:5173"
+Write-Host "  Vite: http://localhost:$env:VITE_HOST_PORT"
 Write-Host ""
 Write-Host "Logs:  docker compose -f $composeFile logs -f"
 Write-Host "Stop:  npm.cmd run stop"

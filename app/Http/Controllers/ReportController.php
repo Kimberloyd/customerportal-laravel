@@ -139,7 +139,11 @@ class ReportController extends Controller
         $customerId = $linkedCustomer?->id
             ?? ($request->query('customer_id') ? (int) $request->query('customer_id') : null);
 
-        $query = PurchaseOrder::with(['customer', 'items.product']);
+        // No `items.product` here: that relationship went away with the local
+        // products table, and the item rows already carry the product name /
+        // sku snapshotted at order time. Eager-loading it threw only once the
+        // query actually matched an order, so an empty result set hid it.
+        $query = PurchaseOrder::with(['customer', 'items']);
         if ($customerId) {
             $query->where('customer_id', $customerId);
         }
@@ -392,17 +396,25 @@ class ReportController extends Controller
 
     private function buildProductPerformance(CarbonImmutable $periodStart, CarbonImmutable $periodEnd, ?int $customerId): array
     {
+        // Products left this database in the 2026_08_18 migration, so there is
+        // no `products` table to join and no product_id to join on. The name
+        // snapshotted onto each item at order time is the only stable key
+        // left -- and the only complete one: roughly half of existing items
+        // carry no sku, so grouping by that would collapse them into one bucket.
+        //
+        // Consequence worth knowing: a product renamed upstream now appears as
+        // two rows in historical reports, because each order kept the name it
+        // was placed under. generic_name was never snapshotted at all, so it
+        // is not recoverable for past orders.
         $rows = DB::table('purchase_order_items')
-            ->join('products', 'products.id', '=', 'purchase_order_items.product_id')
             ->join('purchase_orders', 'purchase_orders.id', '=', 'purchase_order_items.purchase_order_id')
             ->where('purchase_orders.submitted_at', '>=', $periodStart)
             ->where('purchase_orders.submitted_at', '<', $periodEnd)
             ->where('purchase_orders.status', '!=', PurchaseOrder::STATUS_CANCELLED)
             ->when($customerId, fn ($q) => $q->where('purchase_orders.customer_id', $customerId))
-            ->groupBy('products.id', 'products.product_name', 'products.generic_name')
+            ->groupBy('purchase_order_items.product_name')
             ->get([
-                'products.product_name as product_name',
-                'products.generic_name as generic_name',
+                'purchase_order_items.product_name as product_name',
                 DB::raw('SUM(purchase_order_items.quantity) as ordered'),
                 DB::raw('SUM(purchase_order_items.delivered_quantity) as delivered'),
             ]);
@@ -412,8 +424,8 @@ class ReportController extends Controller
             $delivered = (int) $row->delivered;
 
             return [
-                'product_name' => $row->product_name,
-                'generic_name' => $row->generic_name ?: '-',
+                'product_name' => $row->product_name ?: 'Unknown product',
+                'generic_name' => '-',
                 'ordered' => $ordered,
                 'delivered' => $delivered,
                 'backlog' => max($ordered - $delivered, 0),

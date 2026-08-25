@@ -254,7 +254,6 @@ class PurchaseOrderController extends Controller
                     $unitPrice = $product->unit_price ?? 0;
                     PurchaseOrderItem::create([
                         'purchase_order_id' => $order->id,
-                        'product_id' => $product->id,
                         'quantity' => $quantity,
                         'delivered_quantity' => 0,
                         'unit_price' => $unitPrice,

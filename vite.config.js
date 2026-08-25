@@ -19,7 +19,7 @@ export default defineConfig({
         // browsers can't connect to (0.0.0.0 means "any interface", not
         // an actual address). HMR_HOST lets this stay localhost for a
         // plain non-Docker `npm run dev` too.
-        origin: `http://${process.env.VITE_HMR_HOST ?? 'localhost'}:5173`,
+        origin: `http://${process.env.VITE_HMR_HOST ?? 'localhost'}:${process.env.VITE_HMR_PORT ?? '5173'}`,
         cors: true,
         // Docker Desktop on Windows doesn't forward native filesystem
         // change events from a bind-mounted host directory into the

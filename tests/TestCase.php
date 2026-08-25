@@ -21,25 +21,38 @@ abstract class TestCase extends BaseTestCase
         // Stray-request prevention makes any unfaked host fail loudly
         // rather than silently escaping to the network.
         Http::preventStrayRequests();
-        $this->fakeInventoryApi();
+
+        // Resolved lazily: Http::fake() *merges* stubs and the first match
+        // wins, so a stub registered here with a fixed payload would shadow
+        // any later one. Reading the properties at request time instead lets
+        // fixtures keep seeding the catalogue after setUp() has run.
+        Http::fake([
+            '*/products*' => fn () => Http::response($this->inventoryPage($this->inventoryProducts)),
+            '*/customers*' => fn () => Http::response($this->inventoryPage($this->inventoryCustomers)),
+        ]);
     }
 
     /**
-     * Stub the inventoryapp endpoints. Call again from a test with explicit
-     * rows to exercise a populated catalogue -- the later fake wins.
+     * Rows the faked catalogue endpoints will return, in the upstream API's
+     * own field vocabulary.
      *
-     * `has_next` must stay false: InventoryApiClient pages in a do/while
-     * loop and would spin forever otherwise.
+     * @var array<int, array<string, mixed>>
+     */
+    protected array $inventoryProducts = [];
+
+    /** @var array<int, array<string, mixed>> */
+    protected array $inventoryCustomers = [];
+
+    /**
+     * Seed what the faked inventoryapp endpoints return.
      *
      * @param  array<int, array<string, mixed>>  $products
      * @param  array<int, array<string, mixed>>  $customers
      */
     protected function fakeInventoryApi(array $products = [], array $customers = []): void
     {
-        Http::fake([
-            '*/products*' => Http::response($this->inventoryPage($products)),
-            '*/customers*' => Http::response($this->inventoryPage($customers)),
-        ]);
+        $this->inventoryProducts = $products;
+        $this->inventoryCustomers = $customers;
     }
 
     /**

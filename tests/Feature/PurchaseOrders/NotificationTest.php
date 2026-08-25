@@ -18,9 +18,10 @@ class NotificationTest extends TestCase
     {
         $user = User::factory()->create(['role' => 'customer']);
         $customer = $this->makeCustomer('Own Co', $user);
-        $product = Product::create(['product_name' => 'Widget', 'is_active' => true]);
+        $product = $this->makeProduct('Widget');
 
         $this->actingAsUser($user)->post('/orders', [
+            'po_number' => 'PO-'.uniqid(),
             'customer_id' => $customer->id,
             'product_id' => [$product->id],
             'product_search' => [''],
@@ -42,9 +43,10 @@ class NotificationTest extends TestCase
     {
         $staff = User::factory()->create(['role' => 'employee']);
         $customer = $this->makeCustomer();
-        $product = Product::create(['product_name' => 'Widget', 'is_active' => true]);
+        $product = $this->makeProduct('Widget');
 
         $this->actingAsUser($staff)->post('/orders', [
+            'po_number' => 'PO-'.uniqid(),
             'customer_id' => $customer->id,
             'product_id' => [$product->id],
             'product_search' => [''],

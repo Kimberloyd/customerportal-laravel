@@ -24,7 +24,7 @@
 #   docker compose -f docker-compose.local.yml exec vite npm install          # first time only, for the Vite container
 #
 # App: http://localhost:8090
-# Vite dev server (HMR): http://localhost:5173 -- app.blade.php's @vite
+# Vite dev server (HMR): http://localhost:5273 by default -- app.blade.php's @vite
 # directive talks to it automatically in APP_ENV=local.
 
 services:
@@ -99,6 +99,10 @@ services:
     vite:
         image: node:20-slim
         working_dir: /app
+        environment:
+            # Keep the browser-facing URL in sync with the published host
+            # port. Override VITE_HOST_PORT if 5273 is unavailable locally.
+            VITE_HMR_PORT: '${VITE_HOST_PORT:-5273}'
         volumes:
             - .:/app
             # Keep Linux dependencies off the Windows bind mount. Vite reads
@@ -106,7 +110,10 @@ services:
             # graph, and doing that through Docker Desktop can take minutes.
             - customerportal_local_node_modules:/app/node_modules
         ports:
-            - '5173:5173'
+            # Windows/Hyper-V commonly reserves ranges that can include
+            # Vite's usual 5173 port. The container still listens on 5173;
+            # only the host-facing port changes.
+            - '${VITE_HOST_PORT:-5273}:5173'
         command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
         healthcheck:
             test:

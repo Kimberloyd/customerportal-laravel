@@ -30,6 +30,7 @@ class CreateTest extends TestCase
         $product = $this->makeProduct('Amoxicillin 500mg', ['unit_price' => 12.50]);
 
         $response = $this->actingAsUser($staff)->post('/orders', [
+            'po_number' => 'PO-'.uniqid(),
             'customer_id' => $customer->id,
             'remarks' => 'Rush order',
             'product_id' => [$product->id],
@@ -58,6 +59,7 @@ class CreateTest extends TestCase
         $this->makeProduct('Paracetamol 500mg', ['sku' => 'PARA-500']);
 
         $response = $this->actingAsUser($staff)->post('/orders', [
+            'po_number' => 'PO-'.uniqid(),
             'customer_id' => $customer->id,
             'product_id' => [''],
             'product_search' => ['paracetamol'],
@@ -76,6 +78,7 @@ class CreateTest extends TestCase
         $this->makeProduct('Amoxicillin 250mg Capsule');
 
         $response = $this->actingAsUser($staff)->post('/orders', [
+            'po_number' => 'PO-'.uniqid(),
             'customer_id' => $customer->id,
             'product_id' => [''],
             'product_search' => ['amoxicillin'],
@@ -92,6 +95,7 @@ class CreateTest extends TestCase
         $customer = $this->makeCustomer();
 
         $response = $this->actingAsUser($staff)->post('/orders', [
+            'po_number' => 'PO-'.uniqid(),
             'customer_id' => $customer->id,
             'product_id' => [''],
             'product_search' => ['nonexistent-drug'],
@@ -109,6 +113,7 @@ class CreateTest extends TestCase
         $product = $this->makeProduct();
 
         $response = $this->actingAsUser($staff)->post('/orders', [
+            'po_number' => 'PO-'.uniqid(),
             'customer_id' => $customer->id,
             'product_id' => [$product->id],
             'product_search' => [''],
@@ -125,6 +130,7 @@ class CreateTest extends TestCase
         $customer = $this->makeCustomer();
 
         $response = $this->actingAsUser($staff)->post('/orders', [
+            'po_number' => 'PO-'.uniqid(),
             'customer_id' => $customer->id,
             'product_id' => [''],
             'product_search' => [''],
@@ -143,6 +149,7 @@ class CreateTest extends TestCase
         $product = $this->makeProduct();
 
         $this->actingAsUser($user)->post('/orders', [
+            'po_number' => 'PO-'.uniqid(),
             'customer_id' => $other->id,
             'product_id' => [$product->id],
             'product_search' => [''],
@@ -160,6 +167,7 @@ class CreateTest extends TestCase
         $product = $this->makeProduct('Original Name', ['sku' => 'ORIG-1']);
 
         $this->actingAsUser($staff)->post('/orders', [
+            'po_number' => 'PO-'.uniqid(),
             'customer_id' => $customer->id,
             'product_id' => [$product->id],
             'product_search' => [''],
@@ -179,6 +187,7 @@ class CreateTest extends TestCase
         $product = $this->makeProduct();
 
         $this->actingAsUser($staff)->post('/orders', [
+            'po_number' => 'PO-'.uniqid(),
             'customer_id' => $customer->id,
             'product_id' => [$product->id],
             'product_search' => [''],
@@ -201,6 +210,7 @@ class CreateTest extends TestCase
         $file = UploadedFile::fake()->createWithContent('order.pdf', "%PDF-1.4\n%fake pdf content for testing");
 
         $response = $this->actingAsUser($staff)->post('/orders', [
+            'po_number' => 'PO-'.uniqid(),
             'customer_id' => $customer->id,
             'product_id' => [$product->id],
             'product_search' => [''],
@@ -223,6 +233,7 @@ class CreateTest extends TestCase
         $file = UploadedFile::fake()->createWithContent('order.pdf', 'just plain text, not a real pdf');
 
         $response = $this->actingAsUser($staff)->post('/orders', [
+            'po_number' => 'PO-'.uniqid(),
             'customer_id' => $customer->id,
             'product_id' => [$product->id],
             'product_search' => [''],
