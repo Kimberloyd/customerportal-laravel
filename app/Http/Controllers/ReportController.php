@@ -98,9 +98,14 @@ class ReportController extends Controller
         [$ordersQuery, $filters] = $this->filteredOrdersQuery($request);
         $summary = $this->reportSummary($ordersQuery);
         $orders = (clone $ordersQuery)
-            ->with(['customer', 'items'])
+            ->select(['id', 'po_number', 'customer_id', 'status', 'remarks', 'submitted_at'])
+            ->with([
+                'customer:id,company_name',
+                'items:id,purchase_order_id,quantity,delivered_quantity,product_name',
+            ])
             ->orderByDesc('submitted_at')
-            ->get();
+            ->orderByDesc('id')
+            ->lazy(250);
 
         return OrdersReportExport::stream($orders, $filters, $summary);
     }
