@@ -12,6 +12,7 @@ use App\Support\OrderNotifications;
 use App\Support\PoAttachment;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -320,8 +321,16 @@ class PurchaseOrderController extends Controller
     {
         $this->authorizeOrderAccess($order);
 
+        $attachmentToDeleteAfterCommit = null;
+        $newlySavedAttachment = null;
+
         try {
-            DB::transaction(function () use ($request, $order) {
+            DB::transaction(function () use (
+                $request,
+                $order,
+                &$attachmentToDeleteAfterCommit,
+                &$newlySavedAttachment,
+            ) {
                 $locked = PurchaseOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
                 $locked->load(['items', 'customer']);
 
@@ -377,9 +386,6 @@ class PurchaseOrderController extends Controller
                     $locked->remarks = $newRemarks;
                 }
 
-                $attachmentToDeleteAfterCommit = null;
-                $newlySavedAttachment = null;
-
                 if (! $isTerminal) {
                     if ($request->boolean('remove_attachment') && $locked->po_file) {
                         $attachmentToDeleteAfterCommit = $locked->po_file;
@@ -408,13 +414,23 @@ class PurchaseOrderController extends Controller
 
                 $locked->save();
                 OrderAudit::record($locked, 'Order Updated', implode(' ', $changes), $request);
-
-                if ($attachmentToDeleteAfterCommit) {
-                    PoAttachment::delete($attachmentToDeleteAfterCommit);
-                }
             });
         } catch (\RuntimeException $e) {
+            if ($newlySavedAttachment) {
+                PoAttachment::delete($newlySavedAttachment);
+            }
+
             return back()->with('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            if ($newlySavedAttachment) {
+                PoAttachment::delete($newlySavedAttachment);
+            }
+
+            throw $e;
+        }
+
+        if ($attachmentToDeleteAfterCommit) {
+            PoAttachment::delete($attachmentToDeleteAfterCommit);
         }
 
         return redirect()->route('purchase-orders.show', $order->id)->with('success', 'Order updated successfully.');
@@ -669,9 +685,9 @@ class PurchaseOrderController extends Controller
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, object>
+     * @return Collection<int, object>
      */
-    private function activeProducts(): \Illuminate\Support\Collection
+    private function activeProducts(): Collection
     {
         return collect($this->inventory->allProducts(['status' => 'active']))
             ->map(fn (array $product) => (object) InventoryApiClient::mapProduct($product));

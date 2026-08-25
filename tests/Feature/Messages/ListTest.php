@@ -9,8 +9,8 @@ use Tests\TestCase;
 
 class ListTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesOrderFixtures;
+    use RefreshDatabase;
 
     public function test_customer_sees_only_their_own_thread(): void
     {
@@ -90,6 +90,39 @@ class ListTest extends TestCase
         $response->assertInertia(fn ($page) => $page
             ->where('threads.total', 30)
             ->where('threads.last_page', 2)
+        );
+    }
+
+    public function test_list_uses_the_latest_reply_and_reports_reply_metadata(): void
+    {
+        $staff = User::factory()->create(['role' => 'employee']);
+        $customer = $this->makeCustomer();
+        $thread = $this->makeThread($customer, [
+            'body' => 'original',
+            'sender_type' => 'customer',
+            'is_read' => true,
+        ]);
+
+        foreach (['older reply', 'latest reply'] as $body) {
+            $thread->replies()->create([
+                'customer_id' => $customer->id,
+                'subject' => $thread->subject,
+                'body' => $body,
+                'sender_type' => 'customer',
+                'is_read' => $body !== 'latest reply',
+                'status' => 'open',
+                'channel' => 'portal',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        $response = $this->actingAsUser($staff)->get('/messages');
+
+        $response->assertInertia(fn ($page) => $page
+            ->where('threads.data.0.reply_count', 2)
+            ->where('threads.data.0.latest_preview', 'latest reply')
+            ->where('threads.data.0.has_unread', true)
         );
     }
 }

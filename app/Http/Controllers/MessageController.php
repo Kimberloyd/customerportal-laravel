@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\CustomerMessage;
-use App\Models\User;
 use App\Support\CustomerScope;
 use App\Support\FacebookMessenger;
 use App\Support\MessageThread;
@@ -32,7 +31,12 @@ class MessageController extends Controller
         $statusFilter = strtolower(trim((string) $request->query('status', 'all'))) ?: 'all';
         $senderType = MessageThread::recipientSenderType();
 
-        $query = $this->rootThreadsQuery()->with(['customer', 'replies']);
+        $query = $this->rootThreadsQuery()
+            ->with(['customer', 'latestReply'])
+            ->withCount('replies')
+            ->withExists(['replies as has_unread_replies' => fn ($q) => $q
+                ->where('sender_type', $senderType)
+                ->where('is_read', false)]);
 
         if ($statusFilter === 'open' || $statusFilter === 'closed') {
             $query->where('status', $statusFilter);
@@ -51,8 +55,7 @@ class MessageController extends Controller
         $threads = $query->orderByDesc('updated_at')->paginate(25)->withQueryString();
 
         $threads->through(function (CustomerMessage $thread) use ($senderType) {
-            $messages = MessageThread::threadMessages($thread);
-            $latest = $messages->last();
+            $latest = $thread->latestReply ?? $thread;
 
             return [
                 'id' => $thread->id,
@@ -61,10 +64,11 @@ class MessageController extends Controller
                 'is_facebook' => $thread->isFacebookMessenger(),
                 'status' => $thread->status,
                 'updated_at' => $thread->updated_at?->toIso8601String(),
-                'reply_count' => max($messages->count() - 1, 0),
+                'reply_count' => (int) $thread->replies_count,
                 'latest_preview' => $latest ? Str::limit($latest->body, 120) : null,
                 'latest_sender_type' => $latest?->sender_type,
-                'has_unread' => $messages->contains(fn (CustomerMessage $m) => $m->sender_type === $senderType && ! $m->is_read),
+                'has_unread' => ($thread->sender_type === $senderType && ! $thread->is_read)
+                    || (bool) $thread->has_unread_replies,
             ];
         });
 

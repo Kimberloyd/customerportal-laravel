@@ -1,5 +1,6 @@
 services:
   app:
+    image: customerportal-laravel-app:latest
     build:
       context: .
     env_file:
@@ -45,11 +46,41 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - "php -r \"exit((new PDO('mysql:host=' . getenv('DB_HOST') . ';port=' . getenv('DB_PORT'), getenv('DB_USERNAME'), getenv('DB_PASSWORD'))) ? 0 : 1);\" 2>/dev/null || exit 0"
+        - "php -r \"new PDO('mysql:host=' . getenv('DB_HOST') . ';port=' . getenv('DB_PORT'), getenv('DB_USERNAME'), getenv('DB_PASSWORD'));\""
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 20s
+
+  scheduler:
+    image: customerportal-laravel-app:latest
+    env_file:
+      - .env
+    environment:
+      APP_ENV: production
+    command: ["php", "artisan", "schedule:work"]
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+    tmpfs:
+      - /app/storage/framework/sessions
+      - /app/storage/framework/cache
+      - /app/storage/framework/views
+      - /app/bootstrap/cache
+      - /tmp
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 128m
+    networks:
+      - flask
 
   proxy:
     build:

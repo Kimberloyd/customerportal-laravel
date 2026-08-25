@@ -23,6 +23,7 @@ RUN apk add --no-cache \
         libpng \
         libjpeg-turbo \
         freetype \
+        su-exec \
     && apk add --no-cache --virtual .build-deps \
         icu-dev \
         libzip-dev \

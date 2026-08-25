@@ -73,6 +73,10 @@ class LoginRequest extends FormRequest
      */
     private function attemptAuthentication(?User $user): bool
     {
+        if ($user && ! $user->is_active) {
+            return false;
+        }
+
         if ($user && LegacyPasswordHasher::isLegacyHash($user->password_hash)) {
             return $this->attemptLegacyAuthentication($user);
         }

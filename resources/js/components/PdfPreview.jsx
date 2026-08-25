@@ -1,8 +1,4 @@
-import * as pdfjsLib from 'pdfjs-dist';
-import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { useEffect, useRef, useState } from 'react';
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 export function PdfPreview({ url, className, firstPageOnly = false, loadingClassName }) {
     const containerRef = useRef(null);
@@ -11,12 +7,21 @@ export function PdfPreview({ url, className, firstPageOnly = false, loadingClass
 
     useEffect(() => {
         let cancelled = false;
+        let loadingTask = null;
         const renderTasks = [];
         setStatus('loading');
 
         async function render() {
             try {
-                const pdf = await pdfjsLib.getDocument({ url, withCredentials: true }).promise;
+                const [pdfjsLib, workerModule] = await Promise.all([
+                    import('pdfjs-dist'),
+                    import('pdfjs-dist/build/pdf.worker.min.mjs?url'),
+                ]);
+                if (cancelled) return;
+
+                pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule.default;
+                loadingTask = pdfjsLib.getDocument({ url, withCredentials: true });
+                const pdf = await loadingTask.promise;
                 if (cancelled) return;
 
                 const container = containerRef.current;
@@ -57,6 +62,7 @@ export function PdfPreview({ url, className, firstPageOnly = false, loadingClass
         return () => {
             cancelled = true;
             renderTasks.forEach((task) => task.cancel());
+            void loadingTask?.destroy();
         };
     }, [url, firstPageOnly]);
 

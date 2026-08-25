@@ -26,5 +26,10 @@ done
 # Worker processes (the ones that actually run PHP/Laravel code) still
 # drop to the unprivileged `app` user, via the pool's user/group
 # directives (docker/app/www.conf) -- same division of privilege the
-# proxy service's nginx master/worker split already uses.
-exec "$@"
+# proxy service's nginx master/worker split already uses. All other
+# commands (notably the scheduler) drop privileges here.
+if [ "$1" = "php-fpm" ]; then
+    exec "$@"
+fi
+
+exec su-exec app "$@"

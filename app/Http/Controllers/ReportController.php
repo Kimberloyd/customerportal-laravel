@@ -4,12 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderItem;
 use App\Support\CustomerScope;
 use App\Support\OrdersReportExport;
 use App\Support\ReportPeriod;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -77,35 +78,39 @@ class ReportController extends Controller
 
     public function orders(Request $request): Response
     {
-        [$orders, $filters] = $this->fetchFilteredOrders($request);
+        [$ordersQuery, $filters] = $this->filteredOrdersQuery($request);
 
         $linkedCustomer = CustomerScope::forCurrentUser();
         $customers = $linkedCustomer
             ? collect([['id' => $linkedCustomer->id, 'company_name' => $linkedCustomer->company_name]])
             : Customer::orderBy('company_name')->get(['id', 'company_name']);
 
-        $page = max((int) $request->query('page', 1), 1);
-        $paginator = new LengthAwarePaginator(
-            $orders->forPage($page, self::PAGE_SIZE)->values()->map(fn (PurchaseOrder $o) => $this->serializeOrderRow($o)),
-            $orders->count(),
-            self::PAGE_SIZE,
-            $page,
-            ['path' => $request->url(), 'query' => $request->query()],
-        );
+        $summary = $this->reportSummary($ordersQuery);
+        $paginator = (clone $ordersQuery)
+            ->with(['customer', 'items'])
+            ->orderByDesc('submitted_at')
+            ->paginate(self::PAGE_SIZE)
+            ->withQueryString()
+            ->through(fn (PurchaseOrder $order) => $this->serializeOrderRow($order));
 
         return Inertia::render('Reports/Orders', [
             'orders' => $paginator,
             'filters' => $filters,
             'customers' => $customers,
-            'summary' => $this->reportSummary($orders),
+            'summary' => $summary,
         ]);
     }
 
     public function exportOrders(Request $request): StreamedResponse
     {
-        [$orders, $filters] = $this->fetchFilteredOrders($request);
+        [$ordersQuery, $filters] = $this->filteredOrdersQuery($request);
+        $summary = $this->reportSummary($ordersQuery);
+        $orders = (clone $ordersQuery)
+            ->with(['customer', 'items'])
+            ->orderByDesc('submitted_at')
+            ->get();
 
-        return OrdersReportExport::stream($orders, $filters, $this->reportSummary($orders));
+        return OrdersReportExport::stream($orders, $filters, $summary);
     }
 
     private function serializeOrderRow(PurchaseOrder $order): array
@@ -125,9 +130,9 @@ class ReportController extends Controller
     }
 
     /**
-     * @return array{0: Collection<int, PurchaseOrder>, 1: array}
+     * @return array{0: Builder<PurchaseOrder>, 1: array}
      */
-    private function fetchFilteredOrders(Request $request): array
+    private function filteredOrdersQuery(Request $request): array
     {
         $dateFilter = trim((string) $request->query('date_filter', 'all')) ?: 'all';
         $month = trim((string) $request->query('month', now()->format('Y-m'))) ?: now()->format('Y-m');
@@ -139,11 +144,7 @@ class ReportController extends Controller
         $customerId = $linkedCustomer?->id
             ?? ($request->query('customer_id') ? (int) $request->query('customer_id') : null);
 
-        // No `items.product` here: that relationship went away with the local
-        // products table, and the item rows already carry the product name /
-        // sku snapshotted at order time. Eager-loading it threw only once the
-        // query actually matched an order, so an empty result set hid it.
-        $query = PurchaseOrder::with(['customer', 'items']);
+        $query = PurchaseOrder::query();
         if ($customerId) {
             $query->where('customer_id', $customerId);
         }
@@ -182,9 +183,7 @@ class ReportController extends Controller
             $statusFilter = 'all';
         }
 
-        $orders = $query->orderByDesc('submitted_at')->get();
-
-        return [$orders, [
+        return [$query, [
             'date_filter' => $dateFilter,
             'month' => $month,
             'start_date' => $startDate,
@@ -196,15 +195,31 @@ class ReportController extends Controller
     }
 
     /**
-     * @param  Collection<int, PurchaseOrder>  $orders
+     * Compute totals in SQL so the paginated report does not hydrate every
+     * matching order and item merely to summarize them.
+     *
+     * @param  Builder<PurchaseOrder>  $ordersQuery
      */
-    private function reportSummary(Collection $orders): array
+    private function reportSummary(Builder $ordersQuery): array
     {
+        $itemTotals = PurchaseOrderItem::query()
+            ->whereIn('purchase_order_id', (clone $ordersQuery)->select('purchase_orders.id'))
+            ->selectRaw('COALESCE(SUM(quantity), 0) as ordered_units')
+            ->selectRaw('COALESCE(SUM(delivered_quantity), 0) as delivered_units')
+            ->first();
+
+        $balanceUnits = PurchaseOrderItem::query()
+            ->whereIn('purchase_order_id', (clone $ordersQuery)
+                ->where('status', '!=', PurchaseOrder::STATUS_CANCELLED)
+                ->select('purchase_orders.id'))
+            ->selectRaw('COALESCE(SUM(quantity - COALESCE(delivered_quantity, 0)), 0) as balance_units')
+            ->value('balance_units');
+
         return [
-            'orders' => $orders->count(),
-            'ordered_units' => (int) $orders->flatMap->items->sum('quantity'),
-            'delivered_units' => (int) $orders->flatMap->items->sum('delivered_quantity'),
-            'balance_units' => (int) $orders->sum(fn (PurchaseOrder $o) => $o->balance_units),
+            'orders' => (clone $ordersQuery)->count(),
+            'ordered_units' => (int) ($itemTotals?->ordered_units ?? 0),
+            'delivered_units' => (int) ($itemTotals?->delivered_units ?? 0),
+            'balance_units' => (int) ($balanceUnits ?? 0),
         ];
     }
 

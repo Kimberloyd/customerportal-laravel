@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\CustomerMessage;
 use App\Models\User;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -22,7 +23,7 @@ class MessageThread
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, CustomerMessage>
+     * @return Collection<int, CustomerMessage>
      */
     public static function threadMessages(CustomerMessage $thread)
     {
@@ -36,9 +37,14 @@ class MessageThread
     {
         $unread = $messages->filter(fn (CustomerMessage $m) => $m->sender_type === $senderType && ! $m->is_read);
 
+        if ($unread->isEmpty()) {
+            return;
+        }
+
+        CustomerMessage::whereKey($unread->pluck('id')->all())->update(['is_read' => true]);
+
         foreach ($unread as $message) {
             $message->is_read = true;
-            $message->save();
         }
     }
 

@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'customer_id', 'subject', 'body', 'parent_id', 'sender_type',
@@ -47,6 +49,11 @@ class CustomerMessage extends Model
         return $this->hasMany(CustomerMessage::class, 'parent_id');
     }
 
+    public function latestReply(): HasOne
+    {
+        return $this->hasOne(CustomerMessage::class, 'parent_id')->latestOfMany();
+    }
+
     public function replyAttempts(): HasMany
     {
         return $this->hasMany(PublicConversationReplyAttempt::class);
@@ -86,9 +93,9 @@ class CustomerMessage extends Model
         return 'Unassigned customer';
     }
 
-    public function publicLinkIsActive(?\Carbon\CarbonImmutable $now = null): bool
+    public function publicLinkIsActive(?CarbonImmutable $now = null): bool
     {
-        $now = $now ?? \Carbon\CarbonImmutable::now();
+        $now = $now ?? CarbonImmutable::now();
 
         return $this->isRoot()
             && $this->channel === 'portal'
