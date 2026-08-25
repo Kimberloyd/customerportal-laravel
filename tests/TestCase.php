@@ -4,6 +4,7 @@ namespace Tests;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\Http;
 
 abstract class TestCase extends BaseTestCase
@@ -27,8 +28,12 @@ abstract class TestCase extends BaseTestCase
         // any later one. Reading the properties at request time instead lets
         // fixtures keep seeding the catalogue after setUp() has run.
         Http::fake([
-            '*/products*' => fn () => Http::response($this->inventoryPage($this->inventoryProducts)),
-            '*/customers*' => fn () => Http::response($this->inventoryPage($this->inventoryCustomers)),
+            '*/products*' => fn (ClientRequest $request) => Http::response(
+                $this->inventoryPage($this->inventoryProducts, $request)
+            ),
+            '*/customers*' => fn (ClientRequest $request) => Http::response(
+                $this->inventoryPage($this->inventoryCustomers, $request)
+            ),
         ]);
     }
 
@@ -43,32 +48,47 @@ abstract class TestCase extends BaseTestCase
     /** @var array<int, array<string, mixed>> */
     protected array $inventoryCustomers = [];
 
+    protected bool $inventoryIncludeTotal = true;
+
     /**
      * Seed what the faked inventoryapp endpoints return.
      *
      * @param  array<int, array<string, mixed>>  $products
      * @param  array<int, array<string, mixed>>  $customers
      */
-    protected function fakeInventoryApi(array $products = [], array $customers = []): void
-    {
+    protected function fakeInventoryApi(
+        array $products = [],
+        array $customers = [],
+        bool $includeTotal = true,
+    ): void {
         $this->inventoryProducts = $products;
         $this->inventoryCustomers = $customers;
+        $this->inventoryIncludeTotal = $includeTotal;
     }
 
     /**
      * @param  array<int, array<string, mixed>>  $rows
      * @return array<string, mixed>
      */
-    private function inventoryPage(array $rows): array
+    private function inventoryPage(array $rows, ClientRequest $request): array
     {
+        parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+        $page = max((int) ($query['page'] ?? 1), 1);
+        $limit = min(max((int) ($query['limit'] ?? 100), 1), 100);
+        $offset = ($page - 1) * $limit;
+
+        $meta = [
+            'has_next' => $offset + $limit < count($rows),
+            'page' => $page,
+            'limit' => $limit,
+        ];
+        if ($this->inventoryIncludeTotal) {
+            $meta['total'] = count($rows);
+        }
+
         return [
-            'data' => $rows,
-            'meta' => [
-                'has_next' => false,
-                'page' => 1,
-                'limit' => 100,
-                'total' => count($rows),
-            ],
+            'data' => array_slice($rows, $offset, $limit),
+            'meta' => $meta,
             'ok' => true,
         ];
     }

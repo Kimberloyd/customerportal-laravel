@@ -4,14 +4,16 @@ namespace Tests\Feature\Reports;
 
 use App\Models\PurchaseOrder;
 use App\Models\User;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\Concerns\CreatesOrderFixtures;
 use Tests\TestCase;
 
 class OverviewTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesOrderFixtures;
+    use RefreshDatabase;
 
     private function seedOrders()
     {
@@ -133,6 +135,105 @@ class OverviewTest extends TestCase
             ->where('metrics.ordered_units', 3)
             ->where('customerPerformance', [])
         );
+    }
+
+    public function test_monthly_trend_is_aggregated_by_month(): void
+    {
+        $staff = User::factory()->create(['role' => 'employee']);
+        $customer = $this->makeCustomer();
+        $product = $this->makeProduct();
+        $previousMonth = now()->subMonthNoOverflow()->startOfMonth()->addDay();
+
+        $this->makeOrder($customer, PurchaseOrder::STATUS_PARTIAL, $previousMonth, [
+            ['product_id' => $product->id, 'quantity' => 7, 'delivered_quantity' => 3],
+        ]);
+        $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
+            ['product_id' => $product->id, 'quantity' => 5, 'delivered_quantity' => 0],
+        ]);
+
+        $response = $this->actingAsUser($staff)->get('/reports/overview');
+
+        $response->assertInertia(function ($page) use ($previousMonth) {
+            $months = collect($page->toArray()['props']['monthlyTrend'])->keyBy('full_label');
+            $this->assertSame(7, $months[$previousMonth->format('F Y')]['ordered']);
+            $this->assertSame(3, $months[$previousMonth->format('F Y')]['delivered']);
+            $this->assertSame(5, $months[now()->format('F Y')]['ordered']);
+        });
+    }
+
+    public function test_customer_performance_aggregates_orders_and_non_cancelled_units(): void
+    {
+        $staff = User::factory()->create(['role' => 'employee']);
+        $first = $this->makeCustomer('First Co');
+        $second = $this->makeCustomer('Second Co');
+        $product = $this->makeProduct();
+
+        $this->makeOrder($first, PurchaseOrder::STATUS_COMPLETED, now(), [
+            ['product_id' => $product->id, 'quantity' => 10, 'delivered_quantity' => 10],
+        ]);
+        $this->makeOrder($first, PurchaseOrder::STATUS_PARTIAL, now(), [
+            ['product_id' => $product->id, 'quantity' => 5, 'delivered_quantity' => 2],
+        ]);
+        $this->makeOrder($second, PurchaseOrder::STATUS_CANCELLED, now(), [
+            ['product_id' => $product->id, 'quantity' => 100, 'delivered_quantity' => 0],
+        ]);
+
+        $response = $this->actingAsUser($staff)->get('/reports/overview');
+
+        $response->assertInertia(function ($page) {
+            $customers = collect($page->toArray()['props']['customerPerformance'])->keyBy('name');
+            $this->assertSame([
+                'name' => 'First Co',
+                'orders' => 2,
+                'completed' => 1,
+                'ordered' => 15,
+                'delivered' => 12,
+                'backlog' => 3,
+                'completion_rate' => 50,
+            ], $customers['First Co']);
+            $this->assertSame(1, $customers['Second Co']['orders']);
+            $this->assertSame(0, $customers['Second Co']['ordered']);
+            $this->assertSame(0, $customers['Second Co']['backlog']);
+        });
+    }
+
+    public function test_pending_units_are_never_negative_in_aggregates(): void
+    {
+        $staff = User::factory()->create(['role' => 'employee']);
+        $customer = $this->makeCustomer();
+
+        $this->makeOrder($customer, PurchaseOrder::STATUS_PARTIAL, now()->subDay(), [
+            ['product_name' => 'Over-delivered', 'quantity' => 3, 'delivered_quantity' => 5],
+            ['product_name' => 'Over-delivered', 'quantity' => 4, 'delivered_quantity' => 0],
+        ]);
+
+        $response = $this->actingAsUser($staff)->get('/reports/overview');
+
+        $response->assertInertia(fn ($page) => $page
+            ->where('metrics.backlog_units', 4)
+            ->where('agingRows.0.units', 4)
+            ->where('productPerformance.0.backlog', 4)
+            ->where('customerPerformance.0.backlog', 4));
+    }
+
+    public function test_overview_does_not_hydrate_unbounded_order_or_item_rows(): void
+    {
+        $staff = User::factory()->create(['role' => 'employee']);
+        $customer = $this->makeCustomer();
+        $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
+            ['product_name' => 'Measured Product', 'quantity' => 2],
+        ]);
+        $statements = [];
+        DB::listen(function (QueryExecuted $query) use (&$statements) {
+            $statements[] = strtolower($query->sql);
+        });
+
+        $this->actingAsUser($staff)->get('/reports/overview')->assertOk();
+
+        $this->assertFalse(collect($statements)->contains(
+            fn (string $sql) => preg_match('/select\s+\*\s+from\s+["`]?purchase_orders/', $sql) === 1
+                || preg_match('/select\s+\*\s+from\s+["`]?purchase_order_items/', $sql) === 1
+        ));
     }
 
     public function test_orphaned_customer_gets_403(): void

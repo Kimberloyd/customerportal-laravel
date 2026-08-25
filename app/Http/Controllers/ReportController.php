@@ -11,7 +11,6 @@ use App\Support\ReportPeriod;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -39,13 +38,6 @@ class ReportController extends Controller
         $customerId = $linkedCustomer?->id
             ?? ($request->query('customer_id') ? (int) $request->query('customer_id') : null);
 
-        $operationalOrders = PurchaseOrder::with('items')
-            ->where('submitted_at', '>=', $periodStart)
-            ->where('submitted_at', '<', $periodEnd)
-            ->where('status', '!=', PurchaseOrder::STATUS_CANCELLED)
-            ->when($customerId, fn ($q) => $q->where('customer_id', $customerId))
-            ->get();
-
         $statusCounts = PurchaseOrder::where('submitted_at', '>=', $periodStart)
             ->where('submitted_at', '<', $periodEnd)
             ->when($customerId, fn ($q) => $q->where('customer_id', $customerId))
@@ -67,10 +59,10 @@ class ReportController extends Controller
             ],
             'customers' => $customers,
             'isCustomerView' => $linkedCustomer !== null,
-            'metrics' => $this->computeFulfillmentMetrics($operationalOrders),
+            'metrics' => $this->computeFulfillmentMetrics($periodStart, $periodEnd, $customerId),
             'monthlyTrend' => $this->buildMonthlyTrend($periodStart, $periodEnd, $customerId),
             'statusMix' => $this->buildStatusMix($statusCounts),
-            'agingRows' => $this->buildAgingRows($operationalOrders, $now),
+            'agingRows' => $this->buildAgingRows($periodStart, $periodEnd, $customerId, $now),
             'productPerformance' => $this->buildProductPerformance($periodStart, $periodEnd, $customerId),
             'customerPerformance' => $linkedCustomer ? [] : $this->buildCustomerPerformance($periodStart, $periodEnd, $customerId),
         ]);
@@ -256,31 +248,54 @@ class ReportController extends Controller
         return [$selectedRange, $startValue, $endValue, $periodStart, $periodEnd, "Past {$monthCount} Months"];
     }
 
-    /**
-     * @param  Collection<int, PurchaseOrder>  $operationalOrders
-     */
-    private function computeFulfillmentMetrics(Collection $operationalOrders): array
-    {
-        $orderedUnits = (int) $operationalOrders->flatMap->items->sum('quantity');
-        $deliveredUnits = (int) $operationalOrders->flatMap->items->sum('delivered_quantity');
-        $backlogUnits = (int) $operationalOrders->sum(fn (PurchaseOrder $o) => $o->balance_units);
+    private function computeFulfillmentMetrics(
+        CarbonImmutable $periodStart,
+        CarbonImmutable $periodEnd,
+        ?int $customerId,
+    ): array {
+        $durationExpression = $this->completionDurationDaysExpression();
 
-        $completedOrders = $operationalOrders->where('status', PurchaseOrder::STATUS_COMPLETED);
-        // completed_at is set exactly once, when an order first becomes
-        // completed; updated_at changes on any later edit (e.g. a
-        // remarks update on an already-completed order), which would
-        // otherwise silently inflate or shrink the reported duration.
-        $completionDurations = $completedOrders
-            ->filter(fn (PurchaseOrder $o) => $o->completed_at && $o->submitted_at)
-            ->map(fn (PurchaseOrder $o) => max($o->completed_at->getTimestamp() - $o->submitted_at->getTimestamp(), 0) / 86400);
+        $orderMetrics = PurchaseOrder::query()
+            ->where('submitted_at', '>=', $periodStart)
+            ->where('submitted_at', '<', $periodEnd)
+            ->where('status', '!=', PurchaseOrder::STATUS_CANCELLED)
+            ->when($customerId, fn ($q) => $q->where('customer_id', $customerId))
+            ->selectRaw('COUNT(*) as total_orders')
+            ->selectRaw(
+                'COALESCE(SUM(CASE WHEN status = ? THEN 1 ELSE 0 END), 0) as completed_orders',
+                [PurchaseOrder::STATUS_COMPLETED]
+            )
+            ->selectRaw(
+                "AVG(CASE WHEN status = ? AND completed_at IS NOT NULL AND submitted_at IS NOT NULL THEN {$durationExpression} END) as average_completion_days",
+                [PurchaseOrder::STATUS_COMPLETED]
+            )
+            ->first();
+
+        $itemMetrics = DB::table('purchase_order_items')
+            ->join('purchase_orders', 'purchase_orders.id', '=', 'purchase_order_items.purchase_order_id')
+            ->where('purchase_orders.submitted_at', '>=', $periodStart)
+            ->where('purchase_orders.submitted_at', '<', $periodEnd)
+            ->where('purchase_orders.status', '!=', PurchaseOrder::STATUS_CANCELLED)
+            ->when($customerId, fn ($q) => $q->where('purchase_orders.customer_id', $customerId))
+            ->selectRaw('COALESCE(SUM(purchase_order_items.quantity), 0) as ordered_units')
+            ->selectRaw('COALESCE(SUM(purchase_order_items.delivered_quantity), 0) as delivered_units')
+            ->selectRaw('COALESCE(SUM('.$this->pendingUnitsExpression('purchase_order_items').'), 0) as backlog_units')
+            ->first();
+
+        $totalOrders = (int) ($orderMetrics?->total_orders ?? 0);
+        $completedOrders = (int) ($orderMetrics?->completed_orders ?? 0);
+        $orderedUnits = (int) ($itemMetrics?->ordered_units ?? 0);
+        $deliveredUnits = (int) ($itemMetrics?->delivered_units ?? 0);
 
         return [
             'ordered_units' => $orderedUnits,
             'delivered_units' => $deliveredUnits,
-            'backlog_units' => $backlogUnits,
+            'backlog_units' => (int) ($itemMetrics?->backlog_units ?? 0),
             'fulfillment_rate' => $orderedUnits ? round($deliveredUnits / $orderedUnits * 100, 1) : 0,
-            'completion_rate' => $operationalOrders->count() ? round($completedOrders->count() / $operationalOrders->count() * 100, 1) : 0,
-            'average_completion_days' => $completionDurations->count() ? round($completionDurations->avg(), 1) : 0,
+            'completion_rate' => $totalOrders ? round($completedOrders / $totalOrders * 100, 1) : 0,
+            'average_completion_days' => $orderMetrics?->average_completion_days !== null
+                ? round((float) $orderMetrics->average_completion_days, 1)
+                : 0,
         ];
     }
 
@@ -305,28 +320,26 @@ class ReportController extends Controller
             $values[$month->format('Y-m')] = ['ordered' => 0, 'delivered' => 0];
         }
 
+        $monthExpression = $this->monthKeyExpression('purchase_orders.submitted_at');
         $rows = PurchaseOrder::query()
             ->join('purchase_order_items', 'purchase_order_items.purchase_order_id', '=', 'purchase_orders.id')
             ->where('purchase_orders.submitted_at', '>=', $periodStart)
             ->where('purchase_orders.submitted_at', '<', $periodEnd)
             ->where('purchase_orders.status', '!=', PurchaseOrder::STATUS_CANCELLED)
             ->when($customerId, fn ($q) => $q->where('purchase_orders.customer_id', $customerId))
-            ->get([
-                'purchase_orders.submitted_at as submitted_at',
-                'purchase_order_items.quantity as quantity',
-                'purchase_order_items.delivered_quantity as delivered_quantity',
-            ]);
+            ->selectRaw("{$monthExpression} as month_key")
+            ->selectRaw('COALESCE(SUM(purchase_order_items.quantity), 0) as ordered')
+            ->selectRaw('COALESCE(SUM(purchase_order_items.delivered_quantity), 0) as delivered')
+            ->groupByRaw($monthExpression)
+            ->get();
 
         foreach ($rows as $row) {
-            if (! $row->submitted_at) {
-                continue;
-            }
-            $key = CarbonImmutable::parse($row->submitted_at)->format('Y-m');
+            $key = $row->month_key;
             if (! array_key_exists($key, $values)) {
                 continue;
             }
-            $values[$key]['ordered'] += (int) $row->quantity;
-            $values[$key]['delivered'] += (int) ($row->delivered_quantity ?? 0);
+            $values[$key]['ordered'] = (int) $row->ordered;
+            $values[$key]['delivered'] = (int) $row->delivered;
         }
 
         $maximum = 0;
@@ -373,11 +386,12 @@ class ReportController extends Controller
         ])->values()->all();
     }
 
-    /**
-     * @param  Collection<int, PurchaseOrder>  $operationalOrders
-     */
-    private function buildAgingRows(Collection $operationalOrders, CarbonImmutable $now): array
-    {
+    private function buildAgingRows(
+        CarbonImmutable $periodStart,
+        CarbonImmutable $periodEnd,
+        ?int $customerId,
+        CarbonImmutable $now,
+    ): array {
         $definitions = [
             ['label' => '0-2 days', 'min' => 0, 'max' => 2],
             ['label' => '3-7 days', 'min' => 3, 'max' => 7],
@@ -385,19 +399,42 @@ class ReportController extends Controller
             ['label' => '15+ days', 'min' => 15, 'max' => null],
         ];
 
-        $activeOrders = $operationalOrders->whereNotIn('status', PurchaseOrder::TERMINAL_STATUSES);
+        $perOrder = DB::table('purchase_orders')
+            ->leftJoin('purchase_order_items', 'purchase_order_items.purchase_order_id', '=', 'purchase_orders.id')
+            ->where('purchase_orders.submitted_at', '>=', $periodStart)
+            ->where('purchase_orders.submitted_at', '<', $periodEnd)
+            ->whereNotIn('purchase_orders.status', PurchaseOrder::TERMINAL_STATUSES)
+            ->when($customerId, fn ($q) => $q->where('purchase_orders.customer_id', $customerId))
+            ->select('purchase_orders.id')
+            ->selectRaw($this->ageDaysExpression('purchase_orders.submitted_at').' as age_days', [
+                $now->format('Y-m-d H:i:s'),
+            ])
+            ->selectRaw('COALESCE(SUM('.$this->pendingUnitsExpression('purchase_order_items').'), 0) as balance_units')
+            ->groupBy('purchase_orders.id', 'purchase_orders.submitted_at');
 
-        $rows = collect($definitions)->map(function ($def) use ($activeOrders, $now) {
-            $matching = $activeOrders->filter(function (PurchaseOrder $order) use ($def, $now) {
-                $age = $order->submitted_at ? max(intdiv($now->getTimestamp() - $order->submitted_at->getTimestamp(), 86400), 0) : 0;
+        $bucketExpression = "CASE
+            WHEN age_days <= 2 THEN '0-2 days'
+            WHEN age_days <= 7 THEN '3-7 days'
+            WHEN age_days <= 14 THEN '8-14 days'
+            ELSE '15+ days'
+        END";
 
-                return $age >= $def['min'] && ($def['max'] === null || $age <= $def['max']);
-            });
+        $aggregates = DB::query()
+            ->fromSub($perOrder, 'active_orders')
+            ->selectRaw("{$bucketExpression} as age_bucket")
+            ->selectRaw('COUNT(*) as orders')
+            ->selectRaw('COALESCE(SUM(balance_units), 0) as units')
+            ->groupByRaw($bucketExpression)
+            ->get()
+            ->keyBy('age_bucket');
+
+        $rows = collect($definitions)->map(function ($definition) use ($aggregates) {
+            $aggregate = $aggregates->get($definition['label']);
 
             return [
-                'label' => $def['label'],
-                'orders' => $matching->count(),
-                'units' => (int) $matching->sum(fn (PurchaseOrder $o) => $o->balance_units),
+                'label' => $definition['label'],
+                'orders' => (int) ($aggregate?->orders ?? 0),
+                'units' => (int) ($aggregate?->units ?? 0),
             ];
         });
 
@@ -421,6 +458,8 @@ class ReportController extends Controller
         // two rows in historical reports, because each order kept the name it
         // was placed under. generic_name was never snapshotted at all, so it
         // is not recoverable for past orders.
+        $backlogExpression = 'SUM('.$this->pendingUnitsExpression('purchase_order_items').')';
+
         $rows = DB::table('purchase_order_items')
             ->join('purchase_orders', 'purchase_orders.id', '=', 'purchase_order_items.purchase_order_id')
             ->where('purchase_orders.submitted_at', '>=', $periodStart)
@@ -428,11 +467,15 @@ class ReportController extends Controller
             ->where('purchase_orders.status', '!=', PurchaseOrder::STATUS_CANCELLED)
             ->when($customerId, fn ($q) => $q->where('purchase_orders.customer_id', $customerId))
             ->groupBy('purchase_order_items.product_name')
-            ->get([
-                'purchase_order_items.product_name as product_name',
-                DB::raw('SUM(purchase_order_items.quantity) as ordered'),
-                DB::raw('SUM(purchase_order_items.delivered_quantity) as delivered'),
-            ]);
+            ->select('purchase_order_items.product_name as product_name')
+            ->selectRaw('SUM(purchase_order_items.quantity) as ordered')
+            ->selectRaw('SUM(COALESCE(purchase_order_items.delivered_quantity, 0)) as delivered')
+            ->selectRaw("{$backlogExpression} as backlog")
+            ->orderByDesc('backlog')
+            ->orderByDesc('ordered')
+            ->orderBy('purchase_order_items.product_name')
+            ->limit(10)
+            ->get();
 
         return $rows->map(function ($row) {
             $ordered = (int) $row->ordered;
@@ -443,74 +486,99 @@ class ReportController extends Controller
                 'generic_name' => '-',
                 'ordered' => $ordered,
                 'delivered' => $delivered,
-                'backlog' => max($ordered - $delivered, 0),
+                'backlog' => (int) $row->backlog,
                 'rate' => $ordered ? (int) round($delivered / $ordered * 100) : 0,
             ];
         })
-            ->sortBy([
-                ['backlog', 'desc'],
-                ['ordered', 'desc'],
-                ['product_name', 'asc'],
-            ])
-            ->take(10)
             ->values()
             ->all();
     }
 
     private function buildCustomerPerformance(CarbonImmutable $periodStart, CarbonImmutable $periodEnd, ?int $customerId): array
     {
-        $orderCounts = PurchaseOrder::where('submitted_at', '>=', $periodStart)
-            ->where('submitted_at', '<', $periodEnd)
-            ->when($customerId, fn ($q) => $q->where('customer_id', $customerId))
-            ->select('customer_id', DB::raw('count(*) as orders_count'), DB::raw("sum(case when status = 'completed' then 1 else 0 end) as completed_count"))
-            ->groupBy('customer_id')
-            ->get()
-            ->keyBy('customer_id');
-
-        $itemRows = PurchaseOrder::query()
-            ->join('purchase_order_items', 'purchase_order_items.purchase_order_id', '=', 'purchase_orders.id')
+        $pendingUnits = $this->pendingUnitsExpression('purchase_order_items');
+        $performance = PurchaseOrder::query()
+            ->join('customers', 'customers.id', '=', 'purchase_orders.customer_id')
+            ->leftJoin('purchase_order_items', 'purchase_order_items.purchase_order_id', '=', 'purchase_orders.id')
             ->where('purchase_orders.submitted_at', '>=', $periodStart)
             ->where('purchase_orders.submitted_at', '<', $periodEnd)
-            ->where('purchase_orders.status', '!=', PurchaseOrder::STATUS_CANCELLED)
             ->when($customerId, fn ($q) => $q->where('purchase_orders.customer_id', $customerId))
-            ->get([
-                'purchase_orders.customer_id as customer_id',
-                'purchase_order_items.quantity as quantity',
-                'purchase_order_items.delivered_quantity as delivered_quantity',
-            ]);
+            ->groupBy('purchase_orders.customer_id', 'customers.company_name')
+            ->select('customers.company_name as name')
+            ->selectRaw('COUNT(DISTINCT purchase_orders.id) as orders_count')
+            ->selectRaw(
+                'COUNT(DISTINCT CASE WHEN purchase_orders.status = ? THEN purchase_orders.id END) as completed_count',
+                [PurchaseOrder::STATUS_COMPLETED]
+            )
+            ->selectRaw(
+                'COALESCE(SUM(CASE WHEN purchase_orders.status != ? THEN purchase_order_items.quantity ELSE 0 END), 0) as ordered',
+                [PurchaseOrder::STATUS_CANCELLED]
+            )
+            ->selectRaw(
+                'COALESCE(SUM(CASE WHEN purchase_orders.status != ? THEN COALESCE(purchase_order_items.delivered_quantity, 0) ELSE 0 END), 0) as delivered',
+                [PurchaseOrder::STATUS_CANCELLED]
+            )
+            ->selectRaw(
+                "COALESCE(SUM(CASE WHEN purchase_orders.status != ? THEN {$pendingUnits} ELSE 0 END), 0) as backlog",
+                [PurchaseOrder::STATUS_CANCELLED]
+            )
+            ->orderByDesc('ordered')
+            ->orderBy('customers.company_name')
+            ->limit(10)
+            ->get()
+            ->map(function ($row) {
+                $orders = (int) $row->orders_count;
+                $completed = (int) $row->completed_count;
 
-        $itemTotals = [];
-        foreach ($itemRows as $row) {
-            $cid = $row->customer_id;
-            $itemTotals[$cid] ??= ['ordered' => 0, 'delivered' => 0, 'backlog' => 0];
-            $itemTotals[$cid]['ordered'] += (int) $row->quantity;
-            $itemTotals[$cid]['delivered'] += (int) ($row->delivered_quantity ?? 0);
-            $itemTotals[$cid]['backlog'] += max((int) $row->quantity - (int) ($row->delivered_quantity ?? 0), 0);
-        }
-
-        $customerNames = Customer::whereIn('id', $orderCounts->keys())->pluck('company_name', 'id');
-
-        $performance = $orderCounts->map(function ($row, $cid) use ($itemTotals, $customerNames) {
-            $totals = $itemTotals[$cid] ?? ['ordered' => 0, 'delivered' => 0, 'backlog' => 0];
-
-            return [
-                'name' => $customerNames[$cid] ?? 'Unknown',
-                'orders' => (int) $row->orders_count,
-                'completed' => (int) $row->completed_count,
-                'ordered' => $totals['ordered'],
-                'delivered' => $totals['delivered'],
-                'backlog' => $totals['backlog'],
-                'completion_rate' => $row->orders_count ? (int) round($row->completed_count / $row->orders_count * 100) : 0,
-            ];
-        })->values();
+                return [
+                    'name' => $row->name ?? 'Unknown',
+                    'orders' => $orders,
+                    'completed' => $completed,
+                    'ordered' => (int) $row->ordered,
+                    'delivered' => (int) $row->delivered,
+                    'backlog' => (int) $row->backlog,
+                    'completion_rate' => $orders ? (int) round($completed / $orders * 100) : 0,
+                ];
+            });
 
         return $performance
-            ->sortBy([
-                ['ordered', 'desc'],
-                ['name', 'asc'],
-            ])
-            ->take(10)
             ->values()
             ->all();
+    }
+
+    private function completionDurationDaysExpression(): string
+    {
+        return match (DB::connection()->getDriverName()) {
+            'mysql' => 'GREATEST(TIMESTAMPDIFF(SECOND, submitted_at, completed_at), 0) / 86400',
+            'sqlite' => 'MAX(julianday(completed_at) - julianday(submitted_at), 0)',
+            default => throw new \RuntimeException('Unsupported database driver for report duration aggregates.'),
+        };
+    }
+
+    private function monthKeyExpression(string $column): string
+    {
+        return match (DB::connection()->getDriverName()) {
+            'mysql' => "DATE_FORMAT({$column}, '%Y-%m')",
+            'sqlite' => "strftime('%Y-%m', {$column})",
+            default => throw new \RuntimeException('Unsupported database driver for report month aggregates.'),
+        };
+    }
+
+    private function ageDaysExpression(string $column): string
+    {
+        return match (DB::connection()->getDriverName()) {
+            'mysql' => "CASE WHEN {$column} IS NULL THEN 0 ELSE GREATEST(TIMESTAMPDIFF(SECOND, {$column}, ?) DIV 86400, 0) END",
+            'sqlite' => "CASE WHEN {$column} IS NULL THEN 0 ELSE CAST(MAX(julianday(?) - julianday({$column}), 0) AS INTEGER) END",
+            default => throw new \RuntimeException('Unsupported database driver for report aging aggregates.'),
+        };
+    }
+
+    private function pendingUnitsExpression(string $table): string
+    {
+        return "CASE
+            WHEN {$table}.quantity > COALESCE({$table}.delivered_quantity, 0)
+            THEN {$table}.quantity - COALESCE({$table}.delivered_quantity, 0)
+            ELSE 0
+        END";
     }
 }

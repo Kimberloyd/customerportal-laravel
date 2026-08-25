@@ -2,7 +2,11 @@
 
 namespace App\Support;
 
+use Illuminate\Http\Client\Pool;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use RuntimeException;
+use Throwable;
 
 /**
  * Thin client for the inventoryapp catalog (GET {base_url}/products,
@@ -18,56 +22,30 @@ class InventoryApiClient
 {
     private const MAX_PAGE_SIZE = 100;
 
+    private const MAX_CONCURRENT_REQUESTS = 4;
+
     /**
-     * Fetch every product matching the given query params, paging through
-     * the API's max page size (100) until `has_next` is false.
+     * Fetch every product matching the given query params, using the API's
+     * filtered total to request its 100-row pages concurrently.
      *
      * @param  array<string, mixed>  $params  Extra query params (e.g. q, status).
      * @return array<int, array<string, mixed>>
      */
     public function allProducts(array $params = []): array
     {
-        $products = [];
-        $page = 1;
-
-        do {
-            $response = $this->request($params + [
-                'page' => $page,
-                'limit' => self::MAX_PAGE_SIZE,
-            ]);
-
-            $products = array_merge($products, $response['data'] ?? []);
-            $hasNext = (bool) ($response['meta']['has_next'] ?? false);
-            $page++;
-        } while ($hasNext);
-
-        return $products;
+        return $this->allResources($params, '/products');
     }
 
     /**
-     * Fetch every customer, paging through the API's max page size (100)
-     * until `has_next` is false.
+     * Fetch every customer, using the API's total to request its 100-row
+     * pages concurrently.
      *
      * @param  array<string, mixed>  $params  Extra query params.
      * @return array<int, array<string, mixed>>
      */
     public function allCustomers(array $params = []): array
     {
-        $customers = [];
-        $page = 1;
-
-        do {
-            $response = $this->request($params + [
-                'page' => $page,
-                'limit' => self::MAX_PAGE_SIZE,
-            ], '/customers');
-
-            $customers = array_merge($customers, $response['data'] ?? []);
-            $hasNext = (bool) ($response['meta']['has_next'] ?? false);
-            $page++;
-        } while ($hasNext);
-
-        return $customers;
+        return $this->allResources($params, '/customers');
     }
 
     /**
@@ -144,6 +122,94 @@ class InventoryApiClient
             ->throw();
 
         return $response->json();
+    }
+
+    /**
+     * Fetch every page while preserving the API's page order. The first page
+     * establishes the filtered total; remaining pages can then be requested
+     * concurrently instead of waiting for each network round trip in turn.
+     *
+     * @param  array<string, mixed>  $params
+     * @return array<int, array<string, mixed>>
+     */
+    private function allResources(array $params, string $endpoint): array
+    {
+        $firstPage = $this->request($params + [
+            'page' => 1,
+            'limit' => self::MAX_PAGE_SIZE,
+        ], $endpoint);
+
+        $rows = $firstPage['data'] ?? [];
+        $total = $firstPage['meta']['total'] ?? null;
+
+        if (! is_numeric($total)) {
+            return $this->finishSequentially($rows, $firstPage, $params, $endpoint);
+        }
+
+        $lastPage = (int) ceil(max((int) $total, count($rows)) / self::MAX_PAGE_SIZE);
+        if ($lastPage <= 1) {
+            return $rows;
+        }
+
+        $responses = Http::pool(function (Pool $pool) use ($endpoint, $lastPage, $params) {
+            for ($page = 2; $page <= $lastPage; $page++) {
+                $pool->as((string) $page)
+                    ->withToken(config('services.inventory_api.token'))
+                    ->timeout(15)
+                    ->get($this->endpointUrl($endpoint), $params + [
+                        'page' => $page,
+                        'limit' => self::MAX_PAGE_SIZE,
+                    ]);
+            }
+        }, self::MAX_CONCURRENT_REQUESTS);
+
+        for ($page = 2; $page <= $lastPage; $page++) {
+            $response = $responses[(string) $page] ?? null;
+
+            if ($response instanceof Throwable) {
+                throw $response;
+            }
+            if (! $response instanceof Response) {
+                throw new RuntimeException("Inventory API page {$page} returned no response.");
+            }
+
+            $payload = $response->throw()->json();
+            $rows = array_merge($rows, $payload['data'] ?? []);
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Retain compatibility with an upstream response that omits `meta.total`.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     * @param  array<string, mixed>  $firstPage
+     * @param  array<string, mixed>  $params
+     * @return array<int, array<string, mixed>>
+     */
+    private function finishSequentially(array $rows, array $firstPage, array $params, string $endpoint): array
+    {
+        $page = 2;
+        $hasNext = (bool) ($firstPage['meta']['has_next'] ?? false);
+
+        while ($hasNext) {
+            $response = $this->request($params + [
+                'page' => $page,
+                'limit' => self::MAX_PAGE_SIZE,
+            ], $endpoint);
+
+            $rows = array_merge($rows, $response['data'] ?? []);
+            $hasNext = (bool) ($response['meta']['has_next'] ?? false);
+            $page++;
+        }
+
+        return $rows;
+    }
+
+    private function endpointUrl(string $endpoint): string
+    {
+        return rtrim((string) config('services.inventory_api.base_url'), '/').'/'.ltrim($endpoint, '/');
     }
 
     /**
