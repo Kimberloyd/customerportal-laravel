@@ -13,6 +13,8 @@ export default function AuthenticatedLayout({ header, children }) {
     const [unreadCount, setUnreadCount] = useState(0);
 
     useEffect(() => {
+        let intervalId = null;
+
         const fetchUnreadCount = () => {
             fetch(route('messages.unread-count'))
                 .then((res) => (res.ok ? res.json() : null))
@@ -20,9 +22,40 @@ export default function AuthenticatedLayout({ header, children }) {
                 .catch(() => {});
         };
 
-        fetchUnreadCount();
-        const interval = setInterval(fetchUnreadCount, 30000);
-        return () => clearInterval(interval);
+        const stopPolling = () => {
+            if (intervalId !== null) {
+                clearInterval(intervalId);
+                intervalId = null;
+            }
+        };
+
+        const startPolling = () => {
+            if (intervalId !== null) {
+                return;
+            }
+
+            fetchUnreadCount();
+            intervalId = setInterval(fetchUnreadCount, 30000);
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                stopPolling();
+            } else {
+                startPolling();
+            }
+        };
+
+        handleVisibilityChange();
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            stopPolling();
+            document.removeEventListener(
+                'visibilitychange',
+                handleVisibilityChange,
+            );
+        };
     }, []);
 
     const navTabs = useMemo(
