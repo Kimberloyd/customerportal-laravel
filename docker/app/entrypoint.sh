@@ -18,6 +18,13 @@ do
     fi
 done
 
+# Build Laravel's bootstrap caches only after runtime environment variables are
+# available and the fresh bootstrap/cache tmpfs belongs to the app user. Doing
+# this in the image would freeze build-time configuration into production.
+if [ "${APP_ENV:-production}" = "production" ]; then
+    su-exec app php artisan optimize --no-interaction --quiet
+fi
+
 # Stay root to exec php-fpm itself -- its master process must open
 # error_log (/proc/self/fd/2, php-fpm's default) as root, since that's
 # a real open() on Docker's stderr pipe, which is root-owned at
