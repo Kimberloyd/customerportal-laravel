@@ -44,7 +44,7 @@ class PublicConversationController extends Controller
         $thread = $this->findThreadOrFail($token);
 
         if (! $this->publicReplyIsAllowed($thread, $request)) {
-            abort(429, 'Too many reply attempts. Please try again later.');
+            abort(429, 'Too many reply attempts. Wait a few minutes, then try again.');
         }
 
         $body = trim((string) $request->input('body', ''));
@@ -54,10 +54,10 @@ class PublicConversationController extends Controller
             return back()->with('error', 'Enter a reply before sending.');
         }
         if (strlen($body) > $maxLength) {
-            return back()->with('error', 'Your reply is too long.');
+            return back()->with('error', "Keep your reply under {$maxLength} characters, then send it again.");
         }
         if ($thread->status === 'closed') {
-            return back()->with('error', 'This conversation is closed.');
+            return back()->with('error', 'This conversation is closed and no longer accepts replies.');
         }
 
         MessageThread::createReply($thread, $body, 'customer');

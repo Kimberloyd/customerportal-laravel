@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from 'react';
 export function PdfPreview({ url, className, firstPageOnly = false, loadingClassName }) {
     const containerRef = useRef(null);
     const [status, setStatus] = useState('loading');
-    const [errorMessage, setErrorMessage] = useState('');
 
     useEffect(() => {
         let cancelled = false;
@@ -51,7 +50,6 @@ export function PdfPreview({ url, className, firstPageOnly = false, loadingClass
             } catch (err) {
                 console.error('[PdfPreview]', err);
                 if (!cancelled) {
-                    setErrorMessage(err?.message ?? String(err));
                     setStatus('error');
                 }
             }
@@ -69,7 +67,7 @@ export function PdfPreview({ url, className, firstPageOnly = false, loadingClass
     if (status === 'error') {
         return (
             <p className="p-2 text-xs text-red-600">
-                Failed to load preview{errorMessage ? `: ${errorMessage}` : '.'}
+                We couldn’t preview this PDF. Download the file to view it.
             </p>
         );
     }

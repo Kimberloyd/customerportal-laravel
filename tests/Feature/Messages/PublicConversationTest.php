@@ -87,7 +87,7 @@ class PublicConversationTest extends TestCase
 
         $response = $this->post("/messages/customer/{$token}", ['body' => $tooLong]);
 
-        $response->assertSessionHas('error', 'Your reply is too long.');
+        $response->assertSessionHas('error', 'Keep your reply under 2000 characters, then send it again.');
         $this->assertSame(0, CustomerMessage::where('parent_id', $thread->id)->count());
     }
 
@@ -98,7 +98,7 @@ class PublicConversationTest extends TestCase
 
         $response = $this->post("/messages/customer/{$token}", ['body' => 'A reply']);
 
-        $response->assertSessionHas('error', 'This conversation is closed.');
+        $response->assertSessionHas('error', 'This conversation is closed and no longer accepts replies.');
     }
 
     public function test_rate_limit_blocks_sixth_attempt(): void

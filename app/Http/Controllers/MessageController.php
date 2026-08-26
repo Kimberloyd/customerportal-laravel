@@ -106,10 +106,15 @@ class MessageController extends Controller
 
         $subject = trim((string) $request->input('subject', ''));
         $body = trim((string) $request->input('body', ''));
-        if ($subject === '' || $body === '') {
-            throw ValidationException::withMessages([
-                'body' => 'Subject and message are required.',
-            ]);
+        $missingFields = [];
+        if ($subject === '') {
+            $missingFields['subject'] = 'Enter a subject.';
+        }
+        if ($body === '') {
+            $missingFields['body'] = 'Enter a message.';
+        }
+        if ($missingFields !== []) {
+            throw ValidationException::withMessages($missingFields);
         }
 
         $ttlHours = (int) config('services.po_notifications.public_conversation_link_ttl_hours', 720);
@@ -196,7 +201,10 @@ class MessageController extends Controller
             try {
                 $externalMessageId = FacebookMessenger::sendReply($thread, $body);
             } catch (MessengerApiException $e) {
-                return redirect()->route('messages.show', $thread->id)->with('error', $e->getMessage());
+                report($e);
+
+                return redirect()->route('messages.show', $thread->id)
+                    ->with('error', 'Facebook Messenger is unavailable. Send the reply through Messenger or contact the system administrator.');
             }
             MessageThread::createReply($thread, $body, $senderType, $externalMessageId);
 

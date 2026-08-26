@@ -1,8 +1,10 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/motion/input';
+import ConfirmationDialog from '@/components/ConfirmationDialog';
 import { formatDateTime } from '@/utils/orderDisplay';
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import { useState } from 'react';
 
 export default function Show({ thread, messages, isCustomerViewer, facebookCustomers }) {
     const canReply = thread.status === 'open' && !(isCustomerViewer && thread.is_facebook);
@@ -10,6 +12,7 @@ export default function Show({ thread, messages, isCustomerViewer, facebookCusto
     const { data, setData, post, processing, reset } = useForm({ body: '' });
     const senderNameForm = useForm({ sender_name: thread.external_sender_name ?? '' });
     const customerLinkForm = useForm({ customer_id: thread.customer_id ?? '' });
+    const [pendingAction, setPendingAction] = useState(null);
 
     const submitReply = (e) => {
         e.preventDefault();
@@ -23,8 +26,7 @@ export default function Show({ thread, messages, isCustomerViewer, facebookCusto
     };
 
     const deleteThread = () => {
-        if (!confirm('Delete this closed conversation permanently?')) return;
-        router.post(route('messages.destroy', thread.id));
+        setPendingAction('delete');
     };
 
     const rotateLink = () => {
@@ -32,8 +34,17 @@ export default function Show({ thread, messages, isCustomerViewer, facebookCusto
     };
 
     const revokeLink = () => {
-        if (!confirm('Revoke the current customer link? It will stop working immediately.')) return;
-        router.post(route('messages.public-link', thread.id), { action: 'revoke' });
+        setPendingAction('revoke');
+    };
+
+    const confirmPendingAction = () => {
+        const options = { onFinish: () => setPendingAction(null) };
+        if (pendingAction === 'delete') {
+            router.post(route('messages.destroy', thread.id), {}, options);
+            return;
+        }
+
+        router.post(route('messages.public-link', thread.id), { action: 'revoke' }, options);
     };
 
     const submitSenderName = (e) => {
@@ -149,7 +160,9 @@ export default function Show({ thread, messages, isCustomerViewer, facebookCusto
                 )}
 
                 <div className="space-y-3 rounded-lg bg-white p-4 shadow-sm">
-                    {messages.length === 0 && <p className="text-sm text-gray-400">No messages yet.</p>}
+                    {messages.length === 0 && (
+                        <p className="text-sm text-gray-500">No messages yet. Replies will appear here.</p>
+                    )}
                     {messages.map((message) => (
                         <div
                             key={message.id}
@@ -191,6 +204,21 @@ export default function Show({ thread, messages, isCustomerViewer, facebookCusto
                     </div>
                 )}
             </div>
+
+            <ConfirmationDialog
+                open={pendingAction !== null}
+                onOpenChange={(open) => !open && setPendingAction(null)}
+                title={pendingAction === 'delete' ? 'Delete this conversation?' : 'Revoke the customer link?'}
+                description={
+                    pendingAction === 'delete'
+                        ? 'This permanently removes the conversation and every message in it. This cannot be undone.'
+                        : 'The current link will stop working immediately. You can create a new link later.'
+                }
+                confirmLabel={pendingAction === 'delete' ? 'Delete conversation' : 'Revoke link'}
+                cancelLabel={pendingAction === 'delete' ? 'Keep conversation' : 'Keep link'}
+                onConfirm={confirmPendingAction}
+                destructive
+            />
         </AuthenticatedLayout>
     );
 }

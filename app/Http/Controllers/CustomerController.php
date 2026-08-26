@@ -24,7 +24,7 @@ class CustomerController extends Controller
         if ($customer->user_id) {
             $linkedUser = User::find($customer->user_id);
             if ($linkedUser !== null) {
-                return back()->with('error', 'Delete the linked customer credentials before deleting this customer.');
+                return back()->with('error', 'This customer is linked to an account. Delete the linked account first, then try again.');
             }
             // Repair a historical dangling link before continuing.
             $customer->user_id = null;
@@ -32,7 +32,7 @@ class CustomerController extends Controller
         }
 
         if ($customer->orders()->exists() || $customer->messages()->exists()) {
-            return back()->with('error', 'Customers with orders or message history cannot be deleted.');
+            return back()->with('error', 'This customer has orders or messages and cannot be deleted. Deactivate the customer instead.');
         }
 
         DB::transaction(function () use ($customer, $request) {
@@ -40,7 +40,7 @@ class CustomerController extends Controller
             $customer->delete();
         });
 
-        return redirect()->route('admin.dashboard', ['tab' => 'customers'])->with('success', 'Customer deleted successfully.');
+        return redirect()->route('admin.dashboard', ['tab' => 'customers'])->with('success', 'Customer deleted.');
     }
 
     public function toggleActive(Request $request, Customer $customer)

@@ -2,22 +2,23 @@ import { Input } from '@/components/motion/input';
 
 const ROLE_LABELS = { employee: 'Employee', customer: 'Customer', admin: 'Admin' };
 
-export default function UserForm({ data, setData, errors, allowAdminCreation, customers, isEdit, isSelf, editingUserId }) {
+export default function UserForm({ data, setData, errors, clearErrors, allowAdminCreation, customers, isEdit, isSelf, editingUserId }) {
     const roleOptions = allowAdminCreation ? ['employee', 'customer', 'admin'] : ['employee', 'customer'];
+    const updateField = (field, value) => {
+        setData(field, value);
+        clearErrors(field);
+    };
 
     return (
         <>
-            {Object.entries(errors).map(([key, message]) => (
-                <div key={key} className="rounded-md bg-red-50 p-3 text-sm text-red-700">{message}</div>
-            ))}
-
             <div>
                 <Input
                     label="Full Name"
                     type="text"
                     required
                     value={data.full_name}
-                    onChange={(value) => setData('full_name', value)}
+                    onChange={(value) => updateField('full_name', value)}
+                    error={errors.full_name}
                 />
             </div>
 
@@ -27,7 +28,8 @@ export default function UserForm({ data, setData, errors, allowAdminCreation, cu
                     type="email"
                     required
                     value={data.email}
-                    onChange={(value) => setData('email', value)}
+                    onChange={(value) => updateField('email', value)}
+                    error={errors.email}
                 />
             </div>
 
@@ -39,7 +41,8 @@ export default function UserForm({ data, setData, errors, allowAdminCreation, cu
                     label={isEdit ? 'New Password' : 'Password'}
                     type="password"
                     value={data.password}
-                    onChange={(value) => setData('password', value)}
+                    onChange={(value) => updateField('password', value)}
+                    error={errors.password}
                 />
                 <p className="mt-1 text-xs text-gray-500">At least 12 characters.</p>
             </div>
@@ -49,16 +52,20 @@ export default function UserForm({ data, setData, errors, allowAdminCreation, cu
                     label="Confirm Password"
                     type="password"
                     value={data.password_confirmation}
-                    onChange={(value) => setData('password_confirmation', value)}
+                    onChange={(value) => updateField('password_confirmation', value)}
+                    error={errors.password_confirmation}
                 />
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700">Account Type</label>
+                <label htmlFor="account-type" className="block text-sm font-medium text-gray-700">Account Type</label>
                 <select
+                    id="account-type"
                     value={data.role}
-                    onChange={(e) => setData('role', e.target.value)}
+                    onChange={(e) => updateField('role', e.target.value)}
                     disabled={isSelf}
+                    aria-invalid={Boolean(errors.role) || undefined}
+                    aria-describedby={errors.role ? 'account-type-error' : undefined}
                     className="mt-1 block w-full rounded-md border-gray-300 text-sm disabled:bg-gray-100"
                 >
                     {roleOptions.map((role) => (
@@ -67,15 +74,23 @@ export default function UserForm({ data, setData, errors, allowAdminCreation, cu
                         </option>
                     ))}
                 </select>
+                {errors.role && (
+                    <p id="account-type-error" role="alert" className="mt-1 text-xs text-red-600">
+                        {errors.role}
+                    </p>
+                )}
                 {isSelf && <p className="mt-1 text-xs text-gray-500">You cannot change your own account type.</p>}
             </div>
 
             {data.role === 'customer' && (
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Linked Customer</label>
+                    <label htmlFor="linked-customer" className="block text-sm font-medium text-gray-700">Linked Customer</label>
                     <select
+                        id="linked-customer"
                         value={data.customer_id}
-                        onChange={(e) => setData('customer_id', e.target.value)}
+                        onChange={(e) => updateField('customer_id', e.target.value)}
+                        aria-invalid={Boolean(errors.customer_id) || undefined}
+                        aria-describedby={errors.customer_id ? 'linked-customer-error' : undefined}
                         className="mt-1 block w-full rounded-md border-gray-300 text-sm"
                     >
                         <option value="">Select a customer</option>
@@ -86,6 +101,11 @@ export default function UserForm({ data, setData, errors, allowAdminCreation, cu
                             </option>
                         ))}
                     </select>
+                    {errors.customer_id && (
+                        <p id="linked-customer-error" role="alert" className="mt-1 text-xs text-red-600">
+                            {errors.customer_id}
+                        </p>
+                    )}
                 </div>
             )}
 
@@ -94,7 +114,7 @@ export default function UserForm({ data, setData, errors, allowAdminCreation, cu
                     type="checkbox"
                     checked={data.is_active}
                     disabled={isSelf}
-                    onChange={(e) => setData('is_active', e.target.checked)}
+                    onChange={(e) => updateField('is_active', e.target.checked)}
                     className="disabled:opacity-50"
                 />
                 Active

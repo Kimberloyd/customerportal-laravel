@@ -78,7 +78,7 @@ export default function Print({ order, output, autoPrint }) {
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {order.items.length === 0 && (
-                                <tr><td colSpan={6} className="py-4 text-center text-gray-400">No items found for this order.</td></tr>
+                                <tr><td colSpan={6} className="py-4 text-center text-gray-500">No products have been added to this order.</td></tr>
                             )}
                             {order.items.map((item) => (
                                 <tr key={item.id}>
@@ -107,7 +107,7 @@ export default function Print({ order, output, autoPrint }) {
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {order.audit_logs.length === 0 && (
-                                <tr><td colSpan={4} className="py-4 text-center text-gray-400">No updates recorded yet.</td></tr>
+                                <tr><td colSpan={4} className="py-4 text-center text-gray-500">No updates yet. Order changes will appear here.</td></tr>
                             )}
                             {order.audit_logs.map((audit, index) => (
                                 <tr key={index}>

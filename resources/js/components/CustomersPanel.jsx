@@ -1,24 +1,24 @@
 import { Table } from '@/components/motion/table';
 import { Input } from '@/components/motion/input';
 import { Pagination } from '@/components/interior/pagination';
+import { AnimatedBadge } from '@/components/motion/animated-badge';
 import { router } from '@inertiajs/react';
 import { Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-const STATUS_OPTIONS = [
-    { value: 'active', label: 'Active' },
-    { value: 'inactive', label: 'Inactive' },
-    { value: 'all', label: 'All' },
-];
+const PAGE_SIZE = 10;
+const TABLE_ROW_HEIGHT = 48;
+const HORIZONTAL_SCROLLBAR_HEIGHT = 20;
+const TABLE_VIEWPORT_HEIGHT =
+    (PAGE_SIZE + 1) * TABLE_ROW_HEIGHT + HORIZONTAL_SCROLLBAR_HEIGHT;
 
 export function CustomersPanel({ customers, filters, filterRouteName, filterExtraParams = {} }) {
     const [search, setSearch] = useState(filters.search);
-    const [status, setStatus] = useState(filters.status);
 
     const applyFilters = (overrides = {}) => {
         router.get(
             route(filterRouteName),
-            { search, status, ...filterExtraParams, ...overrides },
+            { search, status: filters.status, ...filterExtraParams, ...overrides },
             { preserveState: true, preserveScroll: true },
         );
     };
@@ -43,15 +43,11 @@ export function CustomersPanel({ customers, filters, filterRouteName, filterExtr
                 key: 'is_active',
                 header: 'Status',
                 cell: (customer) => (
-                    <span
-                        className={`rounded-full px-2 py-0.5 text-xs ${
-                            customer.is_active
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-gray-200 text-gray-700'
-                        }`}
-                    >
-                        {customer.is_active ? 'Active' : 'Inactive'}
-                    </span>
+                    <div className="flex justify-center">
+                        <AnimatedBadge status={customer.is_active ? 'success' : 'neutral'} size="sm">
+                            {customer.is_active ? 'Active' : 'Inactive'}
+                        </AnimatedBadge>
+                    </div>
                 ),
             },
         ],
@@ -60,51 +56,44 @@ export function CustomersPanel({ customers, filters, filterRouteName, filterExtr
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-wrap items-end gap-3 bg-white">
+            <div className="flex justify-center bg-white">
                 <Input
-                    label="Search"
                     type="text"
                     value={search}
                     onChange={setSearch}
+                    placeholder="Search Customer"
+                    aria-label="Search customers"
                     leftIcon={<Search className="h-4 w-4" />}
-                    classNames={{ field: 'h-9 w-80 rounded-none' }}
+                    classNames={{
+                        root: 'w-80',
+                        field: 'h-9 w-80 rounded-full border-border bg-transparent shadow-none',
+                        input: 'text-sm',
+                    }}
                 />
-                <label className="flex flex-col text-sm text-gray-600">
-                    Status
-                    <select
-                        value={status}
-                        onChange={(e) => {
-                            setStatus(e.target.value);
-                            applyFilters({ status: e.target.value });
-                        }}
-                        className="mt-1 rounded-md border-gray-300 text-sm"
-                    >
-                        {STATUS_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                                {opt.label}
-                            </option>
-                        ))}
-                    </select>
-                </label>
             </div>
 
             <Table
                 data={customers.data}
                 columns={columns}
                 getRowId={(customer) => String(customer.id)}
-                height={(Math.max(customers.data.length, 1) + 1) * 49}
+                className="[&>div]:!overflow-x-auto [&>div]:!overflow-y-hidden"
+                rowHeight={TABLE_ROW_HEIGHT}
+                height={TABLE_VIEWPORT_HEIGHT}
                 resizable
                 reorderable
-                emptyState="No customers match these filters."
+                emptyState="No customers found. Try a different search."
+                emptyStateHeight={PAGE_SIZE * TABLE_ROW_HEIGHT}
             />
 
             {customers.last_page > 1 && (
-                <Pagination
-                    count={customers.last_page}
-                    page={customers.current_page}
-                    onPageChange={(page) => applyFilters({ page })}
-                    label="Customers pagination"
-                />
+                <div className="flex justify-end">
+                    <Pagination
+                        count={customers.last_page}
+                        page={customers.current_page}
+                        onPageChange={(page) => applyFilters({ page })}
+                        label="Customers pagination"
+                    />
+                </div>
             )}
         </div>
     );

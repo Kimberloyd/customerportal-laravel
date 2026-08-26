@@ -18,6 +18,14 @@ do
     fi
 done
 
+# The local Compose stack mounts a persistent vendor volume that may have
+# been created by its former root-running PHP image. Only the app service
+# runs Composer, so repair that volume before dropping privileges.
+if [ "${LOCAL_DEVELOPMENT:-false}" = "true" ]; then
+    [ ! -d /app/vendor ] || chown -R app:app /app/vendor
+    chown -R app:app /app/storage /app/bootstrap/cache
+fi
+
 # Build Laravel's bootstrap caches only after runtime environment variables are
 # available and the fresh bootstrap/cache tmpfs belongs to the app user. Doing
 # this in the image would freeze build-time configuration into production.

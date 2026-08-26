@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\PurchaseOrderChanged;
+use App\Exceptions\UserActionException;
 use App\Models\Customer;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
@@ -95,7 +97,7 @@ class PurchaseOrderController extends Controller
         }
 
         $orders = $query->orderByDesc('submitted_at')
-            ->paginate(25)
+            ->paginate(10)
             ->withQueryString()
             ->through(fn (PurchaseOrder $order) => $this->serializeForList($order));
 
@@ -120,14 +122,15 @@ class PurchaseOrderController extends Controller
             ? [['id' => $customer->id, 'company_name' => $customer->company_name]]
             : Customer::query()->orderBy('company_name')->get(['id', 'company_name'])->toArray();
 
-        $products = $this->activeProducts()
-            ->sortBy('product_name', SORT_STRING | SORT_FLAG_CASE)
-            ->values()
-            ->all();
-
         return Inertia::render('PurchaseOrders/Create', [
             'customers' => $customers,
-            'products' => $products,
+            'products' => Inertia::defer(
+                fn () => $this->activeProducts(cached: true)
+                    ->sortBy('product_name', SORT_STRING | SORT_FLAG_CASE)
+                    ->values()
+                    ->all(),
+                'catalog',
+            ),
             'lockedCustomerId' => $customer?->id,
         ]);
     }
@@ -175,11 +178,11 @@ class PurchaseOrderController extends Controller
                     $product = $matches->first();
                 } elseif ($matches->count() > 1) {
                     throw ValidationException::withMessages([
-                        "items.{$i}" => 'Multiple products matched your search. Please select the exact product from the results.',
+                        "items.{$i}" => 'Multiple products match this search. Select the exact product from the results.',
                     ]);
                 } else {
                     throw ValidationException::withMessages([
-                        "items.{$i}" => "No product matches \"{$productSearch}\". Please select a product from the search results.",
+                        "items.{$i}" => "No product matches \"{$productSearch}\". Choose a product from the search results.",
                     ]);
                 }
             } else {
@@ -198,14 +201,14 @@ class PurchaseOrderController extends Controller
 
         if ($lineItems === []) {
             throw ValidationException::withMessages([
-                'items' => 'Please add at least one product line.',
+                'items' => 'Add at least one product line.',
             ]);
         }
 
         $customerId = $customer?->id ?? (int) $request->input('customer_id');
         if (! $customerId || ! Customer::where('id', $customerId)->exists()) {
             throw ValidationException::withMessages([
-                'customer_id' => 'Select a valid customer.',
+                'customer_id' => 'Select a customer from the list.',
             ]);
         }
 
@@ -281,7 +284,9 @@ class PurchaseOrderController extends Controller
             OrderNotifications::submitted($order);
         }
 
-        return redirect()->route('purchase-orders.index')->with('success', 'Order created successfully.');
+        PurchaseOrderChanged::dispatch($order->id, 'created');
+
+        return redirect()->route('purchase-orders.index')->with('success', 'Order created.');
     }
 
     public function edit(PurchaseOrder $order): Response
@@ -321,6 +326,7 @@ class PurchaseOrderController extends Controller
     {
         $this->authorizeOrderAccess($order);
 
+        $previousCustomerId = $order->customer_id;
         $attachmentToDeleteAfterCommit = null;
         $newlySavedAttachment = null;
 
@@ -342,7 +348,7 @@ class PurchaseOrderController extends Controller
                     $customerId = $customer?->id ?? (int) $request->input('customer_id');
                     $newCustomer = Customer::find($customerId);
                     if (! $newCustomer) {
-                        throw new \RuntimeException('Select a valid customer.');
+                        throw new UserActionException('Select a customer from the list.');
                     }
 
                     $proposedQuantities = [];
@@ -351,10 +357,10 @@ class PurchaseOrderController extends Controller
                         $delivered = $item->delivered_quantity ?? 0;
 
                         if ($quantity < 1) {
-                            throw new \RuntimeException('Ordered quantity must be at least 1.');
+                            throw new UserActionException('Enter an ordered quantity of at least 1.');
                         }
                         if ($quantity < $delivered) {
-                            throw new \RuntimeException(
+                            throw new UserActionException(
                                 "{$item->display_name} quantity cannot be lower than {$delivered} already delivered."
                             );
                         }
@@ -398,7 +404,7 @@ class PurchaseOrderController extends Controller
                         try {
                             $newlySavedAttachment = PoAttachment::save($newAttachment, $locked->po_number);
                         } catch (\InvalidArgumentException $e) {
-                            throw new \RuntimeException($e->getMessage());
+                            throw new UserActionException($e->getMessage());
                         }
                         if ($locked->po_file) {
                             $attachmentToDeleteAfterCommit = $locked->po_file;
@@ -409,13 +415,13 @@ class PurchaseOrderController extends Controller
                 }
 
                 if ($changes === []) {
-                    throw new \RuntimeException('No order changes were detected.');
+                    throw new UserActionException('Nothing changed. Update at least one order detail before saving.');
                 }
 
                 $locked->save();
                 OrderAudit::record($locked, 'Order Updated', implode(' ', $changes), $request);
             });
-        } catch (\RuntimeException $e) {
+        } catch (UserActionException $e) {
             if ($newlySavedAttachment) {
                 PoAttachment::delete($newlySavedAttachment);
             }
@@ -433,7 +439,9 @@ class PurchaseOrderController extends Controller
             PoAttachment::delete($attachmentToDeleteAfterCommit);
         }
 
-        return redirect()->route('purchase-orders.show', $order->id)->with('success', 'Order updated successfully.');
+        PurchaseOrderChanged::dispatch($order->id, 'updated', $previousCustomerId);
+
+        return redirect()->route('purchase-orders.show', $order->id)->with('success', 'Order updated.');
     }
 
     public function complete(Request $request, PurchaseOrder $order)
@@ -447,7 +455,7 @@ class PurchaseOrderController extends Controller
                 $locked->load('items');
 
                 if (in_array($locked->status, PurchaseOrder::TERMINAL_STATUSES, true)) {
-                    throw new \RuntimeException("This order is already {$locked->status} and cannot be completed.");
+                    throw new UserActionException("This order is already {$locked->status} and cannot be completed.");
                 }
 
                 foreach ($locked->items as $item) {
@@ -461,9 +469,11 @@ class PurchaseOrderController extends Controller
 
                 OrderAudit::record($locked, 'Order Completed', 'All ordered quantities were marked delivered.', $request);
             });
-        } catch (\RuntimeException $e) {
+        } catch (UserActionException $e) {
             return redirect()->route('purchase-orders.show', $order->id)->with('error', $e->getMessage());
         }
+
+        PurchaseOrderChanged::dispatch($order->id, 'completed');
 
         return redirect()->route('purchase-orders.index')->with('success', 'Order marked as completed.');
     }
@@ -479,7 +489,7 @@ class PurchaseOrderController extends Controller
                 $locked->load('items');
 
                 if (in_array($locked->status, PurchaseOrder::TERMINAL_STATUSES, true)) {
-                    throw new \RuntimeException("This order is already {$locked->status} and cannot receive deliveries.");
+                    throw new UserActionException("This order is already {$locked->status} and cannot receive deliveries.");
                 }
 
                 $receivedAny = false;
@@ -492,7 +502,7 @@ class PurchaseOrderController extends Controller
                         continue;
                     }
                     if ($receiveQuantity > $item->pending_quantity) {
-                        throw new \RuntimeException('Received quantity cannot exceed pending quantity.');
+                        throw new UserActionException('The received quantity is higher than the quantity still pending. Enter the pending quantity or less.');
                     }
                     if ($receiveQuantity > 0) {
                         $item->delivered_quantity = ($item->delivered_quantity ?? 0) + $receiveQuantity;
@@ -503,7 +513,7 @@ class PurchaseOrderController extends Controller
                 }
 
                 if (! $receivedAny) {
-                    throw new \RuntimeException('Enter at least one received quantity.');
+                    throw new UserActionException('Enter a received quantity for at least one product.');
                 }
 
                 $locked->load('items');
@@ -512,9 +522,11 @@ class PurchaseOrderController extends Controller
 
                 OrderAudit::record($locked, 'Fulfillment Updated', implode(' ', $deliveryChanges), $request);
             });
-        } catch (\RuntimeException $e) {
+        } catch (UserActionException $e) {
             return redirect()->route('purchase-orders.show', $order->id)->with('error', $e->getMessage());
         }
+
+        PurchaseOrderChanged::dispatch($order->id, 'fulfillment-updated');
 
         return redirect()->route('purchase-orders.show', $order->id)->with('success', 'Delivery quantities updated.');
     }
@@ -528,7 +540,7 @@ class PurchaseOrderController extends Controller
                 $locked = PurchaseOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
 
                 if (in_array($locked->status, PurchaseOrder::TERMINAL_STATUSES, true)) {
-                    throw new \RuntimeException("This order is already {$locked->status} and cannot be cancelled.");
+                    throw new UserActionException("This order is already {$locked->status} and cannot be cancelled.");
                 }
 
                 $locked->status = PurchaseOrder::STATUS_CANCELLED;
@@ -536,9 +548,11 @@ class PurchaseOrderController extends Controller
 
                 OrderAudit::record($locked, 'Order Cancelled', 'Order status changed to Cancelled.', $request);
             });
-        } catch (\RuntimeException $e) {
+        } catch (UserActionException $e) {
             return redirect()->route('purchase-orders.show', $order->id)->with('error', $e->getMessage());
         }
+
+        PurchaseOrderChanged::dispatch($order->id, 'cancelled');
 
         return redirect()->route('purchase-orders.index')->with('success', 'Order cancelled.');
     }
@@ -687,9 +701,13 @@ class PurchaseOrderController extends Controller
     /**
      * @return Collection<int, object>
      */
-    private function activeProducts(): Collection
+    private function activeProducts(bool $cached = false): Collection
     {
-        return collect($this->inventory->allProducts(['status' => 'active']))
+        $products = $cached
+            ? $this->inventory->cachedProducts(['status' => 'active'])
+            : $this->inventory->allProducts(['status' => 'active']);
+
+        return collect($products)
             ->map(fn (array $product) => (object) InventoryApiClient::mapProduct($product));
     }
 

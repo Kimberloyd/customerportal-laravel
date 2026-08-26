@@ -31,7 +31,7 @@ class ReceiveTest extends TestCase
             "received_{$itemB->id}" => 999,
         ]);
 
-        $response->assertSessionHas('error', 'Received quantity cannot exceed pending quantity.');
+        $response->assertSessionHas('error', 'The received quantity is higher than the quantity still pending. Enter the pending quantity or less.');
         $this->assertSame(0, $itemA->fresh()->delivered_quantity);
         $this->assertSame(0, $itemB->fresh()->delivered_quantity);
     }
@@ -50,7 +50,7 @@ class ReceiveTest extends TestCase
             "received_{$item->id}" => 0,
         ]);
 
-        $response->assertSessionHas('error', 'Enter at least one received quantity.');
+        $response->assertSessionHas('error', 'Enter a received quantity for at least one product.');
     }
 
     public function test_status_transitions_submitted_to_partial_to_completed(): void

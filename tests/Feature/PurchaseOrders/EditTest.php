@@ -70,7 +70,7 @@ class EditTest extends TestCase
             "quantity_{$item->id}" => 5,
         ]);
 
-        $response->assertSessionHas('error', 'No order changes were detected.');
+        $response->assertSessionHas('error', 'Nothing changed. Update at least one order detail before saving.');
         $this->assertSame(0, PurchaseOrderAudit::count());
     }
 

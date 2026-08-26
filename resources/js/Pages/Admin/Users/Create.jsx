@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Head, useForm } from '@inertiajs/react';
 
 export default function Create({ allowAdminCreation, customers }) {
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, processing, errors, clearErrors } = useForm({
         full_name: '',
         email: '',
         password: '',
@@ -35,6 +35,7 @@ export default function Create({ allowAdminCreation, customers }) {
                         data={data}
                         setData={setData}
                         errors={errors}
+                        clearErrors={clearErrors}
                         allowAdminCreation={allowAdminCreation}
                         customers={customers}
                         isEdit={false}

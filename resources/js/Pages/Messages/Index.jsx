@@ -1,4 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { AnimatedBadge } from '@/components/motion/animated-badge';
 import { Table } from '@/components/motion/table';
 import { Button } from '@/components/ui/button';
 import { formatDateTime } from '@/utils/orderDisplay';
@@ -51,15 +52,14 @@ export default function Index({ threads, filters }) {
                 key: 'status',
                 header: 'Status',
                 cell: (thread) => (
-                    <span
-                        className={`rounded-full px-2 py-0.5 text-xs ${
-                            thread.status === 'open'
-                                ? 'bg-blue-100 text-blue-800'
-                                : 'bg-gray-200 text-gray-700'
-                        }`}
-                    >
-                        {thread.status}
-                    </span>
+                    <div className="flex justify-center">
+                        <AnimatedBadge
+                            status={thread.status === 'open' ? 'info' : 'neutral'}
+                            size="sm"
+                        >
+                            {thread.status}
+                        </AnimatedBadge>
+                    </div>
                 ),
             },
             {
@@ -108,7 +108,7 @@ export default function Index({ threads, filters }) {
                         getRowId={(thread) => String(thread.id)}
                         resizable
                         reorderable
-                        emptyState="No conversations match this filter."
+                        emptyState="No conversations found. Try a different status filter."
                     />
 
                     {threads.last_page > 1 && (

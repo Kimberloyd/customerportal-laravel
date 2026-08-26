@@ -1,29 +1,22 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogFooter,
-    DialogTitle,
-    DialogDescription,
-} from '@/components/ui/dialog';
+import ConfirmationDialog from '@/components/ConfirmationDialog';
 import { Input } from '@/components/motion/input';
 import { Table } from '@/components/motion/table';
 import { CommandPalette } from '@/components/motion/command-palette';
 import { AttachmentUpload } from '@/components/motion/attachment-upload';
-import { Head, useForm } from '@inertiajs/react';
-import { Search, Trash2, X } from 'lucide-react';
+import { Deferred, Head, useForm } from '@inertiajs/react';
+import { CircleAlert, Search, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
-export default function Create({ customers, products, lockedCustomerId }) {
+export default function Create({ customers, products = [], lockedCustomerId }) {
     const [lines, setLines] = useState([]);
     const [selectedLineIds, setSelectedLineIds] = useState([]);
     const [attachmentItems, setAttachmentItems] = useState([]);
     const [paletteOpen, setPaletteOpen] = useState(false);
     const [confirmBulkDeleteOpen, setConfirmBulkDeleteOpen] = useState(false);
     const [clientError, setClientError] = useState(null);
-    const { data, setData, post, transform, processing, errors } = useForm({
+    const { data, setData, post, transform, processing, errors, clearErrors } = useForm({
         customer_id: lockedCustomerId ?? '',
         po_number: '',
         remarks: '',
@@ -31,7 +24,7 @@ export default function Create({ customers, products, lockedCustomerId }) {
     });
 
     const errorMessages = [
-        clientError,
+        clientError?.message,
         ...Object.entries(errors)
             .filter(([key]) => key.startsWith('items'))
             .map(([, message]) => message),
@@ -45,6 +38,9 @@ export default function Create({ customers, products, lockedCustomerId }) {
     }, [errorMessages.join('|')]);
 
     const addProduct = (product) => {
+        setClientError((current) => current?.field === 'items' ? null : current);
+        const itemErrorKeys = Object.keys(errors).filter((key) => key.startsWith('items'));
+        if (itemErrorKeys.length > 0) clearErrors(...itemErrorKeys);
         setLines((prev) => {
             const existing = prev.find((l) => l.product_id === product.id);
             if (existing) {
@@ -88,6 +84,9 @@ export default function Create({ customers, products, lockedCustomerId }) {
     );
 
     const updateQuantity = (key, quantity) => {
+        setClientError((current) => current?.field === 'items' ? null : current);
+        const itemErrorKeys = Object.keys(errors).filter((errorKey) => errorKey.startsWith('items'));
+        if (itemErrorKeys.length > 0) clearErrors(...itemErrorKeys);
         setLines((prev) => prev.map((line) => (line.key === key ? { ...line, quantity } : line)));
     };
 
@@ -103,17 +102,17 @@ export default function Create({ customers, products, lockedCustomerId }) {
         e.preventDefault();
 
         if (!lockedCustomerId && data.customer_id === '') {
-            setClientError('Select a customer.');
+            setClientError({ field: 'customer_id', message: 'Select a customer.' });
             return;
         }
 
         if (data.po_number.trim() === '') {
-            setClientError('Enter a PO number.');
+            setClientError({ field: 'po_number', message: 'Enter a PO number.' });
             return;
         }
 
         if (lines.length === 0) {
-            setClientError('Please add at least one product line.');
+            setClientError({ field: 'items', message: 'Add at least one product line.' });
             return;
         }
 
@@ -121,7 +120,10 @@ export default function Create({ customers, products, lockedCustomerId }) {
             (line) => !Number.isInteger(Number(line.quantity)) || Number(line.quantity) < 1,
         );
         if (invalidQuantityLine) {
-            setClientError(`Enter a quantity of at least 1 for "${invalidQuantityLine.product_name}".`);
+            setClientError({
+                field: 'items',
+                message: `Enter a quantity of at least 1 for "${invalidQuantityLine.product_name}".`,
+            });
             return;
         }
 
@@ -193,12 +195,15 @@ export default function Create({ customers, products, lockedCustomerId }) {
             <Head title="Create Order" />
 
             {errorMessages.length > 0 && !errorBannerDismissed && (
-                <div className="sticky top-16 z-30 bg-red-50">
+                <div className="sticky top-16 z-30 border-y border-red-200 bg-red-50" role="alert">
                     <div className="mx-auto flex max-w-7xl items-start justify-between gap-4 px-4 py-3 text-sm text-red-700 sm:px-6 lg:px-8">
-                        <div className="space-y-1">
-                            {errorMessages.map((message, index) => (
-                                <p key={index}>{message}</p>
-                            ))}
+                        <div className="flex items-start gap-2">
+                            <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                            <div className="space-y-1">
+                                {errorMessages.map((message, index) => (
+                                    <p key={index}>{message}</p>
+                                ))}
+                            </div>
                         </div>
                         <button
                             type="button"
@@ -224,10 +229,17 @@ export default function Create({ customers, products, lockedCustomerId }) {
                 <form onSubmit={submit} className="space-y-6 bg-white">
                     {!lockedCustomerId && (
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-gray-700">Customer</label>
+                            <label htmlFor="order-customer" className="mb-1 block text-sm font-medium text-gray-700">Customer</label>
                             <select
+                                id="order-customer"
                                 value={data.customer_id}
-                                onChange={(e) => setData('customer_id', e.target.value)}
+                                onChange={(e) => {
+                                    setData('customer_id', e.target.value);
+                                    clearErrors('customer_id');
+                                    if (clientError?.field === 'customer_id') setClientError(null);
+                                }}
+                                aria-invalid={Boolean(errors.customer_id || clientError?.field === 'customer_id') || undefined}
+                                aria-describedby={errors.customer_id || clientError?.field === 'customer_id' ? 'order-customer-error' : undefined}
                                 className="mt-1 block w-full rounded-md border-gray-300 text-sm"
                             >
                                 <option value="">Select a customer</option>
@@ -237,37 +249,59 @@ export default function Create({ customers, products, lockedCustomerId }) {
                                     </option>
                                 ))}
                             </select>
+                            {(errors.customer_id || clientError?.field === 'customer_id') && (
+                                <p id="order-customer-error" role="alert" className="mt-1 text-xs text-red-600">
+                                    {errors.customer_id ?? clientError.message}
+                                </p>
+                            )}
                         </div>
                     )}
 
                     <div>
-                        <div className="mb-4 flex items-center justify-center gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setPaletteOpen(true)}
-                                className="flex h-9 w-80 items-center gap-2 rounded-full border border-border bg-transparent pl-3.5 pr-4 text-sm text-muted-foreground hover:border-foreground/40"
-                            >
-                                <Search className="h-4 w-4" />
-                                <span className="text-left">Search Product</span>
-                                <kbd className="pointer-events-none ml-auto select-none rounded border border-gray-300 bg-gray-50 px-1.5 py-0.5 text-xs font-medium text-gray-500">
-                                    Ctrl+K
-                                </kbd>
-                            </button>
-                        </div>
-
-                        <CommandPalette
-                            items={commandItems}
-                            open={paletteOpen}
-                            onOpenChange={setPaletteOpen}
-                            placeholder="Search product name, generic name, or SKU"
-                            emptyMessage="No products match your search."
-                            note={
-                                <div className="flex items-center justify-between gap-3">
-                                    <span>Left: Product Name. Right: Generic Name.</span>
-                                    <span>Badges: Variant, then Unit.</span>
+                        <Deferred
+                            data="products"
+                            fallback={
+                                <div className="mb-4 flex items-center justify-center">
+                                    <button
+                                        type="button"
+                                        disabled
+                                        className="flex h-9 w-80 cursor-wait items-center gap-2 rounded-full border border-border bg-transparent pl-3.5 pr-4 text-sm text-muted-foreground opacity-60"
+                                    >
+                                        <Search className="h-4 w-4" />
+                                        <span>Loading products…</span>
+                                    </button>
                                 </div>
                             }
-                        />
+                        >
+                            <>
+                                <div className="mb-4 flex items-center justify-center gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setPaletteOpen(true)}
+                                        className="flex h-9 w-80 items-center gap-2 rounded-full border border-border bg-transparent pl-3.5 pr-4 text-sm text-muted-foreground hover:border-foreground/40"
+                                    >
+                                        <Search className="h-4 w-4" />
+                                        <span className="text-left">Search Product</span>
+                                        <kbd className="pointer-events-none ml-auto select-none rounded border border-gray-300 bg-gray-50 px-1.5 py-0.5 text-xs font-medium text-gray-500">
+                                            Ctrl+K
+                                        </kbd>
+                                    </button>
+                                </div>
+                                <CommandPalette
+                                    items={commandItems}
+                                    open={paletteOpen}
+                                    onOpenChange={setPaletteOpen}
+                                    placeholder="Search product name, generic name, or SKU"
+                                    emptyMessage="No products found. Try a different search."
+                                    note={
+                                        <div className="flex items-center justify-between gap-3">
+                                            <span>Left: Product Name. Right: Generic Name.</span>
+                                            <span>Badges: Variant, then Unit.</span>
+                                        </div>
+                                    }
+                                />
+                            </>
+                        </Deferred>
 
                         <div className="mb-1 flex items-center justify-between text-sm text-muted-foreground">
                             <span>{lines.length} {lines.length === 1 ? 'row' : 'rows'}</span>
@@ -290,7 +324,7 @@ export default function Create({ customers, products, lockedCustomerId }) {
                             data={lines}
                             columns={productLineColumns}
                             getRowId={(line) => line.key}
-                            className="rounded-[9px] [&>div]:overflow-hidden [&_td:not(:nth-last-child(-n+2))]:border-r [&_td:not(:nth-last-child(-n+2))]:border-border/60 [&_th:not(:nth-last-child(-n+2))]:border-r [&_th:not(:nth-last-child(-n+2))]:border-border/60"
+                            className="[&>div]:overflow-hidden [&_td:not(:nth-last-child(-n+2))]:border-r [&_td:not(:nth-last-child(-n+2))]:border-border/60 [&_th:not(:nth-last-child(-n+2))]:border-r [&_th:not(:nth-last-child(-n+2))]:border-border/60"
                             height={lines.length === 0 ? 176 : lines.length * 48 + 48}
                             resizable
                             reorderable
@@ -299,43 +333,39 @@ export default function Create({ customers, products, lockedCustomerId }) {
                             onSelectionChange={setSelectedLineIds}
                             emptyState="Search for a product above to add it to this order."
                         />
+                        {(clientError?.field === 'items' || Object.keys(errors).some((key) => key.startsWith('items'))) && (
+                            <div className="mt-2 space-y-1 text-xs text-red-600" role="alert">
+                                {clientError?.field === 'items' && <p>{clientError.message}</p>}
+                                {Object.entries(errors)
+                                    .filter(([key]) => key.startsWith('items'))
+                                    .map(([key, message]) => <p key={key}>{message}</p>)}
+                            </div>
+                        )}
 
-                        <Dialog open={confirmBulkDeleteOpen} onOpenChange={setConfirmBulkDeleteOpen}>
-                            <DialogContent>
-                                <DialogHeader className="mb-6 gap-2">
-                                    <DialogTitle>Remove selected product lines?</DialogTitle>
-                                    <DialogDescription className="text-sm text-gray-600">
-                                        This will remove {selectedLineIds.length} selected product{' '}
-                                        {selectedLineIds.length === 1 ? 'line' : 'lines'} from this order.
-                                    </DialogDescription>
-                                </DialogHeader>
-                                <DialogFooter>
-                                    <button
-                                        type="button"
-                                        onClick={() => setConfirmBulkDeleteOpen(false)}
-                                        className="inline-flex h-9 items-center justify-center rounded-lg bg-gray-100 px-4 text-[13px] font-medium text-gray-700 transition-colors hover:bg-gray-200"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={confirmRemoveSelectedLines}
-                                        className="inline-flex h-9 items-center justify-center rounded-lg bg-red-600 px-4 text-[13px] font-medium text-white transition-colors hover:bg-red-700"
-                                    >
-                                        Remove
-                                    </button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
+                        <ConfirmationDialog
+                            open={confirmBulkDeleteOpen}
+                            onOpenChange={setConfirmBulkDeleteOpen}
+                            title="Remove selected product lines?"
+                            description={`This will remove ${selectedLineIds.length} selected product ${selectedLineIds.length === 1 ? 'line' : 'lines'} from this order.`}
+                            confirmLabel="Remove"
+                            cancelLabel="Cancel"
+                            onConfirm={confirmRemoveSelectedLines}
+                            destructive
+                        />
                     </div>
 
                     <div>
-                        <label className="mb-1 block text-sm font-medium text-gray-700">PO Number</label>
+                        <label htmlFor="po-number" className="mb-1 block text-sm font-medium text-gray-700">PO Number</label>
                         <Input
+                            id="po-number"
                             type="text"
                             value={data.po_number}
-                            onChange={(value) => setData('po_number', value)}
-                            error={errors.po_number}
+                            onChange={(value) => {
+                                setData('po_number', value);
+                                clearErrors('po_number');
+                                if (clientError?.field === 'po_number') setClientError(null);
+                            }}
+                            error={errors.po_number ?? (clientError?.field === 'po_number' ? clientError.message : undefined)}
                             classNames={{ root: 'mt-1', field: 'rounded-md' }}
                         />
                     </div>
@@ -349,10 +379,15 @@ export default function Create({ customers, products, lockedCustomerId }) {
                             onValueChange={(items) => {
                                 setAttachmentItems(items);
                                 setData('po_attachment', items[0]?.file ?? null);
+                                clearErrors('po_attachment');
+                                if (clientError?.field === 'po_attachment') setClientError(null);
                             }}
                             onFilesRejected={(files, reason) => {
                                 if (reason === 'too-large') {
-                                    setClientError('Attachment must be 8 MB or smaller.');
+                                    setClientError({
+                                        field: 'po_attachment',
+                                        message: 'This file is larger than 8 MB. Choose a smaller file.',
+                                    });
                                 }
                             }}
                             accept=".pdf,.png,.jpg,.jpeg"
@@ -363,6 +398,11 @@ export default function Create({ customers, products, lockedCustomerId }) {
                             description="PDF, PNG, or JPG — up to 8 MB"
                             className="mt-1"
                         />
+                        {(errors.po_attachment || clientError?.field === 'po_attachment') && (
+                            <p role="alert" className="mt-1 text-xs text-red-600">
+                                {errors.po_attachment ?? clientError.message}
+                            </p>
+                        )}
                     </div>
 
                     <div>

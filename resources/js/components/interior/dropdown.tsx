@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 const EASE = [0.23, 1, 0.32, 1] as const;
@@ -16,11 +17,23 @@ const SLIDE = { type: "spring", stiffness: 700, damping: 46, mass: 0.5 } as cons
 const ROW_H = 32;
 
 const OPEN = { type: "spring", stiffness: 620, damping: 38, mass: 0.6 } as const;
+const MENU_WIDTH = 224;
+const MENU_GAP = 6;
+
+function DropdownLayer({ portal, children }: { portal: boolean; children: ReactNode }) {
+  if (portal && typeof document !== "undefined") {
+    return createPortal(children, document.body);
+  }
+
+  return children;
+}
 
 export type DropdownItem = {
   value: string;
   label: string;
   hint?: string;
+  icon?: ReactNode;
+  destructive?: boolean;
   disabled?: boolean;
 };
 
@@ -139,13 +152,22 @@ export function useDropdown({
   );
 
   useEffect(() => {
-    if (open) listRef.current?.focus();
+    if (!open) return;
+
+    const frame = requestAnimationFrame(() => listRef.current?.focus());
+    return () => cancelAnimationFrame(frame);
   }, [open]);
 
   useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) close(false);
+      const target = e.target as Node;
+      if (
+        !rootRef.current?.contains(target) &&
+        !listRef.current?.contains(target)
+      ) {
+        close(false);
+      }
     };
     const onWindowBlur = () => close(false);
     document.addEventListener("pointerdown", onDown, true);
@@ -254,6 +276,7 @@ export function useDropdown({
     selectedItem: selectedIndex >= 0 ? items[selectedIndex] : null,
     itemId,
     rootRef,
+    triggerRef,
     triggerProps,
     listProps,
     getItemProps,
@@ -270,6 +293,10 @@ export type DropdownProps = {
   disabled?: boolean;
   emptyLabel?: string;
   className?: string;
+  trigger?: ReactNode;
+  triggerClassName?: string;
+  align?: "left" | "right";
+  portal?: boolean;
 };
 
 export function Dropdown({
@@ -282,6 +309,10 @@ export function Dropdown({
   disabled = false,
   emptyLabel = "Nothing to choose",
   className = "",
+  trigger,
+  triggerClassName,
+  align = "left",
+  portal = false,
 }: DropdownProps) {
   const reduced = useReducedMotion();
   const {
@@ -290,43 +321,91 @@ export function Dropdown({
     selectedIndex,
     selectedItem,
     rootRef,
+    triggerRef,
+    close,
     triggerProps,
     listProps,
     getItemProps,
   } = useDropdown({ items, value, defaultValue, onChange, disabled });
 
   const cell = reduced ? NONE : CELL;
+  const [portalPosition, setPortalPosition] = useState<{ top: number; left: number } | null>(null);
+
+  useEffect(() => {
+    if (!open || !portal) {
+      setPortalPosition(null);
+      return;
+    }
+
+    const triggerRect = triggerRef.current?.getBoundingClientRect();
+    if (!triggerRect) return;
+
+    const menuHeight = Math.min(items.length * ROW_H + 10, 226);
+    const hasRoomBelow = triggerRect.bottom + MENU_GAP + menuHeight <= window.innerHeight - 8;
+    const top = hasRoomBelow
+      ? triggerRect.bottom + MENU_GAP
+      : Math.max(8, triggerRect.top - MENU_GAP - menuHeight);
+    const preferredLeft = align === "right"
+      ? triggerRect.right - MENU_WIDTH
+      : triggerRect.left;
+
+    setPortalPosition({
+      top,
+      left: Math.min(
+        Math.max(8, preferredLeft),
+        window.innerWidth - MENU_WIDTH - 8,
+      ),
+    });
+
+    const dismiss = () => close(false);
+    window.addEventListener("resize", dismiss);
+    window.addEventListener("scroll", dismiss, true);
+
+    return () => {
+      window.removeEventListener("resize", dismiss);
+      window.removeEventListener("scroll", dismiss, true);
+    };
+  }, [align, close, items.length, open, portal, triggerRef]);
 
   return (
     <div ref={rootRef} className={`relative inline-block text-left ${className}`}>
       <button
         {...triggerProps}
-        className="flex h-9 select-none items-center gap-2 whitespace-nowrap rounded-[9px] border border-stone-200 bg-white px-3 text-[13px] font-medium text-stone-700 shadow-none outline-none transition-colors duration-150 hover:border-stone-300 focus-visible:border-stone-400 disabled:opacity-50 dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:text-stone-200 dark:hover:border-white/20 dark:focus-visible:border-white/30"
+        aria-label={trigger ? label : undefined}
+        className={
+          triggerClassName ??
+          "flex h-9 select-none items-center gap-2 whitespace-nowrap rounded-[9px] border border-stone-200 bg-white px-3 text-[13px] font-medium text-stone-700 shadow-none outline-none transition-colors duration-150 hover:border-stone-300 focus-visible:border-stone-400 disabled:opacity-50 dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:text-stone-200 dark:hover:border-white/20 dark:focus-visible:border-white/30"
+        }
       >
-        <span className="sr-only">
-          {label}: {selectedItem ? selectedItem.label : placeholder}
-        </span>
-        <span aria-hidden>{label}</span>
-        <motion.svg
-          aria-hidden
-          viewBox="0 0 12 12"
-          className="size-3 shrink-0 text-stone-500 dark:text-stone-400"
-          initial={false}
-          animate={{ rotate: open ? 180 : 0 }}
-          transition={reduced ? NONE : NUDGE}
-        >
-          <path
-            d="M3 4.75 6 7.75 9 4.75"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </motion.svg>
+        {trigger ?? (
+          <>
+            <span className="sr-only">
+              {label}: {selectedItem ? selectedItem.label : placeholder}
+            </span>
+            <span aria-hidden>{label}</span>
+            <motion.svg
+              aria-hidden
+              viewBox="0 0 12 12"
+              className="size-3 shrink-0 text-stone-500 dark:text-stone-400"
+              initial={false}
+              animate={{ rotate: open ? 180 : 0 }}
+              transition={reduced ? NONE : NUDGE}
+            >
+              <path
+                d="M3 4.75 6 7.75 9 4.75"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </motion.svg>
+          </>
+        )}
       </button>
-      <AnimatePresence>
-        {open && (
+      <DropdownLayer portal={portal}>
+        <AnimatePresence>
+        {open && (!portal || portalPosition) && (
           <motion.div
             initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.94, y: -8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -341,8 +420,11 @@ export function Dropdown({
                 ? NONE
                 : { ...OPEN, opacity: { duration: 0.12, ease: EASE } }
             }
-            style={{ transformOrigin: "top left" }}
-            className="absolute left-0 top-[calc(100%+6px)] z-50 min-w-[224px] whitespace-nowrap rounded-[11px] border border-stone-200 bg-white p-[5px] shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)] dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:shadow-[0_2px_12px_rgba(0,0,0,0.6)]"
+            style={{
+              transformOrigin: align === "right" ? "top right" : "top left",
+              ...(portal && portalPosition ? portalPosition : {}),
+            }}
+            className={`${portal ? "fixed" : `absolute top-[calc(100%+6px)] ${align === "right" ? "right-0" : "left-0"}`} z-50 min-w-[224px] whitespace-nowrap rounded-[11px] border border-stone-200 bg-white p-[5px] shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)] dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:shadow-[0_2px_12px_rgba(0,0,0,0.6)]`}
           >
             <ul
               {...listProps}
@@ -351,7 +433,11 @@ export function Dropdown({
             >
               <motion.span
                 aria-hidden
-                className="pointer-events-none absolute inset-x-0 top-0 h-8 rounded-[7px] bg-stone-100 dark:bg-white/10"
+                className={`pointer-events-none absolute inset-x-0 top-0 h-8 rounded-[7px] transition-colors ${
+                  items[activeIndex]?.destructive
+                    ? "bg-rose-50 dark:bg-rose-500/10"
+                    : "bg-stone-100 dark:bg-white/10"
+                }`}
                 initial={false}
                 animate={{
                   y: activeIndex < 0 ? 0 : activeIndex * ROW_H,
@@ -370,14 +456,21 @@ export function Dropdown({
                   <li
                     key={item.value}
                     {...getItemProps(i)}
-                    className={`relative flex h-8 select-none items-center rounded-[7px] px-2.5 text-[13px] ${
+                    className={`relative flex h-8 select-none items-center gap-2 rounded-[7px] px-2.5 text-[13px] ${
                       item.disabled
                         ? "cursor-not-allowed text-stone-500/70 dark:text-stone-400/70"
+                        : item.destructive
+                          ? "cursor-pointer text-rose-500"
                         : active
                           ? "cursor-pointer text-stone-900 dark:text-stone-100"
                           : "cursor-pointer text-stone-700 dark:text-stone-200"
                     }`}
                   >
+                    {item.icon ? (
+                      <span className="relative z-10 flex size-4 shrink-0 items-center justify-center [&_svg]:size-4">
+                        {item.icon}
+                      </span>
+                    ) : null}
                     <span className="min-w-0 flex-1 truncate">{item.label}</span>
                     {item.hint || picked ? (
                       <span className="ml-auto flex shrink-0 items-center gap-2">
@@ -423,7 +516,8 @@ export function Dropdown({
             </ul>
           </motion.div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>
+      </DropdownLayer>
     </div>
   );
 }

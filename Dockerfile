@@ -10,6 +10,14 @@
 # the same way the Flask image documents doing.
 FROM node:20-slim AS assets
 WORKDIR /app
+ARG VITE_REVERB_APP_KEY
+ARG VITE_REVERB_HOST
+ARG VITE_REVERB_PORT
+ARG VITE_REVERB_SCHEME
+ENV VITE_REVERB_APP_KEY=${VITE_REVERB_APP_KEY} \
+    VITE_REVERB_HOST=${VITE_REVERB_HOST} \
+    VITE_REVERB_PORT=${VITE_REVERB_PORT} \
+    VITE_REVERB_SCHEME=${VITE_REVERB_SCHEME}
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
@@ -25,6 +33,7 @@ RUN apk add --no-cache \
         freetype \
         su-exec \
     && apk add --no-cache --virtual .build-deps \
+        $PHPIZE_DEPS \
         icu-dev \
         libzip-dev \
         oniguruma-dev \
@@ -39,7 +48,13 @@ RUN apk add --no-cache \
         zip \
         gd \
         opcache \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
     && apk del .build-deps
+
+RUN apk add --no-cache --virtual .pcntl-build-deps $PHPIZE_DEPS \
+    && docker-php-ext-install pcntl \
+    && apk del .pcntl-build-deps
 
 RUN addgroup -S app && adduser -S -G app -h /app app
 

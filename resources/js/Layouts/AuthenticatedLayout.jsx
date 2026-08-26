@@ -1,8 +1,11 @@
 import Dropdown from '@/components/Dropdown';
 import FlashBanner from '@/components/FlashBanner';
 import ResponsiveNavLink from '@/components/ResponsiveNavLink';
+import { Drawer } from '@/components/motion/drawer';
 import { FooterSimple } from '@/components/smoothui/footer-1';
-import { Link, usePage } from '@inertiajs/react';
+import { NotificationBell } from '@/components/ui/notification-bell';
+import { Link, router, usePage } from '@inertiajs/react';
+import { Bell, MessageCircle, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 export default function AuthenticatedLayout({ header, children }) {
@@ -10,6 +13,7 @@ export default function AuthenticatedLayout({ header, children }) {
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
+    const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
 
     useEffect(() => {
@@ -130,7 +134,25 @@ export default function AuthenticatedLayout({ header, children }) {
                         </div>
 
                         <div className="hidden sm:ms-6 sm:flex sm:items-center">
-                            <div className="relative ms-3">
+                            <div className="flex items-center gap-1">
+                                <NotificationBell
+                                    count={unreadCount}
+                                    size={36}
+                                    label="Messages"
+                                    icon={<MessageCircle aria-hidden="true" className="h-[18px] w-[18px]" />}
+                                    className="bg-transparent hover:bg-gray-100"
+                                    onClick={() => router.visit(route('messages.index'))}
+                                />
+                                <NotificationBell
+                                    count={unreadCount}
+                                    size={36}
+                                    icon={<Bell aria-hidden="true" className="h-5 w-5" />}
+                                    className="bg-transparent hover:bg-gray-100"
+                                    onClick={() => setNotificationDrawerOpen(true)}
+                                />
+                            </div>
+
+                            <div className="relative ms-2">
                                 <Dropdown>
                                     <Dropdown.Trigger>
                                         <span className="inline-flex rounded-md">
@@ -263,6 +285,66 @@ export default function AuthenticatedLayout({ header, children }) {
                     </div>
                 </div>
             </nav>
+
+            <Drawer
+                open={notificationDrawerOpen}
+                onOpenChange={setNotificationDrawerOpen}
+                side="right"
+                ariaLabel="Notifications"
+                className="w-96 bg-white"
+            >
+                <div className="flex items-start justify-between border-b border-gray-200 px-6 py-5">
+                    <div>
+                        <h2 className="text-lg font-semibold text-gray-900">Notifications</h2>
+                        <p className="mt-1 text-sm text-gray-500">Updates that need your attention.</p>
+                    </div>
+                    <button
+                        type="button"
+                        aria-label="Close notifications"
+                        className="grid h-9 w-9 place-items-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                        onClick={() => setNotificationDrawerOpen(false)}
+                    >
+                        <X aria-hidden="true" className="h-5 w-5" />
+                    </button>
+                </div>
+
+                <div className="flex flex-1 flex-col overflow-y-auto p-6">
+                    {unreadCount > 0 ? (
+                        <div className="border border-gray-200 p-4">
+                            <div className="flex items-start gap-3">
+                                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gray-100 text-gray-600">
+                                    <MessageCircle aria-hidden="true" className="h-5 w-5" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-sm font-medium text-gray-900">
+                                        {unreadCount} unread {unreadCount === 1 ? 'message' : 'messages'}
+                                    </p>
+                                    <p className="mt-1 text-sm text-gray-500">
+                                        Open your inbox to read and respond.
+                                    </p>
+                                    <Link
+                                        href={route('messages.index')}
+                                        className="mt-3 inline-flex text-sm font-medium text-gray-900 underline-offset-4 hover:underline"
+                                        onClick={() => setNotificationDrawerOpen(false)}
+                                    >
+                                        View messages
+                                    </Link>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
+                            <div className="grid h-12 w-12 place-items-center rounded-full bg-gray-100 text-gray-500">
+                                <Bell aria-hidden="true" className="h-6 w-6" />
+                            </div>
+                            <h3 className="mt-4 text-sm font-medium text-gray-900">No new notifications</h3>
+                            <p className="mt-1 max-w-xs text-sm text-gray-500">
+                                You are all caught up. New message updates will appear here.
+                            </p>
+                        </div>
+                    )}
+                </div>
+            </Drawer>
 
             <FlashBanner />
 

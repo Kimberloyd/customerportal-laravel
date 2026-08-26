@@ -23,6 +23,17 @@ class InventoryApiClientTest extends TestCase
         Http::assertSent(fn (Request $request) => str_contains($request->url(), 'page=3'));
     }
 
+    public function test_cached_products_reuses_the_catalog_for_matching_parameters(): void
+    {
+        $this->fakeInventoryApi(products: [['id' => 1]]);
+
+        $first = app(InventoryApiClient::class)->cachedProducts(['status' => 'active']);
+        $second = app(InventoryApiClient::class)->cachedProducts(['status' => 'active']);
+
+        $this->assertSame($first, $second);
+        Http::assertSentCount(1);
+    }
+
     public function test_all_customers_fetches_every_page_and_preserves_page_order(): void
     {
         $this->fakeInventoryApi(customers: array_map(

@@ -76,6 +76,8 @@ export interface TableProps<T> {
   /** How many skeleton rows to show while loading more (default 3). */
   skeletonRows?: number;
   emptyState?: ReactNode;
+  /** Fixed empty-state body height in px. */
+  emptyStateHeight?: number;
   className?: string;
   /** Makes each row clickable; receives the row data and stable id. */
   onRowClick?: (row: T, id: string) => void;

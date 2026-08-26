@@ -1,4 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { AnimatedBadge } from '@/components/motion/animated-badge';
 import { Table } from '@/components/motion/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/motion/input';
@@ -63,7 +64,11 @@ export default function Orders({ orders, filters, customers, summary }) {
                 cell: (order) => {
                     const badge = statusBadge(order.status);
                     return (
-                        <span className={`rounded-full px-2 py-0.5 text-xs ${badge.className}`}>{badge.label}</span>
+                        <div className="flex justify-center">
+                            <AnimatedBadge status={badge.status} pulse={badge.pulse} size="sm">
+                                {badge.label}
+                            </AnimatedBadge>
+                        </div>
                     );
                 },
             },
@@ -184,7 +189,7 @@ export default function Orders({ orders, filters, customers, summary }) {
                         getRowId={(order) => String(order.id)}
                         resizable
                         reorderable
-                        emptyState="No orders match these filters."
+                        emptyState="No orders found. Try a different date range or filter."
                     />
 
                     {orders.last_page > 1 && (

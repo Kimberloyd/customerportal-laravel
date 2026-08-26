@@ -23,7 +23,7 @@ class DeleteTest extends TestCase
 
         $response = $this->actingAsUser($staff)->delete("/customers/{$customer->id}");
 
-        $response->assertSessionHas('error', 'Delete the linked customer credentials before deleting this customer.');
+        $response->assertSessionHas('error', 'This customer is linked to an account. Delete the linked account first, then try again.');
         $this->assertNotNull(Customer::find($customer->id));
     }
 
@@ -51,7 +51,7 @@ class DeleteTest extends TestCase
 
         $response = $this->actingAsUser($staff)->delete("/customers/{$customer->id}");
 
-        $response->assertSessionHas('error', 'Customers with orders or message history cannot be deleted.');
+        $response->assertSessionHas('error', 'This customer has orders or messages and cannot be deleted. Deactivate the customer instead.');
         $this->assertNotNull(Customer::find($customer->id));
     }
 

@@ -78,11 +78,37 @@ that *same* schema so Eloquent can read/write it directly. Running
 `migrate` would try to `CREATE TABLE users` (etc.) against a table
 that's already there and fail, or worse.
 
-This deployment is configured with `SESSION_DRIVER=file`,
-`CACHE_STORE=file`, and `QUEUE_CONNECTION=sync` specifically so
+This deployment keeps sessions and cache outside the database and uses the
+Compose `redis` service for queued realtime broadcasts, so
 Laravel never needs its own `sessions`/`cache`/`jobs` tables either —
 there is genuinely no migration this deployment needs to run, ever,
 against the shared database.
+
+## Realtime services
+
+`docker compose up -d --build` also starts three private services: `reverb`
+holds WebSocket connections, `broadcast-worker` consumes the dedicated
+`broadcasts` queue, and `redis` stores that queue. Nginx proxies `/app` and
+`/apps` to Reverb, so the browser uses the same public origin as the portal.
+
+Before a production build, set unique `REVERB_APP_ID`, `REVERB_APP_KEY`, and
+`REVERB_APP_SECRET` values and copy the public key to
+`VITE_REVERB_APP_KEY`. Keep `REVERB_ALLOWED_ORIGINS` restricted to the exact
+public browser origins. The `VITE_REVERB_*` values are compiled into the JS
+bundle, so changing them requires another image build.
+
+For a graceful Reverb-only restart after a deployment or configuration
+change, run:
+
+```
+docker compose exec app php artisan reverb:restart
+```
+
+Then confirm all persistent processes are healthy:
+
+```
+docker compose ps app reverb broadcast-worker redis proxy
+```
 
 ## If something's wrong
 

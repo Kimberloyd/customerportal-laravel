@@ -3,6 +3,11 @@ services:
     image: customerportal-laravel-app:latest
     build:
       context: .
+      args:
+        VITE_REVERB_APP_KEY: ${VITE_REVERB_APP_KEY}
+        VITE_REVERB_HOST: ${VITE_REVERB_HOST:-}
+        VITE_REVERB_PORT: ${VITE_REVERB_PORT:-}
+        VITE_REVERB_SCHEME: ${VITE_REVERB_SCHEME:-}
     env_file:
       - .env
     environment:
@@ -52,6 +57,96 @@ services:
       retries: 3
       start_period: 20s
 
+  reverb:
+    image: customerportal-laravel-app:latest
+    env_file:
+      - .env
+    environment:
+      APP_ENV: production
+    command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+    tmpfs:
+      - /app/storage/framework/sessions
+      - /app/storage/framework/cache
+      - /app/storage/framework/views
+      - /app/bootstrap/cache
+      - /tmp
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    expose:
+      - "8080"
+    networks:
+      - default
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "php -r \"exit(@fsockopen('127.0.0.1', 8080) ? 0 : 1);\""
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  broadcast-worker:
+    image: customerportal-laravel-app:latest
+    env_file:
+      - .env
+    environment:
+      APP_ENV: production
+    command: ["php", "artisan", "queue:work", "--queue=broadcasts", "--sleep=1", "--tries=3", "--timeout=60"]
+    depends_on:
+      app:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    tmpfs:
+      - /app/storage/framework/sessions
+      - /app/storage/framework/cache
+      - /app/storage/framework/views
+      - /app/bootstrap/cache
+      - /tmp
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 192m
+    networks:
+      default:
+      flask:
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 128m
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   scheduler:
     image: customerportal-laravel-app:latest
     env_file:
@@ -86,8 +181,16 @@ services:
     build:
       context: .
       dockerfile: docker/nginx/Dockerfile
+      args:
+        VITE_REVERB_APP_KEY: ${VITE_REVERB_APP_KEY}
+        VITE_REVERB_HOST: ${VITE_REVERB_HOST:-}
+        VITE_REVERB_PORT: ${VITE_REVERB_PORT:-}
+        VITE_REVERB_SCHEME: ${VITE_REVERB_SCHEME:-}
     depends_on:
-      - app
+      app:
+        condition: service_healthy
+      reverb:
+        condition: service_healthy
     restart: unless-stopped
     tmpfs:
       - /var/cache/nginx
@@ -134,6 +237,7 @@ services:
 
 volumes:
   laravel_storage:
+  redis_data:
 
 networks:
   # The Flask app's `db` service lives on its own Compose project's

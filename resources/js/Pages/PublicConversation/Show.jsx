@@ -26,14 +26,20 @@ export default function Show({ token, thread, messages }) {
                 <h1 className="text-xl font-semibold text-gray-900">{thread.subject}</h1>
 
                 {flash?.success && (
-                    <div className="rounded-md bg-green-50 p-3 text-sm text-green-700">{flash.success}</div>
+                    <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-700" role="status" aria-live="polite">
+                        {flash.success}
+                    </div>
                 )}
                 {flash?.error && (
-                    <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{flash.error}</div>
+                    <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
+                        {flash.error}
+                    </div>
                 )}
 
                 <div className="space-y-3 rounded-lg bg-white p-4 shadow-sm">
-                    {messages.length === 0 && <p className="text-sm text-gray-400">No messages yet.</p>}
+                    {messages.length === 0 && (
+                        <p className="text-sm text-gray-500">No messages yet. Replies will appear here.</p>
+                    )}
                     {messages.map((message) => (
                         <div
                             key={message.id}

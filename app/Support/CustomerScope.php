@@ -46,7 +46,7 @@ class CustomerScope
         $customer = self::activeCustomerFor($user);
 
         if ($customer === null && $required) {
-            abort(403, 'This customer login is not linked to one active customer account.');
+            abort(403, 'This account is not linked to an active customer. Contact an administrator for access.');
         }
 
         return $customer;

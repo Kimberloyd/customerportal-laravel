@@ -29,8 +29,8 @@ class EnsureSessionVersionMatches
 
         if ($user && (! $user->is_active || $request->session()->get('session_version') !== $user->session_version)) {
             $message = ! $user->is_active
-                ? 'Your account has been deactivated. Please contact an administrator.'
-                : 'Your session has expired. Please log in again.';
+                ? 'Your account was deactivated. Contact an administrator for access.'
+                : 'Your session expired. Sign in again.';
 
             Auth::guard('web')->logout();
             $request->session()->invalidate();

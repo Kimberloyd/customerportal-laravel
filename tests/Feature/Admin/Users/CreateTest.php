@@ -116,7 +116,7 @@ class CreateTest extends TestCase
             'role' => 'admin',
         ]);
 
-        $response->assertRedirect(route('admin.users.index'));
+        $response->assertRedirect(route('admin.dashboard', ['tab' => 'accounts']));
         $this->assertSame('admin', User::where('email', 'newadmin@example.com')->first()->role);
     }
 
@@ -170,7 +170,7 @@ class CreateTest extends TestCase
             'customer_id' => $customer->id,
         ]);
 
-        $response->assertRedirect(route('admin.users.index'));
+        $response->assertRedirect(route('admin.dashboard', ['tab' => 'accounts']));
         $newUser = User::where('email', 'newcust@example.com')->first();
         $this->assertNotNull($newUser);
         $this->assertTrue(Hash::check('password12345', $newUser->password_hash));

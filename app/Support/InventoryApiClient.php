@@ -4,6 +4,7 @@ namespace App\Support;
 
 use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 use Throwable;
@@ -24,6 +25,8 @@ class InventoryApiClient
 
     private const MAX_CONCURRENT_REQUESTS = 4;
 
+    private const PRODUCT_CACHE_TTL_SECONDS = 60;
+
     /**
      * Fetch every product matching the given query params, using the API's
      * filtered total to request its 100-row pages concurrently.
@@ -34,6 +37,25 @@ class InventoryApiClient
     public function allProducts(array $params = []): array
     {
         return $this->allResources($params, '/products');
+    }
+
+    /**
+     * Reuse a short-lived catalog snapshot for read-only product pages.
+     * Order submission continues to use allProducts() for fresh validation.
+     *
+     * @param  array<string, mixed>  $params
+     * @return array<int, array<string, mixed>>
+     */
+    public function cachedProducts(array $params = []): array
+    {
+        ksort($params);
+        $cacheKey = 'inventory-api.products.'.hash('sha256', json_encode($params, JSON_THROW_ON_ERROR));
+
+        return Cache::remember(
+            $cacheKey,
+            self::PRODUCT_CACHE_TTL_SECONDS,
+            fn () => $this->allResources($params, '/products'),
+        );
     }
 
     /**
@@ -58,28 +80,13 @@ class InventoryApiClient
      */
     public function listProducts(array $query): array
     {
-        $search = trim((string) ($query['search'] ?? ''));
-        $status = strtolower(trim((string) ($query['status'] ?? 'active'))) ?: 'active';
-        $sortBy = strtolower(trim((string) ($query['sort_by'] ?? 'brand'))) ?: 'brand';
-        $sortDir = strtolower(trim((string) ($query['sort_dir'] ?? 'asc'))) ?: 'asc';
+        $filters = $this->productFilters($query);
+        $search = $filters['search'];
+        $status = $filters['status'];
+        $sortBy = $filters['sort_by'];
+        $sortDir = $filters['sort_dir'];
 
-        $sortColumns = [
-            'generic' => 'generic_name',
-            'brand' => 'product_name',
-            'category' => 'category',
-            'unit' => 'unit',
-            'description' => 'description',
-            'dosage' => 'dosage',
-        ];
-        if (! array_key_exists($sortBy, $sortColumns)) {
-            $sortBy = 'brand';
-        }
-        if (! in_array($sortDir, ['asc', 'desc'], true)) {
-            $sortDir = 'asc';
-        }
-        if (! in_array($status, ['active', 'inactive', 'all'], true)) {
-            $status = 'active';
-        }
+        $sortColumns = $this->productSortColumns();
 
         $apiParams = [];
         if ($search !== '') {
@@ -89,7 +96,7 @@ class InventoryApiClient
             $apiParams['status'] = $status;
         }
 
-        $products = array_map(self::mapProduct(...), $this->allProducts($apiParams));
+        $products = array_map(self::mapProductSummary(...), $this->cachedProducts($apiParams));
 
         $column = $sortColumns[$sortBy];
         usort($products, function (array $a, array $b) use ($column, $sortDir) {
@@ -100,12 +107,51 @@ class InventoryApiClient
 
         return [
             'products' => $products,
-            'filters' => [
-                'search' => $search,
-                'status' => $status,
-                'sort_by' => $sortBy,
-                'sort_dir' => $sortDir,
-            ],
+            'filters' => $filters,
+        ];
+    }
+
+    /**
+     * Normalize product-list filters without contacting the inventory API.
+     *
+     * @param  array<string, mixed>  $query
+     * @return array{search: string, status: string, sort_by: string, sort_dir: string}
+     */
+    public function productFilters(array $query): array
+    {
+        $search = trim((string) ($query['search'] ?? ''));
+        $status = strtolower(trim((string) ($query['status'] ?? 'active'))) ?: 'active';
+        $sortBy = strtolower(trim((string) ($query['sort_by'] ?? 'brand'))) ?: 'brand';
+        $sortDir = strtolower(trim((string) ($query['sort_dir'] ?? 'asc'))) ?: 'asc';
+
+        $sortColumns = $this->productSortColumns();
+        if (! array_key_exists($sortBy, $sortColumns)) {
+            $sortBy = 'brand';
+        }
+        if (! in_array($sortDir, ['asc', 'desc'], true)) {
+            $sortDir = 'asc';
+        }
+        if (! in_array($status, ['active', 'inactive', 'all'], true)) {
+            $status = 'active';
+        }
+
+        return [
+            'search' => $search,
+            'status' => $status,
+            'sort_by' => $sortBy,
+            'sort_dir' => $sortDir,
+        ];
+    }
+
+    /** @return array<string, string> */
+    private function productSortColumns(): array
+    {
+        return [
+            'generic' => 'generic_name',
+            'brand' => 'product_name',
+            'category' => 'category',
+            'unit' => 'unit',
+            'dosage' => 'dosage',
         ];
     }
 
@@ -228,6 +274,27 @@ class InventoryApiClient
             'category' => $product['category'],
             'generic_name' => $product['generic'],
             'description' => $product['description'],
+            'dosage' => $product['dosage'],
+            'unit' => $product['unit_type'],
+            'unit_price' => $product['current_price'],
+            'is_active' => (bool) $product['is_active'],
+        ];
+    }
+
+    /**
+     * Map only the fields used by the admin product catalog.
+     *
+     * @param  array<string, mixed>  $product
+     * @return array<string, mixed>
+     */
+    public static function mapProductSummary(array $product): array
+    {
+        return [
+            'id' => $product['id'],
+            'sku' => $product['sku'],
+            'product_name' => $product['product_name'] ?? $product['name'],
+            'category' => $product['category'],
+            'generic_name' => $product['generic'],
             'dosage' => $product['dosage'],
             'unit' => $product['unit_type'],
             'unit_price' => $product['current_price'],

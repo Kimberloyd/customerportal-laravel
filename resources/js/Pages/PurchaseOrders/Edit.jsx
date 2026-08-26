@@ -149,7 +149,7 @@ export default function Edit({ order, customers, lockedCustomerId }) {
                             getRowId={(item) => String(item.id)}
                             resizable
                             reorderable
-                            emptyState="No items on this order."
+                            emptyState="No products have been added to this order."
                         />
                     </div>
 

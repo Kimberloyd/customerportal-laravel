@@ -123,7 +123,9 @@ class ListTest extends TestCase
 
         $response->assertInertia(fn ($page) => $page
             ->where('orders.total', 30)
-            ->where('orders.last_page', 2)
+            ->where('orders.per_page', 10)
+            ->has('orders.data', 10)
+            ->where('orders.last_page', 3)
         );
     }
 }

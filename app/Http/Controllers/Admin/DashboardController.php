@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Support\AdminUserListing;
 use App\Support\InventoryApiClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -12,7 +13,10 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function __construct(private readonly InventoryApiClient $inventory) {}
+    public function __construct(
+        private readonly InventoryApiClient $inventory,
+        private readonly AdminUserListing $userListing,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -24,9 +28,31 @@ class DashboardController extends Controller
             'activeTab' => $tab,
             ...match ($tab) {
                 'customers' => $this->listCustomers($request->query()),
-                default => $this->inventory->listProducts($request->query()),
+                'accounts' => $this->listAccounts($request->query()),
+                default => $this->listProducts($request->query()),
             },
         ]);
+    }
+
+    /**
+     * Defer the complete status-filtered catalog so the Admin shell renders
+     * immediately and searching/pagination can happen locally afterward.
+     *
+     * @param  array<string, mixed>  $query
+     * @return array{products: mixed, filters: array<string, string>}
+     */
+    private function listProducts(array $query): array
+    {
+        $filters = $this->inventory->productFilters($query);
+        $catalogQuery = [...$filters, 'search' => ''];
+
+        return [
+            'products' => Inertia::defer(
+                fn () => $this->inventory->listProducts($catalogQuery)['products'],
+                'catalog',
+            ),
+            'filters' => $filters,
+        ];
     }
 
     /**
@@ -63,6 +89,22 @@ class DashboardController extends Controller
             'filters' => [
                 'search' => $search,
                 'status' => $status,
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $query
+     */
+    private function listAccounts(array $query): array
+    {
+        return [
+            ...$this->userListing->get($query),
+            'accountForm' => [
+                'allowAdminCreation' => false,
+                'customers' => Customer::where('is_active', true)
+                    ->orderBy('company_name')
+                    ->get(['id', 'company_name', 'user_id']),
             ],
         ];
     }

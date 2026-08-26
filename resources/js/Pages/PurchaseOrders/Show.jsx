@@ -3,9 +3,11 @@ import { Input } from '@/components/motion/input';
 import { Table } from '@/components/motion/table';
 import { Tooltip } from '@/components/motion/tooltip';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Modal } from '@/components/interior/modal';
 import { formatDateTime } from '@/utils/orderDisplay';
 import { PdfPreview } from '@/components/PdfPreview';
+import ConfirmationDialog from '@/components/ConfirmationDialog';
+import { usePurchaseOrderRealtime } from '@/hooks/usePurchaseOrderRealtime';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { FileText } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -18,8 +20,11 @@ function autoTableHeight(rowCount) {
 }
 
 export default function Show({ order, isCustomerViewer, canManageFulfillment, canComplete, canCancel }) {
+    usePurchaseOrderRealtime(order.id);
+
     const showDeliverColumn = canManageFulfillment && !order.is_terminal;
     const [attachmentPreviewOpen, setAttachmentPreviewOpen] = useState(false);
+    const [pendingAction, setPendingAction] = useState(null);
     const attachmentUrl = order.has_attachment ? route('purchase-orders.attachment', order.id) : null;
     const attachmentKind = order.attachment_kind;
     const attachmentPreviewable = attachmentKind === 'image' || attachmentKind === 'pdf';
@@ -30,8 +35,10 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
 
     const submitFulfillment = (e) => {
         e.preventDefault();
-        if (!confirm('Submit this fulfillment update?')) return;
+        setPendingAction('fulfillment');
+    };
 
+    const confirmFulfillment = () => {
         transform((formData) => {
             const { received, ...rest } = formData;
             return {
@@ -44,17 +51,54 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
 
         post(route('purchase-orders.receive', order.id), {
             forceFormData: true,
+            onFinish: () => setPendingAction(null),
         });
     };
 
     const complete = () => {
-        if (!confirm('Mark this order as fully completed?')) return;
-        router.post(route('purchase-orders.complete', order.id));
+        setPendingAction('complete');
     };
 
     const cancel = () => {
-        if (!confirm('Cancel this order?')) return;
-        router.post(route('purchase-orders.cancel', order.id));
+        setPendingAction('cancel');
+    };
+
+    const confirmPendingAction = () => {
+        if (pendingAction === 'fulfillment') {
+            confirmFulfillment();
+            return;
+        }
+
+        const routeName = pendingAction === 'complete'
+            ? 'purchase-orders.complete'
+            : 'purchase-orders.cancel';
+        router.post(route(routeName, order.id), {}, {
+            onFinish: () => setPendingAction(null),
+        });
+    };
+
+    const confirmationCopy = {
+        fulfillment: {
+            title: 'Record these delivered quantities?',
+            description: 'This adds the entered quantities to the order’s delivery totals. Delivered quantities cannot be reduced later.',
+            confirmLabel: 'Record delivery',
+            cancelLabel: 'Review quantities',
+            destructive: false,
+        },
+        complete: {
+            title: 'Complete this order?',
+            description: 'This marks every remaining item as delivered and closes the order. This cannot be undone.',
+            confirmLabel: 'Complete order',
+            cancelLabel: 'Keep order open',
+            destructive: false,
+        },
+        cancel: {
+            title: 'Cancel this order?',
+            description: 'This closes the order and prevents future delivery updates. This cannot be undone.',
+            confirmLabel: 'Cancel order',
+            cancelLabel: 'Keep order open',
+            destructive: true,
+        },
     };
 
     const itemColumns = useMemo(
@@ -277,19 +321,24 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
                 </div>
 
                 {attachmentPreviewable && (
-                    <Dialog open={attachmentPreviewOpen} onOpenChange={setAttachmentPreviewOpen}>
-                        <DialogContent size="lg" className="p-2">
-                            {attachmentKind === 'image' ? (
-                                <img
-                                    src={attachmentUrl}
-                                    alt="Attachment preview"
-                                    className="max-h-[80vh] w-full rounded-lg object-contain"
-                                />
-                            ) : (
-                                <PdfPreview url={attachmentUrl} className="max-h-[80vh] overflow-auto" />
-                            )}
-                        </DialogContent>
-                    </Dialog>
+                    <Modal
+                        open={attachmentPreviewOpen}
+                        onClose={() => setAttachmentPreviewOpen(false)}
+                        title="Attachment preview"
+                        maxWidth={900}
+                        maxHeight="90vh"
+                        className="[&>div:nth-child(2)]:px-2 [&>div:nth-child(2)]:pb-2"
+                    >
+                        {attachmentKind === 'image' ? (
+                            <img
+                                src={attachmentUrl}
+                                alt="Attachment preview"
+                                className="max-h-[78vh] w-full rounded-lg object-contain"
+                            />
+                        ) : (
+                            <PdfPreview url={attachmentUrl} className="max-h-[78vh] overflow-auto" />
+                        )}
+                    </Modal>
                 )}
 
                 <div>
@@ -304,11 +353,11 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
                             data={itemRows}
                             columns={itemColumns}
                             getRowId={(item) => String(item.id)}
-                            className="rounded-xl border-gray-200 [&>div]:overflow-hidden [&_td:not(:nth-last-child(-n+2))]:border-r [&_td:not(:nth-last-child(-n+2))]:border-border/60 [&_th:not(:nth-last-child(-n+2))]:border-r [&_th:not(:nth-last-child(-n+2))]:border-border/60"
+                            className="border-gray-200 [&>div]:overflow-hidden [&_td:not(:nth-last-child(-n+2))]:border-r [&_td:not(:nth-last-child(-n+2))]:border-border/60 [&_th:not(:nth-last-child(-n+2))]:border-r [&_th:not(:nth-last-child(-n+2))]:border-border/60"
                             height={autoTableHeight(itemRows.length)}
                             resizable
                             reorderable
-                            emptyState="No items found for this order."
+                            emptyState="No products have been added to this order."
                         />
                         {showDeliverColumn && (
                             <div className="mt-3 flex justify-end">
@@ -329,14 +378,26 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
                         data={auditLogsRows}
                         columns={auditLogColumns}
                         getRowId={(audit) => audit.__rowId}
-                        className="rounded-xl border-gray-200 [&>div]:overflow-hidden [&_td:not(:nth-last-child(-n+2))]:border-r [&_td:not(:nth-last-child(-n+2))]:border-border/60 [&_th:not(:nth-last-child(-n+2))]:border-r [&_th:not(:nth-last-child(-n+2))]:border-border/60"
+                        className="border-gray-200 [&>div]:overflow-hidden [&_td:not(:nth-last-child(-n+2))]:border-r [&_td:not(:nth-last-child(-n+2))]:border-border/60 [&_th:not(:nth-last-child(-n+2))]:border-r [&_th:not(:nth-last-child(-n+2))]:border-border/60"
                         height={autoTableHeight(auditLogsRows.length)}
                         resizable
                         reorderable
-                        emptyState="No updates recorded yet."
+                        emptyState="No updates yet. Order changes will appear here."
                     />
                 </div>
             </div>
+
+            <ConfirmationDialog
+                open={pendingAction !== null}
+                onOpenChange={(open) => !open && setPendingAction(null)}
+                title={confirmationCopy[pendingAction]?.title}
+                description={confirmationCopy[pendingAction]?.description}
+                confirmLabel={confirmationCopy[pendingAction]?.confirmLabel}
+                cancelLabel={confirmationCopy[pendingAction]?.cancelLabel}
+                onConfirm={confirmPendingAction}
+                destructive={confirmationCopy[pendingAction]?.destructive}
+                processing={pendingAction === 'fulfillment' && processing}
+            />
         </AuthenticatedLayout>
     );
 }

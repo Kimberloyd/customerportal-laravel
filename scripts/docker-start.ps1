@@ -1,7 +1,17 @@
+param(
+  [switch]$SkipBuild,
+  [ValidateRange(30, 3600)]
+  [int]$TimeoutSeconds = 600
+)
+
 $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
 $composeFile = "docker-compose.local.yml"
+
+if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
+  Write-Error "Docker CLI was not found. Install Docker Desktop and re-run this script."
+}
 
 function Test-DockerReady {
   docker info *> $null
@@ -12,7 +22,9 @@ if (-not (Test-DockerReady)) {
   Write-Host "Docker daemon not responding - starting Docker Desktop..."
   $dockerDesktop = "C:\Program Files\Docker\Docker\Docker Desktop.exe"
   if (Test-Path $dockerDesktop) {
-    Start-Process $dockerDesktop
+    Start-Process -FilePath $dockerDesktop -WindowStyle Hidden
+  } else {
+    Write-Error "Docker Desktop was not found at $dockerDesktop. Start Docker manually and re-run this script."
   }
 
   $waited = 0
@@ -28,6 +40,10 @@ if (-not (Test-DockerReady)) {
 
 Set-Location -LiteralPath $root
 
+if (-not (Test-Path -LiteralPath $composeFile)) {
+  Write-Error "Local Compose file not found: $composeFile"
+}
+
 # Port 5173 can fall inside a Windows/Hyper-V excluded port range, which
 # prevents Docker Desktop from publishing it even when no process owns it.
 # Keep the host port overridable while using a safer local default.
@@ -35,18 +51,33 @@ if ([string]::IsNullOrWhiteSpace($env:VITE_HOST_PORT)) {
   $env:VITE_HOST_PORT = "5273"
 }
 
-docker compose -f $composeFile up -d
+docker compose -f $composeFile config --quiet
 if ($LASTEXITCODE -ne 0) {
-  Write-Error "docker compose up failed -- see the output above."
+  Write-Error "The local Docker Compose configuration is invalid."
 }
 
-# `up -d` only means the containers *launched*, not that the app is
-# actually ready to serve. The app container's first boot (no image
-# layer caching -- see the comment in the compose file) can take several
-# minutes to install PHP extensions and Composer deps before
-# `php artisan serve` even starts, so wait for the healthchecks in the
-# compose file to actually go green before declaring success -- that's
-# the difference between this script and a plain `docker compose up -d`.
+$services = @(docker compose -f $composeFile config --services)
+if ($LASTEXITCODE -ne 0 -or $services.Count -eq 0) {
+  Write-Error "No services were found in $composeFile."
+}
+
+$upArguments = @("compose", "-f", $composeFile, "up", "-d", "--remove-orphans")
+if (-not $SkipBuild) {
+  $upArguments += "--build"
+  Write-Host "Building changed images and starting local services..."
+} else {
+  Write-Host "Starting local services without rebuilding images..."
+}
+
+& docker @upArguments
+if ($LASTEXITCODE -ne 0) {
+  Write-Error "Docker Compose startup failed. Review the output above."
+}
+
+# `up -d` only confirms that containers launched. Wait for every service
+# currently declared in the local Compose file so newly added services are
+# covered automatically. Services without a healthcheck are ready once they
+# remain running; healthchecked services must report healthy.
 function Get-ServiceHealth([string]$service) {
   $lines = docker compose -f $composeFile ps --format json 2>$null
   foreach ($line in $lines) {
@@ -59,13 +90,11 @@ function Get-ServiceHealth([string]$service) {
   return $null
 }
 
-$services = @("db", "app", "vite")
-$timeoutSeconds = 600
 $waited = 0
 $lastReported = @{}
 
 Write-Host ""
-Write-Host "Waiting for containers to become healthy (first run can take several minutes -- installing PHP extensions and Composer deps)..."
+Write-Host "Waiting for containers to become healthy (a cold start may install Composer and npm dependencies)..."
 
 while ($true) {
   $statuses = @{}
@@ -116,10 +145,15 @@ while ($true) {
     Write-Error "Startup failed -- see logs above."
   }
 
-  if ($waited -ge $timeoutSeconds) {
+  if ($waited -ge $TimeoutSeconds) {
     Write-Host ""
-    Write-Host "Still not healthy after $timeoutSeconds seconds. Recent app logs:"
-    docker compose -f $composeFile logs app --tail 30
+    Write-Host "Still not ready after $TimeoutSeconds seconds. Recent logs:"
+    foreach ($service in $services) {
+      if ($statuses[$service] -ne "healthy" -and $statuses[$service] -ne "n/a") {
+        Write-Host "--- $service ---"
+        docker compose -f $composeFile logs $service --tail 30
+      }
+    }
     Write-Error "Timed out waiting for containers to become healthy. Check the logs above, or run: docker compose -f $composeFile logs -f"
   }
 
@@ -130,7 +164,9 @@ while ($true) {
 Write-Host ""
 Write-Host "Customer Portal is running:"
 Write-Host "  App:  http://localhost:8090"
+Write-Host "  Reverb WebSocket: ws://localhost:8080"
 Write-Host "  Vite: http://localhost:$env:VITE_HOST_PORT"
 Write-Host ""
 Write-Host "Logs:  docker compose -f $composeFile logs -f"
 Write-Host "Stop:  npm.cmd run stop"
+Write-Host "Fast restart without rebuilding: npm.cmd run start -- -SkipBuild"

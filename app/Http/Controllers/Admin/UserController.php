@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\User;
+use App\Support\AdminUserListing;
 use App\Support\UserAudit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -24,58 +25,13 @@ class UserController extends Controller
 {
     private const MIN_PASSWORD_LENGTH = 12;
 
-    private const ROLE_LABELS = [
-        'admin' => 'Admin',
-        'employee' => 'Employee',
-        'customer' => 'Customer',
-    ];
+    public function __construct(private readonly AdminUserListing $userListing) {}
 
     public function index(Request $request): Response
     {
         $this->requireAdmin();
 
-        $search = trim((string) $request->query('search', ''));
-        $roleFilter = strtolower(trim((string) $request->query('role', 'all'))) ?: 'all';
-        if (! array_key_exists($roleFilter, self::ROLE_LABELS)) {
-            $roleFilter = 'all';
-        }
-
-        $query = User::query();
-
-        if ($search !== '') {
-            $pattern = '%'.strtolower($search).'%';
-            $query->where(function ($q) use ($pattern) {
-                $q->whereRaw('LOWER(full_name) LIKE ?', [$pattern])
-                    ->orWhereRaw('LOWER(email) LIKE ?', [$pattern]);
-            });
-        }
-
-        if ($roleFilter !== 'all') {
-            $query->where('role', $roleFilter);
-        }
-
-        $users = $query->orderBy('full_name')->paginate(25)->withQueryString();
-
-        $userIds = collect($users->items())->pluck('id');
-        $linkedCustomers = Customer::whereIn('user_id', $userIds)->get()->keyBy('user_id');
-
-        $users->through(fn (User $user) => [
-            'id' => $user->id,
-            'full_name' => $user->full_name,
-            'email' => $user->email,
-            'role' => $user->role,
-            'is_active' => $user->is_active,
-            'linked_customer_name' => $linkedCustomers->get($user->id)?->company_name,
-        ]);
-
-        return Inertia::render('Admin/Users/Index', [
-            'users' => $users,
-            'filters' => [
-                'search' => $search,
-                'role' => $roleFilter,
-            ],
-            'roleLabels' => self::ROLE_LABELS,
-        ]);
+        return Inertia::render('Admin/Users/Index', $this->userListing->get($request->query()));
     }
 
     public function create(Request $request): Response
@@ -114,7 +70,8 @@ class UserController extends Controller
             UserAudit::record($user, 'created', "email={$user->email}, role={$user->role}", $request);
         });
 
-        return redirect()->route('admin.users.index')->with('success', 'User credentials created.');
+        return redirect()->route('admin.dashboard', ['tab' => 'accounts'])
+            ->with('success', 'Account created.');
     }
 
     public function edit(Request $request, User $user): Response
@@ -203,7 +160,8 @@ class UserController extends Controller
             UserAudit::record($user, 'updated', $changes ? implode(', ', $changes) : 'profile details updated', $request);
         });
 
-        return redirect()->route('admin.users.index')->with('success', 'User credentials updated.');
+        return redirect()->route('admin.dashboard', ['tab' => 'accounts'])
+            ->with('success', 'Account updated.');
     }
 
     public function toggleActive(Request $request, User $user)
@@ -237,7 +195,7 @@ class UserController extends Controller
             && $user->is_active
             && User::where('role', 'admin')->where('is_active', true)->count() <= 1
         ) {
-            return back()->with('error', 'The last administrator account cannot be deleted.');
+            return back()->with('error', 'Create or activate another administrator before deleting this account.');
         }
 
         DB::transaction(function () use ($user, $request) {
@@ -246,7 +204,8 @@ class UserController extends Controller
             $user->delete();
         });
 
-        return redirect()->route('admin.users.index')->with('success', 'User credentials deleted.');
+        return redirect()->route('admin.dashboard', ['tab' => 'accounts'])
+            ->with('success', 'Account deleted.');
     }
 
     private function requireAdmin(): void
@@ -287,38 +246,41 @@ class UserController extends Controller
             $allowedRoles[] = 'admin';
         }
 
-        if ($fullName === '' || $email === '') {
-            throw ValidationException::withMessages(['full_name' => 'Full name and email are required.']);
+        if ($fullName === '') {
+            throw ValidationException::withMessages(['full_name' => 'Enter a full name.']);
+        }
+        if ($email === '') {
+            throw ValidationException::withMessages(['email' => 'Enter an email address.']);
         }
         if (! in_array($selectedRole, $allowedRoles, true)) {
-            throw ValidationException::withMessages(['role' => 'Select a valid account type.']);
+            throw ValidationException::withMessages(['role' => 'Choose an account type from the list.']);
         }
 
         $hasPasswordInput = $password !== '' || $passwordConfirmation !== '';
         if (! $user && $password === '') {
-            throw ValidationException::withMessages(['password' => 'A password is required for new credentials.']);
+            throw ValidationException::withMessages(['password' => 'Enter a password for this account.']);
         }
         if ($hasPasswordInput) {
             if (strlen($password) < self::MIN_PASSWORD_LENGTH) {
                 throw ValidationException::withMessages([
-                    'password' => 'Password must contain at least '.self::MIN_PASSWORD_LENGTH.' characters.',
+                    'password' => 'Use at least '.self::MIN_PASSWORD_LENGTH.' characters.',
                 ]);
             }
             if ($password !== $passwordConfirmation) {
-                throw ValidationException::withMessages(['password_confirmation' => 'Password confirmation does not match.']);
+                throw ValidationException::withMessages(['password_confirmation' => 'Enter the same password again.']);
             }
         }
 
         if ($selectedRole === 'customer') {
             if (! $selectedCustomerId) {
-                throw ValidationException::withMessages(['customer_id' => 'Select a linked customer account.']);
+                throw ValidationException::withMessages(['customer_id' => 'Select a customer to link to this account.']);
             }
             $customer = Customer::find($selectedCustomerId);
             if (! $customer || ! $customer->is_active) {
-                throw ValidationException::withMessages(['customer_id' => 'Select a valid linked customer account.']);
+                throw ValidationException::withMessages(['customer_id' => 'Choose an active customer from the list.']);
             }
             if ($customer->user_id && (! $user || $customer->user_id !== $user->id)) {
-                throw ValidationException::withMessages(['customer_id' => 'This customer is already linked to another login.']);
+                throw ValidationException::withMessages(['customer_id' => 'This customer is already linked to another account. Choose a different customer or unlink the existing account first.']);
             }
         } else {
             $selectedCustomerId = null;
@@ -329,7 +291,7 @@ class UserController extends Controller
         // catching a DB IntegrityError.
         $emailTaken = User::where('email', $email)->when($user, fn ($q) => $q->where('id', '!=', $user->id))->exists();
         if ($emailTaken) {
-            throw ValidationException::withMessages(['email' => 'An account with that email already exists.']);
+            throw ValidationException::withMessages(['email' => 'An account with that email already exists. Use a different email address.']);
         }
 
         return [

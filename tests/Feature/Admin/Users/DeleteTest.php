@@ -33,7 +33,7 @@ class DeleteTest extends TestCase
         // active admin" total -- deleting them is unrestricted.
         $response = $this->actingAsUser($admin)->delete("/admin/users/{$otherAdmin->id}");
 
-        $response->assertRedirect(route('admin.users.index'));
+        $response->assertRedirect(route('admin.dashboard', ['tab' => 'accounts']));
         $this->assertNull(User::find($otherAdmin->id));
     }
 
@@ -52,7 +52,7 @@ class DeleteTest extends TestCase
         // backstop rather than one reachable via a distinct HTTP actor.
         $response = $this->actingAsUser($admin)->delete("/admin/users/{$targetAdmin->id}");
 
-        $response->assertRedirect(route('admin.users.index'));
+        $response->assertRedirect(route('admin.dashboard', ['tab' => 'accounts']));
         $this->assertNull(User::find($targetAdmin->id));
         $this->assertSame(1, User::where('role', 'admin')->where('is_active', true)->count());
     }

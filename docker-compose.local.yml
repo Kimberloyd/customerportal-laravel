@@ -48,7 +48,14 @@ services:
             retries: 10
 
     app:
-        image: php:8.4-cli-alpine
+        image: customerportal-laravel-app:latest
+        build:
+            context: .
+            args:
+                VITE_REVERB_APP_KEY: customerportal-local-key
+                VITE_REVERB_HOST: localhost
+                VITE_REVERB_PORT: 8080
+                VITE_REVERB_SCHEME: http
         working_dir: /app
         volumes:
             - .:/app
@@ -63,38 +70,75 @@ services:
         depends_on:
             db:
                 condition: service_healthy
-        # Installs the PHP extensions this app needs (matches Dockerfile's
-        # runtime image) plus Composer itself, then serves via artisan.
-        # Guarded by a marker file so the apk/ext-build step -- the slow
-        # part, since it compiles gd from source -- only runs once per
-        # container instead of on every `up`. Only meaningful as long as
-        # the container itself persists (`docker compose stop`, not
-        # `down`, which removes the container and its marker with it).
+        environment:
+            APP_ENV: local
+            LOCAL_DEVELOPMENT: 'true'
+        # PHP extensions and Composer are already in the shared app image.
+        # Refresh the named vendor volume, then serve the bind-mounted source.
         command: >
             sh -c "
-              [ -f /usr/local/etc/.deps-installed ] || (
-                apk add --no-cache icu-libs libzip libpng libjpeg-turbo freetype icu-dev libzip-dev oniguruma-dev libpng-dev libjpeg-turbo-dev freetype-dev &&
-                docker-php-ext-configure gd --with-jpeg --with-freetype &&
-                docker-php-ext-install pdo_mysql mbstring bcmath zip gd &&
-                printf 'opcache.enable_cli=1\\nopcache.revalidate_freq=3600\\n' > /usr/local/etc/php/conf.d/local-opcache-cli.ini &&
-                touch /usr/local/etc/.deps-installed
-              ) &&
-              ([ -f /usr/local/bin/composer ] || (php -r \"copy('https://getcomposer.org/installer', '/tmp/composer-setup.php');\" && php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer)) &&
               composer install --no-interaction &&
               [ -f .env ] || cp .env.example .env &&
               grep -q '^APP_KEY=base64:' .env || php artisan key:generate &&
               PHP_CLI_SERVER_WORKERS=4 php artisan serve --host=0.0.0.0 --port=8000 --no-reload
             "
-        # start_period is generous because the whole apk/composer install
-        # sequence above (no layer caching -- see the comment on it) can
-        # take several minutes on a cold start; failed checks during that
-        # window count as "starting", not "unhealthy".
+        # Keep a generous first-run window for image build and Composer.
         healthcheck:
             test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:8000/login']
             interval: 5s
             timeout: 5s
             retries: 3
             start_period: 360s
+
+    redis:
+        image: redis:7-alpine
+        command: ['redis-server', '--appendonly', 'yes', '--save', '60', '1']
+        volumes:
+            - customerportal_local_redis:/data
+        healthcheck:
+            test: ['CMD', 'redis-cli', 'ping']
+            interval: 5s
+            timeout: 5s
+            retries: 10
+
+    reverb:
+        image: customerportal-laravel-app:latest
+        working_dir: /app
+        environment:
+            APP_ENV: local
+        volumes:
+            - .:/app
+            - customerportal_local_vendor:/app/vendor
+        ports:
+            - '8080:8080'
+        depends_on:
+            app:
+                condition: service_healthy
+        command: ['php', 'artisan', 'reverb:start', '--host=0.0.0.0', '--port=8080']
+        restart: unless-stopped
+        healthcheck:
+            test:
+                - CMD-SHELL
+                - "php -r \"exit(@fsockopen('127.0.0.1', 8080) ? 0 : 1);\""
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    broadcast-worker:
+        image: customerportal-laravel-app:latest
+        working_dir: /app
+        environment:
+            APP_ENV: local
+        volumes:
+            - .:/app
+            - customerportal_local_vendor:/app/vendor
+        depends_on:
+            app:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        command: ['php', 'artisan', 'queue:work', '--queue=broadcasts', '--sleep=1', '--tries=3', '--timeout=60']
+        restart: unless-stopped
 
     vite:
         image: node:20-slim
@@ -134,4 +178,5 @@ services:
 volumes:
     customerportal_local_db:
     customerportal_local_node_modules:
+    customerportal_local_redis:
     customerportal_local_vendor:

@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
+        <link rel="icon" type="image/png" href="/images/TM%20Logomark_Transparent%20BG.png">
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">

@@ -1,5 +1,5 @@
 import { usePage } from '@inertiajs/react';
-import { X } from 'lucide-react';
+import { CircleAlert, CircleCheck, Link2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export default function FlashBanner() {
@@ -17,9 +17,12 @@ export default function FlashBanner() {
     return (
         <div className="sticky top-16 z-30">
             {flash.success && (
-                <div className="bg-green-50">
+                <div className="border-y border-green-200 bg-green-50" role="status" aria-live="polite">
                     <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 text-sm text-green-700 sm:px-6 lg:px-8">
-                        <span>{flash.success}</span>
+                        <span className="flex items-center gap-2">
+                            <CircleCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
+                            {flash.success}
+                        </span>
                         <button
                             type="button"
                             onClick={() => setDismissed(true)}
@@ -32,9 +35,12 @@ export default function FlashBanner() {
                 </div>
             )}
             {flash.error && (
-                <div className="bg-red-50">
+                <div className="border-y border-red-200 bg-red-50" role="alert">
                     <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 text-sm text-red-700 sm:px-6 lg:px-8">
-                        <span>{flash.error}</span>
+                        <span className="flex items-center gap-2">
+                            <CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
+                            {flash.error}
+                        </span>
                         <button
                             type="button"
                             onClick={() => setDismissed(true)}
@@ -47,9 +53,12 @@ export default function FlashBanner() {
                 </div>
             )}
             {flash.link && (
-                <div className="border-y border-amber-300 bg-amber-50">
+                <div className="border-y border-amber-300 bg-amber-50" role="status" aria-live="polite">
                     <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 text-sm text-amber-800 sm:px-6 lg:px-8">
-                        <span>{flash.link}</span>
+                        <span className="flex items-center gap-2">
+                            <Link2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+                            {flash.link}
+                        </span>
                         <button
                             type="button"
                             onClick={() => setDismissed(true)}

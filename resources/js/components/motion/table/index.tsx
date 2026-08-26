@@ -56,6 +56,7 @@ export function Table<T>({
   loading = false,
   skeletonRows = 3,
   emptyState = "No data",
+  emptyStateHeight,
   className,
   onRowClick,
 }: TableProps<T>) {
@@ -310,7 +311,12 @@ export function Table<T>({
                 <tr>
                   <td
                     colSpan={leadColumns + 1}
-                    className="p-10 text-center text-muted-foreground"
+                    style={
+                      emptyStateHeight == null
+                        ? undefined
+                        : { height: emptyStateHeight }
+                    }
+                    className="p-10 text-center align-middle text-muted-foreground"
                   >
                     {emptyState}
                   </td>

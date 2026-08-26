@@ -1,45 +1,47 @@
-import { Dropdown } from '@/components/interior/dropdown';
+import { Pagination } from '@/components/interior/pagination';
+import { AnimatedBadge } from '@/components/motion/animated-badge';
 import { Table } from '@/components/motion/table';
 import { Input } from '@/components/motion/input';
-import { router } from '@inertiajs/react';
 import { Search } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-const STATUS_OPTIONS = [
-    { value: 'active', label: 'Active', hint: 'default' },
-    { value: 'inactive', label: 'Inactive' },
-    { value: 'all', label: 'All' },
-];
+const PAGE_SIZE = 10;
+const TABLE_ROW_HEIGHT = 48;
+const HORIZONTAL_SCROLLBAR_HEIGHT = 20;
+const TABLE_VIEWPORT_HEIGHT =
+    (PAGE_SIZE + 1) * TABLE_ROW_HEIGHT + HORIZONTAL_SCROLLBAR_HEIGHT;
 
-export function ProductsPanel({ products, filters, filterRouteName, filterExtraParams = {} }) {
+export function ProductsPanel({ products = [], filters, loading = false }) {
     const [search, setSearch] = useState(filters.search);
-    const [status, setStatus] = useState(filters.status);
+    const [page, setPage] = useState(1);
 
-    const applyFilters = (overrides = {}) => {
-        router.get(
-            route(filterRouteName),
-            {
-                search,
-                status,
-                sort_by: filters.sort_by,
-                sort_dir: filters.sort_dir,
-                ...filterExtraParams,
-                ...overrides,
-            },
-            { preserveState: true, preserveScroll: true },
-        );
-    };
-
-    const isFirstRender = useRef(true);
-    useEffect(() => {
-        if (isFirstRender.current) {
-            isFirstRender.current = false;
-            return;
+    const filteredProducts = useMemo(() => {
+        const query = search.trim().toLocaleLowerCase();
+        if (!query) {
+            return products;
         }
-        const timeout = setTimeout(() => applyFilters({ search }), 400);
-        return () => clearTimeout(timeout);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [search]);
+
+        return products.filter((product) =>
+            [
+                product.product_name,
+                product.generic_name,
+                product.dosage,
+                product.category,
+                product.unit,
+                product.sku,
+            ].some((value) => String(value ?? '').toLocaleLowerCase().includes(query)),
+        );
+    }, [products, search]);
+
+    const pageCount = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
+    const visibleProducts = useMemo(
+        () => filteredProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+        [filteredProducts, page],
+    );
+
+    useEffect(() => {
+        setPage(1);
+    }, [products, search]);
 
     const columns = useMemo(
         () => [
@@ -69,13 +71,6 @@ export function ProductsPanel({ products, filters, filterRouteName, filterExtraP
                 cell: (product) => product.unit?.toUpperCase() ?? '-',
             },
             {
-                key: 'description',
-                header: 'Description',
-                sortable: true,
-                width: '320px',
-                cell: (product) => product.description ?? '-',
-            },
-            {
                 key: 'sku',
                 header: 'SKU',
                 cell: (product) => product.sku ?? '-',
@@ -91,17 +86,12 @@ export function ProductsPanel({ products, filters, filterRouteName, filterExtraP
             {
                 key: 'is_active',
                 header: 'Status',
-                align: 'center',
                 cell: (product) => (
-                    <span
-                        className={`rounded-full px-2 py-0.5 text-xs ${
-                            product.is_active
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-gray-200 text-gray-700'
-                        }`}
-                    >
-                        {product.is_active ? 'Active' : 'Inactive'}
-                    </span>
+                    <div className="flex justify-center">
+                        <AnimatedBadge status={product.is_active ? 'success' : 'neutral'} size="sm">
+                            {product.is_active ? 'Active' : 'Inactive'}
+                        </AnimatedBadge>
+                    </div>
                 ),
             },
         ],
@@ -110,44 +100,48 @@ export function ProductsPanel({ products, filters, filterRouteName, filterExtraP
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-wrap items-end gap-3 bg-white">
+            <div className="flex justify-center bg-white">
                 <Input
-                    label="Search"
                     type="text"
                     value={search}
                     onChange={setSearch}
+                    placeholder={loading ? 'Loading products…' : 'Search Product'}
+                    aria-label="Search products"
+                    disabled={loading}
                     leftIcon={<Search className="h-4 w-4" />}
                     classNames={{
-                        field: 'h-9 w-80 rounded-[9px] border-border ring-0 shadow-none',
+                        root: 'w-80',
+                        field: 'h-9 w-80 rounded-full border-border bg-transparent shadow-none',
+                        input: 'text-sm',
                     }}
                 />
-                <div className="flex flex-col text-sm text-gray-600">
-                    <span>Status</span>
-                    <Dropdown
-                        items={STATUS_OPTIONS}
-                        value={status}
-                        onChange={(value) => {
-                            setStatus(value);
-                            applyFilters({ status: value });
-                        }}
-                        label={
-                            STATUS_OPTIONS.find((option) => option.value === status)?.label ??
-                            'Select status'
-                        }
-                        className="mt-1"
-                    />
-                </div>
             </div>
 
             <Table
-                data={products}
+                data={visibleProducts}
                 columns={columns}
                 getRowId={(product) => String(product.id)}
-                className="rounded-[9px] [&>div]:overflow-hidden [&_td:not(:nth-last-child(-n+2))]:border-r [&_td:not(:nth-last-child(-n+2))]:border-border/60 [&_th:not(:nth-last-child(-n+2))]:border-r [&_th:not(:nth-last-child(-n+2))]:border-border/60"
+                className="[&>div]:!overflow-x-auto [&>div]:!overflow-y-hidden"
+                rowHeight={TABLE_ROW_HEIGHT}
+                height={TABLE_VIEWPORT_HEIGHT}
+                loading={loading}
+                skeletonRows={PAGE_SIZE}
                 resizable
                 reorderable
-                emptyState="No products match these filters."
+                emptyState="No products found. Try a different search."
+                emptyStateHeight={PAGE_SIZE * TABLE_ROW_HEIGHT}
             />
+
+            {pageCount > 1 && (
+                <div className="flex justify-end">
+                    <Pagination
+                        count={pageCount}
+                        page={page}
+                        onPageChange={setPage}
+                        label="Products pagination"
+                    />
+                </div>
+            )}
         </div>
     );
 }

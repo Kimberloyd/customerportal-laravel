@@ -23,6 +23,22 @@ class CreateTest extends TestCase
         Storage::fake('local');
     }
 
+    public function test_create_page_defers_the_product_catalog(): void
+    {
+        $staff = User::factory()->create(['role' => 'employee']);
+        $this->makeCustomer();
+        $this->makeProduct('Deferred Product');
+
+        $response = $this->actingAsUser($staff)->get('/orders/create');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->missing('products')
+            ->loadDeferredProps('catalog', fn ($deferred) => $deferred
+                ->has('products', 1)
+                ->where('products.0.product_name', 'Deferred Product')));
+    }
+
     public function test_creates_order_with_a_resolved_product_id_line(): void
     {
         $staff = User::factory()->create(['role' => 'employee']);
