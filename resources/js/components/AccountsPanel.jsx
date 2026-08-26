@@ -85,8 +85,12 @@ export function AccountsPanel({ users, filters, roleLabels, filterRouteName, fil
                 key: 'is_active',
                 header: 'Status',
                 cell: (user) => (
-                    <div className="flex justify-center">
-                        <AnimatedBadge status={user.is_active ? 'success' : 'neutral'} size="sm">
+                    <div className="flex justify-start">
+                        <AnimatedBadge
+                            status={user.is_active ? 'success' : 'neutral'}
+                            size="sm"
+                            className="border-0 bg-transparent px-0 shadow-none"
+                        >
                             {user.is_active ? 'Active' : 'Inactive'}
                         </AnimatedBadge>
                     </div>
@@ -150,7 +154,7 @@ export function AccountsPanel({ users, filters, roleLabels, filterRouteName, fil
                     type="text"
                     value={search}
                     onChange={setSearch}
-                    placeholder="Search Account"
+                    placeholder="Name or email"
                     aria-label="Search accounts"
                     leftIcon={<Search className="h-4 w-4" />}
                     classNames={{

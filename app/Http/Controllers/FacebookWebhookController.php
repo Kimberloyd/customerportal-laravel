@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\CustomerMessageSent;
 use App\Models\Customer;
 use App\Models\CustomerMessage;
 use Illuminate\Http\Request;
@@ -83,7 +84,7 @@ class FacebookWebhookController extends Controller
         $now = now();
 
         if (! $thread) {
-            CustomerMessage::create([
+            $created = CustomerMessage::create([
                 'subject' => 'Facebook Messenger conversation',
                 'body' => $text,
                 'sender_type' => 'customer',
@@ -96,6 +97,8 @@ class FacebookWebhookController extends Controller
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
+
+            CustomerMessageSent::dispatch($created->id, null);
 
             return;
         }

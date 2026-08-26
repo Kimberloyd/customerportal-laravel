@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
@@ -19,6 +19,8 @@ const ROW_H = 32;
 const OPEN = { type: "spring", stiffness: 620, damping: 38, mass: 0.6 } as const;
 const MENU_WIDTH = 224;
 const MENU_GAP = 6;
+const SEARCH_HEIGHT = 44;
+const MENU_TITLE_HEIGHT = 44;
 
 function DropdownLayer({ portal, children }: { portal: boolean; children: ReactNode }) {
   if (portal && typeof document !== "undefined") {
@@ -69,6 +71,7 @@ export function useDropdown({
 
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
   const viaKey = useRef(false);
@@ -164,7 +167,7 @@ export function useDropdown({
       const target = e.target as Node;
       if (
         !rootRef.current?.contains(target) &&
-        !listRef.current?.contains(target)
+        !menuRef.current?.contains(target)
       ) {
         close(false);
       }
@@ -183,6 +186,23 @@ export function useDropdown({
     viaKey.current = false;
     itemRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
   }, [open, activeIndex]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    setActiveIndex((current) => {
+      if (items.length === 0) return -1;
+      if (
+        current < 0 ||
+        current >= items.length ||
+        items[current]?.disabled
+      ) {
+        return edge(1);
+      }
+
+      return current;
+    });
+  }, [edge, items, open]);
 
   useEffect(
     () => () => {
@@ -277,6 +297,8 @@ export function useDropdown({
     itemId,
     rootRef,
     triggerRef,
+    menuRef,
+    listRef,
     triggerProps,
     listProps,
     getItemProps,
@@ -295,6 +317,10 @@ export type DropdownProps = {
   className?: string;
   trigger?: ReactNode;
   triggerClassName?: string;
+  menuWidth?: number;
+  menuTitle?: ReactNode;
+  searchable?: boolean;
+  searchPlaceholder?: string;
   align?: "left" | "right";
   portal?: boolean;
 };
@@ -311,10 +337,26 @@ export function Dropdown({
   className = "",
   trigger,
   triggerClassName,
+  menuWidth,
+  menuTitle,
+  searchable = false,
+  searchPlaceholder = "Search options",
   align = "left",
   portal = false,
 }: DropdownProps) {
   const reduced = useReducedMotion();
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const visibleItems = useMemo(() => {
+    const query = searchQuery.trim().toLocaleLowerCase();
+    if (!searchable || query === "") return items;
+
+    return items.filter((item) =>
+      [item.label, item.hint].some((value) =>
+        String(value ?? "").toLocaleLowerCase().includes(query),
+      ),
+    );
+  }, [items, searchQuery, searchable]);
   const {
     open,
     activeIndex,
@@ -322,14 +364,32 @@ export function Dropdown({
     selectedItem,
     rootRef,
     triggerRef,
+    menuRef,
+    listRef,
+    select,
     close,
     triggerProps,
     listProps,
     getItemProps,
-  } = useDropdown({ items, value, defaultValue, onChange, disabled });
+  } = useDropdown({ items: visibleItems, value, defaultValue, onChange, disabled });
 
   const cell = reduced ? NONE : CELL;
-  const [portalPosition, setPortalPosition] = useState<{ top: number; left: number } | null>(null);
+  const [portalPosition, setPortalPosition] = useState<{
+    top: number;
+    left: number;
+    width?: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setSearchQuery("");
+      return;
+    }
+
+    if (!searchable) return;
+    const frame = requestAnimationFrame(() => searchInputRef.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [open, searchable]);
 
   useEffect(() => {
     if (!open || !portal) {
@@ -340,21 +400,32 @@ export function Dropdown({
     const triggerRect = triggerRef.current?.getBoundingClientRect();
     if (!triggerRect) return;
 
-    const menuHeight = Math.min(items.length * ROW_H + 10, 226);
+    const menuChromeHeight =
+      (searchable ? SEARCH_HEIGHT : 0) +
+      (menuTitle != null ? MENU_TITLE_HEIGHT : 0);
+    const menuHeight = Math.min(
+      visibleItems.length * ROW_H + 10 + menuChromeHeight,
+      226 + menuChromeHeight,
+    );
+    const resolvedMenuWidth = Math.min(
+      menuWidth ?? MENU_WIDTH,
+      window.innerWidth - 16,
+    );
     const hasRoomBelow = triggerRect.bottom + MENU_GAP + menuHeight <= window.innerHeight - 8;
     const top = hasRoomBelow
       ? triggerRect.bottom + MENU_GAP
       : Math.max(8, triggerRect.top - MENU_GAP - menuHeight);
     const preferredLeft = align === "right"
-      ? triggerRect.right - MENU_WIDTH
+      ? triggerRect.right - resolvedMenuWidth
       : triggerRect.left;
 
     setPortalPosition({
       top,
       left: Math.min(
         Math.max(8, preferredLeft),
-        window.innerWidth - MENU_WIDTH - 8,
+        window.innerWidth - resolvedMenuWidth - 8,
       ),
+      ...(menuWidth == null ? {} : { width: resolvedMenuWidth }),
     });
 
     const dismiss = () => close(false);
@@ -365,7 +436,7 @@ export function Dropdown({
       window.removeEventListener("resize", dismiss);
       window.removeEventListener("scroll", dismiss, true);
     };
-  }, [align, close, items.length, open, portal, triggerRef]);
+  }, [align, close, menuTitle, menuWidth, open, portal, searchable, triggerRef, visibleItems.length]);
 
   return (
     <div ref={rootRef} className={`relative inline-block text-left ${className}`}>
@@ -407,6 +478,7 @@ export function Dropdown({
         <AnimatePresence>
         {open && (!portal || portalPosition) && (
           <motion.div
+            ref={menuRef}
             initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.94, y: -8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{
@@ -423,9 +495,55 @@ export function Dropdown({
             style={{
               transformOrigin: align === "right" ? "top right" : "top left",
               ...(portal && portalPosition ? portalPosition : {}),
+              ...(!portal && menuWidth != null ? { width: menuWidth } : {}),
             }}
             className={`${portal ? "fixed" : `absolute top-[calc(100%+6px)] ${align === "right" ? "right-0" : "left-0"}`} z-50 min-w-[224px] whitespace-nowrap rounded-[11px] border border-stone-200 bg-white p-[5px] shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)] dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:shadow-[0_2px_12px_rgba(0,0,0,0.6)]`}
           >
+            {menuTitle != null ? (
+              <div className="px-2.5 pb-1 pt-1 text-left text-xl font-semibold text-stone-900 dark:text-stone-100">
+                {menuTitle}
+              </div>
+            ) : null}
+            {searchable ? (
+              <div className="mb-1 p-1 pb-2">
+                <div className="flex h-8 items-center gap-2 rounded-full border border-stone-200 px-2.5 text-stone-500 focus-within:border-stone-400 dark:border-white/[0.16] dark:text-stone-400">
+                  <svg
+                    aria-hidden
+                    viewBox="0 0 24 24"
+                    className="size-4 shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.3-4.3" />
+                  </svg>
+                  <input
+                    ref={searchInputRef}
+                    type="search"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") {
+                        event.preventDefault();
+                        close();
+                      } else if (event.key === "ArrowDown") {
+                        event.preventDefault();
+                        listRef.current?.focus();
+                      } else if (event.key === "Enter" && activeIndex >= 0) {
+                        event.preventDefault();
+                        select(activeIndex);
+                      }
+                    }}
+                    placeholder={searchPlaceholder}
+                    aria-label={searchPlaceholder}
+                    className="min-w-0 flex-1 border-0 bg-transparent p-0 text-[13px] text-stone-900 outline-none placeholder:text-stone-400 focus:ring-0 dark:text-stone-100"
+                  />
+                </div>
+              </div>
+            ) : null}
             <ul
               {...listProps}
               aria-label={label}
@@ -434,7 +552,7 @@ export function Dropdown({
               <motion.span
                 aria-hidden
                 className={`pointer-events-none absolute inset-x-0 top-0 h-8 rounded-[7px] transition-colors ${
-                  items[activeIndex]?.destructive
+                  visibleItems[activeIndex]?.destructive
                     ? "bg-rose-50 dark:bg-rose-500/10"
                     : "bg-stone-100 dark:bg-white/10"
                 }`}
@@ -449,7 +567,7 @@ export function Dropdown({
                     : { ...SLIDE, opacity: { duration: 0.1, ease: EASE } }
                 }
               />
-              {items.map((item, i) => {
+              {visibleItems.map((item, i) => {
                 const active = i === activeIndex && !item.disabled;
                 const picked = i === selectedIndex;
                 return (
@@ -505,7 +623,7 @@ export function Dropdown({
                 );
               })}
 
-              {items.length === 0 && (
+              {visibleItems.length === 0 && (
                 <li
                   role="presentation"
                   className="flex h-8 items-center px-2.5 text-[13px] text-stone-500 dark:text-stone-400"

@@ -47,7 +47,7 @@ export default function ConfirmationDialog({
                         type="text"
                         value={confirmationValue}
                         onChange={setConfirmationValue}
-                        placeholder={confirmationText}
+                        placeholder="Enter the name shown above"
                         autoComplete="off"
                         aria-label={`Type ${confirmationText} to confirm deletion`}
                         classNames={{

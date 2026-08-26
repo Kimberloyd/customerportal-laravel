@@ -15,6 +15,8 @@
          */
         --background: hsl(0 0% 100%);
         --foreground: hsl(240 10% 3.9%);
+        --card: hsl(0 0% 100%);
+        --card-foreground: hsl(240 10% 3.9%);
         --border: hsl(240 5.9% 90%);
         --ring: hsl(240 5.9% 10%);
         --muted: hsl(240 4.8% 95.9%);

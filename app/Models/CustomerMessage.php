@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
-    'customer_id', 'subject', 'body', 'parent_id', 'sender_type',
+    'customer_id', 'assigned_user_id', 'subject', 'body', 'parent_id', 'sender_type',
     'is_read', 'public_token', 'public_token_expires_at',
     'public_token_revoked_at', 'status', 'error_message', 'channel',
     'external_sender_id', 'external_sender_name',
@@ -37,6 +37,16 @@ class CustomerMessage extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    /**
+     * For a portal thread, the staff member the customer is talking to.
+     * For a Facebook thread, the staff member (sales agent) this Facebook
+     * contact has been linked to -- see MessageController::widgetFacebookLink.
+     */
+    public function assignedUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_user_id');
     }
 
     public function parent(): BelongsTo

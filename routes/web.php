@@ -55,17 +55,14 @@ Route::middleware('auth')->prefix('admin/users')->name('admin.users.')->group(fu
 });
 
 Route::middleware('auth')->prefix('messages')->name('messages.')->group(function () {
-    Route::get('/', [MessageController::class, 'index'])->name('index');
-    Route::get('/new', [MessageController::class, 'create'])->name('create');
-    Route::post('/', [MessageController::class, 'store'])->name('store');
     Route::get('/unread-count', [MessageController::class, 'unreadCount'])->name('unread-count');
-    Route::get('/{thread}', [MessageController::class, 'show'])->name('show');
-    Route::post('/{thread}/reply', [MessageController::class, 'reply'])->name('reply');
-    Route::post('/{thread}/status', [MessageController::class, 'status'])->name('status');
-    Route::post('/{thread}/delete', [MessageController::class, 'destroy'])->name('destroy');
-    Route::post('/{thread}/customer', [MessageController::class, 'customerLink'])->name('customer-link');
-    Route::post('/{thread}/sender-name', [MessageController::class, 'senderName'])->name('sender-name');
-    Route::post('/{thread}/public-link', [MessageController::class, 'publicLink'])->name('public-link');
+    Route::get('/recipients', [MessageController::class, 'recipients'])->name('recipients');
+    Route::get('/users-search', [MessageController::class, 'usersSearch'])->name('users-search');
+    Route::get('/widget/facebook/{thread}', [MessageController::class, 'widgetFacebookShow'])->name('widget.facebook.show');
+    Route::post('/widget/facebook/{thread}', [MessageController::class, 'widgetFacebookSend'])->name('widget.facebook.send');
+    Route::post('/widget/facebook/{thread}/link', [MessageController::class, 'widgetFacebookLink'])->name('widget.facebook.link');
+    Route::get('/widget/{customer}', [MessageController::class, 'widgetShow'])->name('widget.show');
+    Route::post('/widget/{customer}', [MessageController::class, 'widgetSend'])->name('widget.send');
 });
 
 Route::middleware('auth')->prefix('reports')->name('reports.')->group(function () {

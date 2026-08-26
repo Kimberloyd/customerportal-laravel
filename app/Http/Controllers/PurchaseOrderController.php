@@ -263,8 +263,10 @@ class PurchaseOrderController extends Controller
                         'unit_price' => $unitPrice,
                         'line_total' => $quantity * $unitPrice,
                         'product_name' => $product->product_name,
+                        'generic_name' => $product->generic_name,
                         'sku' => $product->sku,
                         'unit' => $product->unit,
+                        'dosage' => $product->dosage,
                         'description' => $product->description,
                     ]);
                 }

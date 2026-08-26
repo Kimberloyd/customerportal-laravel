@@ -2,9 +2,11 @@
 
 namespace App\Support;
 
+use App\Mail\OrderSubmittedMail;
 use App\Models\CustomerMessage;
 use App\Models\PurchaseOrder;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 /**
@@ -14,13 +16,14 @@ use Illuminate\Support\Str;
  * (never for staff-created orders). Each is wrapped separately so one
  * failing never blocks the others, matching Flask exactly.
  *
- * Only createInboxMessage() is a real implementation here -- it's a
- * pure DB write with no external dependency. sendEmail() and
- * sendFacebookSummary() need a live SMTP server and Meta Graph API
- * credentials respectively, neither of which exist in this
- * environment to verify delivery against, so they're left as
- * no-op/log stubs behind a config flag until that infrastructure is
- * actually wired up.
+ * All three are real: createInboxMessage() is a pure DB write,
+ * sendFacebookSummary() notifies every sales agent who has linked their
+ * own Facebook account (see MessageController::widgetFacebookLink -- these
+ * Facebook contacts are internal staff, not customers) with who ordered
+ * and what they ordered, and sendEmail() emails the customer's own login
+ * address a copy of the same summary. All three skip silently (and are
+ * independently logged) when their feature flag is off or there's nobody
+ * to notify.
  */
 class OrderNotifications
 {
@@ -70,25 +73,84 @@ class OrderNotifications
     private static function sendEmail(PurchaseOrder $order): void
     {
         if (! config('services.po_notifications.email_enabled', false)) {
-            Log::info("Email notification skipped for {$order->po_number}: SMTP not configured in this environment.");
+            Log::info("Email notification skipped for {$order->po_number}: feature not enabled in this environment.");
 
             return;
         }
 
-        // Not implemented yet -- no live SMTP server available to
-        // verify delivery against. Wire up Mail::send() here once
-        // real SMTP config exists.
+        $order->loadMissing('customer.user');
+        $email = $order->customer?->user?->email;
+
+        if (! $email) {
+            Log::info("Email notification skipped for {$order->po_number}: customer {$order->customer_id} has no linked login email.");
+
+            return;
+        }
+
+        Mail::to($email)->send(new OrderSubmittedMail($order));
     }
 
     private static function sendFacebookSummary(PurchaseOrder $order): void
     {
         if (! config('services.po_notifications.facebook_enabled', false)) {
-            Log::info("Facebook Messenger notification skipped for {$order->po_number}: Messenger API not configured in this environment.");
+            Log::info("Facebook Messenger notification skipped for {$order->po_number}: feature not enabled in this environment.");
 
             return;
         }
 
-        // Not implemented yet -- needs a live Meta Graph API token and
-        // an already-linked Messenger thread for the customer.
+        $threads = CustomerMessage::whereNull('parent_id')
+            ->where('channel', 'facebook_messenger')
+            ->whereNotNull('assigned_user_id')
+            ->where('status', '!=', 'closed')
+            ->get();
+
+        if ($threads->isEmpty()) {
+            Log::info("Facebook Messenger notification skipped for {$order->po_number}: no sales agent has a linked Facebook thread.");
+
+            return;
+        }
+
+        $body = self::facebookSummaryBody($order);
+
+        // Each agent's send is independent -- one failing (e.g. their
+        // 24-hour messaging window has lapsed) shouldn't stop the others
+        // from being notified.
+        foreach ($threads as $thread) {
+            try {
+                $externalMessageId = FacebookMessenger::sendReply($thread, $body);
+                MessageThread::createReply($thread, $body, 'company', $externalMessageId);
+            } catch (\Throwable $e) {
+                Log::warning("Failed to send Facebook Messenger order summary to thread {$thread->id} for {$order->po_number}.", ['exception' => $e]);
+            }
+        }
+    }
+
+    /**
+     * Every field carries its own label and the item list is numbered so a
+     * sales agent can scan straight to what they need (or reference "item
+     * 2" back to a customer) without parsing a paragraph.
+     */
+    private static function facebookSummaryBody(PurchaseOrder $order): string
+    {
+        $order->loadMissing(['customer', 'items']);
+
+        $lines = [
+            "New order — PO {$order->po_number}",
+            "Customer: {$order->customer?->company_name}",
+            '',
+            'Items:',
+        ];
+
+        foreach ($order->items as $index => $item) {
+            // Generic name and variant (dosage/strength) are both optional
+            // per product -- shown together in parentheses only when at
+            // least one is present, so a plain product never gets stray "()".
+            $details = collect([$item->generic_name, $item->dosage])->filter()->implode(', ');
+            $name = $details === '' ? $item->product_name : "{$item->product_name} ({$details})";
+
+            $lines[] = ($index + 1).". {$name} — {$item->quantity} {$item->unit}";
+        }
+
+        return implode("\n", $lines);
     }
 }

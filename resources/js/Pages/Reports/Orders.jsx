@@ -64,8 +64,12 @@ export default function Orders({ orders, filters, customers, summary }) {
                 cell: (order) => {
                     const badge = statusBadge(order.status);
                     return (
-                        <div className="flex justify-center">
-                            <AnimatedBadge status={badge.status} pulse={badge.pulse} size="sm">
+                        <div className="flex justify-start">
+                            <AnimatedBadge
+                                status={badge.status}
+                                size="sm"
+                                className="border-0 bg-transparent px-0 shadow-none"
+                            >
                                 {badge.label}
                             </AnimatedBadge>
                         </div>

@@ -1,29 +1,104 @@
-import Dropdown from '@/components/Dropdown';
+import echo from '@/echo';
 import FlashBanner from '@/components/FlashBanner';
 import ResponsiveNavLink from '@/components/ResponsiveNavLink';
+import { Dropdown as AccountDropdown } from '@/components/interior/dropdown';
 import { Drawer } from '@/components/motion/drawer';
+import { Tooltip } from '@/components/motion/tooltip';
+import ComposeModal from '@/components/messaging/ComposeModal';
 import { FooterSimple } from '@/components/smoothui/footer-1';
-import { NotificationBell } from '@/components/ui/notification-bell';
+import { CountBadge, NotificationBell } from '@/components/ui/notification-bell';
+import { useChatWidget } from '@/lib/chat-widget-context';
 import { Link, router, usePage } from '@inertiajs/react';
-import { Bell, MessageCircle, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { Bell, LogOut, MessageCircle, MonitorX, SquarePen, X } from 'lucide-react';
+import { useReducedMotion } from 'motion/react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+const USER_MENU_ITEMS = [
+    {
+        value: 'logout-all',
+        label: 'Sign Out All Devices',
+        icon: <MonitorX aria-hidden="true" className="h-4 w-4" />,
+    },
+    {
+        value: 'logout',
+        label: 'Log Out',
+        icon: <LogOut aria-hidden="true" className="h-4 w-4" />,
+        destructive: true,
+    },
+];
 
 export default function AuthenticatedLayout({ header, children }) {
     const user = usePage().props.auth.user;
+    const { openChat, readSignal, composeOpen, setComposeOpen, setIsAuthenticated } = useChatWidget();
+    const reducedMotion = useReducedMotion() ?? false;
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
     const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [messageAccounts, setMessageAccounts] = useState(null);
+    const [messageAccountsError, setMessageAccountsError] = useState(false);
+    const mountedRef = useRef(true);
+
+    useEffect(() => {
+        setIsAuthenticated(true);
+        return () => setIsAuthenticated(false);
+    }, [setIsAuthenticated]);
+
+    const fetchUnreadCount = useCallback(() => {
+        fetch(route('messages.unread-count'))
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => data && mountedRef.current && setUnreadCount(data.count))
+            .catch(() => {});
+    }, []);
+
+    const fetchMessageAccounts = useCallback(() => {
+        fetch(route('messages.recipients'), {
+            headers: { Accept: 'application/json' },
+        })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error('Unable to load message accounts.');
+                }
+
+                return response.json();
+            })
+            .then((data) => {
+                if (mountedRef.current) {
+                    setMessageAccounts(
+                        Array.isArray(data.recipients) ? data.recipients : [],
+                    );
+                }
+            })
+            .catch(() => {
+                if (mountedRef.current) {
+                    setMessageAccountsError(true);
+                }
+            });
+    }, []);
+
+    useEffect(
+        () => () => {
+            mountedRef.current = false;
+        },
+        [],
+    );
+
+    // A conversation being opened/read in the chat widget marks messages read
+    // server-side but doesn't itself touch the header -- this is how that
+    // gets reflected here without waiting for the next poll or new message.
+    useEffect(() => {
+        if (readSignal === 0) return;
+        fetchUnreadCount();
+        fetchMessageAccounts();
+    }, [readSignal, fetchUnreadCount, fetchMessageAccounts]);
 
     useEffect(() => {
         let intervalId = null;
 
-        const fetchUnreadCount = () => {
-            fetch(route('messages.unread-count'))
-                .then((res) => (res.ok ? res.json() : null))
-                .then((data) => data && setUnreadCount(data.count))
-                .catch(() => {});
+        const refreshFromLiveEvent = () => {
+            fetchUnreadCount();
+            fetchMessageAccounts();
         };
 
         const stopPolling = () => {
@@ -50,8 +125,15 @@ export default function AuthenticatedLayout({ header, children }) {
             }
         };
 
+        fetchMessageAccounts();
         handleVisibilityChange();
         document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        let channel = null;
+        if (echo && user.id) {
+            channel = echo.private(`users.${user.id}`);
+            channel.listen('.customer-message.created', refreshFromLiveEvent);
+        }
 
         return () => {
             stopPolling();
@@ -59,8 +141,93 @@ export default function AuthenticatedLayout({ header, children }) {
                 'visibilitychange',
                 handleVisibilityChange,
             );
+            if (channel) {
+                channel.stopListening('.customer-message.created', refreshFromLiveEvent);
+                echo.leave(`users.${user.id}`);
+            }
         };
-    }, []);
+    }, [user.id, fetchUnreadCount, fetchMessageAccounts]);
+
+    const messageAccountItems = useMemo(() => {
+        if (messageAccountsError) {
+            return [
+                {
+                    value: '__error',
+                    label: 'Accounts unavailable',
+                    disabled: true,
+                },
+            ];
+        }
+
+        if (messageAccounts === null) {
+            return [
+                {
+                    value: '__loading',
+                    label: 'Loading accounts...',
+                    disabled: true,
+                },
+            ];
+        }
+
+        if (messageAccounts.length === 0) {
+            return [
+                {
+                    value: '__empty',
+                    label: 'No message accounts found',
+                    disabled: true,
+                },
+            ];
+        }
+
+        return messageAccounts.map((recipient) => {
+            const unreadIcon = recipient.has_unread ? (
+                <span
+                    aria-label="Unread messages"
+                    className="block size-2 rounded-full bg-indigo-500"
+                />
+            ) : undefined;
+
+            if (recipient.channel === 'facebook') {
+                return {
+                    value: `fb-${recipient.thread_id}`,
+                    label: String(recipient.name).toLocaleUpperCase(),
+                    hint: recipient.linked_agent_name
+                        ? `FACEBOOK · ${String(recipient.linked_agent_name).toLocaleUpperCase()}`
+                        : 'FACEBOOK · UNLINKED',
+                    channel: 'facebook',
+                    threadId: recipient.thread_id,
+                    hasUnread: Boolean(recipient.has_unread),
+                    icon: unreadIcon,
+                };
+            }
+
+            return {
+                value:
+                    recipient.contact_id != null
+                        ? `staff-${recipient.contact_id}`
+                        : String(recipient.customer.id),
+                label: String(recipient.user_full_name).toLocaleUpperCase(),
+                hint:
+                    recipient.contact_id != null
+                        ? String(recipient.contact_role).toLocaleUpperCase()
+                        : String(recipient.customer.company_name).toLocaleUpperCase(),
+                channel: 'portal',
+                customerId: String(recipient.customer.id),
+                staffUserId: recipient.contact_id != null ? recipient.contact_id : undefined,
+                hasUnread: Boolean(recipient.has_unread),
+                icon: unreadIcon,
+            };
+        });
+    }, [messageAccounts, messageAccountsError]);
+
+    // Composing a new message only makes sense for accounts you can actually
+    // start a fresh conversation with -- Facebook contacts are existing
+    // threads only (Meta requires them to have messaged first), and the
+    // loading/error/empty rows are placeholders, not real accounts.
+    const composableAccounts = useMemo(
+        () => messageAccountItems.filter((item) => !item.disabled && item.channel !== 'facebook'),
+        [messageAccountItems],
+    );
 
     const navTabs = useMemo(
         () => [
@@ -70,21 +237,6 @@ export default function AuthenticatedLayout({ header, children }) {
                 href: route('purchase-orders.index'),
                 active: route().current('purchase-orders.*'),
                 label: 'Orders',
-            },
-            {
-                key: 'messages',
-                href: route('messages.index'),
-                active: route().current('messages.*'),
-                label: (
-                    <>
-                        Messages
-                        {unreadCount > 0 && (
-                            <span className="ml-1.5 rounded-full bg-indigo-600 px-1.5 py-0.5 text-xs font-semibold text-white">
-                                {unreadCount}
-                            </span>
-                        )}
-                    </>
-                ),
             },
             ...(user.role === 'admin'
                 ? [
@@ -97,7 +249,7 @@ export default function AuthenticatedLayout({ header, children }) {
                   ]
                 : []),
         ],
-        [user.role, unreadCount],
+        [user.role],
     );
 
     return (
@@ -135,66 +287,110 @@ export default function AuthenticatedLayout({ header, children }) {
 
                         <div className="hidden sm:ms-6 sm:flex sm:items-center">
                             <div className="flex items-center gap-1">
-                                <NotificationBell
-                                    count={unreadCount}
-                                    size={36}
-                                    label="Messages"
-                                    icon={<MessageCircle aria-hidden="true" className="h-[18px] w-[18px]" />}
-                                    className="bg-transparent hover:bg-gray-100"
-                                    onClick={() => router.visit(route('messages.index'))}
+                                <AccountDropdown
+                                    items={messageAccountItems}
+                                    value=""
+                                    onChange={(value) => {
+                                        const item = messageAccountItems.find(
+                                            (candidate) => candidate.value === value,
+                                        );
+                                        if (!item || item.disabled) return;
+
+                                        if (item.channel === 'facebook') {
+                                            openChat({
+                                                channel: 'facebook',
+                                                threadId: item.threadId,
+                                                name: item.label,
+                                                hint: item.hint,
+                                                viewerUserId: user.id,
+                                            });
+                                            return;
+                                        }
+
+                                        openChat({
+                                            channel: 'portal',
+                                            customerId: item.customerId,
+                                            staffUserId: item.staffUserId,
+                                            name: item.label,
+                                            hint: item.hint,
+                                            viewerIsCompany: user.role !== 'customer',
+                                            viewerUserId: user.id,
+                                        });
+                                    }}
+                                    label="Choose an account to message"
+                                    emptyLabel="No message accounts found"
+                                    menuTitle={
+                                        <div className="flex w-full items-center justify-between gap-4">
+                                            <span>Chats</span>
+                                            <Tooltip
+                                                content="New message"
+                                                side="top"
+                                            >
+                                                <NotificationBell
+                                                    count={0}
+                                                    size={36}
+                                                    label="New message"
+                                                    icon={
+                                                        <SquarePen
+                                                            aria-hidden="true"
+                                                            className="h-5 w-5"
+                                                        />
+                                                    }
+                                                    onClick={() => setComposeOpen(true)}
+                                                    className="bg-transparent hover:bg-gray-100"
+                                                />
+                                            </Tooltip>
+                                        </div>
+                                    }
+                                    menuWidth={420}
+                                    searchable
+                                    searchPlaceholder="Search accounts"
+                                    align="right"
+                                    portal
+                                    trigger={
+                                        <span className="relative inline-flex h-9 w-9 items-center justify-center">
+                                            <MessageCircle
+                                                aria-hidden="true"
+                                                className="h-[18px] w-[18px]"
+                                            />
+                                            <CountBadge
+                                                total={unreadCount}
+                                                max={99}
+                                                size={36}
+                                                color="red"
+                                                dot={false}
+                                                reduced={reducedMotion}
+                                            />
+                                        </span>
+                                    }
+                                    triggerClassName="relative inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-gray-500 outline-none transition-colors hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-gray-300"
                                 />
                                 <NotificationBell
                                     count={unreadCount}
                                     size={36}
                                     icon={<Bell aria-hidden="true" className="h-5 w-5" />}
-                                    className="bg-transparent hover:bg-gray-100"
+                                    className="bg-transparent text-gray-500 hover:bg-gray-100"
                                     onClick={() => setNotificationDrawerOpen(true)}
                                 />
                             </div>
 
                             <div className="relative ms-2">
-                                <Dropdown>
-                                    <Dropdown.Trigger>
-                                        <span className="inline-flex rounded-md">
-                                            <button
-                                                type="button"
-                                                className="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none"
-                                            >
-                                                {user.full_name}
-
-                                                <svg
-                                                    className="-me-0.5 ms-2 h-4 w-4"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    viewBox="0 0 20 20"
-                                                    fill="currentColor"
-                                                >
-                                                    <path
-                                                        fillRule="evenodd"
-                                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                        clipRule="evenodd"
-                                                    />
-                                                </svg>
-                                            </button>
-                                        </span>
-                                    </Dropdown.Trigger>
-
-                                    <Dropdown.Content>
-                                        <Dropdown.Link
-                                            href={route('logout.all')}
-                                            method="post"
-                                            as="button"
-                                        >
-                                            Sign Out All Devices
-                                        </Dropdown.Link>
-                                        <Dropdown.Link
-                                            href={route('logout')}
-                                            method="post"
-                                            as="button"
-                                        >
-                                            Log Out
-                                        </Dropdown.Link>
-                                    </Dropdown.Content>
-                                </Dropdown>
+                                <AccountDropdown
+                                    items={USER_MENU_ITEMS}
+                                    value=""
+                                    onChange={(action) => {
+                                        if (action === 'logout-all') {
+                                            router.post(route('logout.all'));
+                                        } else if (action === 'logout') {
+                                            router.post(route('logout'));
+                                        }
+                                    }}
+                                    label={user.full_name}
+                                    placeholder="User actions"
+                                    align="right"
+                                    portal
+                                    triggerClassName="flex h-9 select-none items-center gap-2 whitespace-nowrap rounded-md border border-transparent bg-white px-3 text-sm font-medium text-gray-500 outline-none transition-colors hover:bg-gray-100 hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-gray-300"
+                                />
                             </div>
                         </div>
 
@@ -320,15 +516,15 @@ export default function AuthenticatedLayout({ header, children }) {
                                         {unreadCount} unread {unreadCount === 1 ? 'message' : 'messages'}
                                     </p>
                                     <p className="mt-1 text-sm text-gray-500">
-                                        Open your inbox to read and respond.
+                                        Open the Chats icon in the header to read and respond.
                                     </p>
-                                    <Link
-                                        href={route('messages.index')}
-                                        className="mt-3 inline-flex text-sm font-medium text-gray-900 underline-offset-4 hover:underline"
+                                    <button
+                                        type="button"
                                         onClick={() => setNotificationDrawerOpen(false)}
+                                        className="mt-3 inline-flex text-sm font-medium text-gray-900 underline-offset-4 hover:underline"
                                     >
-                                        View messages
-                                    </Link>
+                                        Got it
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -345,6 +541,12 @@ export default function AuthenticatedLayout({ header, children }) {
                     )}
                 </div>
             </Drawer>
+
+            <ComposeModal
+                open={composeOpen}
+                onClose={() => setComposeOpen(false)}
+                accounts={composableAccounts}
+            />
 
             <FlashBanner />
 
@@ -368,7 +570,6 @@ export default function AuthenticatedLayout({ header, children }) {
                         items: [
                             { name: 'Dashboard', url: route('dashboard') },
                             { name: 'Orders', url: route('purchase-orders.index') },
-                            { name: 'Messages', url: route('messages.index') },
                         ],
                     },
                 ]}

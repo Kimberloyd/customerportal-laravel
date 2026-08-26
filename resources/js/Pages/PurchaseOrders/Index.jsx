@@ -59,7 +59,11 @@ export default function Index({ orders, filters }) {
                     const badge = statusBadge(order.status);
                     return (
                         <div className="flex justify-start">
-                            <AnimatedBadge status={badge.status} pulse={badge.pulse} size="sm">
+                            <AnimatedBadge
+                                status={badge.status}
+                                size="sm"
+                                className="border-0 bg-transparent px-0 shadow-none"
+                            >
                                 {badge.label}
                             </AnimatedBadge>
                         </div>
@@ -105,7 +109,7 @@ export default function Index({ orders, filters }) {
                         type="text"
                         value={search}
                         onChange={setSearch}
-                        placeholder="Search by PO Number, Customer"
+                        placeholder="PO number or customer"
                         aria-label="Search orders"
                         leftIcon={<Search className="h-4 w-4" />}
                         classNames={{
@@ -122,7 +126,7 @@ export default function Index({ orders, filters }) {
                         columns={columns}
                         getRowId={(order) => String(order.id)}
                         defaultSort={{ key: 'submitted_at', direction: 'desc' }}
-                        className="[&>div]:overflow-hidden [&_td:not(:nth-last-child(-n+2))]:border-r [&_td:not(:nth-last-child(-n+2))]:border-border/60 [&_th:not(:nth-last-child(-n+2))]:border-r [&_th:not(:nth-last-child(-n+2))]:border-border/60"
+                        className="[&>div]:overflow-hidden"
                         resizable
                         reorderable
                         onRowClick={goToOrder}

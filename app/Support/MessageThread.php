@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Events\CustomerMessageSent;
 use App\Models\CustomerMessage;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -54,6 +55,7 @@ class MessageThread
 
         $reply = CustomerMessage::create([
             'customer_id' => $thread->customer_id,
+            'assigned_user_id' => $thread->assigned_user_id,
             'parent_id' => $thread->id,
             'subject' => $thread->subject,
             'body' => $body,
@@ -71,6 +73,8 @@ class MessageThread
         $thread->status = 'open';
         $thread->updated_at = $now;
         $thread->save();
+
+        CustomerMessageSent::dispatch($reply->id, $thread->customer_id);
 
         return $reply;
     }

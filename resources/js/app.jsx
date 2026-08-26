@@ -1,6 +1,8 @@
 import '../css/app.css';
 import './bootstrap';
 
+import ChatWidget from '@/components/messaging/ChatWidget';
+import { ChatWidgetProvider } from '@/lib/chat-widget-context';
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
@@ -17,7 +19,12 @@ createInertiaApp({
     setup({ el, App, props }) {
         const root = createRoot(el);
 
-        root.render(<App {...props} />);
+        root.render(
+            <ChatWidgetProvider>
+                <App {...props} />
+                <ChatWidget />
+            </ChatWidgetProvider>,
+        );
     },
     progress: {
         color: '#4B5563',

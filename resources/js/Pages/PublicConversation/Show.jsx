@@ -64,7 +64,7 @@ export default function Show({ token, thread, messages }) {
                             rows={3}
                             value={data.body}
                             onChange={(e) => setData('body', e.target.value)}
-                            placeholder="Write a reply..."
+                            placeholder="Write your reply"
                             className="block w-full rounded-md border-gray-300 text-sm"
                         />
                         <div className="flex justify-end">

@@ -43,8 +43,12 @@ export function CustomersPanel({ customers, filters, filterRouteName, filterExtr
                 key: 'is_active',
                 header: 'Status',
                 cell: (customer) => (
-                    <div className="flex justify-center">
-                        <AnimatedBadge status={customer.is_active ? 'success' : 'neutral'} size="sm">
+                    <div className="flex justify-start">
+                        <AnimatedBadge
+                            status={customer.is_active ? 'success' : 'neutral'}
+                            size="sm"
+                            className="border-0 bg-transparent px-0 shadow-none"
+                        >
                             {customer.is_active ? 'Active' : 'Inactive'}
                         </AnimatedBadge>
                     </div>
@@ -61,7 +65,7 @@ export function CustomersPanel({ customers, filters, filterRouteName, filterExtr
                     type="text"
                     value={search}
                     onChange={setSearch}
-                    placeholder="Search Customer"
+                    placeholder="Code, company, or channel"
                     aria-label="Search customers"
                     leftIcon={<Search className="h-4 w-4" />}
                     classNames={{

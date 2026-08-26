@@ -87,8 +87,12 @@ export function ProductsPanel({ products = [], filters, loading = false }) {
                 key: 'is_active',
                 header: 'Status',
                 cell: (product) => (
-                    <div className="flex justify-center">
-                        <AnimatedBadge status={product.is_active ? 'success' : 'neutral'} size="sm">
+                    <div className="flex justify-start">
+                        <AnimatedBadge
+                            status={product.is_active ? 'success' : 'neutral'}
+                            size="sm"
+                            className="border-0 bg-transparent px-0 shadow-none"
+                        >
                             {product.is_active ? 'Active' : 'Inactive'}
                         </AnimatedBadge>
                     </div>
@@ -105,7 +109,11 @@ export function ProductsPanel({ products = [], filters, loading = false }) {
                     type="text"
                     value={search}
                     onChange={setSearch}
-                    placeholder={loading ? 'Loading products…' : 'Search Product'}
+                    placeholder={
+                        loading
+                            ? 'Loading products…'
+                            : 'Name, generic name, SKU, or category'
+                    }
                     aria-label="Search products"
                     disabled={loading}
                     leftIcon={<Search className="h-4 w-4" />}

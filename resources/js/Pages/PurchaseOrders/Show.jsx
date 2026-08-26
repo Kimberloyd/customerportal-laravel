@@ -353,7 +353,7 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
                             data={itemRows}
                             columns={itemColumns}
                             getRowId={(item) => String(item.id)}
-                            className="border-gray-200 [&>div]:overflow-hidden [&_td:not(:nth-last-child(-n+2))]:border-r [&_td:not(:nth-last-child(-n+2))]:border-border/60 [&_th:not(:nth-last-child(-n+2))]:border-r [&_th:not(:nth-last-child(-n+2))]:border-border/60"
+                            className="border-gray-200 [&>div]:overflow-hidden"
                             height={autoTableHeight(itemRows.length)}
                             resizable
                             reorderable
@@ -378,7 +378,7 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
                         data={auditLogsRows}
                         columns={auditLogColumns}
                         getRowId={(audit) => audit.__rowId}
-                        className="border-gray-200 [&>div]:overflow-hidden [&_td:not(:nth-last-child(-n+2))]:border-r [&_td:not(:nth-last-child(-n+2))]:border-border/60 [&_th:not(:nth-last-child(-n+2))]:border-r [&_th:not(:nth-last-child(-n+2))]:border-border/60"
+                        className="border-gray-200 [&>div]:overflow-hidden"
                         height={autoTableHeight(auditLogsRows.length)}
                         resizable
                         reorderable

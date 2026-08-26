@@ -196,7 +196,7 @@ function DigitColumn({ value, reduced }: { value: number; reduced: boolean }) {
   );
 }
 
-function CountBadge({
+export function CountBadge({
   total,
   max,
   size,

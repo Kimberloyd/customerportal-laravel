@@ -54,13 +54,13 @@ const STATUS_CLASS: Record<AnimatedBadgeStatus, string> = {
 };
 
 const SIZE_CLASS: Record<AnimatedBadgeSize, string> = {
-  sm: "h-6 gap-1.5 px-2 text-[11px]",
-  md: "h-8 gap-2 px-3 text-xs",
+  sm: "h-6 gap-1.5 px-2 text-sm",
+  md: "h-8 gap-2 px-3 text-sm",
 };
 
 const ICON_CLASS: Record<AnimatedBadgeSize, string> = {
-  sm: "h-3 w-3",
-  md: "h-3.5 w-3.5",
+  sm: "h-3.5 w-3.5",
+  md: "h-4 w-4",
 };
 
 const ICONS: Record<AnimatedBadgeStatus, LucideIcon> = {

@@ -21,6 +21,10 @@ export default {
             colors: {
                 background: 'var(--background)',
                 foreground: 'var(--foreground)',
+                card: {
+                    DEFAULT: 'var(--card)',
+                    foreground: 'var(--card-foreground)',
+                },
                 border: 'var(--border)',
                 ring: 'var(--ring)',
                 muted: {

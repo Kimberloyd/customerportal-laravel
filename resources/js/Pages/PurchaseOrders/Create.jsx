@@ -291,7 +291,7 @@ export default function Create({ customers, products = [], lockedCustomerId }) {
                                     items={commandItems}
                                     open={paletteOpen}
                                     onOpenChange={setPaletteOpen}
-                                    placeholder="Search product name, generic name, or SKU"
+                                    placeholder="Product name, generic name, or SKU"
                                     emptyMessage="No products found. Try a different search."
                                     note={
                                         <div className="flex items-center justify-between gap-3">
@@ -324,7 +324,7 @@ export default function Create({ customers, products = [], lockedCustomerId }) {
                             data={lines}
                             columns={productLineColumns}
                             getRowId={(line) => line.key}
-                            className="[&>div]:overflow-hidden [&_td:not(:nth-last-child(-n+2))]:border-r [&_td:not(:nth-last-child(-n+2))]:border-border/60 [&_th:not(:nth-last-child(-n+2))]:border-r [&_th:not(:nth-last-child(-n+2))]:border-border/60"
+                            className="[&>div]:overflow-hidden"
                             height={lines.length === 0 ? 176 : lines.length * 48 + 48}
                             resizable
                             reorderable
