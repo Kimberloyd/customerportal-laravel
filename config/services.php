@@ -35,13 +35,21 @@ return [
         ],
     ],
 
-    // See App\Support\OrderNotifications. email/facebook stay disabled
-    // until real SMTP/Meta Graph API credentials exist to verify
-    // delivery against -- both flags default false intentionally.
+    // See App\Support\OrderNotifications. email/facebook/sms stay disabled
+    // until real SMTP/Meta Graph API/Semaphore credentials exist to verify
+    // delivery against -- all three flags default false intentionally.
     'po_notifications' => [
         'public_conversation_link_ttl_hours' => env('PUBLIC_CONVERSATION_LINK_TTL_HOURS', 720),
         'email_enabled' => env('PO_NOTIFICATIONS_EMAIL_ENABLED', false),
         'facebook_enabled' => env('PO_NOTIFICATIONS_FACEBOOK_ENABLED', false),
+        'sms_enabled' => env('PO_NOTIFICATIONS_SMS_ENABLED', false),
+    ],
+
+    // See App\Support\SemaphoreSms. Used by OrderNotifications to text the
+    // customer's login phone number a copy of the order summary.
+    'semaphore' => [
+        'api_key' => env('SEMAPHORE_API_KEY'),
+        'sender_name' => env('SEMAPHORE_SENDER_NAME'),
     ],
 
     // See App\Support\FacebookMessenger and FacebookWebhookController.

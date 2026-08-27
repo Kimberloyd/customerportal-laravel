@@ -5,12 +5,15 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\User;
+use App\Services\LegacyPasswordHasher;
 use App\Support\AdminUserListing;
 use App\Support\UserAudit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -31,7 +34,13 @@ class UserController extends Controller
     {
         $this->requireAdmin();
 
-        return Inertia::render('Admin/Users/Index', $this->userListing->get($request->query()));
+        return Inertia::render('Admin/Users/Index', [
+            ...$this->userListing->get($request->query()),
+            'accountForm' => [
+                'allowAdminCreation' => false,
+                'customers' => $this->customerOptions(),
+            ],
+        ]);
     }
 
     public function create(Request $request): Response
@@ -57,6 +66,7 @@ class UserController extends Controller
             $user = User::create([
                 'full_name' => $values['full_name'],
                 'email' => $values['email'],
+                'phone' => $values['phone'],
                 'role' => $values['role'],
                 'is_active' => $request->input('is_active') === '1',
                 'password_hash' => Hash::make($values['password']),
@@ -74,27 +84,6 @@ class UserController extends Controller
             ->with('success', 'Account created.');
     }
 
-    public function edit(Request $request, User $user): Response
-    {
-        $this->requireAdmin();
-
-        $allowAdminCreation = $this->allowAdminCreationFromRequest($request) || $user->role === 'admin';
-
-        return Inertia::render('Admin/Users/Edit', [
-            'user' => [
-                'id' => $user->id,
-                'full_name' => $user->full_name,
-                'email' => $user->email,
-                'role' => $user->role,
-                'is_active' => $user->is_active,
-            ],
-            'allowAdminCreation' => $allowAdminCreation,
-            'customers' => $this->customerOptions(),
-            'selectedCustomerId' => Customer::where('user_id', $user->id)->value('id'),
-            'isSelf' => $user->id === Auth::id(),
-        ]);
-    }
-
     public function update(Request $request, User $user)
     {
         $this->requireAdmin();
@@ -109,6 +98,7 @@ class UserController extends Controller
 
         $user->full_name = $values['full_name'];
         $user->email = $values['email'];
+        $user->phone = $values['phone'];
 
         if (! $isSelf) {
             $user->role = $values['role'];
@@ -162,6 +152,34 @@ class UserController extends Controller
 
         return redirect()->route('admin.dashboard', ['tab' => 'accounts'])
             ->with('success', 'Account updated.');
+    }
+
+    public function resetPassword(Request $request, User $user)
+    {
+        $this->requireAdmin();
+
+        $password = (string) $request->input('password', '');
+        $passwordConfirmation = (string) $request->input('password_confirmation', '');
+
+        $this->assertSecurePassword($password, $passwordConfirmation, $user->email, $user->full_name, $user->password_hash);
+
+        $isSelf = $user->id === Auth::id();
+
+        DB::transaction(function () use ($user, $password, $isSelf, $request) {
+            $user->password_hash = Hash::make($password);
+            // Same rationale as the password branch in update(): force other
+            // sessions to re-authenticate, but don't sign the admin out of
+            // the tab they're resetting their own password from.
+            $user->session_version = ($user->session_version ?? 0) + 1;
+            if ($isSelf) {
+                $request->session()->put('session_version', $user->session_version);
+            }
+            $user->save();
+
+            UserAudit::record($user, 'password reset', "email={$user->email}", $request);
+        });
+
+        return back()->with('success', "{$user->full_name}'s password was reset.");
     }
 
     public function toggleActive(Request $request, User $user)
@@ -222,6 +240,89 @@ class UserController extends Controller
         return $request->input('allow_admin') === '1';
     }
 
+    /**
+     * Shared by resetPassword() and validateUserForm(). Beyond the minimum
+     * length, this rejects two classes of weak password an attacker who
+     * already knows (or is) the account -- exactly the position an admin
+     * resetting someone else's password is in -- would try first: the
+     * account's own name/email, and its current password. It also runs
+     * Laravel's k-anonymity Have I Been Pwned check (Password::uncompromised())
+     * so a password already exposed in a known breach corpus is rejected
+     * even if nothing about this specific account made it guessable.
+     */
+    private function assertSecurePassword(
+        string $password,
+        string $confirmation,
+        ?string $email = null,
+        ?string $fullName = null,
+        ?string $currentPasswordHash = null,
+    ): void {
+        if (strlen($password) < self::MIN_PASSWORD_LENGTH) {
+            throw ValidationException::withMessages([
+                'password' => 'Use at least '.self::MIN_PASSWORD_LENGTH.' characters.',
+            ]);
+        }
+        if ($password !== $confirmation) {
+            throw ValidationException::withMessages(['password_confirmation' => 'Enter the same password again.']);
+        }
+
+        $lowerPassword = strtolower($password);
+
+        if ($email) {
+            $emailLocalPart = strtolower(strstr($email, '@', true) ?: $email);
+            // Substring, not exact-match: "jayjaron2024" and "Jay Jaron!!"
+            // are just as guessable as the bare local part, so a password
+            // that merely contains it is rejected too.
+            if (strlen($emailLocalPart) >= 3 && str_contains($lowerPassword, $emailLocalPart)) {
+                throw ValidationException::withMessages([
+                    'password' => "Don't use the account's email address as the password.",
+                ]);
+            }
+        }
+
+        if ($fullName) {
+            $nameParts = array_filter(preg_split('/\s+/', strtolower($fullName)) ?: []);
+            foreach ($nameParts as $part) {
+                // Skip short parts ("de", "jr") so common syllables don't
+                // false-positive on an otherwise unrelated password.
+                if (strlen($part) >= 3 && str_contains($lowerPassword, $part)) {
+                    throw ValidationException::withMessages([
+                        'password' => "Don't use the account holder's name as the password.",
+                    ]);
+                }
+            }
+        }
+
+        // Hash::check() throws for anything that isn't bcrypt -- accounts
+        // still on a hash from the Flask app (see LegacyPasswordHasher) fail
+        // this check the same way they fail Auth::attempt() otherwise. Those
+        // get rehashed to bcrypt on their next real login regardless, so this
+        // secondary check simply doesn't apply to them yet rather than
+        // paying LegacyPasswordHasher's ~15s scrypt cost for a nice-to-have.
+        if (
+            $currentPasswordHash
+            && ! LegacyPasswordHasher::isLegacyHash($currentPasswordHash)
+            && Hash::check($password, $currentPasswordHash)
+        ) {
+            throw ValidationException::withMessages([
+                'password' => 'Choose a password different from the current one.',
+            ]);
+        }
+
+        // Fails open (treats the password as fine) if the Have I Been Pwned
+        // API can't be reached, so an outage there never blocks account
+        // creation or a password reset.
+        $breachCheck = Validator::make(
+            ['password' => $password],
+            ['password' => [Password::min(self::MIN_PASSWORD_LENGTH)->uncompromised()]],
+        );
+        if ($breachCheck->fails()) {
+            throw ValidationException::withMessages([
+                'password' => 'This password has appeared in a known data breach. Choose a different one.',
+            ]);
+        }
+    }
+
     private function customerOptions()
     {
         return Customer::where('is_active', true)
@@ -230,12 +331,13 @@ class UserController extends Controller
     }
 
     /**
-     * @return array{full_name: string, email: string, password: string, role: string, customer_id: ?int}
+     * @return array{full_name: string, email: string, phone: ?string, password: string, role: string, customer_id: ?int}
      */
     private function validateUserForm(Request $request, ?User $user, bool $allowAdminCreation): array
     {
         $fullName = trim((string) $request->input('full_name', ''));
         $email = strtolower(trim((string) $request->input('email', '')));
+        $phone = trim((string) $request->input('phone', ''));
         $password = (string) $request->input('password', '');
         $passwordConfirmation = (string) $request->input('password_confirmation', '');
         $selectedRole = strtolower(trim((string) $request->input('role', $user?->role ?? 'employee')));
@@ -261,14 +363,13 @@ class UserController extends Controller
             throw ValidationException::withMessages(['password' => 'Enter a password for this account.']);
         }
         if ($hasPasswordInput) {
-            if (strlen($password) < self::MIN_PASSWORD_LENGTH) {
-                throw ValidationException::withMessages([
-                    'password' => 'Use at least '.self::MIN_PASSWORD_LENGTH.' characters.',
-                ]);
-            }
-            if ($password !== $passwordConfirmation) {
-                throw ValidationException::withMessages(['password_confirmation' => 'Enter the same password again.']);
-            }
+            $this->assertSecurePassword(
+                $password,
+                $passwordConfirmation,
+                $email,
+                $fullName,
+                $user?->password_hash,
+            );
         }
 
         if ($selectedRole === 'customer') {
@@ -297,6 +398,7 @@ class UserController extends Controller
         return [
             'full_name' => $fullName,
             'email' => $email,
+            'phone' => $phone !== '' ? $phone : null,
             'password' => $password,
             'role' => $selectedRole,
             'customer_id' => $selectedCustomerId,

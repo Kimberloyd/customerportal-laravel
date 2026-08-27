@@ -3,17 +3,26 @@
 namespace Tests\Feature\Admin\Users;
 
 use App\Models\AdminAudit;
-use App\Models\Customer;
 use App\Models\User;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Hash;
 use Tests\Concerns\CreatesOrderFixtures;
 use Tests\TestCase;
 
 class EditTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesOrderFixtures;
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Feature tests do not have a browser-provided CSRF token. Keep the
+        // production middleware enabled while allowing this class to reach
+        // the authorization and update behavior it is intended to verify.
+        $this->withoutMiddleware(PreventRequestForgery::class);
+    }
 
     public function test_blank_password_leaves_hash_unchanged(): void
     {
@@ -185,11 +194,28 @@ class EditTest extends TestCase
         $this->assertSame('profile details updated', $audit->details);
     }
 
-    public function test_employee_gets_403(): void
+    public function test_employee_cannot_update_an_account(): void
     {
         $employee = User::factory()->create(['role' => 'employee']);
         $target = User::factory()->create(['role' => 'employee']);
 
-        $this->actingAsUser($employee)->get("/admin/users/{$target->id}/edit")->assertStatus(403);
+        $this->actingAsUser($employee)->put("/admin/users/{$target->id}", [
+            'full_name' => 'Unauthorized change',
+            'email' => $target->email,
+            'role' => 'employee',
+            'is_active' => '1',
+        ])->assertStatus(403);
+
+        $this->assertNotSame('Unauthorized change', $target->fresh()->full_name);
+    }
+
+    public function test_full_page_edit_route_is_removed(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $target = User::factory()->create(['role' => 'employee']);
+
+        $this->actingAsUser($admin)
+            ->get("/admin/users/{$target->id}/edit")
+            ->assertNotFound();
     }
 }

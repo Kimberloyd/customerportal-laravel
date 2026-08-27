@@ -3,7 +3,7 @@ import { Input } from '@/components/motion/input';
 import { Table } from '@/components/motion/table';
 import { Tooltip } from '@/components/motion/tooltip';
 import { Button } from '@/components/ui/button';
-import { Modal } from '@/components/interior/modal';
+import { AutoHeightReveal, Modal } from '@/components/interior/modal';
 import { formatDateTime } from '@/utils/orderDisplay';
 import { PdfPreview } from '@/components/PdfPreview';
 import ConfirmationDialog from '@/components/ConfirmationDialog';
@@ -238,7 +238,7 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
                                                 <button
                                                     type="button"
                                                     onClick={() => setAttachmentPreviewOpen(true)}
-                                                    className="text-indigo-600 hover:underline"
+                                                    className="text-primary hover:underline"
                                                 >
                                                     View File
                                                 </button>
@@ -247,7 +247,7 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
                                                     href={attachmentUrl}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="text-indigo-600 hover:underline"
+                                                    className="text-primary hover:underline"
                                                 >
                                                     View File
                                                 </a>
@@ -329,15 +329,17 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
                         maxHeight="90vh"
                         className="[&>div:nth-child(2)]:px-2 [&>div:nth-child(2)]:pb-2"
                     >
-                        {attachmentKind === 'image' ? (
-                            <img
-                                src={attachmentUrl}
-                                alt="Attachment preview"
-                                className="max-h-[78vh] w-full rounded-lg object-contain"
-                            />
-                        ) : (
-                            <PdfPreview url={attachmentUrl} className="max-h-[78vh] overflow-auto" />
-                        )}
+                        <AutoHeightReveal>
+                            {attachmentKind === 'image' ? (
+                                <img
+                                    src={attachmentUrl}
+                                    alt="Attachment preview"
+                                    className="max-h-[78vh] w-full rounded-lg object-contain"
+                                />
+                            ) : (
+                                <PdfPreview url={attachmentUrl} className="max-h-[78vh] overflow-auto" />
+                            )}
+                        </AutoHeightReveal>
                     </Modal>
                 )}
 

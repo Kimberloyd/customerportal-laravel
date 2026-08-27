@@ -47,7 +47,7 @@ export default function Orders({ orders, filters, customers, summary }) {
                 key: 'po_number',
                 header: 'PO Number',
                 cell: (order) => (
-                    <Link href={`/purchase-orders/${order.id}`} className="font-medium text-indigo-600">
+                    <Link href={`/purchase-orders/${order.id}`} className="font-medium text-primary">
                         {order.po_number}
                     </Link>
                 ),

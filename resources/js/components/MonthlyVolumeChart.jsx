@@ -21,7 +21,7 @@ export default function MonthlyVolumeChart({ months, periodLabel }) {
                     </div>
                     <div className="flex h-24 w-full items-end rounded bg-gray-100">
                         <span
-                            className="w-full rounded bg-indigo-500"
+                            className="w-full rounded bg-primary"
                             style={{ height: `${month.height}%` }}
                         />
                     </div>

@@ -49,6 +49,7 @@ class DashboardTest extends TestCase
         User::factory()->create([
             'full_name' => 'Jane Account',
             'email' => 'jane-account@example.com',
+            'phone' => '5551234567',
             'role' => 'employee',
         ]);
         User::factory()->create([
@@ -67,6 +68,10 @@ class DashboardTest extends TestCase
             ->where('filters.role', 'employee')
             ->has('users.data', 1)
             ->where('users.data.0.email', 'jane-account@example.com')
+            ->where('users.data.0.phone', '5551234567')
+            ->where('users.data.0.linked_customer_id', null)
+            ->where('users.data.0.is_self', false)
+            ->missing('users.data.0.password_hash')
             ->where('accountForm.allowAdminCreation', false)
             ->has('accountForm.customers'));
     }

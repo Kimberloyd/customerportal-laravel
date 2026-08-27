@@ -13,21 +13,35 @@
          * 3.9%" triplet would be invalid CSS used that way, so every
          * token here has to be a complete color on its own.
          */
-        --background: hsl(0 0% 100%);
-        --foreground: hsl(240 10% 3.9%);
-        --card: hsl(0 0% 100%);
-        --card-foreground: hsl(240 10% 3.9%);
-        --border: hsl(240 5.9% 90%);
-        --ring: hsl(240 5.9% 10%);
-        --muted: hsl(240 4.8% 95.9%);
-        --muted-foreground: hsl(240 3.8% 46.1%);
-        --primary: hsl(240 5.9% 10%);
+        --background: hsl(238 10% 100%);
+        --foreground: hsl(238 10% 3.9%);
+        --card: hsl(238 10% 100%);
+        --card-foreground: hsl(238 10% 3.9%);
+        --border: hsl(238 5.9% 90%);
+        --muted: hsl(238 4.8% 95.9%);
+        --muted-foreground: hsl(238 3.8% 46.1%);
+        /* Brand indigo (#2E3192) -- the app's one true interactive accent:
+         * primary buttons, links, active states, focus rings. Passes
+         * 10.7:1 contrast both as white-on-fill and as text-on-background,
+         * so it's used at full brand strength with no adjustment. */
+        --primary: hsl(238 52% 38%);
         --primary-foreground: hsl(0 0% 98%);
-        --accent: hsl(240 4.8% 95.9%);
-        --hover: hsl(240 5.9% 90%);
-        --active: hsl(240 5.9% 85%);
-        --destructive: hsl(0 84% 60%);
-        --color-success: hsl(142 71% 45%);
+        --ring: hsl(238 52% 38%);
+        --focus-ring: hsl(238 52% 38%);
+        --accent: hsl(238 4.8% 95.9%);
+        --hover: hsl(238 5.9% 90%);
+        --active: hsl(238 5.9% 85%);
+        /* Brand red (#ED1515) darkened from L51%->L44% -- the raw brand hex
+         * clears only 4.45:1 as text/white-on-fill, just under the 4.5:1 AA
+         * minimum for normal text. This keeps it unmistakably the same red
+         * while passing at 5.6:1. */
+        --destructive: hsl(0 86% 44%);
+        /* Brand green (#00A652) darkened from L33%->L26% for the same
+         * reason -- the raw hex is only 3.2:1 as text (fails AA), the
+         * adjusted value passes at 4.8:1. */
+        --color-success: hsl(150 100% 26%);
+        /* Brand teal (#1A6A75), used unchanged -- already passes at 6.2:1. */
+        --info: hsl(187 64% 28%);
     }
 }
 

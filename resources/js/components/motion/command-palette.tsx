@@ -13,7 +13,6 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { EASE_OUT } from "@/lib/ease";
 import { useTouchCapable } from "@/lib/hooks/use-touch-capable";
 import { cn } from "@/lib/utils";
 
@@ -30,8 +29,13 @@ export type CommandItem = {
 
 export interface CommandPaletteProps {
   items: CommandItem[];
-  /** Opens with Cmd/Ctrl + this key. Default: "k" */
-  shortcut?: string;
+  /**
+   * Opens with Cmd/Ctrl + this key. Default: "k". Pass null/"" to bind no
+   * global shortcut at all -- needed when more than one palette can be
+   * mounted at once (e.g. a page-level one plus the header's), so a single
+   * keypress doesn't open both.
+   */
+  shortcut?: string | null;
   placeholder?: string;
   emptyMessage?: string;
   /** Small helper line shown under the search field, above the results. */
@@ -52,14 +56,12 @@ function fuzzyMatch(needle: string, hay: string) {
   return false;
 }
 
-// Opened via a keyboard shortcut many times a day — entrance must read as
-// instant. Tight spring, even faster exit.
-const PANEL_SPRING = {
-  type: "spring",
-  stiffness: 560,
-  damping: 40,
-  mass: 0.5,
-} as const;
+// Matches the shared Modal component (components/interior/modal.tsx) so
+// every summoned overlay in the app — this palette included — pops in
+// with the same feel.
+const EASE = [0.23, 1, 0.32, 1] as const;
+const LEAVE = [0.4, 0, 1, 1] as const;
+const SURFACE = { type: "spring", stiffness: 420, damping: 36, mass: 0.9 } as const;
 
 export function CommandPalette({
   items,
@@ -99,6 +101,7 @@ export function CommandPalette({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (
+        shortcut &&
         (e.metaKey || e.ctrlKey) &&
         e.key.toLowerCase() === shortcut.toLowerCase()
       ) {
@@ -121,6 +124,18 @@ export function CommandPalette({
       setActive(0);
     }
   }, [open, updateQuery]);
+
+  /**
+   * The panel is always mounted (only pointer-events/opacity toggle), so
+   * there's no mount-time autofocus to rely on -- without this, opening via
+   * the trigger button leaves focus on that button and typing goes nowhere.
+   * rAF so focus lands after the panel is actually interactive.
+   */
+  useEffect(() => {
+    if (!open) return;
+    const frame = requestAnimationFrame(() => inputRef.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -204,7 +219,7 @@ export function CommandPalette({
         aria-label="Close command palette"
         initial={false}
         animate={{ opacity: open ? 1 : 0 }}
-        transition={{ duration: open ? 0.18 : 0.12, ease: EASE_OUT }}
+        transition={{ duration: open ? 0.2 : 0.15, ease: open ? EASE : LEAVE }}
         onClick={() => setOpen(false)}
         className={cn(
           "absolute inset-0 bg-background/5 [backdrop-filter:blur(12px)_saturate(140%)] [-webkit-backdrop-filter:blur(12px)_saturate(140%)]",
@@ -219,15 +234,15 @@ export function CommandPalette({
           initial={false}
           animate={{
             opacity: open ? 1 : 0,
-            y: open || reduce ? 0 : -8,
-            scale: open || reduce ? 1 : 0.97,
+            y: open || reduce ? 0 : 12,
+            scale: open || reduce ? 1 : 0.96,
           }}
           transition={
             reduce
               ? { duration: 0.1 }
               : open
-                ? PANEL_SPRING
-                : { duration: 0.12, ease: EASE_OUT }
+                ? { ...SURFACE, opacity: { duration: 0.16, ease: EASE } }
+                : { duration: 0.15, ease: LEAVE }
           }
           onKeyDown={onKeyDown}
           className={cn(

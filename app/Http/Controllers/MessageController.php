@@ -233,6 +233,25 @@ class MessageController extends Controller
         ]);
     }
 
+    public function widgetFacebookRename(Request $request, CustomerMessage $thread)
+    {
+        abort_if(Auth::user()->role === 'customer', 403);
+
+        $thread = $this->rootThreadsQuery()->whereKey($thread->id)->firstOrFail();
+        abort_unless($thread->isFacebookMessenger(), 404);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:200'],
+        ]);
+
+        $thread->external_sender_name = trim($validated['name']);
+        $thread->save();
+
+        return response()->json([
+            'thread' => $this->widgetThreadPayload($thread->fresh()),
+        ]);
+    }
+
     public function usersSearch(Request $request)
     {
         abort_if(Auth::user()->role === 'customer', 403);
@@ -424,6 +443,7 @@ class MessageController extends Controller
     {
         return [
             'id' => $thread->id,
+            'name' => $thread->conversationName(),
             'subject' => $thread->subject,
             'status' => $thread->status,
             'assigned_user' => $thread->isFacebookMessenger() && $thread->assignedUser

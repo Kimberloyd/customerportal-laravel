@@ -89,6 +89,13 @@ export interface AttachmentUploadProps {
 }
 
 const ITEM_TRANSITION = { duration: 0.2, ease: EASE_OUT } as const;
+
+// Matches the shared Modal component (components/interior/modal.tsx) so the
+// image preview lightbox pops in with the same feel as every other summoned
+// overlay in the app.
+const MODAL_EASE = [0.23, 1, 0.32, 1] as const;
+const MODAL_LEAVE = [0.4, 0, 1, 1] as const;
+const MODAL_SURFACE = { type: "spring", stiffness: 420, damping: 36, mass: 0.9 } as const;
 const DEFAULT_MAX_FILE_SIZE = 500 * 1024 * 1024;
 const UPLOAD_PROGRESS_MS = 900;
 const UPLOAD_COMPLETE_HOLD_MS = 1000;
@@ -401,7 +408,7 @@ function ImagePreviewDialog({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={reduce ? undefined : { opacity: 0 }}
-          transition={{ duration: reduce ? 0.1 : 0.2, ease: EASE_OUT }}
+          transition={{ duration: reduce ? 0.1 : 0.2, ease: reduce ? EASE_OUT : MODAL_EASE }}
           onClick={onClose}
         />
 
@@ -410,10 +417,18 @@ function ImagePreviewDialog({
             role="dialog"
             aria-modal="true"
             aria-label={`Preview of ${item.name}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={reduce ? undefined : { opacity: 0 }}
-            transition={ITEM_TRANSITION}
+            initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: 12 }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+              y: 0,
+              transition: { ...MODAL_SURFACE, opacity: { duration: 0.16, ease: MODAL_EASE } },
+            }}
+            exit={
+              reduce
+                ? undefined
+                : { opacity: 0, scale: 0.98, y: 6, transition: { duration: 0.15, ease: MODAL_LEAVE } }
+            }
             className="pointer-events-auto relative"
           >
             {/* biome-ignore lint/performance/noImgElement: Motion layout requires the image element and portable blob URLs. */}

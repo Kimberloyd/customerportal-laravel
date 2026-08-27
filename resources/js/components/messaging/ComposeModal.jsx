@@ -1,4 +1,4 @@
-import { Modal } from '@/components/interior/modal';
+import { AutoHeightReveal, Modal } from '@/components/interior/modal';
 import { Checkbox } from '@/components/motion/checkbox';
 import { Button } from '@/components/ui/button';
 import axios from 'axios';
@@ -64,19 +64,26 @@ export default function ComposeModal({ open, onClose, accounts }) {
         let failed = 0;
 
         await Promise.all(
-            targets.map((target) =>
-                axios
-                    .post(route('messages.widget.send', target.customerId), {
-                        body: trimmed,
-                        ...(target.staffUserId != null ? { staff_id: target.staffUserId } : {}),
-                    })
+            targets.map((target) => {
+                const endpoint = target.channel === 'facebook'
+                    ? route('messages.widget.facebook.send', target.threadId)
+                    : route('messages.widget.send', target.customerId);
+                const payload = {
+                    body: trimmed,
+                    ...(target.channel !== 'facebook' && target.staffUserId != null
+                        ? { staff_id: target.staffUserId }
+                        : {}),
+                };
+
+                return axios
+                    .post(endpoint, payload)
                     .then(() => {
                         sent += 1;
                     })
                     .catch(() => {
                         failed += 1;
-                    }),
-            ),
+                    });
+            }),
         );
 
         setSending(false);
@@ -88,7 +95,7 @@ export default function ComposeModal({ open, onClose, accounts }) {
             open={open}
             onClose={handleClose}
             title="New message"
-            maxWidth={440}
+            maxWidth={560}
             footer={
                 result ? (
                     <Button variant="primary" size="compact" onClick={handleClose}>
@@ -123,6 +130,7 @@ export default function ComposeModal({ open, onClose, accounts }) {
                 )
             }
         >
+            <AutoHeightReveal>
             {result ? (
                 <p className="text-sm text-stone-600 dark:text-stone-300">
                     {result.sent > 0
@@ -197,6 +205,7 @@ export default function ComposeModal({ open, onClose, accounts }) {
                     </ul>
                 </div>
             )}
+            </AutoHeightReveal>
         </Modal>
     );
 }

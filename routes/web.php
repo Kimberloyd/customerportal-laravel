@@ -48,10 +48,12 @@ Route::middleware('auth')->prefix('admin/users')->name('admin.users.')->group(fu
     Route::get('/', [UserController::class, 'index'])->name('index');
     Route::get('/create', [UserController::class, 'create'])->name('create');
     Route::post('/', [UserController::class, 'store'])->name('store');
-    Route::get('/{user}/edit', [UserController::class, 'edit'])->name('edit');
     Route::put('/{user}', [UserController::class, 'update'])->name('update');
     Route::delete('/{user}', [UserController::class, 'destroy'])->name('destroy');
     Route::post('/{user}/toggle-active', [UserController::class, 'toggleActive'])->name('toggle-active');
+    Route::post('/{user}/reset-password', [UserController::class, 'resetPassword'])
+        ->middleware('throttle:10,1')
+        ->name('reset-password');
 });
 
 Route::middleware('auth')->prefix('messages')->name('messages.')->group(function () {
@@ -61,6 +63,7 @@ Route::middleware('auth')->prefix('messages')->name('messages.')->group(function
     Route::get('/widget/facebook/{thread}', [MessageController::class, 'widgetFacebookShow'])->name('widget.facebook.show');
     Route::post('/widget/facebook/{thread}', [MessageController::class, 'widgetFacebookSend'])->name('widget.facebook.send');
     Route::post('/widget/facebook/{thread}/link', [MessageController::class, 'widgetFacebookLink'])->name('widget.facebook.link');
+    Route::patch('/widget/facebook/{thread}/rename', [MessageController::class, 'widgetFacebookRename'])->name('widget.facebook.rename');
     Route::get('/widget/{customer}', [MessageController::class, 'widgetShow'])->name('widget.show');
     Route::post('/widget/{customer}', [MessageController::class, 'widgetSend'])->name('widget.send');
 });

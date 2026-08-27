@@ -39,6 +39,8 @@ export default {
                 hover: 'var(--hover)',
                 active: 'var(--active)',
                 destructive: 'var(--destructive)',
+                success: 'var(--color-success)',
+                info: 'var(--info)',
             },
         },
     },

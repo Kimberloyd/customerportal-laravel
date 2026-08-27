@@ -193,7 +193,13 @@ export function useModal({
     const onFocusIn = (event: FocusEvent) => {
       const panel = panelRef.current;
       const node = event.target as Node | null;
-      if (!panel || !node || panel.contains(node)) return;
+      const element = node instanceof Element ? node : null;
+      if (
+        !panel ||
+        !node ||
+        panel.contains(node) ||
+        element?.closest('[data-modal-portal]')
+      ) return;
       panel.focus({ preventScroll: true });
     };
     document.addEventListener("focusin", onFocusIn);
@@ -295,6 +301,42 @@ const CLOSE_ICON = (
     />
   </svg>
 );
+
+/**
+ * Grows its content from 0 to its natural height on mount, then holds
+ * (re-measuring if the content itself changes height later, e.g. a
+ * validation error appearing). Same technique -- and the same feel -- as
+ * the Stepper's own per-step reveal (components/Stepper.jsx). Wrap a plain
+ * Modal's body content in this so it opens with that same grow-in instead
+ * of just the panel's own scale/opacity pop. Not used by Modal itself,
+ * since a Stepper-driven body (Add Account) already grows its own height
+ * per step -- wrapping it again here would animate the same height twice.
+ */
+export function AutoHeightReveal({ children }: { children: React.ReactNode }) {
+  const [height, setHeight] = useState<number>(0);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const reduced = useReducedMotion();
+
+  useLayoutEffect(() => {
+    if (contentRef.current) setHeight(contentRef.current.offsetHeight);
+  }, [children]);
+
+  return (
+    <motion.div
+      style={{ overflow: "hidden" }}
+      initial={{ height: 0 }}
+      animate={{ height }}
+      transition={reduced ? { duration: 0 } : { type: "spring", duration: 0.4 }}
+    >
+      {/* overflow: hidden here (not just on the outer wrapper) gives this div
+          its own block-formatting context, so a child's top margin can't
+          collapse through it -- without this, offsetHeight below silently
+          excludes that margin, the animated wrapper ends up short by exactly
+          that amount, and its own overflow:hidden then clips the content. */}
+      <div ref={contentRef} style={{ overflow: "hidden" }}>{children}</div>
+    </motion.div>
+  );
+}
 
 export type ModalProps = {
   open: boolean;
@@ -421,12 +463,14 @@ export function Modal({
                   {title}
                 </h2>
                 {description ? (
-                  <p
-                    id={descriptionId}
-                    className="mt-1 text-[12.5px] leading-relaxed text-stone-500 dark:text-stone-400"
-                  >
-                    {description}
-                  </p>
+                  <AutoHeightReveal>
+                    <p
+                      id={descriptionId}
+                      className="mt-1 text-[12.5px] leading-relaxed text-stone-500 dark:text-stone-400"
+                    >
+                      {description}
+                    </p>
+                  </AutoHeightReveal>
                 ) : null}
               </div>
 

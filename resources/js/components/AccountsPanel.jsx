@@ -5,7 +5,7 @@ import { Input } from '@/components/motion/input';
 import { Table } from '@/components/motion/table';
 import ConfirmationDialog from '@/components/ConfirmationDialog';
 import { router } from '@inertiajs/react';
-import { MoreHorizontal, Pencil, Search, Trash2, UserCheck, UserRoundX } from 'lucide-react';
+import { KeyRound, MoreHorizontal, Pencil, Search, Trash2, UserCheck, UserRoundX } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 const PAGE_SIZE = 10;
@@ -14,7 +14,7 @@ const HORIZONTAL_SCROLLBAR_HEIGHT = 20;
 const TABLE_VIEWPORT_HEIGHT =
     (PAGE_SIZE + 1) * TABLE_ROW_HEIGHT + HORIZONTAL_SCROLLBAR_HEIGHT;
 
-export function AccountsPanel({ users, filters, roleLabels, filterRouteName, filterExtraParams = {} }) {
+export function AccountsPanel({ users, filters, roleLabels, filterRouteName, filterExtraParams = {}, onEdit, onResetPassword }) {
     const [search, setSearch] = useState(filters.search);
     const [pendingAction, setPendingAction] = useState(null);
 
@@ -107,7 +107,13 @@ export function AccountsPanel({ users, filters, roleLabels, filterRouteName, fil
                             value: 'edit',
                             label: 'Edit',
                             icon: <Pencil />,
-                            onSelect: () => router.visit(route('admin.users.edit', user.id)),
+                            onSelect: () => onEdit(user),
+                        },
+                        {
+                            value: 'reset-password',
+                            label: 'Reset Password',
+                            icon: <KeyRound />,
+                            onSelect: () => onResetPassword(user),
                         },
                         {
                             value: user.is_active ? 'deactivate' : 'reactivate',
@@ -144,7 +150,7 @@ export function AccountsPanel({ users, filters, roleLabels, filterRouteName, fil
                 },
             },
         ],
-        [roleLabels],
+        [onEdit, onResetPassword, roleLabels],
     );
 
     return (
@@ -174,7 +180,7 @@ export function AccountsPanel({ users, filters, roleLabels, filterRouteName, fil
                 height={TABLE_VIEWPORT_HEIGHT}
                 resizable
                 reorderable
-                emptyState="No accounts found. Try a different search or add a user."
+                emptyState="No accounts found. Try a different search or add an account."
                 emptyStateHeight={PAGE_SIZE * TABLE_ROW_HEIGHT}
             />
 

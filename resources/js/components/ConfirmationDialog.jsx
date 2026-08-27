@@ -1,6 +1,6 @@
 import { Input } from '@/components/motion/input';
 import { Button } from '@/components/ui/button';
-import { Modal } from '@/components/interior/modal';
+import { AutoHeightReveal, Modal } from '@/components/interior/modal';
 import { useEffect, useState } from 'react';
 
 export default function ConfirmationDialog({
@@ -29,34 +29,40 @@ export default function ConfirmationDialog({
             open={open}
             onClose={() => onOpenChange(false)}
             title={title}
-            description={description}
             maxWidth={560}
-            className="min-h-[250px] [&>div:first-child]:px-6 [&>div:first-child]:pb-5 [&>div:first-child]:pt-6 [&>div:first-child_h2]:!text-lg [&>div:first-child_p]:!mt-4 [&>div:first-child_p]:!text-sm [&>div:last-child]:mt-auto [&>div:last-child]:px-6 [&>div:last-child]:py-5"
+            className="[&>div:first-child]:px-6 [&>div:first-child]:pb-5 [&>div:first-child]:pt-6 [&>div:first-child_h2]:!text-lg [&>div:last-child]:mt-auto [&>div:last-child]:px-6 [&>div:last-child]:py-5"
             closeOnBackdrop={!processing}
             closeOnEscape={!processing}
-            children={requiresConfirmation ? (
-                <div className="space-y-2 px-2 pt-2">
-                    <label
-                        htmlFor="confirmation-account-name"
-                        className="block text-sm text-stone-600"
-                    >
-                        Type <strong className="font-semibold text-stone-900">{confirmationText}</strong> to confirm.
-                    </label>
-                    <Input
-                        id="confirmation-account-name"
-                        type="text"
-                        value={confirmationValue}
-                        onChange={setConfirmationValue}
-                        placeholder="Enter the name shown above"
-                        autoComplete="off"
-                        aria-label={`Type ${confirmationText} to confirm deletion`}
-                        classNames={{
-                            field: 'h-10 rounded-md',
-                            input: 'text-sm',
-                        }}
-                    />
-                </div>
-            ) : undefined}
+            children={
+                <AutoHeightReveal>
+                    <div className="space-y-3 px-2 pt-2">
+                        <p className="text-sm text-stone-600 dark:text-stone-300">{description}</p>
+                        {requiresConfirmation ? (
+                            <div className="space-y-2">
+                                <label
+                                    htmlFor="confirmation-account-name"
+                                    className="block text-sm text-stone-600"
+                                >
+                                    Type <strong className="font-semibold text-stone-900">{confirmationText}</strong> to confirm.
+                                </label>
+                                <Input
+                                    id="confirmation-account-name"
+                                    type="text"
+                                    value={confirmationValue}
+                                    onChange={setConfirmationValue}
+                                    placeholder="Enter the name shown above"
+                                    autoComplete="off"
+                                    aria-label={`Type ${confirmationText} to confirm deletion`}
+                                    classNames={{
+                                        field: 'h-10 rounded-md',
+                                        input: 'text-sm',
+                                    }}
+                                />
+                            </div>
+                        ) : null}
+                    </div>
+                </AutoHeightReveal>
+            }
             footer={
                 <>
                     <Button

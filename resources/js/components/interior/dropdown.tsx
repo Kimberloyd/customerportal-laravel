@@ -313,12 +313,15 @@ export type DropdownProps = {
   label?: string;
   placeholder?: string;
   disabled?: boolean;
+  ariaInvalid?: boolean;
+  ariaDescribedBy?: string;
   emptyLabel?: string;
   className?: string;
   trigger?: ReactNode;
   triggerClassName?: string;
   menuWidth?: number;
-  menuTitle?: ReactNode;
+  matchTriggerWidth?: boolean;
+  menuTitle?: ReactNode | ((controls: { close: (restoreFocus?: boolean) => void }) => ReactNode);
   searchable?: boolean;
   searchPlaceholder?: string;
   align?: "left" | "right";
@@ -333,11 +336,14 @@ export function Dropdown({
   label = "Options",
   placeholder = "Select an option",
   disabled = false,
+  ariaInvalid,
+  ariaDescribedBy,
   emptyLabel = "Nothing to choose",
   className = "",
   trigger,
   triggerClassName,
   menuWidth,
+  matchTriggerWidth = false,
   menuTitle,
   searchable = false,
   searchPlaceholder = "Search options",
@@ -408,7 +414,7 @@ export function Dropdown({
       226 + menuChromeHeight,
     );
     const resolvedMenuWidth = Math.min(
-      menuWidth ?? MENU_WIDTH,
+      matchTriggerWidth ? triggerRect.width : (menuWidth ?? MENU_WIDTH),
       window.innerWidth - 16,
     );
     const hasRoomBelow = triggerRect.bottom + MENU_GAP + menuHeight <= window.innerHeight - 8;
@@ -425,7 +431,7 @@ export function Dropdown({
         Math.max(8, preferredLeft),
         window.innerWidth - resolvedMenuWidth - 8,
       ),
-      ...(menuWidth == null ? {} : { width: resolvedMenuWidth }),
+      ...(!matchTriggerWidth && menuWidth == null ? {} : { width: resolvedMenuWidth }),
     });
 
     const dismiss = () => close(false);
@@ -436,13 +442,15 @@ export function Dropdown({
       window.removeEventListener("resize", dismiss);
       window.removeEventListener("scroll", dismiss, true);
     };
-  }, [align, close, menuTitle, menuWidth, open, portal, searchable, triggerRef, visibleItems.length]);
+  }, [align, close, matchTriggerWidth, menuTitle, menuWidth, open, portal, searchable, triggerRef, visibleItems.length]);
 
   return (
     <div ref={rootRef} className={`relative inline-block text-left ${className}`}>
       <button
         {...triggerProps}
         aria-label={trigger ? label : undefined}
+        aria-invalid={ariaInvalid || undefined}
+        aria-describedby={ariaDescribedBy}
         className={
           triggerClassName ??
           "flex h-9 select-none items-center gap-2 whitespace-nowrap rounded-[9px] border border-stone-200 bg-white px-3 text-[13px] font-medium text-stone-700 shadow-none outline-none transition-colors duration-150 hover:border-stone-300 focus-visible:border-stone-400 disabled:opacity-50 dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:text-stone-200 dark:hover:border-white/20 dark:focus-visible:border-white/30"
@@ -479,6 +487,7 @@ export function Dropdown({
         {open && (!portal || portalPosition) && (
           <motion.div
             ref={menuRef}
+            data-modal-portal={portal ? "" : undefined}
             initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.94, y: -8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{
@@ -495,13 +504,14 @@ export function Dropdown({
             style={{
               transformOrigin: align === "right" ? "top right" : "top left",
               ...(portal && portalPosition ? portalPosition : {}),
-              ...(!portal && menuWidth != null ? { width: menuWidth } : {}),
+              ...(!portal && matchTriggerWidth ? { width: "100%" } : {}),
+              ...(!portal && !matchTriggerWidth && menuWidth != null ? { width: menuWidth } : {}),
             }}
-            className={`${portal ? "fixed" : `absolute top-[calc(100%+6px)] ${align === "right" ? "right-0" : "left-0"}`} z-50 min-w-[224px] whitespace-nowrap rounded-[11px] border border-stone-200 bg-white p-[5px] shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)] dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:shadow-[0_2px_12px_rgba(0,0,0,0.6)]`}
+            className={`${portal ? "fixed z-[60]" : `absolute top-[calc(100%+6px)] z-50 ${align === "right" ? "right-0" : "left-0"}`} min-w-[224px] whitespace-nowrap rounded-[11px] border border-stone-200 bg-white p-[5px] shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)] dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:shadow-[0_2px_12px_rgba(0,0,0,0.6)]`}
           >
             {menuTitle != null ? (
               <div className="px-2.5 pb-1 pt-1 text-left text-xl font-semibold text-stone-900 dark:text-stone-100">
-                {menuTitle}
+                {typeof menuTitle === "function" ? menuTitle({ close }) : menuTitle}
               </div>
             ) : null}
             {searchable ? (
@@ -553,7 +563,7 @@ export function Dropdown({
                 aria-hidden
                 className={`pointer-events-none absolute inset-x-0 top-0 h-8 rounded-[7px] transition-colors ${
                   visibleItems[activeIndex]?.destructive
-                    ? "bg-rose-50 dark:bg-rose-500/10"
+                    ? "bg-destructive/10"
                     : "bg-stone-100 dark:bg-white/10"
                 }`}
                 initial={false}
@@ -578,7 +588,7 @@ export function Dropdown({
                       item.disabled
                         ? "cursor-not-allowed text-stone-500/70 dark:text-stone-400/70"
                         : item.destructive
-                          ? "cursor-pointer text-rose-500"
+                          ? "cursor-pointer text-destructive"
                         : active
                           ? "cursor-pointer text-stone-900 dark:text-stone-100"
                           : "cursor-pointer text-stone-700 dark:text-stone-200"

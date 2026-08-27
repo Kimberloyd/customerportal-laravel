@@ -9,6 +9,8 @@ import {
 import { MessageBubble, MessageBubbleContent } from '@/components/agents/message-bubble';
 import { MessageScroller } from '@/components/agents/message-scroller';
 import { Dropdown } from '@/components/interior/dropdown';
+import { AutoHeightReveal, Modal } from '@/components/interior/modal';
+import { Input } from '@/components/motion/input';
 import { Tooltip } from '@/components/motion/tooltip';
 import { Button } from '@/components/ui/button';
 import echo from '@/echo';
@@ -17,7 +19,7 @@ import { SPRING_PANEL } from '@/lib/ease';
 import { formatDateTime } from '@/utils/orderDisplay';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import axios from 'axios';
-import { ArrowDown, ArrowUp, Minus, SquarePen, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Minus, Pencil, SquarePen, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -28,7 +30,7 @@ const MINIMIZED_GAP = 12;
 
 function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange }) {
     const reduce = useReducedMotion();
-    const { notifyRead } = useChatWidget();
+    const { notifyRead, renameChat } = useChatWidget();
 
     const [loading, setLoading] = useState(false);
     const [messages, setMessages] = useState([]);
@@ -40,6 +42,10 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
     const [linkedAgent, setLinkedAgent] = useState(null);
     const [agentOptions, setAgentOptions] = useState([]);
     const [linking, setLinking] = useState(false);
+    const [renameOpen, setRenameOpen] = useState(false);
+    const [renameValue, setRenameValue] = useState(chat.name);
+    const [renameError, setRenameError] = useState(null);
+    const [renaming, setRenaming] = useState(false);
     const viewportRef = useRef(null);
 
     const isFacebook = chat.channel === 'facebook';
@@ -154,6 +160,45 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
             .finally(() => setLinking(false));
     };
 
+    const openRename = () => {
+        setRenameValue(chat.name);
+        setRenameError(null);
+        setRenameOpen(true);
+    };
+
+    const submitRename = (event) => {
+        event.preventDefault();
+        const name = renameValue.trim();
+
+        if (!name) {
+            setRenameError('Enter a conversation name.');
+            return;
+        }
+        if (name === chat.name) {
+            setRenameOpen(false);
+            return;
+        }
+
+        setRenaming(true);
+        setRenameError(null);
+
+        axios
+            .patch(route('messages.widget.facebook.rename', chat.threadId), { name })
+            .then((response) => {
+                const savedName = response.data.thread.name;
+                renameChat(chat.key, savedName);
+                setRenameOpen(false);
+                notifyRead();
+            })
+            .catch((error) => {
+                setRenameError(
+                    error.response?.data?.errors?.name?.[0] ??
+                        'Unable to rename this conversation. Try again.',
+                );
+            })
+            .finally(() => setRenaming(false));
+    };
+
     const submit = (e) => {
         e.preventDefault();
         const trimmed = body.trim();
@@ -244,7 +289,7 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
                                         label="Link to sales agent"
                                         portal
                                         className="min-w-0"
-                                        triggerClassName="block max-w-full truncate bg-transparent p-0 text-left text-xs font-medium text-indigo-600 outline-none hover:underline disabled:opacity-50 dark:text-indigo-400"
+                                        triggerClassName="block max-w-full truncate bg-transparent p-0 text-left text-xs font-medium text-primary outline-none hover:underline disabled:opacity-50"
                                         trigger={
                                             <span className="truncate">
                                                 {linkedAgent
@@ -259,34 +304,116 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
                     ) : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
+                    {isFacebook && !minimized ? (
+                        <Tooltip content="Rename conversation">
+                            <Button
+                                variant="ghost"
+                                size="icon-compact"
+                                aria-label="Rename conversation"
+                                onClick={openRename}
+                            >
+                                <Pencil aria-hidden="true" />
+                            </Button>
+                        </Tooltip>
+                    ) : null}
                     {minimized ? null : (
+                        <Tooltip content="Minimize conversation">
+                            <Button
+                                variant="ghost"
+                                size="icon-compact"
+                                aria-label="Minimize conversation"
+                                onClick={() => onMinimizeChange(true)}
+                            >
+                                <Minus aria-hidden="true" />
+                            </Button>
+                        </Tooltip>
+                    )}
+                    {minimized ? (
                         <Button
                             variant="ghost"
                             size="icon-compact"
-                            aria-label="Minimize conversation"
-                            onClick={() => onMinimizeChange(true)}
+                            aria-label="Close conversation"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onClose();
+                            }}
+                            className="absolute -right-2 -top-2 rounded-full border border-stone-200 bg-white opacity-0 shadow-sm transition-opacity duration-150 group-hover/panel:opacity-100 dark:border-white/[0.16] dark:bg-[#1D1D1A]"
                         >
-                            <Minus aria-hidden="true" />
+                            <X aria-hidden="true" />
+                        </Button>
+                    ) : (
+                        <Button
+                            variant="ghost"
+                            size="icon-compact"
+                            aria-label="Close conversation"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onClose();
+                            }}
+                        >
+                            <X aria-hidden="true" />
                         </Button>
                     )}
-                    <Button
-                        variant="ghost"
-                        size="icon-compact"
-                        aria-label="Close conversation"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onClose();
-                        }}
-                        className={
-                            minimized
-                                ? 'absolute -right-2 -top-2 rounded-full border border-stone-200 bg-white opacity-0 shadow-sm transition-opacity duration-150 group-hover/panel:opacity-100 dark:border-white/[0.16] dark:bg-[#1D1D1A]'
-                                : undefined
-                        }
-                    >
-                        <X aria-hidden="true" />
-                    </Button>
                 </div>
             </div>
+
+            {isFacebook ? (
+                <Modal
+                    open={renameOpen}
+                    onClose={() => !renaming && setRenameOpen(false)}
+                    title="Rename conversation"
+                    maxWidth={560}
+                    className="[&>div:first-child]:px-6 [&>div:first-child]:pb-5 [&>div:first-child]:pt-6 [&>div:first-child_h2]:!text-lg [&>div:last-child]:mt-auto [&>div:last-child]:px-6 [&>div:last-child]:py-5"
+                    closeOnBackdrop={!renaming}
+                    closeOnEscape={!renaming}
+                    footer={
+                        <>
+                            <Button
+                                variant="tertiary"
+                                className="h-10 rounded-md px-5 text-sm"
+                                onClick={() => setRenameOpen(false)}
+                                disabled={renaming}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="submit"
+                                form={`rename-facebook-thread-${chat.threadId}`}
+                                className="h-10 rounded-md px-5 text-sm"
+                                loading={renaming}
+                            >
+                                Save name
+                            </Button>
+                        </>
+                    }
+                >
+                    <AutoHeightReveal>
+                        <form
+                            id={`rename-facebook-thread-${chat.threadId}`}
+                            onSubmit={submitRename}
+                            className="space-y-3 px-2 pb-2 pt-2"
+                        >
+                            <p className="text-sm text-stone-600 dark:text-stone-300">
+                                Choose a name that helps your team recognize this Facebook contact.
+                            </p>
+                            <Input
+                                label="Conversation name"
+                                value={renameValue}
+                                onChange={setRenameValue}
+                                error={renameError}
+                                maxLength={200}
+                                autoComplete="off"
+                                autoFocus
+                                classNames={{
+                                    label: 'px-0',
+                                    field: 'h-10 rounded-md',
+                                    input: 'text-sm',
+                                }}
+                            />
+                        </form>
+                    </AutoHeightReveal>
+                </Modal>
+            ) : null}
 
             {minimized ? null : (
                 <>
@@ -347,7 +474,7 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
                                                                 {isUnread ? (
                                                                     <span
                                                                         aria-label="Unread"
-                                                                        className="size-1.5 rounded-full bg-indigo-500"
+                                                                        className="size-1.5 rounded-full bg-primary"
                                                                     />
                                                                 ) : null}
                                                                 <span className="font-medium text-foreground/70">
@@ -358,7 +485,7 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
                                                                 <MessageBubbleContent
                                                                     className={
                                                                         fromSelf
-                                                                            ? 'bg-indigo-50 text-black dark:bg-indigo-500/20 dark:text-stone-100'
+                                                                            ? 'bg-primary/10 text-foreground'
                                                                             : undefined
                                                                     }
                                                                 >

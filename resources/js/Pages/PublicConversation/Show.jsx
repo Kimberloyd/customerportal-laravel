@@ -45,7 +45,7 @@ export default function Show({ token, thread, messages }) {
                             key={message.id}
                             className={`max-w-lg rounded-lg p-3 text-sm ${
                                 message.sender_type === 'customer'
-                                    ? 'ml-auto bg-indigo-50 text-indigo-900'
+                                    ? 'ml-auto bg-primary/10 text-foreground'
                                     : 'bg-gray-100 text-gray-900'
                             }`}
                         >

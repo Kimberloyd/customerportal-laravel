@@ -193,7 +193,7 @@ export function FooterSimple({
         </div>
 
         {/* Copyright */}
-        <div className="mt-12 border-border border-t pt-8 text-center">
+        <div className="pt-8 text-center">
           <p className="text-foreground/60 text-sm">{copyright}</p>
         </div>
       </div>

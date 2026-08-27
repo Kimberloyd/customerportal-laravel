@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Customer;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 
 final class AdminUserListing
 {
@@ -39,16 +40,26 @@ final class AdminUserListing
             $usersQuery->where('role', $role);
         }
 
-        $users = $usersQuery->orderBy('full_name')->paginate(10)->withQueryString();
+        $users = $usersQuery
+            ->select(['id', 'full_name', 'email', 'phone', 'role', 'is_active'])
+            ->orderBy('full_name')
+            ->paginate(10)
+            ->withQueryString();
         $userIds = collect($users->items())->pluck('id');
-        $linkedCustomers = Customer::whereIn('user_id', $userIds)->get()->keyBy('user_id');
+        $linkedCustomers = Customer::whereIn('user_id', $userIds)
+            ->get(['id', 'user_id', 'company_name'])
+            ->keyBy('user_id');
+        $currentUserId = Auth::id();
 
         $users->through(fn (User $user) => [
             'id' => $user->id,
             'full_name' => $user->full_name,
             'email' => $user->email,
+            'phone' => $user->phone,
             'role' => $user->role,
             'is_active' => $user->is_active,
+            'is_self' => $user->id === $currentUserId,
+            'linked_customer_id' => $linkedCustomers->get($user->id)?->id,
             'linked_customer_name' => $linkedCustomers->get($user->id)?->company_name,
         ]);
 

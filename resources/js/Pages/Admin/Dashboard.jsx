@@ -1,14 +1,20 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { AccountsPanel } from '@/components/AccountsPanel';
-import { CreateUserModal } from '@/components/CreateUserModal';
+import { UserModal } from '@/components/CreateUserModal';
 import { CustomersPanel } from '@/components/CustomersPanel';
 import { ProductsPanel } from '@/components/ProductsPanel';
+import { ResetPasswordModal } from '@/components/ResetPasswordModal';
 import { Button } from '@/components/ui/button';
 import { Deferred, Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
 
 export default function Dashboard({ activeTab, products, customers, users, filters, roleLabels, accountForm }) {
-    const [createUserOpen, setCreateUserOpen] = useState(false);
+    const [userModal, setUserModal] = useState({ open: false, user: null });
+    const [resettingUser, setResettingUser] = useState(null);
+
+    const setUserModalOpen = (open) => {
+        setUserModal((current) => (open ? { ...current, open: true } : { open: false, user: null }));
+    };
 
     return (
         <AuthenticatedLayout
@@ -19,10 +25,9 @@ export default function Dashboard({ activeTab, products, customers, users, filte
                         <Button
                             type="button"
                             variant="primary"
-                            className="h-10 rounded-md px-5 text-sm"
-                            onClick={() => setCreateUserOpen(true)}
+                            onClick={() => setUserModal({ open: true, user: null })}
                         >
-                            Add User
+                            Add Account
                         </Button>
                     )}
                 </div>
@@ -88,17 +93,30 @@ export default function Dashboard({ activeTab, products, customers, users, filte
                             roleLabels={roleLabels}
                             filterRouteName="admin.dashboard"
                             filterExtraParams={{ tab: 'accounts' }}
+                            onEdit={(user) => setUserModal({ open: true, user })}
+                            onResetPassword={setResettingUser}
                         />
                     )}
                 </div>
             </div>
 
             {activeTab === 'accounts' && (
-                <CreateUserModal
-                    open={createUserOpen}
-                    onOpenChange={setCreateUserOpen}
+                <UserModal
+                    key={userModal.user?.id ?? 'create'}
+                    open={userModal.open}
+                    onOpenChange={setUserModalOpen}
+                    user={userModal.user}
                     allowAdminCreation={accountForm?.allowAdminCreation}
                     customers={accountForm?.customers}
+                />
+            )}
+
+            {activeTab === 'accounts' && (
+                <ResetPasswordModal
+                    key={resettingUser?.id ?? 'reset-password'}
+                    open={resettingUser !== null}
+                    onOpenChange={(open) => !open && setResettingUser(null)}
+                    user={resettingUser}
                 />
             )}
         </AuthenticatedLayout>

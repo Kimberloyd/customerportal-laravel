@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 // the full column list/rationale) -- no `name`/`password`/
 // `email_verified_at`/`remember_token`/`updated_at`, since Flask's User
 // model never had them.
-#[Fillable(['full_name', 'email', 'role', 'is_active', 'profile_image', 'password_hash', 'session_version'])]
+#[Fillable(['full_name', 'email', 'phone', 'role', 'is_active', 'profile_image', 'password_hash', 'session_version'])]
 #[Hidden(['password_hash'])]
 class User extends Authenticatable
 {

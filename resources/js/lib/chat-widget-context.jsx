@@ -55,12 +55,19 @@ export function ChatWidgetProvider({ children }) {
         );
     }, []);
 
+    const renameChat = useCallback((key, name) => {
+        setChats((current) =>
+            current.map((chat) => (chat.key === key ? { ...chat, name } : chat)),
+        );
+    }, []);
+
     const value = useMemo(
         () => ({
             chats,
             openChat,
             closeChat,
             setChatMinimized,
+            renameChat,
             maxOpenChats: MAX_OPEN_CHATS,
             readSignal,
             notifyRead,
@@ -69,7 +76,7 @@ export function ChatWidgetProvider({ children }) {
             isAuthenticated,
             setIsAuthenticated,
         }),
-        [chats, openChat, closeChat, setChatMinimized, readSignal, notifyRead, composeOpen, isAuthenticated],
+        [chats, openChat, closeChat, setChatMinimized, renameChat, readSignal, notifyRead, composeOpen, isAuthenticated],
     );
 
     return (

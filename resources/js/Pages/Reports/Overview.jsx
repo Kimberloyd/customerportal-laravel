@@ -21,7 +21,7 @@ function Tile({ label, value }) {
     );
 }
 
-function ProgressBar({ percent, className = 'bg-indigo-500' }) {
+function ProgressBar({ percent, className = 'bg-primary' }) {
     return (
         <div className="h-2 w-full rounded-full bg-gray-100">
             <div className={`h-2 rounded-full ${className}`} style={{ width: `${percent}%` }} />
@@ -153,8 +153,8 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                         {monthlyTrend.map((month) => (
                             <div key={month.full_label} className="flex min-w-[3rem] flex-1 flex-col items-center gap-1">
                                 <div className="flex h-24 w-full items-end gap-1">
-                                    <span className="w-1/2 rounded bg-indigo-500" style={{ height: `${month.ordered_height}%` }} title={`Ordered: ${month.ordered}`} />
-                                    <span className="w-1/2 rounded bg-green-500" style={{ height: `${month.delivered_height}%` }} title={`Delivered: ${month.delivered}`} />
+                                    <span className="w-1/2 rounded bg-primary" style={{ height: `${month.ordered_height}%` }} title={`Ordered: ${month.ordered}`} />
+                                    <span className="w-1/2 rounded bg-success" style={{ height: `${month.delivered_height}%` }} title={`Delivered: ${month.delivered}`} />
                                 </div>
                                 <span className="text-xs text-gray-600">{month.label}</span>
                             </div>

@@ -21,10 +21,10 @@ const SURFACE = "bg-[#F4F4F9] dark:bg-[#262626]";
 const GLYPH = "text-[#868593] dark:text-[#9B9AA7]";
 
 const COLORS = {
-  red: "bg-[#FF3B30] dark:bg-[#FF453A]",
+  red: "bg-destructive",
   orange: "bg-[#FF9500] dark:bg-[#FF9F0A]",
-  green: "bg-[#34C759] dark:bg-[#30D158]",
-  blue: "bg-[#007AFF] dark:bg-[#0A84FF]",
+  green: "bg-success",
+  blue: "bg-info",
   violet: "bg-[#AF52DE] dark:bg-[#BF5AF2]",
 } as const;
 

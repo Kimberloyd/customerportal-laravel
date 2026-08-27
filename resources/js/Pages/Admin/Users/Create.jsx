@@ -7,6 +7,7 @@ export default function Create({ allowAdminCreation, customers }) {
     const { data, setData, post, processing, errors, clearErrors } = useForm({
         full_name: '',
         email: '',
+        phone: '',
         password: '',
         password_confirmation: '',
         role: 'employee',
@@ -23,11 +24,11 @@ export default function Create({ allowAdminCreation, customers }) {
         <AuthenticatedLayout
             header={
                 <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    Create User
+                    Create Account
                 </h2>
             }
         >
-            <Head title="Create User" />
+            <Head title="Create Account" />
 
             <div className="mx-auto max-w-2xl space-y-4 px-4 py-8 sm:px-6 lg:px-8">
                 <form onSubmit={submit} className="space-y-4 rounded-lg bg-white p-6 shadow-sm">
@@ -43,7 +44,7 @@ export default function Create({ allowAdminCreation, customers }) {
                     />
                     <div className="flex justify-end">
                         <Button type="submit" variant="primary" disabled={processing}>
-                            Create User
+                            Create Account
                         </Button>
                     </div>
                 </form>

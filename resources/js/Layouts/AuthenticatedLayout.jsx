@@ -2,16 +2,35 @@ import echo from '@/echo';
 import FlashBanner from '@/components/FlashBanner';
 import ResponsiveNavLink from '@/components/ResponsiveNavLink';
 import { Dropdown as AccountDropdown } from '@/components/interior/dropdown';
-import { Drawer } from '@/components/motion/drawer';
 import { Tooltip } from '@/components/motion/tooltip';
 import ComposeModal from '@/components/messaging/ComposeModal';
+import { CommandPalette } from '@/components/motion/command-palette';
 import { FooterSimple } from '@/components/smoothui/footer-1';
 import { CountBadge, NotificationBell } from '@/components/ui/notification-bell';
 import { useChatWidget } from '@/lib/chat-widget-context';
 import { Link, router, usePage } from '@inertiajs/react';
-import { Bell, LogOut, MessageCircle, MonitorX, SquarePen, X } from 'lucide-react';
-import { useReducedMotion } from 'motion/react';
+import {
+    Bell,
+    ChartColumn,
+    LayoutDashboard,
+    LogOut,
+    MessageCircle,
+    MonitorX,
+    Package,
+    Plus,
+    Search,
+    ShieldCheck,
+    SquarePen,
+} from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+const EASE = [0.23, 1, 0.32, 1];
+const EXIT_EASE = [0.4, 0, 1, 1];
+const OPEN_SPRING = { type: 'spring', stiffness: 620, damping: 38, mass: 0.6 };
+const NOTIFICATIONS_PANEL_WIDTH = 380;
+const NOTIFICATIONS_PANEL_GAP = 6;
 
 const USER_MENU_ITEMS = [
     {
@@ -34,11 +53,77 @@ export default function AuthenticatedLayout({ header, children }) {
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
-    const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false);
+    const [notificationsOpen, setNotificationsOpen] = useState(false);
+    const [notificationsPosition, setNotificationsPosition] = useState(null);
+    const [paletteOpen, setPaletteOpen] = useState(false);
+    // Unread chat messages. Sourced from MessageThread::unreadCount(), which
+    // counts CustomerMessage rows with is_read = false -- message records, not
+    // notification records. This badges the Chats icon only.
     const [unreadCount, setUnreadCount] = useState(0);
+
+    // The bell is a separate channel and deliberately has no count yet: this
+    // project has no notification data source (no Notification model, no
+    // notifications table, no Notifiable usage). Wiring the message count in
+    // here would badge the bell for something the panel can't show. Replace
+    // this with real state once notification records exist.
+    const notificationCount = 0;
     const [messageAccounts, setMessageAccounts] = useState(null);
     const [messageAccountsError, setMessageAccountsError] = useState(false);
     const mountedRef = useRef(true);
+    const notificationsTriggerRef = useRef(null);
+    const notificationsPanelRef = useRef(null);
+
+    const closeNotifications = useCallback(() => setNotificationsOpen(false), []);
+
+    useEffect(() => {
+        if (!notificationsOpen) {
+            setNotificationsPosition(null);
+            return;
+        }
+
+        const updatePosition = () => {
+            const rect = notificationsTriggerRef.current?.getBoundingClientRect();
+            if (!rect) return;
+            const left = Math.min(
+                Math.max(8, rect.right - NOTIFICATIONS_PANEL_WIDTH),
+                window.innerWidth - NOTIFICATIONS_PANEL_WIDTH - 8,
+            );
+            setNotificationsPosition({ top: rect.bottom + NOTIFICATIONS_PANEL_GAP, left });
+        };
+
+        updatePosition();
+        window.addEventListener('resize', updatePosition);
+        window.addEventListener('scroll', updatePosition, true);
+        return () => {
+            window.removeEventListener('resize', updatePosition);
+            window.removeEventListener('scroll', updatePosition, true);
+        };
+    }, [notificationsOpen]);
+
+    useEffect(() => {
+        if (!notificationsOpen) return;
+
+        const onPointerDown = (event) => {
+            const target = event.target;
+            if (
+                notificationsPanelRef.current?.contains(target) ||
+                notificationsTriggerRef.current?.contains(target)
+            ) {
+                return;
+            }
+            closeNotifications();
+        };
+        const onKeyDown = (event) => {
+            if (event.key === 'Escape') closeNotifications();
+        };
+
+        document.addEventListener('pointerdown', onPointerDown, true);
+        document.addEventListener('keydown', onKeyDown);
+        return () => {
+            document.removeEventListener('pointerdown', onPointerDown, true);
+            document.removeEventListener('keydown', onKeyDown);
+        };
+    }, [notificationsOpen, closeNotifications]);
 
     useEffect(() => {
         setIsAuthenticated(true);
@@ -183,7 +268,7 @@ export default function AuthenticatedLayout({ header, children }) {
             const unreadIcon = recipient.has_unread ? (
                 <span
                     aria-label="Unread messages"
-                    className="block size-2 rounded-full bg-indigo-500"
+                    className="block size-2 rounded-full bg-primary"
                 />
             ) : undefined;
 
@@ -191,9 +276,7 @@ export default function AuthenticatedLayout({ header, children }) {
                 return {
                     value: `fb-${recipient.thread_id}`,
                     label: String(recipient.name).toLocaleUpperCase(),
-                    hint: recipient.linked_agent_name
-                        ? `FACEBOOK · ${String(recipient.linked_agent_name).toLocaleUpperCase()}`
-                        : 'FACEBOOK · UNLINKED',
+                    hint: 'FACEBOOK',
                     channel: 'facebook',
                     threadId: recipient.thread_id,
                     hasUnread: Boolean(recipient.has_unread),
@@ -220,12 +303,11 @@ export default function AuthenticatedLayout({ header, children }) {
         });
     }, [messageAccounts, messageAccountsError]);
 
-    // Composing a new message only makes sense for accounts you can actually
-    // start a fresh conversation with -- Facebook contacts are existing
-    // threads only (Meta requires them to have messaged first), and the
-    // loading/error/empty rows are placeholders, not real accounts.
+    // Portal accounts can start a new thread, while Facebook contacts can
+    // receive a reply through their existing Messenger thread. Loading,
+    // error, and empty rows are placeholders rather than message targets.
     const composableAccounts = useMemo(
-        () => messageAccountItems.filter((item) => !item.disabled && item.channel !== 'facebook'),
+        () => messageAccountItems.filter((item) => !item.disabled),
         [messageAccountItems],
     );
 
@@ -252,6 +334,76 @@ export default function AuthenticatedLayout({ header, children }) {
         [user.role],
     );
 
+    // Everything the header palette can jump to. Reports aren't in navTabs but
+    // are reachable and role-safe (ReportController auto-scopes a customer to
+    // their own orders), so they're worth surfacing here.
+    const commandItems = useMemo(() => {
+        const navigate = (routeName) => () => router.visit(route(routeName));
+
+        return [
+            {
+                id: 'nav-dashboard',
+                label: 'Dashboard',
+                group: 'Navigate',
+                keywords: ['home', 'overview'],
+                icon: LayoutDashboard,
+                onSelect: navigate('dashboard'),
+            },
+            {
+                id: 'nav-orders',
+                label: 'Orders',
+                group: 'Navigate',
+                keywords: ['purchase', 'po'],
+                icon: Package,
+                onSelect: navigate('purchase-orders.index'),
+            },
+            {
+                id: 'nav-reports-overview',
+                label: 'Reports Overview',
+                group: 'Navigate',
+                keywords: ['analytics', 'summary', 'charts'],
+                icon: ChartColumn,
+                onSelect: navigate('reports.overview'),
+            },
+            {
+                id: 'nav-reports-orders',
+                label: 'Orders Report',
+                group: 'Navigate',
+                keywords: ['analytics', 'export', 'csv'],
+                icon: ChartColumn,
+                onSelect: navigate('reports.orders'),
+            },
+            ...(user.role === 'admin'
+                ? [
+                      {
+                          id: 'nav-admin',
+                          label: 'Admin',
+                          group: 'Navigate',
+                          keywords: ['products', 'customers', 'accounts', 'users'],
+                          icon: ShieldCheck,
+                          onSelect: navigate('admin.dashboard'),
+                      },
+                  ]
+                : []),
+            {
+                id: 'action-new-order',
+                label: 'New Order',
+                group: 'Actions',
+                keywords: ['create', 'add', 'purchase order'],
+                icon: Plus,
+                onSelect: navigate('purchase-orders.create'),
+            },
+            {
+                id: 'action-new-message',
+                label: 'New Message',
+                group: 'Actions',
+                keywords: ['compose', 'chat', 'send'],
+                icon: SquarePen,
+                onSelect: () => setComposeOpen(true),
+            },
+        ];
+    }, [user.role, setComposeOpen]);
+
     return (
         <div className="min-h-screen bg-white">
             <nav className="sticky top-0 z-40 border-b border-gray-100 bg-white">
@@ -275,7 +427,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                         href={tab.href}
                                         className={`inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium transition-colors ${
                                             tab.active
-                                                ? 'border-indigo-500 text-gray-900'
+                                                ? 'border-primary text-gray-900'
                                                 : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                                         }`}
                                     >
@@ -286,6 +438,16 @@ export default function AuthenticatedLayout({ header, children }) {
                         </div>
 
                         <div className="hidden sm:ms-6 sm:flex sm:items-center">
+                            <button
+                                type="button"
+                                onClick={() => setPaletteOpen(true)}
+                                aria-label="Search"
+                                className="me-2 flex h-9 w-48 items-center gap-2 rounded-full border border-gray-200 bg-transparent pl-3.5 pr-4 text-sm text-gray-500 transition-colors hover:border-gray-400 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 lg:w-64"
+                            >
+                                <Search aria-hidden="true" className="h-4 w-4 shrink-0" />
+                                <span className="truncate text-left">Search</span>
+                            </button>
+
                             <div className="flex items-center gap-1">
                                 <AccountDropdown
                                     items={messageAccountItems}
@@ -319,7 +481,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                     }}
                                     label="Choose an account to message"
                                     emptyLabel="No message accounts found"
-                                    menuTitle={
+                                    menuTitle={({ close }) => (
                                         <div className="flex w-full items-center justify-between gap-4">
                                             <span>Chats</span>
                                             <Tooltip
@@ -336,12 +498,15 @@ export default function AuthenticatedLayout({ header, children }) {
                                                             className="h-5 w-5"
                                                         />
                                                     }
-                                                    onClick={() => setComposeOpen(true)}
+                                                    onClick={() => {
+                                                        close(false);
+                                                        setComposeOpen(true);
+                                                    }}
                                                     className="bg-transparent hover:bg-gray-100"
                                                 />
                                             </Tooltip>
                                         </div>
-                                    }
+                                    )}
                                     menuWidth={420}
                                     searchable
                                     searchPlaceholder="Search accounts"
@@ -365,13 +530,16 @@ export default function AuthenticatedLayout({ header, children }) {
                                     }
                                     triggerClassName="relative inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-gray-500 outline-none transition-colors hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-gray-300"
                                 />
-                                <NotificationBell
-                                    count={unreadCount}
-                                    size={36}
-                                    icon={<Bell aria-hidden="true" className="h-5 w-5" />}
-                                    className="bg-transparent text-gray-500 hover:bg-gray-100"
-                                    onClick={() => setNotificationDrawerOpen(true)}
-                                />
+                                <div ref={notificationsTriggerRef} className="inline-flex">
+                                    <NotificationBell
+                                        count={notificationCount}
+                                        size={36}
+                                        icon={<Bell aria-hidden="true" className="h-5 w-5" />}
+                                        className="bg-transparent text-gray-500 hover:bg-gray-100"
+                                        aria-expanded={notificationsOpen}
+                                        onClick={() => setNotificationsOpen((previous) => !previous)}
+                                    />
+                                </div>
                             </div>
 
                             <div className="relative ms-2">
@@ -482,65 +650,79 @@ export default function AuthenticatedLayout({ header, children }) {
                 </div>
             </nav>
 
-            <Drawer
-                open={notificationDrawerOpen}
-                onOpenChange={setNotificationDrawerOpen}
-                side="right"
-                ariaLabel="Notifications"
-                className="w-96 bg-white"
-            >
-                <div className="flex items-start justify-between border-b border-gray-200 px-6 py-5">
-                    <div>
-                        <h2 className="text-lg font-semibold text-gray-900">Notifications</h2>
-                        <p className="mt-1 text-sm text-gray-500">Updates that need your attention.</p>
-                    </div>
-                    <button
-                        type="button"
-                        aria-label="Close notifications"
-                        className="grid h-9 w-9 place-items-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-                        onClick={() => setNotificationDrawerOpen(false)}
-                    >
-                        <X aria-hidden="true" className="h-5 w-5" />
-                    </button>
-                </div>
+            {typeof document !== 'undefined' &&
+                createPortal(
+                    <AnimatePresence>
+                        {notificationsOpen && notificationsPosition && (
+                            <motion.div
+                                ref={notificationsPanelRef}
+                                role="menu"
+                                aria-label="Notifications"
+                                initial={
+                                    reducedMotion
+                                        ? { opacity: 0 }
+                                        : { opacity: 0, scale: 0.94, y: -8 }
+                                }
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{
+                                    opacity: 0,
+                                    scale: 0.97,
+                                    y: -6,
+                                    transition: reducedMotion
+                                        ? { duration: 0 }
+                                        : { duration: 0.12, ease: EXIT_EASE },
+                                }}
+                                transition={
+                                    reducedMotion
+                                        ? { duration: 0 }
+                                        : { ...OPEN_SPRING, opacity: { duration: 0.12, ease: EASE } }
+                                }
+                                style={{
+                                    position: 'fixed',
+                                    top: notificationsPosition.top,
+                                    left: notificationsPosition.left,
+                                    width: NOTIFICATIONS_PANEL_WIDTH,
+                                    transformOrigin: 'top right',
+                                }}
+                                className="z-[60] overflow-hidden rounded-[11px] border border-stone-200 bg-white shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)] dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:shadow-[0_2px_12px_rgba(0,0,0,0.6)]"
+                            >
+                                <div className="border-b border-stone-200 px-4 py-3 dark:border-white/[0.16]">
+                                    <h2 className="text-[15px] font-semibold text-stone-900 dark:text-stone-100">Notifications</h2>
+                                    <p className="mt-0.5 text-[12.5px] text-stone-500 dark:text-stone-400">Updates that need your attention.</p>
+                                </div>
 
-                <div className="flex flex-1 flex-col overflow-y-auto p-6">
-                    {unreadCount > 0 ? (
-                        <div className="border border-gray-200 p-4">
-                            <div className="flex items-start gap-3">
-                                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gray-100 text-gray-600">
-                                    <MessageCircle aria-hidden="true" className="h-5 w-5" />
+                                <div className="max-h-[min(60vh,420px)] overflow-y-auto p-3">
+                                    {/* Always empty for now -- see notificationCount above. Chat
+                                        messages are deliberately not listed here; they belong to
+                                        the Chats icon, and the copy points there so someone who
+                                        opened the bell looking for a message isn't left guessing. */}
+                                    <div className="flex flex-col items-center justify-center px-4 py-8 text-center">
+                                        <div className="grid h-11 w-11 place-items-center rounded-full bg-stone-100 text-stone-500 dark:bg-white/10 dark:text-stone-400">
+                                            <Bell aria-hidden="true" className="h-5 w-5" />
+                                        </div>
+                                        <h3 className="mt-3 text-[13px] font-medium text-stone-900 dark:text-stone-100">No notifications</h3>
+                                        <p className="mt-1 max-w-xs text-[12.5px] text-stone-500 dark:text-stone-400">
+                                            Nothing needs your attention right now. Unread chat messages appear on the Chats icon.
+                                        </p>
+                                    </div>
                                 </div>
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-sm font-medium text-gray-900">
-                                        {unreadCount} unread {unreadCount === 1 ? 'message' : 'messages'}
-                                    </p>
-                                    <p className="mt-1 text-sm text-gray-500">
-                                        Open the Chats icon in the header to read and respond.
-                                    </p>
-                                    <button
-                                        type="button"
-                                        onClick={() => setNotificationDrawerOpen(false)}
-                                        className="mt-3 inline-flex text-sm font-medium text-gray-900 underline-offset-4 hover:underline"
-                                    >
-                                        Got it
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-                            <div className="grid h-12 w-12 place-items-center rounded-full bg-gray-100 text-gray-500">
-                                <Bell aria-hidden="true" className="h-6 w-6" />
-                            </div>
-                            <h3 className="mt-4 text-sm font-medium text-gray-900">No new notifications</h3>
-                            <p className="mt-1 max-w-xs text-sm text-gray-500">
-                                You are all caught up. New message updates will appear here.
-                            </p>
-                        </div>
-                    )}
-                </div>
-            </Drawer>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>,
+                    document.body,
+                )}
+
+            {/* shortcut={null}: the order form mounts its own product-search
+                palette on Ctrl+K, and this one is mounted on every page -- a
+                shared binding would open both at once. */}
+            <CommandPalette
+                items={commandItems}
+                open={paletteOpen}
+                onOpenChange={setPaletteOpen}
+                shortcut={null}
+                placeholder="Search pages and actions"
+                emptyMessage="No matches found."
+            />
 
             <ComposeModal
                 open={composeOpen}
