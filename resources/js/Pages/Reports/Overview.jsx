@@ -202,7 +202,6 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                     columns={productPerformanceColumns}
                     getRowId={(p) => p.__rowId}
                     resizable
-                    reorderable
                     emptyState="No report data is available for this period. Try a different date range."
                 />
 
@@ -216,7 +215,6 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                             columns={customerPerformanceColumns}
                             getRowId={(c) => c.__rowId}
                             resizable
-                            reorderable
                             emptyState="No report data is available for this period. Try a different date range."
                         />
                     </>

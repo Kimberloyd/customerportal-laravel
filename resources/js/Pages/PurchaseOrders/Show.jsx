@@ -16,7 +16,15 @@ const TABLE_ROW_HEIGHT = 48;
 const TABLE_MAX_HEIGHT = 440;
 
 function autoTableHeight(rowCount) {
-    return Math.min(TABLE_MAX_HEIGHT, (Math.max(rowCount, 1) + 1) * TABLE_ROW_HEIGHT);
+    // A zero-row table doesn't render a normal 48px row -- it renders the
+    // empty-state cell instead, which is much taller (p-10 padding around
+    // its message). Sizing this case off TABLE_ROW_HEIGHT like the normal
+    // rows do reserves too little height and clips that message.
+    if (rowCount === 0) {
+        return 160;
+    }
+
+    return Math.min(TABLE_MAX_HEIGHT, (rowCount + 1) * TABLE_ROW_HEIGHT);
 }
 
 export default function Show({ order, isCustomerViewer, canManageFulfillment, canComplete, canCancel }) {
@@ -121,7 +129,6 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
             {
                 key: 'pending_quantity',
                 header: 'Balance',
-                align: showDeliverColumn ? undefined : 'right',
                 cell: (item) => (item.__isTotal ? null : item.pending_quantity),
             },
             ...(showDeliverColumn
@@ -294,24 +301,6 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
                             </Button>
                         )}
                         <Button asChild variant="tertiary" size="compact">
-                            <a
-                                href={`${route('purchase-orders.print', order.id)}?output=printer&auto_print=1`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
-                                Printer
-                            </a>
-                        </Button>
-                        <Button asChild variant="tertiary" size="compact">
-                            <a
-                                href={`${route('purchase-orders.print', order.id)}?output=pdf&auto_print=1`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
-                                PDF
-                            </a>
-                        </Button>
-                        <Button asChild variant="tertiary" size="compact">
                             <Link href={route('purchase-orders.edit', order.id)}>Edit Order</Link>
                         </Button>
                         <Button asChild variant="ghost" size="compact">
@@ -358,7 +347,6 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
                             className="border-gray-200 [&>div]:overflow-hidden"
                             height={autoTableHeight(itemRows.length)}
                             resizable
-                            reorderable
                             emptyState="No products have been added to this order."
                         />
                         {showDeliverColumn && (
@@ -383,7 +371,6 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
                         className="border-gray-200 [&>div]:overflow-hidden"
                         height={autoTableHeight(auditLogsRows.length)}
                         resizable
-                        reorderable
                         emptyState="No updates yet. Order changes will appear here."
                     />
                 </div>

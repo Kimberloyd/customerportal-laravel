@@ -84,7 +84,6 @@ export function CustomersPanel({ customers, filters, filterRouteName, filterExtr
                 rowHeight={TABLE_ROW_HEIGHT}
                 height={TABLE_VIEWPORT_HEIGHT}
                 resizable
-                reorderable
                 emptyState="No customers found. Try a different search."
                 emptyStateHeight={PAGE_SIZE * TABLE_ROW_HEIGHT}
             />

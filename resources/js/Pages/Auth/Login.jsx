@@ -1,6 +1,6 @@
-import Checkbox from '@/components/Checkbox';
-import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/motion/checkbox';
 import { Input } from '@/components/motion/input';
+import SpecularButton from '@/components/SpecularButton';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, useForm } from '@inertiajs/react';
 
@@ -23,8 +23,17 @@ export default function Login({ status }) {
         <GuestLayout>
             <Head title="Log in" />
 
+            <div className="mb-8">
+                <h2 className="text-3xl font-semibold tracking-tight text-gray-950">
+                    Welcome back
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-gray-600">
+                    Enter your account details to continue.
+                </p>
+            </div>
+
             {status && (
-                <div className="mb-4 text-sm font-medium text-green-600">
+                <div className="mb-5 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm font-medium text-green-700" role="status">
                     {status}
                 </div>
             )}
@@ -44,7 +53,7 @@ export default function Login({ status }) {
                     />
                 </div>
 
-                <div className="mt-4">
+                <div className="mt-5">
                     <Input
                         id="password"
                         label="Password"
@@ -57,25 +66,36 @@ export default function Login({ status }) {
                     />
                 </div>
 
-                <div className="mt-4 block">
-                    <label className="flex items-center">
-                        <Checkbox
-                            name="remember"
-                            checked={data.remember}
-                            onChange={(e) =>
-                                setData('remember', e.target.checked)
-                            }
-                        />
-                        <span className="ms-2 text-sm text-gray-600">
-                            Remember me
-                        </span>
-                    </label>
+                <div className="mt-5">
+                    <Checkbox
+                        id="remember"
+                        checked={data.remember}
+                        onCheckedChange={(checked) => setData('remember', checked)}
+                        label="Remember me"
+                    />
                 </div>
 
-                <div className="mt-4 flex items-center justify-end">
-                    <Button type="submit" variant="primary" className="ms-4" disabled={processing}>
-                        Log in
-                    </Button>
+                <div className="mt-8">
+                    <SpecularButton
+                        type="submit"
+                        size="md"
+                        radius={999}
+                        tint="#34379b"
+                        tintOpacity={1}
+                        textColor="#ffffff"
+                        lineColor="#d8d9ff"
+                        baseColor="#242675"
+                        intensity={1.25}
+                        shineSize={12}
+                        shineFade={45}
+                        thickness={1.1}
+                        speed={0.4}
+                        autoAnimate
+                        disabled={processing}
+                        className="w-full"
+                    >
+                        {processing ? 'Continuing…' : 'Continue'}
+                    </SpecularButton>
                 </div>
             </form>
         </GuestLayout>

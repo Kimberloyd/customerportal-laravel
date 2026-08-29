@@ -3,6 +3,7 @@
 namespace Tests\Feature\PurchaseOrders;
 
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderAudit;
 use App\Models\User;
 use App\Support\OrderAudit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -105,5 +106,72 @@ class ShowTest extends TestCase
         ]);
 
         $this->actingAsUser($staff)->get("/orders/{$order->id}/attachment")->assertStatus(404);
+    }
+
+    public function test_staff_opening_a_submitted_order_marks_it_reviewing(): void
+    {
+        $staff = User::factory()->create(['role' => 'employee']);
+        $customer = $this->makeCustomer();
+        $product = $this->makeProduct();
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
+            ['product_id' => $product->id, 'quantity' => 1],
+        ]);
+
+        $response = $this->actingAsUser($staff)->get("/orders/{$order->id}");
+
+        $response->assertInertia(fn ($page) => $page->where('order.status', PurchaseOrder::STATUS_REVIEWING));
+        $this->assertSame(PurchaseOrder::STATUS_REVIEWING, $order->fresh()->status);
+        $this->assertSame(
+            'Order Reviewing',
+            PurchaseOrderAudit::where('purchase_order_id', $order->id)->latest('created_at')->first()->action,
+        );
+    }
+
+    public function test_customer_opening_their_own_order_does_not_mark_it_reviewing(): void
+    {
+        $user = User::factory()->create(['role' => 'customer']);
+        $customer = $this->makeCustomer('Own Co', $user);
+        $product = $this->makeProduct();
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
+            ['product_id' => $product->id, 'quantity' => 1],
+        ]);
+
+        $this->actingAsUser($user)->get("/orders/{$order->id}");
+
+        $this->assertSame(PurchaseOrder::STATUS_SUBMITTED, $order->fresh()->status);
+    }
+
+    public function test_reopening_an_already_reviewing_order_does_not_duplicate_the_audit_row(): void
+    {
+        $staff = User::factory()->create(['role' => 'employee']);
+        $customer = $this->makeCustomer();
+        $product = $this->makeProduct();
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
+            ['product_id' => $product->id, 'quantity' => 1],
+        ]);
+
+        $this->actingAsUser($staff)->get("/orders/{$order->id}");
+        $this->actingAsUser($staff)->get("/orders/{$order->id}");
+
+        $this->assertSame(
+            1,
+            PurchaseOrderAudit::where('purchase_order_id', $order->id)
+                ->where('action', 'Order Reviewing')
+                ->count(),
+        );
+    }
+
+    public function test_opening_an_order_already_past_submitted_does_not_change_its_status(): void
+    {
+        $staff = User::factory()->create(['role' => 'employee']);
+        $customer = $this->makeCustomer();
+        $product = $this->makeProduct();
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_PARTIAL, now(), [
+            ['product_id' => $product->id, 'quantity' => 5, 'delivered_quantity' => 2],
+        ]);
+
+        $this->actingAsUser($staff)->get("/orders/{$order->id}");
+
+        $this->assertSame(PurchaseOrder::STATUS_PARTIAL, $order->fresh()->status);
     }
 }

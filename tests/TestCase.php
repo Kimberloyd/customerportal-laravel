@@ -3,6 +3,7 @@
 namespace Tests;
 
 use App\Models\User;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\Http;
@@ -12,6 +13,12 @@ abstract class TestCase extends BaseTestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Laravel 13's default CSRF middleware is PreventRequestForgery.
+        // Feature tests exercise application actions directly rather than a
+        // browser session, so keep CSRF enabled in production and disable only
+        // this middleware in the test harness.
+        $this->withoutMiddleware(PreventRequestForgery::class);
 
         // Products (and the customers:sync source) come from the live
         // inventoryapp API, which three controllers call while handling a

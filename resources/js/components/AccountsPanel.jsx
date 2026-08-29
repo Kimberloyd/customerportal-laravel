@@ -5,7 +5,7 @@ import { Input } from '@/components/motion/input';
 import { Table } from '@/components/motion/table';
 import ConfirmationDialog from '@/components/ConfirmationDialog';
 import { router } from '@inertiajs/react';
-import { KeyRound, MoreHorizontal, Pencil, Search, Trash2, UserCheck, UserRoundX } from 'lucide-react';
+import { Download, KeyRound, MoreHorizontal, Pencil, RotateCcw, Search, Trash2, UserCheck, UserRoundX } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 const PAGE_SIZE = 10;
@@ -51,6 +51,10 @@ export function AccountsPanel({ users, filters, roleLabels, filterRouteName, fil
         router.post(route('admin.users.toggle-active', user.id));
     };
 
+    const restoreUser = (user) => {
+        setPendingAction({ type: 'restore', user });
+    };
+
     const confirmPendingAction = () => {
         if (!pendingAction) return;
 
@@ -58,6 +62,11 @@ export function AccountsPanel({ users, filters, roleLabels, filterRouteName, fil
         const options = { onFinish: () => setPendingAction(null) };
         if (type === 'delete') {
             router.delete(route('admin.users.destroy', user.id), options);
+            return;
+        }
+
+        if (type === 'restore') {
+            router.post(route('admin.users.restore', user.id), {}, options);
             return;
         }
 
@@ -87,11 +96,11 @@ export function AccountsPanel({ users, filters, roleLabels, filterRouteName, fil
                 cell: (user) => (
                     <div className="flex justify-start">
                         <AnimatedBadge
-                            status={user.is_active ? 'success' : 'neutral'}
+                            status={user.deleted_at ? 'warning' : user.is_active ? 'success' : 'neutral'}
                             size="sm"
                             className="border-0 bg-transparent px-0 shadow-none"
                         >
-                            {user.is_active ? 'Active' : 'Inactive'}
+                            {user.deleted_at ? 'Pending deletion' : user.is_active ? 'Active' : 'Inactive'}
                         </AnimatedBadge>
                     </div>
                 ),
@@ -100,9 +109,27 @@ export function AccountsPanel({ users, filters, roleLabels, filterRouteName, fil
                 key: 'actions',
                 header: '',
                 width: '56px',
-                reorderable: false,
                 cell: (user) => {
-                    const items = [
+                    const items = user.deleted_at ? [
+                        {
+                            value: 'restore',
+                            label: 'Restore',
+                            icon: <RotateCcw />,
+                            onSelect: () => restoreUser(user),
+                        },
+                        {
+                            value: 'export',
+                            label: 'Download data',
+                            icon: <Download />,
+                            onSelect: () => window.location.assign(route('admin.users.data-export', user.id)),
+                        },
+                    ] : [
+                        {
+                            value: 'export',
+                            label: 'Download data',
+                            icon: <Download />,
+                            onSelect: () => window.location.assign(route('admin.users.data-export', user.id)),
+                        },
                         {
                             value: 'edit',
                             label: 'Edit',
@@ -179,7 +206,6 @@ export function AccountsPanel({ users, filters, roleLabels, filterRouteName, fil
                 rowHeight={TABLE_ROW_HEIGHT}
                 height={TABLE_VIEWPORT_HEIGHT}
                 resizable
-                reorderable
                 emptyState="No accounts found. Try a different search or add an account."
                 emptyStateHeight={PAGE_SIZE * TABLE_ROW_HEIGHT}
             />
@@ -198,19 +224,23 @@ export function AccountsPanel({ users, filters, roleLabels, filterRouteName, fil
                 onOpenChange={(open) => !open && setPendingAction(null)}
                 title={
                     pendingAction?.type === 'delete'
-                        ? `Delete ${pendingAction.user.full_name}'s account?`
+                        ? `Schedule ${pendingAction.user.full_name}'s account for deletion?`
+                        : pendingAction?.type === 'restore'
+                            ? `Restore ${pendingAction.user.full_name}'s account?`
                         : `Deactivate ${pendingAction?.user.full_name}'s account?`
                 }
                 description={
                     pendingAction?.type === 'delete'
-                        ? 'This permanently removes their sign-in access and unlinks any customer account. This cannot be undone.'
+                        ? `This immediately blocks sign-in. Personal account data will be permanently erased after ${filters.retention_days} days unless an administrator restores the account first. Orders and other required business records will be retained without the account link.`
+                        : pendingAction?.type === 'restore'
+                            ? 'This cancels the scheduled deletion and restores sign-in access.'
                         : 'They will not be able to sign in until an administrator reactivates the account.'
                 }
-                confirmLabel={pendingAction?.type === 'delete' ? 'Delete account' : 'Deactivate account'}
-                cancelLabel={pendingAction?.type === 'delete' ? 'Keep account' : 'Keep active'}
+                confirmLabel={pendingAction?.type === 'delete' ? 'Schedule deletion' : pendingAction?.type === 'restore' ? 'Restore account' : 'Deactivate account'}
+                cancelLabel={pendingAction?.type === 'delete' ? 'Keep account' : pendingAction?.type === 'restore' ? 'Keep scheduled' : 'Keep active'}
                 onConfirm={confirmPendingAction}
                 confirmationText={pendingAction?.type === 'delete' ? pendingAction.user.full_name : undefined}
-                destructive
+                destructive={pendingAction?.type !== 'restore'}
             />
         </div>
     );

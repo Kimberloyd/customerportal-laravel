@@ -16,7 +16,7 @@ final class AdminUserListing
 
     /**
      * @param  array<string, mixed>  $query
-     * @return array{users: mixed, filters: array{search: string, role: string}, roleLabels: array<string, string>}
+     * @return array{users: mixed, filters: array{search: string, role: string, retention_days: int}, roleLabels: array<string, string>}
      */
     public function get(array $query): array
     {
@@ -26,7 +26,9 @@ final class AdminUserListing
             $role = 'all';
         }
 
-        $usersQuery = User::query();
+        // Pending-deletion accounts stay visible to administrators during the
+        // retention window so the deletion can be cancelled before purge.
+        $usersQuery = User::withTrashed();
 
         if ($search !== '') {
             $pattern = '%'.strtolower($search).'%';
@@ -41,7 +43,10 @@ final class AdminUserListing
         }
 
         $users = $usersQuery
-            ->select(['id', 'full_name', 'email', 'phone', 'role', 'is_active'])
+            ->select([
+                'id', 'full_name', 'email', 'phone', 'role', 'is_active',
+                'deleted_at', 'deactivated_at', 'purge_after',
+            ])
             ->orderBy('full_name')
             ->paginate(10)
             ->withQueryString();
@@ -58,6 +63,9 @@ final class AdminUserListing
             'phone' => $user->phone,
             'role' => $user->role,
             'is_active' => $user->is_active,
+            'deleted_at' => $user->deleted_at?->toIso8601String(),
+            'deactivated_at' => $user->deactivated_at?->toIso8601String(),
+            'purge_after' => $user->purge_after?->toIso8601String(),
             'is_self' => $user->id === $currentUserId,
             'linked_customer_id' => $linkedCustomers->get($user->id)?->id,
             'linked_customer_name' => $linkedCustomers->get($user->id)?->company_name,
@@ -65,7 +73,11 @@ final class AdminUserListing
 
         return [
             'users' => $users,
-            'filters' => ['search' => $search, 'role' => $role],
+            'filters' => [
+                'search' => $search,
+                'role' => $role,
+                'retention_days' => max(1, (int) config('account-deletion.retention_days')),
+            ],
             'roleLabels' => self::ROLE_LABELS,
         ];
     }

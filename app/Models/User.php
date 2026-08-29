@@ -6,19 +6,24 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 
 // Matches the Flask app's `users` table exactly (see the migration for
 // the full column list/rationale) -- no `name`/`password`/
 // `email_verified_at`/`remember_token`/`updated_at`, since Flask's User
 // model never had them.
-#[Fillable(['full_name', 'email', 'phone', 'role', 'is_active', 'profile_image', 'password_hash', 'session_version'])]
+#[Fillable([
+    'full_name', 'email', 'phone', 'role', 'is_active', 'profile_image',
+    'password_hash', 'session_version', 'notifications_read_at', 'deactivated_at',
+    'purge_after', 'deletion_reason',
+])]
 #[Hidden(['password_hash'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     public $timestamps = false;
 
@@ -28,6 +33,10 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'session_version' => 'integer',
             'created_at' => 'datetime',
+            'notifications_read_at' => 'datetime',
+            'deactivated_at' => 'datetime',
+            'purge_after' => 'datetime',
+            'deleted_at' => 'datetime',
         ];
     }
 

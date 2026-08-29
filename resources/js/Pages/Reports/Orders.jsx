@@ -192,7 +192,6 @@ export default function Orders({ orders, filters, customers, summary }) {
                         columns={columns}
                         getRowId={(order) => String(order.id)}
                         resizable
-                        reorderable
                         emptyState="No orders found. Try a different date range or filter."
                     />
 

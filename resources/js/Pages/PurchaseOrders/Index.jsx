@@ -1,4 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import CreateOrderModal from '@/components/CreateOrderModal';
+import { Dropdown } from '@/components/interior/dropdown';
 import { Pagination } from '@/components/interior/pagination';
 import { AnimatedBadge } from '@/components/motion/animated-badge';
 import { Table } from '@/components/motion/table';
@@ -6,18 +8,46 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/motion/input';
 import { statusBadge, formatDateTime } from '@/utils/orderDisplay';
 import { usePurchaseOrderRealtime } from '@/hooks/usePurchaseOrderRealtime';
-import { Head, Link, router } from '@inertiajs/react';
-import { Search } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Head, router } from '@inertiajs/react';
+import { MoreHorizontal, Search, SquareArrowOutUpRight } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-export default function Index({ orders, filters }) {
+export default function Index({
+    orders,
+    filters,
+    createOrderCustomers = [],
+    createOrderProducts,
+    lockedCustomerId,
+    openCreateOrder = false,
+}) {
     usePurchaseOrderRealtime();
 
     const [search, setSearch] = useState(filters.search);
+    const [createOrderOpen, setCreateOrderOpen] = useState(openCreateOrder);
+    const [productsLoading, setProductsLoading] = useState(false);
+    const [productsError, setProductsError] = useState(false);
+
+    const loadCreateOrderProducts = useCallback(() => {
+        router.reload({
+            only: ['createOrderProducts'],
+            preserveScroll: true,
+            onStart: () => setProductsLoading(true),
+            onSuccess: (page) => setProductsError(page.props.createOrderProducts === undefined),
+            onError: () => setProductsError(true),
+            onFinish: () => setProductsLoading(false),
+        });
+    }, []);
+
+    // Clears a stale error so reopening the modal retries automatically
+    // instead of leaving the user stuck on the error state from last time.
+    useEffect(() => {
+        if (createOrderOpen) setProductsError(false);
+    }, [createOrderOpen]);
 
     useEffect(() => {
-        void import('./Create.jsx');
-    }, []);
+        if (!createOrderOpen || createOrderProducts !== undefined || productsLoading || productsError) return;
+        loadCreateOrderProducts();
+    }, [createOrderOpen, createOrderProducts, productsLoading, productsError, loadCreateOrderProducts]);
 
     const applyFilters = (overrides = {}) => {
         router.get(
@@ -76,6 +106,39 @@ export default function Index({ orders, filters }) {
                 sortable: true,
                 cell: (order) => formatDateTime(order.submitted_at),
             },
+            {
+                key: 'actions',
+                header: '',
+                width: '56px',
+                cell: (order) => {
+                    const items = [
+                        {
+                            value: 'view',
+                            label: 'Open',
+                            icon: <SquareArrowOutUpRight />,
+                            onSelect: () => goToOrder(order),
+                        },
+                    ];
+
+                    return (
+                        <div className="flex items-center">
+                            <Dropdown
+                                items={items}
+                                value=""
+                                onChange={(action) => {
+                                    const item = items.find((candidate) => candidate.value === action);
+                                    item?.onSelect();
+                                }}
+                                label={`Actions for ${order.po_number}`}
+                                trigger={<MoreHorizontal />}
+                                align="right"
+                                portal
+                                triggerClassName="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&_svg]:h-5 [&_svg]:w-5"
+                            />
+                        </div>
+                    );
+                },
+            },
         ],
         [],
     );
@@ -89,14 +152,12 @@ export default function Index({ orders, filters }) {
                     <h2 className="text-xl font-semibold leading-tight text-gray-800">
                         Orders
                     </h2>
-                    <Button asChild variant="primary">
-                        <Link
-                            href={route('purchase-orders.create')}
-                            prefetch="mount"
-                            cacheFor="30s"
-                        >
-                            Create Order
-                        </Link>
+                    <Button
+                        type="button"
+                        variant="primary"
+                        onClick={() => setCreateOrderOpen(true)}
+                    >
+                        Create Order
                     </Button>
                 </div>
             }
@@ -128,8 +189,6 @@ export default function Index({ orders, filters }) {
                         defaultSort={{ key: 'submitted_at', direction: 'desc' }}
                         className="[&>div]:overflow-hidden"
                         resizable
-                        reorderable
-                        onRowClick={goToOrder}
                         emptyState="No orders found. Try a different search."
                     />
 
@@ -143,6 +202,17 @@ export default function Index({ orders, filters }) {
                     </div>
                 </>
             </div>
+
+            <CreateOrderModal
+                open={createOrderOpen}
+                onOpenChange={setCreateOrderOpen}
+                customers={createOrderCustomers}
+                products={createOrderProducts ?? []}
+                productsLoading={productsLoading || (createOrderProducts === undefined && !productsError)}
+                productsError={productsError}
+                onRetryProducts={loadCreateOrderProducts}
+                lockedCustomerId={lockedCustomerId}
+            />
         </AuthenticatedLayout>
     );
 }

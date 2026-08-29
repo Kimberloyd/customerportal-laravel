@@ -12,8 +12,8 @@ use Tests\TestCase;
 
 class DeleteTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesOrderFixtures;
+    use RefreshDatabase;
 
     public function test_blocked_when_linked_user_still_exists(): void
     {
@@ -32,12 +32,31 @@ class DeleteTest extends TestCase
         $staff = User::factory()->create(['role' => 'employee']);
         $customerUser = User::factory()->create(['role' => 'customer']);
         $customer = $this->makeCustomer('Own Co', $customerUser);
-        $customerUser->delete();
+        $customerUser->forceDelete();
 
         $response = $this->actingAsUser($staff)->delete("/customers/{$customer->id}");
 
         $response->assertRedirect(route('admin.dashboard', ['tab' => 'customers']));
         $this->assertNull(Customer::find($customer->id));
+    }
+
+    public function test_customer_cannot_be_deleted_while_linked_account_is_in_recovery_window(): void
+    {
+        $staff = User::factory()->create(['role' => 'employee']);
+        $customerUser = User::factory()->create(['role' => 'customer']);
+        $customer = $this->makeCustomer('Recoverable Co', $customerUser);
+        $customerUser->forceFill([
+            'is_active' => false,
+            'deactivated_at' => now(),
+            'purge_after' => now()->addDays(30),
+        ])->save();
+        $customerUser->delete();
+
+        $response = $this->actingAsUser($staff)->delete("/customers/{$customer->id}");
+
+        $response->assertSessionHas('error', 'This customer is linked to an account. Delete the linked account first, then try again.');
+        $this->assertNotNull(Customer::find($customer->id));
+        $this->assertSame($customerUser->id, $customer->fresh()->user_id);
     }
 
     public function test_blocked_when_orders_exist(): void

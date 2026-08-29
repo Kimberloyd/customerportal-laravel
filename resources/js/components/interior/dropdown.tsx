@@ -20,7 +20,7 @@ const OPEN = { type: "spring", stiffness: 620, damping: 38, mass: 0.6 } as const
 const MENU_WIDTH = 224;
 const MENU_GAP = 6;
 const SEARCH_HEIGHT = 44;
-const MENU_TITLE_HEIGHT = 44;
+const MENU_TITLE_HEIGHT = 64;
 
 function DropdownLayer({ portal, children }: { portal: boolean; children: ReactNode }) {
   if (portal && typeof document !== "undefined") {
@@ -326,6 +326,15 @@ export type DropdownProps = {
   searchPlaceholder?: string;
   align?: "left" | "right";
   portal?: boolean;
+  /**
+   * Whether scrolling the page while the menu is open dismisses it
+   * (the default -- correct for a trigger embedded in a scrollable
+   * list/table, where the trigger itself moves out from under the
+   * menu). Set false for a trigger that stays fixed in place (e.g. a
+   * sticky header icon) so the menu repositions with it instead,
+   * matching the header's Notifications panel.
+   */
+  closeOnScroll?: boolean;
 };
 
 export function Dropdown({
@@ -349,6 +358,7 @@ export function Dropdown({
   searchPlaceholder = "Search options",
   align = "left",
   portal = false,
+  closeOnScroll = true,
 }: DropdownProps) {
   const reduced = useReducedMotion();
   const [searchQuery, setSearchQuery] = useState("");
@@ -403,46 +413,54 @@ export function Dropdown({
       return;
     }
 
-    const triggerRect = triggerRef.current?.getBoundingClientRect();
-    if (!triggerRect) return;
+    const computePosition = () => {
+      const triggerRect = triggerRef.current?.getBoundingClientRect();
+      if (!triggerRect) return;
 
-    const menuChromeHeight =
-      (searchable ? SEARCH_HEIGHT : 0) +
-      (menuTitle != null ? MENU_TITLE_HEIGHT : 0);
-    const menuHeight = Math.min(
-      visibleItems.length * ROW_H + 10 + menuChromeHeight,
-      226 + menuChromeHeight,
-    );
-    const resolvedMenuWidth = Math.min(
-      matchTriggerWidth ? triggerRect.width : (menuWidth ?? MENU_WIDTH),
-      window.innerWidth - 16,
-    );
-    const hasRoomBelow = triggerRect.bottom + MENU_GAP + menuHeight <= window.innerHeight - 8;
-    const top = hasRoomBelow
-      ? triggerRect.bottom + MENU_GAP
-      : Math.max(8, triggerRect.top - MENU_GAP - menuHeight);
-    const preferredLeft = align === "right"
-      ? triggerRect.right - resolvedMenuWidth
-      : triggerRect.left;
+      const menuChromeHeight =
+        (searchable ? SEARCH_HEIGHT : 0) +
+        (menuTitle != null ? MENU_TITLE_HEIGHT : 0);
+      const menuHeight = Math.min(
+        visibleItems.length * ROW_H + 10 + menuChromeHeight,
+        226 + menuChromeHeight,
+      );
+      const resolvedMenuWidth = Math.min(
+        matchTriggerWidth ? triggerRect.width : (menuWidth ?? MENU_WIDTH),
+        window.innerWidth - 16,
+      );
+      const hasRoomBelow = triggerRect.bottom + MENU_GAP + menuHeight <= window.innerHeight - 8;
+      const top = hasRoomBelow
+        ? triggerRect.bottom + MENU_GAP
+        : Math.max(8, triggerRect.top - MENU_GAP - menuHeight);
+      const preferredLeft = align === "right"
+        ? triggerRect.right - resolvedMenuWidth
+        : triggerRect.left;
 
-    setPortalPosition({
-      top,
-      left: Math.min(
-        Math.max(8, preferredLeft),
-        window.innerWidth - resolvedMenuWidth - 8,
-      ),
-      ...(!matchTriggerWidth && menuWidth == null ? {} : { width: resolvedMenuWidth }),
-    });
+      setPortalPosition({
+        top,
+        left: Math.min(
+          Math.max(8, preferredLeft),
+          window.innerWidth - resolvedMenuWidth - 8,
+        ),
+        ...(!matchTriggerWidth && menuWidth == null ? {} : { width: resolvedMenuWidth }),
+      });
+    };
 
-    const dismiss = () => close(false);
-    window.addEventListener("resize", dismiss);
-    window.addEventListener("scroll", dismiss, true);
+    computePosition();
+
+    // A trigger embedded in a scrollable list/table moves out from under
+    // the menu when that list scrolls, so closing is correct there; a
+    // trigger fixed in place (closeOnScroll=false) just needs the menu to
+    // follow it, exactly like the header's Notifications panel.
+    const onScrollOrResize = closeOnScroll ? () => close(false) : computePosition;
+    window.addEventListener("resize", onScrollOrResize);
+    window.addEventListener("scroll", onScrollOrResize, true);
 
     return () => {
-      window.removeEventListener("resize", dismiss);
-      window.removeEventListener("scroll", dismiss, true);
+      window.removeEventListener("resize", onScrollOrResize);
+      window.removeEventListener("scroll", onScrollOrResize, true);
     };
-  }, [align, close, matchTriggerWidth, menuTitle, menuWidth, open, portal, searchable, triggerRef, visibleItems.length]);
+  }, [align, close, closeOnScroll, matchTriggerWidth, menuTitle, menuWidth, open, portal, searchable, triggerRef, visibleItems.length]);
 
   return (
     <div ref={rootRef} className={`relative inline-block text-left ${className}`}>
@@ -510,7 +528,7 @@ export function Dropdown({
             className={`${portal ? "fixed z-[60]" : `absolute top-[calc(100%+6px)] z-50 ${align === "right" ? "right-0" : "left-0"}`} min-w-[224px] whitespace-nowrap rounded-[11px] border border-stone-200 bg-white p-[5px] shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)] dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:shadow-[0_2px_12px_rgba(0,0,0,0.6)]`}
           >
             {menuTitle != null ? (
-              <div className="px-2.5 pb-1 pt-1 text-left text-xl font-semibold text-stone-900 dark:text-stone-100">
+              <div className="-mx-[5px] mb-1 border-b border-stone-200 px-[15px] pb-2 pt-1 text-left text-xl font-semibold text-stone-900 dark:border-white/[0.16] dark:text-stone-100">
                 {typeof menuTitle === "function" ? menuTitle({ close }) : menuTitle}
               </div>
             ) : null}
@@ -591,11 +609,15 @@ export function Dropdown({
                           ? "cursor-pointer text-destructive"
                         : active
                           ? "cursor-pointer text-stone-900 dark:text-stone-100"
-                          : "cursor-pointer text-stone-700 dark:text-stone-200"
+                          : "cursor-pointer text-stone-700 hover:bg-stone-100 dark:text-stone-200 dark:hover:bg-white/10"
                     }`}
                   >
                     {item.icon ? (
-                      <span className="relative z-10 flex size-4 shrink-0 items-center justify-center [&_svg]:size-4">
+                      <span
+                        className={`relative z-10 flex size-4 shrink-0 items-center justify-center [&_svg]:size-4 ${
+                          item.destructive ? "text-destructive" : ""
+                        }`}
+                      >
                         {item.icon}
                       </span>
                     ) : null}

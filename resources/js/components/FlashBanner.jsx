@@ -2,6 +2,8 @@ import { usePage } from '@inertiajs/react';
 import { CircleAlert, CircleCheck, Link2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+const AUTO_DISMISS_MS = 5000;
+
 export default function FlashBanner() {
     const { flash } = usePage().props;
     const [dismissed, setDismissed] = useState(false);
@@ -9,6 +11,16 @@ export default function FlashBanner() {
     useEffect(() => {
         setDismissed(false);
     }, [flash?.success, flash?.error, flash?.link]);
+
+    useEffect(() => {
+        if (!flash?.success && !flash?.link) {
+            return;
+        }
+
+        const timer = setTimeout(() => setDismissed(true), AUTO_DISMISS_MS);
+
+        return () => clearTimeout(timer);
+    }, [flash?.success, flash?.link]);
 
     if (dismissed || (!flash?.success && !flash?.error && !flash?.link)) {
         return null;

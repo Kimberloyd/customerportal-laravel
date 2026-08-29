@@ -30,6 +30,13 @@ class MessageController extends Controller
         return response()->json(['count' => MessageThread::unreadCount()]);
     }
 
+    public function markAllRead()
+    {
+        MessageThread::markAllRead();
+
+        return response()->json(['count' => 0]);
+    }
+
     public function widgetShow(Request $request, Customer $customer)
     {
         $this->authorizeWidgetAccess($customer);

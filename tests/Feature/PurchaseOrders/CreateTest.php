@@ -14,8 +14,8 @@ use Tests\TestCase;
 
 class CreateTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesOrderFixtures;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -23,20 +23,40 @@ class CreateTest extends TestCase
         Storage::fake('local');
     }
 
-    public function test_create_page_defers_the_product_catalog(): void
+    public function test_orders_page_only_loads_the_product_catalog_when_the_modal_requests_it(): void
     {
         $staff = User::factory()->create(['role' => 'employee']);
         $this->makeCustomer();
         $this->makeProduct('Deferred Product');
 
-        $response = $this->actingAsUser($staff)->get('/orders/create');
+        $response = $this->actingAsUser($staff)->get('/orders');
 
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
-            ->missing('products')
-            ->loadDeferredProps('catalog', fn ($deferred) => $deferred
-                ->has('products', 1)
-                ->where('products.0.product_name', 'Deferred Product')));
+            ->component('PurchaseOrders/Index')
+            ->has('createOrderCustomers', 1)
+            ->missing('createOrderProducts'));
+
+        $catalogResponse = $this->actingAsUser($staff)->get('/orders', [
+            'X-Inertia' => 'true',
+            'X-Inertia-Version' => hash_file('xxh128', public_path('build/manifest.json')),
+            'X-Inertia-Partial-Component' => 'PurchaseOrders/Index',
+            'X-Inertia-Partial-Data' => 'createOrderProducts',
+        ]);
+
+        $catalogResponse->assertOk()
+            ->assertJsonPath('component', 'PurchaseOrders/Index')
+            ->assertJsonCount(1, 'props.createOrderProducts')
+            ->assertJsonPath('props.createOrderProducts.0.product_name', 'Deferred Product');
+    }
+
+    public function test_create_url_redirects_to_the_orders_modal(): void
+    {
+        $staff = User::factory()->create(['role' => 'employee']);
+
+        $this->actingAsUser($staff)
+            ->get('/orders/create')
+            ->assertRedirect(route('purchase-orders.index', ['create' => 1]));
     }
 
     public function test_creates_order_with_a_resolved_product_id_line(): void

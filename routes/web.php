@@ -6,6 +6,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FacebookWebhookController;
 use App\Http\Controllers\MessageController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PublicConversationController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\ReportController;
@@ -27,7 +28,6 @@ Route::middleware('auth')->prefix('orders')->name('purchase-orders.')->group(fun
     Route::post('/', [PurchaseOrderController::class, 'store'])->name('store');
     Route::get('/{order}', [PurchaseOrderController::class, 'show'])->name('show');
     Route::get('/{order}/attachment', [PurchaseOrderController::class, 'attachment'])->name('attachment');
-    Route::get('/{order}/print', [PurchaseOrderController::class, 'print'])->name('print');
     Route::get('/{order}/edit', [PurchaseOrderController::class, 'edit'])->name('edit');
     Route::put('/{order}', [PurchaseOrderController::class, 'update'])->name('update');
     Route::post('/{order}/complete', [PurchaseOrderController::class, 'complete'])->name('complete');
@@ -50,6 +50,13 @@ Route::middleware('auth')->prefix('admin/users')->name('admin.users.')->group(fu
     Route::post('/', [UserController::class, 'store'])->name('store');
     Route::put('/{user}', [UserController::class, 'update'])->name('update');
     Route::delete('/{user}', [UserController::class, 'destroy'])->name('destroy');
+    Route::post('/{user}/restore', [UserController::class, 'restore'])->name('restore');
+    Route::get('/{user}/data-export', [UserController::class, 'exportData'])
+        ->middleware('throttle:5,1')
+        ->name('data-export');
+    Route::delete('/{user}/erase-now', [UserController::class, 'eraseNow'])
+        ->middleware('throttle:5,1')
+        ->name('erase-now');
     Route::post('/{user}/toggle-active', [UserController::class, 'toggleActive'])->name('toggle-active');
     Route::post('/{user}/reset-password', [UserController::class, 'resetPassword'])
         ->middleware('throttle:10,1')
@@ -58,6 +65,7 @@ Route::middleware('auth')->prefix('admin/users')->name('admin.users.')->group(fu
 
 Route::middleware('auth')->prefix('messages')->name('messages.')->group(function () {
     Route::get('/unread-count', [MessageController::class, 'unreadCount'])->name('unread-count');
+    Route::post('/mark-all-read', [MessageController::class, 'markAllRead'])->name('mark-all-read');
     Route::get('/recipients', [MessageController::class, 'recipients'])->name('recipients');
     Route::get('/users-search', [MessageController::class, 'usersSearch'])->name('users-search');
     Route::get('/widget/facebook/{thread}', [MessageController::class, 'widgetFacebookShow'])->name('widget.facebook.show');
@@ -66,6 +74,11 @@ Route::middleware('auth')->prefix('messages')->name('messages.')->group(function
     Route::patch('/widget/facebook/{thread}/rename', [MessageController::class, 'widgetFacebookRename'])->name('widget.facebook.rename');
     Route::get('/widget/{customer}', [MessageController::class, 'widgetShow'])->name('widget.show');
     Route::post('/widget/{customer}', [MessageController::class, 'widgetSend'])->name('widget.send');
+});
+
+Route::middleware('auth')->prefix('notifications')->name('notifications.')->group(function () {
+    Route::get('/recent', [NotificationController::class, 'recent'])->name('recent');
+    Route::post('/mark-all-read', [NotificationController::class, 'markAllRead'])->name('mark-all-read');
 });
 
 Route::middleware('auth')->prefix('reports')->name('reports.')->group(function () {

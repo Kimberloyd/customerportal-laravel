@@ -22,7 +22,9 @@ class CustomerController extends Controller
         abort_if(Auth::user()->role === 'customer', 403);
 
         if ($customer->user_id) {
-            $linkedUser = User::find($customer->user_id);
+            // A soft-deleted account is still recoverable during the retention
+            // window, so its customer relationship must remain protected.
+            $linkedUser = User::withTrashed()->find($customer->user_id);
             if ($linkedUser !== null) {
                 return back()->with('error', 'This customer is linked to an account. Delete the linked account first, then try again.');
             }

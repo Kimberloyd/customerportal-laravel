@@ -81,9 +81,24 @@ class MessageThread
 
     public static function unreadCount(): int
     {
+        return self::unreadQuery()?->count() ?? 0;
+    }
+
+    /**
+     * Marks every message this viewer would otherwise see badged as
+     * unread as read, in one query -- scoped exactly like unreadCount()
+     * so "Mark all as read" clears precisely what the badge was counting.
+     */
+    public static function markAllRead(): void
+    {
+        self::unreadQuery()?->update(['is_read' => true]);
+    }
+
+    private static function unreadQuery()
+    {
         $user = Auth::user();
         if (! $user) {
-            return 0;
+            return null;
         }
 
         $senderType = self::recipientSenderType($user);
@@ -92,11 +107,11 @@ class MessageThread
         if ($user->role === 'customer') {
             $customer = CustomerScope::forCurrentUser(required: false);
             if (! $customer) {
-                return 0;
+                return null;
             }
             $query->where('customer_id', $customer->id);
         }
 
-        return $query->count();
+        return $query;
     }
 }

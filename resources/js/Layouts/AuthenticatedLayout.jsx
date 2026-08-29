@@ -8,10 +8,13 @@ import { CommandPalette } from '@/components/motion/command-palette';
 import { FooterSimple } from '@/components/smoothui/footer-1';
 import { CountBadge, NotificationBell } from '@/components/ui/notification-bell';
 import { useChatWidget } from '@/lib/chat-widget-context';
+import { formatDateTime } from '@/utils/orderDisplay';
 import { Link, router, usePage } from '@inertiajs/react';
+import axios from 'axios';
 import {
     Bell,
     ChartColumn,
+    CheckCheck,
     LayoutDashboard,
     LogOut,
     MessageCircle,
@@ -29,7 +32,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 const EASE = [0.23, 1, 0.32, 1];
 const EXIT_EASE = [0.4, 0, 1, 1];
 const OPEN_SPRING = { type: 'spring', stiffness: 620, damping: 38, mass: 0.6 };
-const NOTIFICATIONS_PANEL_WIDTH = 380;
+const NOTIFICATIONS_PANEL_WIDTH = 460;
 const NOTIFICATIONS_PANEL_GAP = 6;
 
 const USER_MENU_ITEMS = [
@@ -61,12 +64,12 @@ export default function AuthenticatedLayout({ header, children }) {
     // notification records. This badges the Chats icon only.
     const [unreadCount, setUnreadCount] = useState(0);
 
-    // The bell is a separate channel and deliberately has no count yet: this
-    // project has no notification data source (no Notification model, no
-    // notifications table, no Notifiable usage). Wiring the message count in
-    // here would badge the bell for something the panel can't show. Replace
-    // this with real state once notification records exist.
-    const notificationCount = 0;
+    // The bell is a separate channel from unread chat messages: it reads
+    // purchase_order_notifications (via OrderNotificationFeed), scoped the
+    // same way MessageThread::unreadCount() scopes chats -- a customer sees
+    // only their own orders' notifications, staff see every order's.
+    const [notificationCount, setNotificationCount] = useState(0);
+    const [orderNotifications, setOrderNotifications] = useState([]);
     const [messageAccounts, setMessageAccounts] = useState(null);
     const [messageAccountsError, setMessageAccountsError] = useState(false);
     const mountedRef = useRef(true);
@@ -80,6 +83,8 @@ export default function AuthenticatedLayout({ header, children }) {
             setNotificationsPosition(null);
             return;
         }
+
+        fetchRecentNotifications();
 
         const updatePosition = () => {
             const rect = notificationsTriggerRef.current?.getBoundingClientRect();
@@ -137,6 +142,31 @@ export default function AuthenticatedLayout({ header, children }) {
             .catch(() => {});
     }, []);
 
+    const markAllMessagesRead = useCallback(() => {
+        setUnreadCount(0);
+        axios.post(route('messages.mark-all-read')).catch(() => {
+            if (mountedRef.current) fetchUnreadCount();
+        });
+    }, [fetchUnreadCount]);
+
+    const fetchRecentNotifications = useCallback(() => {
+        fetch(route('notifications.recent'))
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+                if (!data || !mountedRef.current) return;
+                setNotificationCount(data.count);
+                setOrderNotifications(Array.isArray(data.notifications) ? data.notifications : []);
+            })
+            .catch(() => {});
+    }, []);
+
+    const markAllNotificationsRead = useCallback(() => {
+        setNotificationCount(0);
+        axios.post(route('notifications.mark-all-read')).catch(() => {
+            if (mountedRef.current) fetchRecentNotifications();
+        });
+    }, [fetchRecentNotifications]);
+
     const fetchMessageAccounts = useCallback(() => {
         fetch(route('messages.recipients'), {
             headers: { Accept: 'application/json' },
@@ -186,6 +216,8 @@ export default function AuthenticatedLayout({ header, children }) {
             fetchMessageAccounts();
         };
 
+        const refreshNotifications = () => fetchRecentNotifications();
+
         const stopPolling = () => {
             if (intervalId !== null) {
                 clearInterval(intervalId);
@@ -199,7 +231,11 @@ export default function AuthenticatedLayout({ header, children }) {
             }
 
             fetchUnreadCount();
-            intervalId = setInterval(fetchUnreadCount, 30000);
+            fetchRecentNotifications();
+            intervalId = setInterval(() => {
+                fetchUnreadCount();
+                fetchRecentNotifications();
+            }, 30000);
         };
 
         const handleVisibilityChange = () => {
@@ -218,6 +254,7 @@ export default function AuthenticatedLayout({ header, children }) {
         if (echo && user.id) {
             channel = echo.private(`users.${user.id}`);
             channel.listen('.customer-message.created', refreshFromLiveEvent);
+            channel.listen('.purchase-order.changed', refreshNotifications);
         }
 
         return () => {
@@ -228,10 +265,11 @@ export default function AuthenticatedLayout({ header, children }) {
             );
             if (channel) {
                 channel.stopListening('.customer-message.created', refreshFromLiveEvent);
+                channel.stopListening('.purchase-order.changed', refreshNotifications);
                 echo.leave(`users.${user.id}`);
             }
         };
-    }, [user.id, fetchUnreadCount, fetchMessageAccounts]);
+    }, [user.id, fetchUnreadCount, fetchMessageAccounts, fetchRecentNotifications]);
 
     const messageAccountItems = useMemo(() => {
         if (messageAccountsError) {
@@ -391,7 +429,7 @@ export default function AuthenticatedLayout({ header, children }) {
                 group: 'Actions',
                 keywords: ['create', 'add', 'purchase order'],
                 icon: Plus,
-                onSelect: navigate('purchase-orders.create'),
+                onSelect: () => router.visit(route('purchase-orders.index', { create: 1 })),
             },
             {
                 id: 'action-new-message',
@@ -442,7 +480,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                 type="button"
                                 onClick={() => setPaletteOpen(true)}
                                 aria-label="Search"
-                                className="me-2 flex h-9 w-48 items-center gap-2 rounded-full border border-gray-200 bg-transparent pl-3.5 pr-4 text-sm text-gray-500 transition-colors hover:border-gray-400 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 lg:w-64"
+                                className="me-2 flex h-9 w-48 items-center gap-2 rounded-full border border-gray-200 bg-transparent pl-3.5 pr-4 text-sm text-gray-500 transition-colors hover:border-gray-400 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:w-64"
                             >
                                 <Search aria-hidden="true" className="h-4 w-4 shrink-0" />
                                 <span className="truncate text-left">Search</span>
@@ -484,27 +522,48 @@ export default function AuthenticatedLayout({ header, children }) {
                                     menuTitle={({ close }) => (
                                         <div className="flex w-full items-center justify-between gap-4">
                                             <span>Chats</span>
-                                            <Tooltip
-                                                content="New message"
-                                                side="top"
-                                            >
-                                                <NotificationBell
-                                                    count={0}
-                                                    size={36}
-                                                    label="New message"
-                                                    icon={
-                                                        <SquarePen
-                                                            aria-hidden="true"
-                                                            className="h-5 w-5"
-                                                        />
-                                                    }
-                                                    onClick={() => {
-                                                        close(false);
-                                                        setComposeOpen(true);
-                                                    }}
-                                                    className="bg-transparent hover:bg-gray-100"
-                                                />
-                                            </Tooltip>
+                                            <div className="flex items-center gap-1">
+                                                <Tooltip
+                                                    content="Mark all as read"
+                                                    side="top"
+                                                >
+                                                    <NotificationBell
+                                                        count={0}
+                                                        size={36}
+                                                        label="Mark all as read"
+                                                        icon={
+                                                            <CheckCheck
+                                                                aria-hidden="true"
+                                                                className="h-5 w-5"
+                                                            />
+                                                        }
+                                                        onClick={markAllMessagesRead}
+                                                        disabled={unreadCount === 0}
+                                                        className="bg-transparent hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                                                    />
+                                                </Tooltip>
+                                                <Tooltip
+                                                    content="New message"
+                                                    side="top"
+                                                >
+                                                    <NotificationBell
+                                                        count={0}
+                                                        size={36}
+                                                        label="New message"
+                                                        icon={
+                                                            <SquarePen
+                                                                aria-hidden="true"
+                                                                className="h-5 w-5"
+                                                            />
+                                                        }
+                                                        onClick={() => {
+                                                            close(false);
+                                                            setComposeOpen(true);
+                                                        }}
+                                                        className="bg-transparent hover:bg-gray-100"
+                                                    />
+                                                </Tooltip>
+                                            </div>
                                         </div>
                                     )}
                                     menuWidth={420}
@@ -512,6 +571,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                     searchPlaceholder="Search accounts"
                                     align="right"
                                     portal
+                                    closeOnScroll={false}
                                     trigger={
                                         <span className="relative inline-flex h-9 w-9 items-center justify-center">
                                             <MessageCircle
@@ -528,7 +588,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                             />
                                         </span>
                                     }
-                                    triggerClassName="relative inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-gray-500 outline-none transition-colors hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-gray-300"
+                                    triggerClassName="relative inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-gray-500 outline-none transition-colors hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-ring"
                                 />
                                 <div ref={notificationsTriggerRef} className="inline-flex">
                                     <NotificationBell
@@ -557,7 +617,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                     placeholder="User actions"
                                     align="right"
                                     portal
-                                    triggerClassName="flex h-9 select-none items-center gap-2 whitespace-nowrap rounded-md border border-transparent bg-white px-3 text-sm font-medium text-gray-500 outline-none transition-colors hover:bg-gray-100 hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-gray-300"
+                                    triggerClassName="flex h-9 select-none items-center gap-2 whitespace-nowrap rounded-md border border-transparent bg-white px-3 text-sm font-medium text-gray-500 outline-none transition-colors hover:bg-gray-100 hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-ring"
                                 />
                             </div>
                         </div>
@@ -686,25 +746,59 @@ export default function AuthenticatedLayout({ header, children }) {
                                 }}
                                 className="z-[60] overflow-hidden rounded-[11px] border border-stone-200 bg-white shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)] dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:shadow-[0_2px_12px_rgba(0,0,0,0.6)]"
                             >
-                                <div className="border-b border-stone-200 px-4 py-3 dark:border-white/[0.16]">
+                                <div className="flex items-center justify-between gap-4 border-b border-stone-200 px-4 py-3 dark:border-white/[0.16]">
                                     <h2 className="text-[15px] font-semibold text-stone-900 dark:text-stone-100">Notifications</h2>
-                                    <p className="mt-0.5 text-[12.5px] text-stone-500 dark:text-stone-400">Updates that need your attention.</p>
+                                    <Tooltip content="Mark all as read" side="top">
+                                        <NotificationBell
+                                            count={0}
+                                            size={36}
+                                            label="Mark all as read"
+                                            icon={<CheckCheck aria-hidden="true" className="h-5 w-5" />}
+                                            onClick={markAllNotificationsRead}
+                                            disabled={notificationCount === 0}
+                                            className="bg-transparent hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                                        />
+                                    </Tooltip>
                                 </div>
 
                                 <div className="max-h-[min(60vh,420px)] overflow-y-auto p-3">
-                                    {/* Always empty for now -- see notificationCount above. Chat
-                                        messages are deliberately not listed here; they belong to
-                                        the Chats icon, and the copy points there so someone who
-                                        opened the bell looking for a message isn't left guessing. */}
-                                    <div className="flex flex-col items-center justify-center px-4 py-8 text-center">
-                                        <div className="grid h-11 w-11 place-items-center rounded-full bg-stone-100 text-stone-500 dark:bg-white/10 dark:text-stone-400">
-                                            <Bell aria-hidden="true" className="h-5 w-5" />
+                                    {/* Sourced from purchase_order_notifications via
+                                        OrderNotificationFeed. Chat messages are deliberately not
+                                        listed here; they belong to the Chats icon instead. */}
+                                    {orderNotifications.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center px-4 py-8 text-center">
+                                            <div className="grid h-11 w-11 place-items-center rounded-full bg-stone-100 text-stone-500 dark:bg-white/10 dark:text-stone-400">
+                                                <Bell aria-hidden="true" className="h-5 w-5" />
+                                            </div>
+                                            <h3 className="mt-3 text-[13px] font-medium text-stone-900 dark:text-stone-100">You're all caught up</h3>
+                                            <p className="mt-1 max-w-xs text-[12.5px] text-stone-500 dark:text-stone-400">
+                                                New activity on your orders will appear here.
+                                            </p>
                                         </div>
-                                        <h3 className="mt-3 text-[13px] font-medium text-stone-900 dark:text-stone-100">No notifications</h3>
-                                        <p className="mt-1 max-w-xs text-[12.5px] text-stone-500 dark:text-stone-400">
-                                            Nothing needs your attention right now. Unread chat messages appear on the Chats icon.
-                                        </p>
-                                    </div>
+                                    ) : (
+                                        <ul className="flex flex-col gap-1">
+                                            {orderNotifications.map((notification) => (
+                                                <li key={notification.id}>
+                                                    <Link
+                                                        href={
+                                                            notification.order_id
+                                                                ? route('purchase-orders.show', notification.order_id)
+                                                                : '#'
+                                                        }
+                                                        onClick={closeNotifications}
+                                                        className="block rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-stone-100 dark:hover:bg-white/[0.06]"
+                                                    >
+                                                        <p className="text-[13px] font-medium text-stone-900 dark:text-stone-100">
+                                                            {notification.note ?? 'Order updated'}
+                                                        </p>
+                                                        <p className="mt-0.5 text-[12px] text-stone-500 dark:text-stone-400">
+                                                            PO {notification.po_number} · {formatDateTime(notification.created_at)}
+                                                        </p>
+                                                    </Link>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
                                 </div>
                             </motion.div>
                         )}

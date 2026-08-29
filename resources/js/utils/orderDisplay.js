@@ -5,6 +5,9 @@ export function statusBadge(status) {
     if (status === 'submitted') {
         return { label: 'Submitted', status: 'info' };
     }
+    if (status === 'reviewing') {
+        return { label: 'Reviewing', status: 'loading' };
+    }
     if (status === 'completed') {
         return { label: 'Completed', status: 'success' };
     }

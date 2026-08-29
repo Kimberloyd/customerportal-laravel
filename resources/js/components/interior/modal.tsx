@@ -250,13 +250,19 @@ export function useModal({
 
   const onPointerDown = useCallback((event: React.PointerEvent) => {
     const panel = panelRef.current;
-    downedOutside.current = !panel?.contains(event.target as Node);
+    const node = event.target as Node;
+    const element = node instanceof Element ? node : null;
+    const insidePortal = element?.closest('[data-modal-portal]') != null;
+    downedOutside.current = !panel?.contains(node) && !insidePortal;
   }, []);
 
   const onClick = useCallback((event: React.MouseEvent) => {
     const panel = panelRef.current;
     if (!latest.current.closeOnBackdrop) return;
-    if (panel?.contains(event.target as Node)) return;
+    const node = event.target as Node;
+    const element = node instanceof Element ? node : null;
+    if (panel?.contains(node)) return;
+    if (element?.closest('[data-modal-portal]')) return;
     if (!downedOutside.current) return;
     downedOutside.current = false;
     latest.current.onClose();

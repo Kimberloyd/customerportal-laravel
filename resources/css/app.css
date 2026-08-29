@@ -5,54 +5,68 @@
 @layer base {
     :root {
         /*
-         * Full CSS color values (not bare HSL triplets) -- the beUI
-         * table/tabs components read these through Tailwind's
-         * `bg-foreground`-style utilities (see tailwind.config.js), while
-         * the Fluid Functionalism button reads several of them directly
-         * as `var(--foreground)` etc. in inline styles. A bare "240 10%
-         * 3.9%" triplet would be invalid CSS used that way, so every
-         * token here has to be a complete color on its own.
+         * Keep channel tokens for Tailwind opacity modifiers such as
+         * `bg-destructive/10`, then derive complete color values for code
+         * that consumes `var(--foreground)` directly in inline styles.
          */
-        --background: hsl(238 10% 100%);
-        --foreground: hsl(238 10% 3.9%);
-        --card: hsl(238 10% 100%);
-        --card-foreground: hsl(238 10% 3.9%);
-        --border: hsl(238 5.9% 90%);
-        --muted: hsl(238 4.8% 95.9%);
-        --muted-foreground: hsl(238 3.8% 46.1%);
+        --background-hsl: 238 10% 100%;
+        --background: hsl(var(--background-hsl));
+        --foreground-hsl: 238 10% 3.9%;
+        --foreground: hsl(var(--foreground-hsl));
+        --card-hsl: 238 10% 100%;
+        --card: hsl(var(--card-hsl));
+        --card-foreground-hsl: 238 10% 3.9%;
+        --card-foreground: hsl(var(--card-foreground-hsl));
+        --border-hsl: 238 5.9% 90%;
+        --border: hsl(var(--border-hsl));
+        --muted-hsl: 238 4.8% 95.9%;
+        --muted: hsl(var(--muted-hsl));
+        --muted-foreground-hsl: 238 3.8% 46.1%;
+        --muted-foreground: hsl(var(--muted-foreground-hsl));
         /* Brand indigo (#2E3192) -- the app's one true interactive accent:
          * primary buttons, links, active states, focus rings. Passes
          * 10.7:1 contrast both as white-on-fill and as text-on-background,
          * so it's used at full brand strength with no adjustment. */
-        --primary: hsl(238 52% 38%);
-        --primary-foreground: hsl(0 0% 98%);
-        --ring: hsl(238 52% 38%);
-        --focus-ring: hsl(238 52% 38%);
-        --accent: hsl(238 4.8% 95.9%);
-        --hover: hsl(238 5.9% 90%);
-        --active: hsl(238 5.9% 85%);
+        --primary-hsl: 238 52% 38%;
+        --primary: hsl(var(--primary-hsl));
+        --primary-foreground-hsl: 0 0% 98%;
+        --primary-foreground: hsl(var(--primary-foreground-hsl));
+        --ring-hsl: 238 52% 38%;
+        --ring: hsl(var(--ring-hsl));
+        --focus-ring: var(--ring);
+        --accent-hsl: 238 4.8% 95.9%;
+        --accent: hsl(var(--accent-hsl));
+        --hover-hsl: 238 5.9% 90%;
+        --hover: hsl(var(--hover-hsl));
+        --active-hsl: 238 5.9% 85%;
+        --active: hsl(var(--active-hsl));
         /* Brand red (#ED1515) darkened from L51%->L44% -- the raw brand hex
          * clears only 4.45:1 as text/white-on-fill, just under the 4.5:1 AA
          * minimum for normal text. This keeps it unmistakably the same red
          * while passing at 5.6:1. */
-        --destructive: hsl(0 86% 44%);
+        --destructive-hsl: 0 86% 44%;
+        --destructive: hsl(var(--destructive-hsl));
         /* Brand green (#00A652) darkened from L33%->L26% for the same
          * reason -- the raw hex is only 3.2:1 as text (fails AA), the
          * adjusted value passes at 4.8:1. */
-        --color-success: hsl(150 100% 26%);
+        --success-hsl: 150 100% 26%;
+        --color-success: hsl(var(--success-hsl));
         /* Brand teal (#1A6A75), used unchanged -- already passes at 6.2:1. */
-        --info: hsl(187 64% 28%);
+        --info-hsl: 187 64% 28%;
+        --info: hsl(var(--info-hsl));
     }
 }
 
 @layer base {
     /*
      * @tailwindcss/forms (base strategy) hardcodes a blue focus ring/border
-     * on every native input/select/textarea/checkbox/radio. Override just
-     * the color to the app's neutral --ring/--border tokens instead of
-     * disabling the plugin's reset (which also drives checkbox/select
-     * appearance elsewhere in the app).
+     * on every native input/select/textarea/checkbox/radio -- including a
+     * bare <input> with no type attribute at all, via its own
+     * `:not([type])` rule. Override just the color to the app's neutral
+     * --ring/--border tokens instead of disabling the plugin's reset (which
+     * also drives checkbox/select appearance elsewhere in the app).
      */
+    input:not([type]):focus,
     [type='text']:focus,
     [type='email']:focus,
     [type='url']:focus,

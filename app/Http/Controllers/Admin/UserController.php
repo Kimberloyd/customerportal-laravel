@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\User;
+use App\Services\AccountDeletionService;
 use App\Services\LegacyPasswordHasher;
 use App\Support\AdminUserListing;
 use App\Support\UserAudit;
@@ -28,7 +29,10 @@ class UserController extends Controller
 {
     private const MIN_PASSWORD_LENGTH = 12;
 
-    public function __construct(private readonly AdminUserListing $userListing) {}
+    public function __construct(
+        private readonly AdminUserListing $userListing,
+        private readonly AccountDeletionService $accountDeletion,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -216,14 +220,65 @@ class UserController extends Controller
             return back()->with('error', 'Create or activate another administrator before deleting this account.');
         }
 
-        DB::transaction(function () use ($user, $request) {
-            Customer::where('user_id', $user->id)->update(['user_id' => null]);
-            UserAudit::record($user, 'deleted', "email={$user->email}, role={$user->role}", $request);
-            $user->delete();
-        });
+        $this->accountDeletion->schedule($user, $request);
 
         return redirect()->route('admin.dashboard', ['tab' => 'accounts'])
-            ->with('success', 'Account deleted.');
+            ->with('success', 'Account access was removed. Permanent deletion is scheduled in '.config('account-deletion.retention_days').' days.');
+    }
+
+    public function restore(Request $request, int $user)
+    {
+        $this->requireAdmin();
+
+        $restored = $this->accountDeletion->restore($user, $request);
+
+        return redirect()->route('admin.dashboard', ['tab' => 'accounts'])
+            ->with('success', "{$restored->full_name}'s account was restored.");
+    }
+
+    public function exportData(Request $request, int $user)
+    {
+        $this->requireAdmin();
+
+        $account = User::withTrashed()->findOrFail($user);
+        $report = $this->accountDeletion->export($account, $request);
+        $filename = 'account-data-'.$account->id.'-'.now()->format('Y-m-d').'.json';
+
+        return response()->streamDownload(
+            fn () => print json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
+            $filename,
+            ['Content-Type' => 'application/json'],
+        );
+    }
+
+    public function eraseNow(Request $request, int $user)
+    {
+        $this->requireAdmin();
+
+        $account = User::withTrashed()->findOrFail($user);
+
+        if ($account->id === Auth::id()) {
+            return back()->with('error', 'You cannot erase your current account.');
+        }
+
+        if ($request->string('confirmation')->trim()->toString() !== $account->full_name) {
+            throw ValidationException::withMessages([
+                'confirmation' => 'Enter the account name exactly as shown to confirm permanent erasure.',
+            ]);
+        }
+
+        if (
+            $account->role === 'admin'
+            && $account->is_active
+            && User::where('role', 'admin')->where('is_active', true)->count() <= 1
+        ) {
+            return back()->with('error', 'Create or activate another administrator before erasing this account.');
+        }
+
+        $this->accountDeletion->eraseNow($account, $request);
+
+        return redirect()->route('admin.dashboard', ['tab' => 'accounts'])
+            ->with('success', 'The account and its personal data were permanently erased. Retained business records no longer identify the account holder.');
     }
 
     private function requireAdmin(): void
@@ -390,7 +445,7 @@ class UserController extends Controller
         // Duplicate-email check done proactively (same pattern as
         // Products' SKU uniqueness in Phase 5) rather than reactively
         // catching a DB IntegrityError.
-        $emailTaken = User::where('email', $email)->when($user, fn ($q) => $q->where('id', '!=', $user->id))->exists();
+        $emailTaken = User::withTrashed()->where('email', $email)->when($user, fn ($q) => $q->where('id', '!=', $user->id))->exists();
         if ($emailTaken) {
             throw ValidationException::withMessages(['email' => 'An account with that email already exists. Use a different email address.']);
         }

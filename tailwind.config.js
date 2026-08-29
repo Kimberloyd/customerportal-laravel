@@ -1,6 +1,8 @@
 import defaultTheme from 'tailwindcss/defaultTheme';
 import forms from '@tailwindcss/forms';
 
+const withOpacity = (variable) => `hsl(var(${variable}) / <alpha-value>)`;
+
 /** @type {import('tailwindcss').Config} */
 export default {
     content: [
@@ -19,28 +21,28 @@ export default {
                 display: ['"Playfair Display"', ...defaultTheme.fontFamily.serif],
             },
             colors: {
-                background: 'var(--background)',
-                foreground: 'var(--foreground)',
+                background: withOpacity('--background-hsl'),
+                foreground: withOpacity('--foreground-hsl'),
                 card: {
-                    DEFAULT: 'var(--card)',
-                    foreground: 'var(--card-foreground)',
+                    DEFAULT: withOpacity('--card-hsl'),
+                    foreground: withOpacity('--card-foreground-hsl'),
                 },
-                border: 'var(--border)',
-                ring: 'var(--ring)',
+                border: withOpacity('--border-hsl'),
+                ring: withOpacity('--ring-hsl'),
                 muted: {
-                    DEFAULT: 'var(--muted)',
-                    foreground: 'var(--muted-foreground)',
+                    DEFAULT: withOpacity('--muted-hsl'),
+                    foreground: withOpacity('--muted-foreground-hsl'),
                 },
                 primary: {
-                    DEFAULT: 'var(--primary)',
-                    foreground: 'var(--primary-foreground)',
+                    DEFAULT: withOpacity('--primary-hsl'),
+                    foreground: withOpacity('--primary-foreground-hsl'),
                 },
-                accent: 'var(--accent)',
-                hover: 'var(--hover)',
-                active: 'var(--active)',
-                destructive: 'var(--destructive)',
-                success: 'var(--color-success)',
-                info: 'var(--info)',
+                accent: withOpacity('--accent-hsl'),
+                hover: withOpacity('--hover-hsl'),
+                active: withOpacity('--active-hsl'),
+                destructive: withOpacity('--destructive-hsl'),
+                success: withOpacity('--success-hsl'),
+                info: withOpacity('--info-hsl'),
             },
         },
     },

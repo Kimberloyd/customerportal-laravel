@@ -135,7 +135,6 @@ export function ProductsPanel({ products = [], filters, loading = false }) {
                 loading={loading}
                 skeletonRows={PAGE_SIZE}
                 resizable
-                reorderable
                 emptyState="No products found. Try a different search."
                 emptyStateHeight={PAGE_SIZE * TABLE_ROW_HEIGHT}
             />

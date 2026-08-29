@@ -13,6 +13,7 @@ use App\Support\OrderAudit;
 use App\Support\OrderNotifications;
 use App\Support\PoAttachment;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -32,6 +33,7 @@ class PurchaseOrderController extends Controller
 {
     private const PENDING_STATUSES = [
         PurchaseOrder::STATUS_SUBMITTED,
+        PurchaseOrder::STATUS_REVIEWING,
         PurchaseOrder::STATUS_PARTIAL,
         PurchaseOrder::STATUS_PROCESSING,
     ];
@@ -41,6 +43,10 @@ class PurchaseOrderController extends Controller
     public function index(Request $request): Response
     {
         $customer = CustomerScope::forCurrentUser();
+
+        $customers = $customer
+            ? [['id' => $customer->id, 'company_name' => $customer->company_name]]
+            : Customer::query()->orderBy('company_name')->get(['id', 'company_name'])->toArray();
 
         $search = trim((string) $request->query('search', ''));
         $dateFilter = trim((string) $request->query('date_filter', 'all')) ?: 'all';
@@ -90,7 +96,11 @@ class PurchaseOrderController extends Controller
             $query->whereIn('status', self::PENDING_STATUSES);
         } elseif ($statusFilter === 'partial') {
             $query->whereIn('status', PurchaseOrder::IN_PROGRESS_STATUSES);
-        } elseif (in_array($statusFilter, [PurchaseOrder::STATUS_SUBMITTED, PurchaseOrder::STATUS_COMPLETED], true)) {
+        } elseif ($statusFilter === PurchaseOrder::STATUS_SUBMITTED) {
+            // "Reviewing" is a flavor of "submitted" -- see the model
+            // constant's docblock.
+            $query->whereIn('status', [PurchaseOrder::STATUS_SUBMITTED, PurchaseOrder::STATUS_REVIEWING]);
+        } elseif ($statusFilter === PurchaseOrder::STATUS_COMPLETED) {
             $query->where('status', $statusFilter);
         } else {
             $statusFilter = 'all';
@@ -111,28 +121,23 @@ class PurchaseOrderController extends Controller
                 'end_date' => $endDate,
                 'status' => $statusFilter,
             ],
-        ]);
-    }
-
-    public function create(): Response
-    {
-        $customer = CustomerScope::forCurrentUser();
-
-        $customers = $customer
-            ? [['id' => $customer->id, 'company_name' => $customer->company_name]]
-            : Customer::query()->orderBy('company_name')->get(['id', 'company_name'])->toArray();
-
-        return Inertia::render('PurchaseOrders/Create', [
-            'customers' => $customers,
-            'products' => Inertia::defer(
+            'createOrderCustomers' => $customers,
+            'createOrderProducts' => Inertia::optional(
                 fn () => $this->activeProducts(cached: true)
                     ->sortBy('product_name', SORT_STRING | SORT_FLAG_CASE)
                     ->values()
                     ->all(),
-                'catalog',
             ),
             'lockedCustomerId' => $customer?->id,
+            'openCreateOrder' => $request->boolean('create'),
         ]);
+    }
+
+    public function create(): RedirectResponse
+    {
+        CustomerScope::forCurrentUser();
+
+        return redirect()->route('purchase-orders.index', ['create' => 1]);
     }
 
     public function store(Request $request)
@@ -282,9 +287,7 @@ class PurchaseOrderController extends Controller
             throw $e;
         }
 
-        if ($customer) {
-            OrderNotifications::submitted($order);
-        }
+        OrderNotifications::submitted($order);
 
         PurchaseOrderChanged::dispatch($order->id, 'created');
 
@@ -331,6 +334,7 @@ class PurchaseOrderController extends Controller
         $previousCustomerId = $order->customer_id;
         $attachmentToDeleteAfterCommit = null;
         $newlySavedAttachment = null;
+        $changeSummary = null;
 
         try {
             DB::transaction(function () use (
@@ -338,6 +342,7 @@ class PurchaseOrderController extends Controller
                 $order,
                 &$attachmentToDeleteAfterCommit,
                 &$newlySavedAttachment,
+                &$changeSummary,
             ) {
                 $locked = PurchaseOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
                 $locked->load(['items', 'customer']);
@@ -421,7 +426,8 @@ class PurchaseOrderController extends Controller
                 }
 
                 $locked->save();
-                OrderAudit::record($locked, 'Order Updated', implode(' ', $changes), $request);
+                $changeSummary = implode(' ', $changes);
+                OrderAudit::record($locked, 'Order Updated', $changeSummary, $request);
             });
         } catch (UserActionException $e) {
             if ($newlySavedAttachment) {
@@ -439,6 +445,10 @@ class PurchaseOrderController extends Controller
 
         if ($attachmentToDeleteAfterCommit) {
             PoAttachment::delete($attachmentToDeleteAfterCommit);
+        }
+
+        if ($changeSummary) {
+            OrderNotifications::updated($order, $changeSummary);
         }
 
         PurchaseOrderChanged::dispatch($order->id, 'updated', $previousCustomerId);
@@ -475,6 +485,8 @@ class PurchaseOrderController extends Controller
             return redirect()->route('purchase-orders.show', $order->id)->with('error', $e->getMessage());
         }
 
+        OrderNotifications::completed($order);
+
         PurchaseOrderChanged::dispatch($order->id, 'completed');
 
         return redirect()->route('purchase-orders.index')->with('success', 'Order marked as completed.');
@@ -485,8 +497,10 @@ class PurchaseOrderController extends Controller
         $this->authorizeOrderAccess($order);
         abort_if(Auth::user()->role === 'customer', 403);
 
+        $deliverySummary = null;
+
         try {
-            DB::transaction(function () use ($request, $order) {
+            DB::transaction(function () use ($request, $order, &$deliverySummary) {
                 $locked = PurchaseOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
                 $locked->load('items');
 
@@ -522,10 +536,15 @@ class PurchaseOrderController extends Controller
                 $locked->updateDeliveryStatus();
                 $locked->save();
 
-                OrderAudit::record($locked, 'Fulfillment Updated', implode(' ', $deliveryChanges), $request);
+                $deliverySummary = implode(' ', $deliveryChanges);
+                OrderAudit::record($locked, 'Fulfillment Updated', $deliverySummary, $request);
             });
         } catch (UserActionException $e) {
             return redirect()->route('purchase-orders.show', $order->id)->with('error', $e->getMessage());
+        }
+
+        if ($deliverySummary) {
+            OrderNotifications::fulfillmentUpdated($order, $deliverySummary);
         }
 
         PurchaseOrderChanged::dispatch($order->id, 'fulfillment-updated');
@@ -554,18 +573,25 @@ class PurchaseOrderController extends Controller
             return redirect()->route('purchase-orders.show', $order->id)->with('error', $e->getMessage());
         }
 
+        OrderNotifications::cancelled($order);
+
         PurchaseOrderChanged::dispatch($order->id, 'cancelled');
 
         return redirect()->route('purchase-orders.index')->with('success', 'Order cancelled.');
     }
 
-    public function show(PurchaseOrder $order): Response
+    public function show(Request $request, PurchaseOrder $order): Response
     {
         $this->authorizeOrderAccess($order);
 
+        $isCustomerViewer = Auth::user()->role === 'customer';
+
+        if (! $isCustomerViewer && $order->status === PurchaseOrder::STATUS_SUBMITTED) {
+            $this->markReviewing($order, $request);
+        }
+
         $order->load(['customer', 'items', 'auditLogs.actor']);
 
-        $isCustomerViewer = Auth::user()->role === 'customer';
         $isTerminal = in_array($order->status, PurchaseOrder::TERMINAL_STATUSES, true);
 
         return Inertia::render('PurchaseOrders/Show', [
@@ -612,51 +638,6 @@ class PurchaseOrderController extends Controller
         ]);
     }
 
-    public function print(Request $request, PurchaseOrder $order): Response
-    {
-        $this->authorizeOrderAccess($order);
-
-        $order->load(['customer', 'items', 'auditLogs.actor']);
-
-        $output = strtolower(trim((string) $request->query('output', 'printer')));
-        if (! in_array($output, ['printer', 'pdf'], true)) {
-            $output = 'printer';
-        }
-        $autoPrint = (string) $request->query('auto_print', '1') === '1';
-
-        return Inertia::render('PurchaseOrders/Print', [
-            'output' => $output,
-            'autoPrint' => $autoPrint,
-            'order' => [
-                'id' => $order->id,
-                'po_number' => $order->po_number,
-                'submitted_at' => $order->submitted_at?->toIso8601String(),
-                'updated_at' => $order->updated_at?->toIso8601String(),
-                'status' => $order->status,
-                'remarks' => $order->remarks,
-                'total' => $order->total,
-                'customer' => [
-                    'name' => $order->customer->company_name,
-                ],
-                'items' => $order->items->map(fn (PurchaseOrderItem $item) => [
-                    'id' => $item->id,
-                    'display_name' => $item->display_name,
-                    'quantity' => $item->quantity,
-                    'delivered_quantity' => $item->delivered_quantity,
-                    'pending_quantity' => $item->pending_quantity,
-                    'unit_price' => $item->unit_price,
-                    'line_total' => $item->line_total,
-                ]),
-                'audit_logs' => $order->auditLogs->map(fn ($audit) => [
-                    'created_at' => $audit->created_at?->toIso8601String(),
-                    'action' => $audit->action,
-                    'details' => $audit->details,
-                    'remarks' => $audit->remarks,
-                ]),
-            ],
-        ]);
-    }
-
     public function attachment(PurchaseOrder $order): StreamedResponse
     {
         $this->authorizeOrderAccess($order);
@@ -697,6 +678,41 @@ class PurchaseOrderController extends Controller
 
         if ($customer && $order->customer_id !== $customer->id) {
             abort(403);
+        }
+    }
+
+    /**
+     * Flips a submitted order to "reviewing" the first time a staff
+     * member opens it. Guarded by a locked, status-scoped update so two
+     * staff opening the same order at once only produce one transition
+     * and one audit row -- and mutates the caller's $order in place so
+     * show() renders the new status without a second query.
+     */
+    private function markReviewing(PurchaseOrder $order, Request $request): void
+    {
+        $transitioned = DB::transaction(function () use ($order, $request) {
+            $locked = PurchaseOrder::whereKey($order->id)
+                ->where('status', PurchaseOrder::STATUS_SUBMITTED)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $locked) {
+                return false;
+            }
+
+            $locked->status = PurchaseOrder::STATUS_REVIEWING;
+            $locked->save();
+
+            OrderAudit::record($locked, 'Order Reviewing', 'A staff member opened this order for review.', $request);
+
+            $order->status = $locked->status;
+            $order->updated_at = $locked->updated_at;
+
+            return true;
+        });
+
+        if ($transitioned) {
+            PurchaseOrderChanged::dispatch($order->id, 'reviewing');
         }
     }
 
