@@ -75,7 +75,51 @@ class DashboardTest extends TestCase
                 ->has('companyDashboard.recent_activity', 0));
     }
 
-    public function test_customer_sees_the_empty_dashboard_without_needing_a_customer_link(): void
+    public function test_customer_sees_a_dashboard_scoped_to_their_orders(): void
+    {
+        $user = User::factory()->create(['role' => 'customer']);
+        $customer = Customer::create([
+            'user_id' => $user->id,
+            'company_name' => 'Customer Hospital',
+            'is_active' => true,
+        ]);
+        $otherCustomer = Customer::create([
+            'company_name' => 'Other Hospital',
+            'is_active' => true,
+        ]);
+
+        $submitted = $this->createOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now()->subHours(4));
+        $partial = $this->createOrder($customer, PurchaseOrder::STATUS_PARTIAL, now()->subHours(3), 10, 4);
+        $readyToConfirm = $this->createOrder($customer, PurchaseOrder::STATUS_COMPLETED, now()->subHours(2), 5, 5);
+        $readyToConfirm->completed_at = now()->subHour();
+        $readyToConfirm->save();
+        $received = $this->createOrder($customer, PurchaseOrder::STATUS_COMPLETED, now()->subHour(), 3, 3);
+        $received->completed_at = now()->subMinutes(30);
+        $received->customer_received_at = now()->subMinutes(15);
+        $received->save();
+        $this->createOrder($otherCustomer, PurchaseOrder::STATUS_SUBMITTED, now());
+
+        $this->actingAsUser($user)->get('/dashboard')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Dashboard')
+                ->missing('companyDashboard')
+                ->where('customerDashboard.linked', true)
+                ->where('customerDashboard.customer_name', 'Customer Hospital')
+                ->where('customerDashboard.summary.active', 2)
+                ->where('customerDashboard.summary.in_progress', 1)
+                ->where('customerDashboard.summary.ready_to_confirm', 1)
+                ->where('customerDashboard.summary.received', 1)
+                ->has('customerDashboard.action_required', 1)
+                ->where('customerDashboard.action_required.0.id', $readyToConfirm->id)
+                ->has('customerDashboard.active_orders', 2)
+                ->where('customerDashboard.active_orders.0.id', $partial->id)
+                ->where('customerDashboard.active_orders.1.id', $submitted->id)
+                ->has('customerDashboard.recent_orders', 4)
+                ->where('customerDashboard.recent_orders.0.id', $received->id));
+    }
+
+    public function test_customer_without_a_customer_link_sees_setup_guidance(): void
     {
         $customer = User::factory()->create(['role' => 'customer']);
 
@@ -83,7 +127,12 @@ class DashboardTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Dashboard')
-                ->missing('companyDashboard'));
+                ->missing('companyDashboard')
+                ->where('customerDashboard.linked', false)
+                ->where('customerDashboard.summary.active', 0)
+                ->has('customerDashboard.action_required', 0)
+                ->has('customerDashboard.active_orders', 0)
+                ->has('customerDashboard.recent_orders', 0));
     }
 
     private function createOrder(

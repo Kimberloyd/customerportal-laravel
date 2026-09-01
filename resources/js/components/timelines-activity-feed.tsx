@@ -6,7 +6,7 @@ import {
   PencilLineIcon,
   XCircleIcon,
 } from "lucide-react";
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 export type OrderActivity = {
   created_at: string | null;
@@ -15,6 +15,14 @@ export type OrderActivity = {
   action: string;
   details: string | null;
   remarks: string | null;
+};
+
+export type TimelineEntry = {
+  key: string;
+  createdAt: string | null;
+  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  tone: string;
+  render: () => ReactNode;
 };
 
 type ActivityStyle = {
@@ -27,7 +35,7 @@ const DEFAULT_STYLE: ActivityStyle = {
   tone: "bg-primary/10 text-primary",
 };
 
-function styleFor(action: string): ActivityStyle {
+export function styleFor(action: string): ActivityStyle {
   const normalized = action.toLocaleLowerCase();
 
   if (normalized.includes("cancel")) {
@@ -104,7 +112,7 @@ function dayLabel(value: string | null): string {
   });
 }
 
-function timeLabel(value: string | null): string {
+export function timeLabel(value: string | null): string {
   if (!value) return "Time unavailable";
 
   const date = new Date(value);
@@ -116,53 +124,55 @@ function timeLabel(value: string | null): string {
   });
 }
 
-function groupActivities(activities: OrderActivity[]) {
-  const groups = new Map<string, { label: string; events: OrderActivity[] }>();
+function groupByDay(entries: TimelineEntry[]) {
+  const groups = new Map<string, { label: string; entries: TimelineEntry[] }>();
 
-  for (const activity of activities) {
-    const key = dateKey(activity.created_at);
+  for (const entry of entries) {
+    const key = dateKey(entry.createdAt);
     const group = groups.get(key) ?? {
-      label: dayLabel(activity.created_at),
-      events: [],
+      label: dayLabel(entry.createdAt),
+      entries: [],
     };
-    group.events.push(activity);
+    group.entries.push(entry);
     groups.set(key, group);
   }
 
   return Array.from(groups.values());
 }
 
-export function OrderActivityFeed({ activities }: { activities: OrderActivity[] }) {
-  if (activities.length === 0) {
+export function Timeline({
+  entries,
+  emptyTitle,
+  emptyDescription,
+}: {
+  entries: TimelineEntry[];
+  emptyTitle: string;
+  emptyDescription: string;
+}) {
+  if (entries.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
-        <p className="text-sm font-medium text-foreground">No updates yet</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Order changes will appear here when they are recorded.
-        </p>
+        <p className="text-sm font-medium text-foreground">{emptyTitle}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{emptyDescription}</p>
       </div>
     );
   }
 
   return (
     <div className="w-full">
-      {groupActivities(activities).map((group) => (
-        <DaySection
-          key={group.label}
-          label={group.label}
-          events={group.events}
-        />
+      {groupByDay(entries).map((group) => (
+        <TimelineDaySection key={group.label} label={group.label} entries={group.entries} />
       ))}
     </div>
   );
 }
 
-function DaySection({
+function TimelineDaySection({
   label,
-  events,
+  entries,
 }: {
   label: string;
-  events: OrderActivity[];
+  entries: TimelineEntry[];
 }) {
   return (
     <section className="mt-6 first:mt-0">
@@ -172,7 +182,7 @@ function DaySection({
         </span>
         <span className="h-px flex-1 bg-border" />
         <span className="text-[11px] tabular-nums text-muted-foreground">
-          {events.length}
+          {entries.length}
         </span>
       </div>
 
@@ -181,66 +191,87 @@ function DaySection({
           aria-hidden="true"
           className="absolute bottom-3 left-[15px] top-3 w-px bg-border"
         />
-        {events.map((activity, index) => {
-          const { Icon, tone } = styleFor(activity.action);
-          const actor = activity.actor_name
-            ? `${activity.actor_name}${activity.actor_role ? ` (${activity.actor_role})` : ""}`
-            : null;
+        {entries.map((entry) => {
+          const Icon = entry.icon;
 
           return (
-            <li
-              key={`${activity.created_at ?? "unknown"}-${activity.action}-${index}`}
-              className="relative py-2.5"
-            >
+            <li key={entry.key} className="relative py-2.5">
               <span
-                className={`absolute -left-8 top-3 z-10 grid size-[30px] place-items-center rounded-full ring-4 ring-background ${tone}`}
+                className={`absolute -left-8 top-3 z-10 grid size-[30px] place-items-center rounded-full ring-4 ring-background ${entry.tone}`}
               >
                 <Icon aria-hidden="true" className="size-3.5" />
               </span>
 
               <article className="rounded-xl border border-border bg-card px-4 py-3">
-                <div className="flex items-start gap-3">
-                  <span className="grid size-7 shrink-0 place-items-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground">
-                    {initialsFor(activity)}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                      <h4 className="text-sm font-medium text-foreground">
-                        {activity.action}
-                      </h4>
-                      <time
-                        dateTime={activity.created_at ?? undefined}
-                        className="shrink-0 text-[11px] tabular-nums text-muted-foreground"
-                      >
-                        {timeLabel(activity.created_at)}
-                      </time>
-                    </div>
-
-                    {actor ? (
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {actor}
-                      </p>
-                    ) : null}
-
-                    {activity.details ? (
-                      <p className="mt-2 text-sm text-foreground/85">
-                        {activity.details}
-                      </p>
-                    ) : null}
-
-                    {activity.remarks ? (
-                      <div className="mt-2 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
-                        <span className="font-medium text-foreground">Remarks:</span>{" "}
-                        {activity.remarks}
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
+                {entry.render()}
               </article>
             </li>
           );
         })}
       </ol>
     </section>
+  );
+}
+
+export function OrderActivityFeed({ activities }: { activities: OrderActivity[] }) {
+  const entries: TimelineEntry[] = activities.map((activity, index) => {
+    const { Icon, tone } = styleFor(activity.action);
+    const actor = activity.actor_name
+      ? `${activity.actor_name}${activity.actor_role ? ` (${activity.actor_role})` : ""}`
+      : null;
+
+    return {
+      key: `${activity.created_at ?? "unknown"}-${activity.action}-${index}`,
+      createdAt: activity.created_at,
+      icon: Icon,
+      tone,
+      render: () => (
+        <div className="flex items-start gap-3">
+          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground">
+            {initialsFor(activity)}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <h4 className="text-sm font-medium text-foreground">
+                {activity.action}
+              </h4>
+              <time
+                dateTime={activity.created_at ?? undefined}
+                className="shrink-0 text-[11px] tabular-nums text-muted-foreground"
+              >
+                {timeLabel(activity.created_at)}
+              </time>
+            </div>
+
+            {actor ? (
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {actor}
+              </p>
+            ) : null}
+
+            {activity.details ? (
+              <p className="mt-2 text-sm text-foreground/85">
+                {activity.details}
+              </p>
+            ) : null}
+
+            {activity.remarks ? (
+              <div className="mt-2 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">Remarks:</span>{" "}
+                {activity.remarks}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ),
+    };
+  });
+
+  return (
+    <Timeline
+      entries={entries}
+      emptyTitle="No updates yet"
+      emptyDescription="Order changes will appear here when they are recorded."
+    />
   );
 }

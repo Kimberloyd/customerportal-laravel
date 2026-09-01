@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderAudit;
+use App\Support\CustomerScope;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -13,7 +14,9 @@ class DashboardController extends Controller
     public function index(): Response
     {
         if (Auth::user()->role === 'customer') {
-            return Inertia::render('Dashboard');
+            return Inertia::render('Dashboard', [
+                'customerDashboard' => $this->customerDashboard(),
+            ]);
         }
 
         $today = now()->startOfDay();
@@ -109,6 +112,102 @@ class DashboardController extends Controller
                 'recent_activity' => $recentActivity,
             ],
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function customerDashboard(): array
+    {
+        $customer = CustomerScope::forCurrentUser(required: false);
+
+        if ($customer === null) {
+            return [
+                'linked' => false,
+                'customer_name' => null,
+                'summary' => [
+                    'active' => 0,
+                    'in_progress' => 0,
+                    'ready_to_confirm' => 0,
+                    'received' => 0,
+                ],
+                'action_required' => [],
+                'active_orders' => [],
+                'recent_orders' => [],
+            ];
+        }
+
+        $activeStatuses = [
+            PurchaseOrder::STATUS_SUBMITTED,
+            PurchaseOrder::STATUS_REVIEWING,
+            PurchaseOrder::STATUS_PARTIAL,
+            PurchaseOrder::STATUS_PROCESSING,
+        ];
+        $summary = PurchaseOrder::query()
+            ->where('customer_id', $customer->id)
+            ->selectRaw(
+                'COALESCE(SUM(CASE WHEN status IN (?, ?, ?, ?) THEN 1 ELSE 0 END), 0) as active_orders, '
+                .'COALESCE(SUM(CASE WHEN status IN (?, ?) THEN 1 ELSE 0 END), 0) as in_progress_orders, '
+                .'COALESCE(SUM(CASE WHEN status = ? AND customer_received_at IS NULL THEN 1 ELSE 0 END), 0) as ready_to_confirm, '
+                .'COALESCE(SUM(CASE WHEN customer_received_at IS NOT NULL THEN 1 ELSE 0 END), 0) as received_orders',
+                [
+                    ...$activeStatuses,
+                    PurchaseOrder::STATUS_PARTIAL,
+                    PurchaseOrder::STATUS_PROCESSING,
+                    PurchaseOrder::STATUS_COMPLETED,
+                ],
+            )
+            ->first();
+
+        $orderColumns = [
+            'id', 'po_number', 'customer_id', 'status', 'submitted_at',
+            'updated_at', 'completed_at', 'customer_received_at',
+        ];
+        $orderQuery = fn () => PurchaseOrder::query()
+            ->select($orderColumns)
+            ->with('customer:id,company_name')
+            ->withSum('items as ordered_units', 'quantity')
+            ->withSum('items as delivered_units', 'delivered_quantity')
+            ->where('customer_id', $customer->id);
+
+        $actionRequired = $orderQuery()
+            ->where('status', PurchaseOrder::STATUS_COMPLETED)
+            ->whereNull('customer_received_at')
+            ->orderByDesc('completed_at')
+            ->orderByDesc('id')
+            ->limit(5)
+            ->get()
+            ->map(fn (PurchaseOrder $order) => $this->serializeOrder($order));
+
+        $activeOrders = $orderQuery()
+            ->whereIn('status', $activeStatuses)
+            ->orderByDesc('updated_at')
+            ->orderByDesc('submitted_at')
+            ->orderByDesc('id')
+            ->limit(5)
+            ->get()
+            ->map(fn (PurchaseOrder $order) => $this->serializeOrder($order));
+
+        $recentOrders = $orderQuery()
+            ->orderByDesc('submitted_at')
+            ->orderByDesc('id')
+            ->limit(5)
+            ->get()
+            ->map(fn (PurchaseOrder $order) => $this->serializeOrder($order));
+
+        return [
+            'linked' => true,
+            'customer_name' => $customer->company_name,
+            'summary' => [
+                'active' => (int) ($summary?->active_orders ?? 0),
+                'in_progress' => (int) ($summary?->in_progress_orders ?? 0),
+                'ready_to_confirm' => (int) ($summary?->ready_to_confirm ?? 0),
+                'received' => (int) ($summary?->received_orders ?? 0),
+            ],
+            'action_required' => $actionRequired,
+            'active_orders' => $activeOrders,
+            'recent_orders' => $recentOrders,
+        ];
     }
 
     /**

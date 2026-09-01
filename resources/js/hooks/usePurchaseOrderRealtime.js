@@ -2,8 +2,9 @@ import echo from '@/echo';
 import { router, usePage } from '@inertiajs/react';
 import { useEffect } from 'react';
 
-export function usePurchaseOrderRealtime(orderId = null) {
+export function usePurchaseOrderRealtime(orderId = null, { only, onStart, onFinish } = {}) {
     const userId = usePage().props.auth?.user?.id;
+    const onlyKey = only ? only.join(',') : '';
 
     useEffect(() => {
         if (!echo || !userId) return undefined;
@@ -20,10 +21,13 @@ export function usePurchaseOrderRealtime(orderId = null) {
             refreshTimer = window.setTimeout(() => {
                 router.reload({
                     only:
-                        orderId === null
-                            ? ['orders']
-                            : ['order', 'canManageFulfillment', 'canComplete', 'canCancel'],
+                        only
+                            ?? (orderId === null
+                                ? ['orders']
+                                : ['order', 'canManageFulfillment', 'canComplete', 'canCancel']),
                     preserveScroll: true,
+                    onStart,
+                    onFinish,
                 });
             }, 150);
         };
@@ -35,5 +39,6 @@ export function usePurchaseOrderRealtime(orderId = null) {
             channel.stopListening(eventName, refresh);
             echo.leave(channelName);
         };
-    }, [orderId, userId]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [orderId, userId, onlyKey]);
 }

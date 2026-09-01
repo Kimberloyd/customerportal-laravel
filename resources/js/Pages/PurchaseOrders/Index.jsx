@@ -13,6 +13,12 @@ import { Head, router } from '@inertiajs/react';
 import { ListChecks, MoreHorizontal, Search, SquareArrowOutUpRight } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+const PAGE_SIZE = 10;
+const TABLE_ROW_HEIGHT = 48;
+const HORIZONTAL_SCROLLBAR_HEIGHT = 20;
+const TABLE_VIEWPORT_HEIGHT =
+    (PAGE_SIZE + 1) * TABLE_ROW_HEIGHT + HORIZONTAL_SCROLLBAR_HEIGHT;
+
 export default function Index({
     orders,
     filters,
@@ -202,19 +208,24 @@ export default function Index({
                         columns={columns}
                         getRowId={(order) => String(order.id)}
                         defaultSort={{ key: 'submitted_at', direction: 'desc' }}
-                        className="[&>div]:overflow-hidden"
+                        className="[&>div]:!overflow-x-auto [&>div]:!overflow-y-hidden"
+                        rowHeight={TABLE_ROW_HEIGHT}
+                        height={TABLE_VIEWPORT_HEIGHT}
                         resizable
                         emptyState="No orders found. Try a different search."
+                        emptyStateHeight={PAGE_SIZE * TABLE_ROW_HEIGHT}
                     />
 
-                    <div className="mt-4 flex justify-end">
-                        <Pagination
-                            count={orders.last_page}
-                            page={orders.current_page}
-                            onPageChange={(page) => applyFilters({ page })}
-                            label="Orders pagination"
-                        />
-                    </div>
+                    {orders.last_page > 1 && (
+                        <div className="mt-4 flex justify-end">
+                            <Pagination
+                                count={orders.last_page}
+                                page={orders.current_page}
+                                onPageChange={(page) => applyFilters({ page })}
+                                label="Orders pagination"
+                            />
+                        </div>
+                    )}
                 </>
             </div>
 
