@@ -345,12 +345,9 @@ networks:
   flask:
     external: true
     name: ${FLASK_NETWORK_NAME:-customerportal_default}
-  # The network cloudflared-wtms (the shared Cloudflare Tunnel
-  # container, /workspace/cloudflared/compose.yaml) and Flask's own
-  # `proxy` service are already both on -- same external network,
-  # same env var name (CLOUDFLARE_NETWORK) Flask's docker-compose.yml
-  # already uses, so both stacks agree on the same override if it's
-  # ever set.
+  # The external network used by cloudflared-wtms. The tunnel routes
+  # customerportal.theomeds.com to customerportal-laravel-proxy:8080,
+  # so the proxy must share this network for Docker DNS to resolve its alias.
   cloudflare:
     external: true
-    name: ${CLOUDFLARE_NETWORK:-theomeds-coverage_theomeds}
+    name: ${CLOUDFLARE_NETWORK:-cloudflared_default}
