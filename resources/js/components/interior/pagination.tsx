@@ -10,13 +10,13 @@ const ROLL = { duration: 0.18, ease: EASE } as const;
 const STILL = { duration: 0 } as const;
 
 const slotFor = (digits: number) => Math.max(32, 18 + digits * 8);
-const GAP = 0;
+const GAP = 6;
 
 const range = (from: number, to: number) =>
   Array.from({ length: to - from + 1 }, (_, i) => from + i);
 
 const arrow = (can: boolean) =>
-  `flex h-8 w-8 shrink-0 items-center justify-center border border-muted-foreground/80 bg-background outline-none transition-colors duration-150 focus-visible:bg-primary/[0.06] focus-visible:text-primary focus-visible:shadow-[inset_0_0_0_1px_var(--ring)] disabled:cursor-not-allowed dark:border-white/40 dark:bg-transparent dark:focus-visible:bg-[#93B0FF]/[0.1] dark:focus-visible:text-[#93B0FF] dark:focus-visible:shadow-[inset_0_0_0_1px_#93B0FF] ${
+  `flex h-8 w-8 shrink-0 items-center justify-center border border-border bg-background outline-none transition-colors duration-150 focus-visible:bg-primary/[0.06] focus-visible:text-primary focus-visible:shadow-[inset_0_0_0_1px_var(--ring)] disabled:cursor-not-allowed dark:bg-transparent dark:focus-visible:bg-[#93B0FF]/[0.1] dark:focus-visible:text-[#93B0FF] dark:focus-visible:shadow-[inset_0_0_0_1px_#93B0FF] ${
     can
       ? "text-muted-foreground hover:bg-muted hover:text-foreground dark:text-stone-300 dark:hover:bg-white/10 dark:hover:text-white"
       : "text-muted-foreground/40 dark:text-white/30"
@@ -217,7 +217,7 @@ export function Pagination({
                     key={item}
                     aria-hidden
                     style={{ width: slot }}
-                    className="flex h-8 items-center justify-center border border-muted-foreground/80 bg-background text-[12.5px] text-muted-foreground/70 dark:border-white/40 dark:bg-transparent dark:text-stone-400"
+                    className="flex h-8 items-center justify-center border border-border bg-background text-[12.5px] text-muted-foreground/70 dark:bg-transparent dark:text-stone-400"
                   >
                     &hellip;
                   </li>
@@ -235,7 +235,7 @@ export function Pagination({
                     className={`flex h-8 w-full items-center justify-center border text-[12.5px] tabular-nums outline-none transition-colors duration-150 focus-visible:shadow-[inset_0_0_0_1px_var(--ring)] dark:focus-visible:shadow-[inset_0_0_0_1px_#93B0FF] ${
                       selected
                         ? "border-primary bg-transparent font-medium text-primary-foreground dark:border-[#93B0FF] dark:text-stone-950"
-                        : "border-muted-foreground/80 bg-background text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:bg-primary/[0.06] focus-visible:text-primary dark:border-white/40 dark:bg-transparent dark:text-stone-300 dark:hover:bg-white/10 dark:hover:text-white dark:focus-visible:bg-[#93B0FF]/[0.1] dark:focus-visible:text-[#93B0FF]"
+                        : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:bg-primary/[0.06] focus-visible:text-primary dark:bg-transparent dark:text-stone-300 dark:hover:bg-white/10 dark:hover:text-white dark:focus-visible:bg-[#93B0FF]/[0.1] dark:focus-visible:text-[#93B0FF]"
                     }`}
                   >
                     <motion.span

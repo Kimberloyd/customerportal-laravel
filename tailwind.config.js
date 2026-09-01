@@ -17,7 +17,7 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                sans: ['"Helvetica Now"', 'Helvetica', 'Arial', ...defaultTheme.fontFamily.sans],
                 display: ['"Playfair Display"', ...defaultTheme.fontFamily.serif],
             },
             colors: {

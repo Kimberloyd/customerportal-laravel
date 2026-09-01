@@ -13,7 +13,6 @@ import { Link, router, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import {
     Bell,
-    ChartColumn,
     CheckCheck,
     LayoutDashboard,
     LogOut,
@@ -368,13 +367,17 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                       },
                   ]
                 : []),
+            {
+                key: 'settings',
+                href: route('settings.edit'),
+                active: route().current('settings.*'),
+                label: 'Settings',
+            },
         ],
         [user.role],
     );
 
-    // Everything the header palette can jump to. Reports aren't in navTabs but
-    // are reachable and role-safe (ReportController auto-scopes a customer to
-    // their own orders), so they're worth surfacing here.
+    // Everything the header palette can jump to.
     const commandItems = useMemo(() => {
         const navigate = (routeName) => () => router.visit(route(routeName));
 
@@ -394,22 +397,6 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                 keywords: ['purchase', 'po'],
                 icon: Package,
                 onSelect: navigate('purchase-orders.index'),
-            },
-            {
-                id: 'nav-reports-overview',
-                label: 'Reports Overview',
-                group: 'Navigate',
-                keywords: ['analytics', 'summary', 'charts'],
-                icon: ChartColumn,
-                onSelect: navigate('reports.overview'),
-            },
-            {
-                id: 'nav-reports-orders',
-                label: 'Orders Report',
-                group: 'Navigate',
-                keywords: ['analytics', 'export', 'csv'],
-                icon: ChartColumn,
-                onSelect: navigate('reports.orders'),
             },
             ...(user.role === 'admin'
                 ? [
@@ -691,6 +678,9 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                         </div>
 
                         <div className="mt-3 space-y-1">
+                            <ResponsiveNavLink href={route('settings.edit')}>
+                                Settings
+                            </ResponsiveNavLink>
                             <ResponsiveNavLink
                                 method="post"
                                 href={route('logout.all')}

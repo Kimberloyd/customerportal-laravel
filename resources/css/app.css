@@ -3,6 +3,90 @@
 @tailwind utilities;
 
 @layer base {
+    @font-face {
+        font-family: 'Helvetica Now';
+        src: url('/fonts/Helvetica%20Now/HelveticaNowDisplayLight.otf') format('opentype');
+        font-style: normal;
+        font-weight: 300;
+        font-display: swap;
+    }
+
+    @font-face {
+        font-family: 'Helvetica Now';
+        src: url('/fonts/Helvetica%20Now/HelveticaNowDisplay.otf') format('opentype');
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+    }
+
+    @font-face {
+        font-family: 'Helvetica Now';
+        src: url('/fonts/Helvetica%20Now/HelveticaNowDisplayIt.otf') format('opentype');
+        font-style: italic;
+        font-weight: 400;
+        font-display: swap;
+    }
+
+    @font-face {
+        font-family: 'Helvetica Now';
+        src: url('/fonts/Helvetica%20Now/HelveticaNowDisplayMedium.otf') format('opentype');
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+    }
+
+    @font-face {
+        font-family: 'Helvetica Now';
+        src: url('/fonts/Helvetica%20Now/HelveticaNowDisplayMdIt.otf') format('opentype');
+        font-style: italic;
+        font-weight: 500;
+        font-display: swap;
+    }
+
+    @font-face {
+        font-family: 'Helvetica Now';
+        src: url('/fonts/Helvetica%20Now/HelveticaNowDisplayMedium.otf') format('opentype');
+        font-style: normal;
+        font-weight: 600;
+        font-display: swap;
+    }
+
+    @font-face {
+        font-family: 'Helvetica Now';
+        src: url('/fonts/Helvetica%20Now/HelveticaNowDisplayMdIt.otf') format('opentype');
+        font-style: italic;
+        font-weight: 600;
+        font-display: swap;
+    }
+
+    @font-face {
+        font-family: 'Helvetica Now';
+        src: url('/fonts/Helvetica%20Now/HelveticaNowDisplayBold.otf') format('opentype');
+        font-style: normal;
+        font-weight: 700;
+        font-display: swap;
+    }
+
+    @font-face {
+        font-family: 'Helvetica Now';
+        src: url('/fonts/Helvetica%20Now/HelveticaNowDisplayBdIt.otf') format('opentype');
+        font-style: italic;
+        font-weight: 700;
+        font-display: swap;
+    }
+
+    @font-face {
+        font-family: 'Helvetica Now';
+        src: url('/fonts/Helvetica%20Now/HelveticaNowDisplayBlack.otf') format('opentype');
+        font-style: normal;
+        font-weight: 800 900;
+        font-display: swap;
+    }
+
+    html {
+        @apply font-sans;
+    }
+
     :root {
         /*
          * Keep channel tokens for Tailwind opacity modifiers such as

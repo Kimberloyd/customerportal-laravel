@@ -8,7 +8,6 @@ import { Checkbox } from "@/components/motion/checkbox";
 import { cn } from "@/lib/utils";
 import { EditableCell } from "./editable-cell";
 import { RowHandle } from "./row-handle";
-import { SkeletonRows } from "./skeleton-rows";
 import { TableHeader } from "./table-header";
 import type { HeaderCellRefs, TableProps } from "./types";
 import { useColumnReorder } from "./use-column-reorder";
@@ -54,7 +53,6 @@ export function Table<T>({
   overscan = 10,
   onEndReached,
   loading = false,
-  skeletonRows = 3,
   emptyState = "No data",
   emptyStateHeight,
   className,
@@ -300,14 +298,7 @@ export function Table<T>({
 
           <tbody>
             {sortedRows.length === 0 ? (
-              loading ? (
-                <SkeletonRows
-                  count={Math.max(1, Math.ceil(height / rowHeight))}
-                  columns={orderedColumns}
-                  selectable={selectable}
-                  rowHeight={rowHeight}
-                />
-              ) : (
+              loading ? null : (
                 <tr>
                   <td
                     colSpan={leadColumns + 1}
@@ -398,14 +389,6 @@ export function Table<T>({
                   <tr aria-hidden style={{ height: paddingBottom }}>
                     <td colSpan={leadColumns + 1} />
                   </tr>
-                ) : null}
-                {loading ? (
-                  <SkeletonRows
-                    count={skeletonRows}
-                    columns={orderedColumns}
-                    selectable={selectable}
-                    rowHeight={rowHeight}
-                  />
                 ) : null}
               </>
             )}

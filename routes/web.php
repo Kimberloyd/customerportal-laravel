@@ -10,6 +10,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PublicConversationController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
 
 // Matches Flask's dashboard_bp, which handles both "/" and "/dashboard"
@@ -82,6 +83,11 @@ Route::middleware('auth')->prefix('messages')->name('messages.')->group(function
 Route::middleware('auth')->prefix('notifications')->name('notifications.')->group(function () {
     Route::get('/recent', [NotificationController::class, 'recent'])->name('recent');
     Route::post('/mark-all-read', [NotificationController::class, 'markAllRead'])->name('mark-all-read');
+});
+
+Route::middleware('auth')->prefix('settings')->name('settings.')->group(function () {
+    Route::get('/', [SettingsController::class, 'edit'])->name('edit');
+    Route::put('/', [SettingsController::class, 'update'])->name('update');
 });
 
 Route::middleware('auth')->prefix('reports')->name('reports.')->group(function () {
