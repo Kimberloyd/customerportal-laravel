@@ -19,7 +19,7 @@ RUN npm ci --ignore-scripts
 COPY . .
 RUN npm run build
 
-FROM php:8.4-fpm-alpine@sha256:6cb5e4ffa03a7c1b01bb5b120ab3684ef76b75aa5ca417e343936db3f71f419f AS runtime
+FROM php:8.5-fpm-alpine@sha256:0da714a817e3d9a4553eae95cfc4a4785cf45a048d3fc9ef6d580579026ffb2b AS runtime
 
 RUN apk add --no-cache \
         icu-libs \
