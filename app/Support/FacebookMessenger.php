@@ -21,8 +21,9 @@ class FacebookMessenger
     }
 
     /**
-     * @throws MessengerApiException when configured but the send fails
      * @return string|null the Graph API message id, or null when unconfigured
+     *
+     * @throws MessengerApiException when configured but the send fails
      */
     public static function sendReply(CustomerMessage $thread, string $body): ?string
     {
@@ -60,7 +61,13 @@ class FacebookMessenger
             throw new MessengerApiException($message);
         }
 
-        return $response->json('message_id');
+        $messageId = $response->json('message_id');
+
+        if (! is_string($messageId) || $messageId === '') {
+            throw new MessengerApiException('Facebook Messenger accepted the request but did not return a message reference.');
+        }
+
+        return $messageId;
     }
 
     /**

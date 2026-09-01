@@ -68,6 +68,7 @@ export default function Orders({ orders, filters, customers, summary }) {
                             <AnimatedBadge
                                 status={badge.status}
                                 size="sm"
+                                pulse={false}
                                 className="border-0 bg-transparent px-0 shadow-none"
                             >
                                 {badge.label}

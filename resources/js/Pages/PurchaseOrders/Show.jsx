@@ -1,7 +1,9 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import CreateOrderModal from '@/components/CreateOrderModal';
 import { Input } from '@/components/motion/input';
 import { Table } from '@/components/motion/table';
 import { Tooltip } from '@/components/motion/tooltip';
+import { OrderActivityFeed } from '@/components/timelines-activity-feed';
 import { Button } from '@/components/ui/button';
 import { AutoHeightReveal, Modal } from '@/components/interior/modal';
 import { formatDateTime } from '@/utils/orderDisplay';
@@ -10,7 +12,7 @@ import ConfirmationDialog from '@/components/ConfirmationDialog';
 import { usePurchaseOrderRealtime } from '@/hooks/usePurchaseOrderRealtime';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { FileText } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const TABLE_ROW_HEIGHT = 48;
 const TABLE_MAX_HEIGHT = 440;
@@ -27,15 +29,62 @@ function autoTableHeight(rowCount) {
     return Math.min(TABLE_MAX_HEIGHT, (rowCount + 1) * TABLE_ROW_HEIGHT);
 }
 
-export default function Show({ order, isCustomerViewer, canManageFulfillment, canComplete, canCancel }) {
+export default function Show({
+    order,
+    canManageFulfillment,
+    canComplete,
+    canConfirmReceived,
+    canCancel,
+    editOrderCustomers = [],
+    editOrderProducts,
+    lockedCustomerId = null,
+}) {
     usePurchaseOrderRealtime(order.id);
 
     const showDeliverColumn = canManageFulfillment && !order.is_terminal;
     const [attachmentPreviewOpen, setAttachmentPreviewOpen] = useState(false);
     const [pendingAction, setPendingAction] = useState(null);
+    const [actionProcessing, setActionProcessing] = useState(false);
+    const [editOrderOpen, setEditOrderOpen] = useState(false);
+    const [editProductsLoading, setEditProductsLoading] = useState(false);
+    const [editProductsError, setEditProductsError] = useState(false);
     const attachmentUrl = order.has_attachment ? route('purchase-orders.attachment', order.id) : null;
     const attachmentKind = order.attachment_kind;
     const attachmentPreviewable = attachmentKind === 'image' || attachmentKind === 'pdf';
+
+    const loadEditOrderProducts = useCallback(() => {
+        router.reload({
+            only: ['editOrderProducts'],
+            preserveScroll: true,
+            onStart: () => setEditProductsLoading(true),
+            onSuccess: (page) => setEditProductsError(page.props.editOrderProducts === undefined),
+            onError: () => setEditProductsError(true),
+            onFinish: () => setEditProductsLoading(false),
+        });
+    }, []);
+
+    useEffect(() => {
+        if (editOrderOpen) setEditProductsError(false);
+    }, [editOrderOpen]);
+
+    useEffect(() => {
+        if (
+            !editOrderOpen
+            || !order.can_edit_items
+            || editOrderProducts !== undefined
+            || editProductsLoading
+            || editProductsError
+        ) return;
+
+        loadEditOrderProducts();
+    }, [
+        editOrderOpen,
+        editOrderProducts,
+        editProductsError,
+        editProductsLoading,
+        loadEditOrderProducts,
+        order.can_edit_items,
+    ]);
 
     const { data, setData, post, transform, processing } = useForm({
         received: Object.fromEntries(order.items.map((item) => [item.id, 0])),
@@ -71,17 +120,30 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
         setPendingAction('cancel');
     };
 
+    const confirmReceived = () => {
+        setPendingAction('received');
+    };
+
     const confirmPendingAction = () => {
         if (pendingAction === 'fulfillment') {
             confirmFulfillment();
             return;
         }
 
-        const routeName = pendingAction === 'complete'
-            ? 'purchase-orders.complete'
-            : 'purchase-orders.cancel';
+        const routeName = {
+            complete: 'purchase-orders.complete',
+            cancel: 'purchase-orders.cancel',
+            received: 'purchase-orders.confirm-received',
+        }[pendingAction];
+
+        if (!routeName) return;
+
         router.post(route(routeName, order.id), {}, {
-            onFinish: () => setPendingAction(null),
+            onStart: () => setActionProcessing(true),
+            onFinish: () => {
+                setActionProcessing(false);
+                setPendingAction(null);
+            },
         });
     };
 
@@ -98,6 +160,13 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
             description: 'This marks every remaining item as delivered and closes the order. This cannot be undone.',
             confirmLabel: 'Complete order',
             cancelLabel: 'Keep order open',
+            destructive: false,
+        },
+        received: {
+            title: 'Mark this order as received?',
+            description: `Confirm that all items in order ${order.po_number} have arrived. This confirmation cannot be undone.`,
+            confirmLabel: 'Mark as received',
+            cancelLabel: 'Not yet',
             destructive: false,
         },
         cancel: {
@@ -170,42 +239,66 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
 
     const itemRows = order.items;
 
-    const auditLogsRows = useMemo(
-        () => order.audit_logs.map((audit, index) => ({ ...audit, __rowId: String(index) })),
-        [order.audit_logs],
-    );
-
-    const auditLogColumns = useMemo(
-        () => [
-            { key: 'created_at', header: 'Updated At', cell: (audit) => formatDateTime(audit.created_at) },
-            ...(!isCustomerViewer
-                ? [
-                      {
-                          key: 'actor_name',
-                          header: 'By',
-                          cell: (audit) => (audit.actor_name ? `${audit.actor_name} (${audit.actor_role})` : '-'),
-                      },
-                  ]
-                : []),
-            { key: 'action', header: 'Action' },
-            { key: 'details', header: 'Change Details', cell: (audit) => audit.details ?? '-' },
-            { key: 'remarks', header: 'Remarks', cell: (audit) => audit.remarks ?? '-' },
-        ],
-        [isCustomerViewer],
-    );
-
     return (
         <AuthenticatedLayout
             header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    {order.po_number}
-                </h2>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <nav aria-label="Breadcrumb">
+                        <h2 className="flex items-center gap-2 text-xl font-semibold leading-tight">
+                            <Link
+                                href={route('purchase-orders.index')}
+                                className="text-gray-500 transition-colors hover:text-primary"
+                            >
+                                Order
+                            </Link>
+                            <span aria-hidden="true" className="text-gray-400">/</span>
+                            <span aria-current="page" className="text-gray-800">{order.po_number}</span>
+                        </h2>
+                    </nav>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                        {canConfirmReceived && (
+                            <Button
+                                variant="primary"
+                                onClick={confirmReceived}
+                            >
+                                Order Received
+                            </Button>
+                        )}
+                        {canCancel && (
+                            <Button
+                                variant="tertiary"
+                                className="text-red-600 hover:text-red-700"
+                                onClick={cancel}
+                            >
+                                Cancel Order
+                            </Button>
+                        )}
+                        {canComplete && (
+                            <Button
+                                variant="tertiary"
+                                className="text-green-700 hover:text-green-800"
+                                onClick={complete}
+                            >
+                                Mark Completed
+                            </Button>
+                        )}
+                        {order.can_edit_items && (
+                            <Button
+                                type="button"
+                                variant="tertiary"
+                                onClick={() => setEditOrderOpen(true)}
+                            >
+                                Edit Order
+                            </Button>
+                        )}
+                    </div>
+                </div>
             }
         >
             <Head title={order.po_number} />
 
             <div className="mx-auto max-w-7xl space-y-10 px-4 py-8 sm:px-6 lg:px-8">
-                <div className="grid grid-cols-1 divide-y divide-gray-200 rounded-xl border border-gray-200 bg-white sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+                <div className="rounded-xl border border-gray-200 bg-white">
                     <div className="p-6">
                         <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Customer</h3>
                         <p className="mt-2 font-medium text-gray-900">{order.customer.name}</p>
@@ -271,6 +364,14 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
                                 <dt className="w-28 shrink-0 text-gray-500">Last Updated</dt>
                                 <dd className="text-gray-900">{formatDateTime(order.updated_at)}</dd>
                             </div>
+                            {order.customer_received_at && (
+                                <div className="flex gap-2">
+                                    <dt className="w-28 shrink-0 text-gray-500">Order Received</dt>
+                                    <dd className="font-medium text-green-700">
+                                        {formatDateTime(order.customer_received_at)}
+                                    </dd>
+                                </div>
+                            )}
                             {order.remarks && (
                                 <div className="flex gap-2">
                                     <dt className="w-28 shrink-0 text-gray-500">Remarks</dt>
@@ -278,34 +379,6 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
                                 </div>
                             )}
                         </dl>
-                    </div>
-                    <div className="flex flex-wrap items-start justify-end gap-2 p-6">
-                        {canCancel && (
-                            <Button
-                                variant="tertiary"
-                                size="compact"
-                                className="text-red-600 hover:text-red-700"
-                                onClick={cancel}
-                            >
-                                Cancel Order
-                            </Button>
-                        )}
-                        {canComplete && (
-                            <Button
-                                variant="tertiary"
-                                size="compact"
-                                className="text-green-700 hover:text-green-800"
-                                onClick={complete}
-                            >
-                                Mark Completed
-                            </Button>
-                        )}
-                        <Button asChild variant="tertiary" size="compact">
-                            <Link href={route('purchase-orders.edit', order.id)}>Edit Order</Link>
-                        </Button>
-                        <Button asChild variant="ghost" size="compact">
-                            <Link href={route('purchase-orders.index')}>Back to Orders</Link>
-                        </Button>
                     </div>
                 </div>
 
@@ -364,17 +437,25 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
                         <h3 className="text-lg font-semibold text-gray-900">Update History</h3>
                         <p className="text-sm text-gray-500">Remarks and changes recorded by update time.</p>
                     </div>
-                    <Table
-                        data={auditLogsRows}
-                        columns={auditLogColumns}
-                        getRowId={(audit) => audit.__rowId}
-                        className="border-gray-200 [&>div]:overflow-hidden"
-                        height={autoTableHeight(auditLogsRows.length)}
-                        resizable
-                        emptyState="No updates yet. Order changes will appear here."
-                    />
+                    <OrderActivityFeed activities={order.audit_logs} />
                 </div>
             </div>
+
+            <CreateOrderModal
+                open={editOrderOpen}
+                onOpenChange={setEditOrderOpen}
+                customers={editOrderCustomers}
+                products={editOrderProducts ?? []}
+                productsLoading={editProductsLoading || (
+                    order.can_edit_items
+                    && editOrderProducts === undefined
+                    && !editProductsError
+                )}
+                productsError={editProductsError}
+                onRetryProducts={loadEditOrderProducts}
+                lockedCustomerId={lockedCustomerId}
+                initialOrder={order}
+            />
 
             <ConfirmationDialog
                 open={pendingAction !== null}
@@ -385,7 +466,7 @@ export default function Show({ order, isCustomerViewer, canManageFulfillment, ca
                 cancelLabel={confirmationCopy[pendingAction]?.cancelLabel}
                 onConfirm={confirmPendingAction}
                 destructive={confirmationCopy[pendingAction]?.destructive}
-                processing={pendingAction === 'fulfillment' && processing}
+                processing={(pendingAction === 'fulfillment' && processing) || actionProcessing}
             />
         </AuthenticatedLayout>
     );

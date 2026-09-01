@@ -1,87 +1,104 @@
 import { usePage } from '@inertiajs/react';
-import { CircleAlert, CircleCheck, Link2, X } from 'lucide-react';
+import { CircleAlert, CircleCheck, Link2, TriangleAlert, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 const AUTO_DISMISS_MS = 5000;
 
-export default function FlashBanner() {
+const BANNER_STYLES = {
+    success: {
+        icon: CircleCheck,
+        container: 'border-green-200 bg-green-50',
+        content: 'text-green-700',
+        dismiss: 'text-green-700 hover:text-green-900',
+        role: 'status',
+    },
+    error: {
+        icon: CircleAlert,
+        container: 'border-red-200 bg-red-50',
+        content: 'text-red-700',
+        dismiss: 'text-red-700 hover:text-red-900',
+        role: 'alert',
+    },
+    link: {
+        icon: Link2,
+        container: 'border-amber-300 bg-amber-50',
+        content: 'text-amber-800',
+        dismiss: 'text-amber-800 hover:text-amber-950',
+        role: 'status',
+    },
+    warning: {
+        icon: TriangleAlert,
+        container: 'border-amber-300 bg-amber-50',
+        content: 'text-amber-800',
+        dismiss: 'text-amber-800 hover:text-amber-950',
+        role: 'status',
+    },
+};
+
+function BannerRow({ message, variant, onDismiss }) {
+    const style = BANNER_STYLES[variant];
+    const Icon = style.icon;
+
+    return (
+        <div className={`border-y ${style.container}`} role={style.role} aria-live={style.role === 'status' ? 'polite' : undefined}>
+            <div className={`mx-auto flex max-w-7xl items-center justify-between px-4 py-3 text-sm sm:px-6 lg:px-8 ${style.content}`}>
+                <span className="flex items-center gap-2">
+                    <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    {message}
+                </span>
+                <button
+                    type="button"
+                    onClick={onDismiss}
+                    className={`ml-4 shrink-0 ${style.dismiss}`}
+                    aria-label="Dismiss notification"
+                >
+                    <X className="h-4 w-4" />
+                </button>
+            </div>
+        </div>
+    );
+}
+
+export default function FlashBanner({ message = null, variant = 'warning', sticky = true, autoDismiss }) {
     const { flash } = usePage().props;
     const [dismissed, setDismissed] = useState(false);
+    const entries = message
+        ? [{ variant, message }]
+        : [
+            { variant: 'success', message: flash?.success },
+            { variant: 'error', message: flash?.error },
+            { variant: 'link', message: flash?.link },
+        ].filter((entry) => entry.message);
+    const shouldAutoDismiss = autoDismiss ?? (!message && Boolean(flash?.success || flash?.link));
 
     useEffect(() => {
         setDismissed(false);
-    }, [flash?.success, flash?.error, flash?.link]);
+    }, [message, variant, flash?.success, flash?.error, flash?.link]);
 
     useEffect(() => {
-        if (!flash?.success && !flash?.link) {
+        if (!shouldAutoDismiss || entries.length === 0) {
             return;
         }
 
         const timer = setTimeout(() => setDismissed(true), AUTO_DISMISS_MS);
 
         return () => clearTimeout(timer);
-    }, [flash?.success, flash?.link]);
+    }, [shouldAutoDismiss, message, variant, flash?.success, flash?.error, flash?.link]);
 
-    if (dismissed || (!flash?.success && !flash?.error && !flash?.link)) {
+    if (dismissed || entries.length === 0) {
         return null;
     }
 
     return (
-        <div className="sticky top-16 z-30">
-            {flash.success && (
-                <div className="border-y border-green-200 bg-green-50" role="status" aria-live="polite">
-                    <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 text-sm text-green-700 sm:px-6 lg:px-8">
-                        <span className="flex items-center gap-2">
-                            <CircleCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
-                            {flash.success}
-                        </span>
-                        <button
-                            type="button"
-                            onClick={() => setDismissed(true)}
-                            className="ml-4 shrink-0 text-green-700 hover:text-green-900"
-                            aria-label="Dismiss"
-                        >
-                            <X className="h-4 w-4" />
-                        </button>
-                    </div>
-                </div>
-            )}
-            {flash.error && (
-                <div className="border-y border-red-200 bg-red-50" role="alert">
-                    <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 text-sm text-red-700 sm:px-6 lg:px-8">
-                        <span className="flex items-center gap-2">
-                            <CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
-                            {flash.error}
-                        </span>
-                        <button
-                            type="button"
-                            onClick={() => setDismissed(true)}
-                            className="ml-4 shrink-0 text-red-700 hover:text-red-900"
-                            aria-label="Dismiss"
-                        >
-                            <X className="h-4 w-4" />
-                        </button>
-                    </div>
-                </div>
-            )}
-            {flash.link && (
-                <div className="border-y border-amber-300 bg-amber-50" role="status" aria-live="polite">
-                    <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 text-sm text-amber-800 sm:px-6 lg:px-8">
-                        <span className="flex items-center gap-2">
-                            <Link2 className="h-4 w-4 shrink-0" aria-hidden="true" />
-                            {flash.link}
-                        </span>
-                        <button
-                            type="button"
-                            onClick={() => setDismissed(true)}
-                            className="ml-4 shrink-0 text-amber-800 hover:text-amber-950"
-                            aria-label="Dismiss"
-                        >
-                            <X className="h-4 w-4" />
-                        </button>
-                    </div>
-                </div>
-            )}
+        <div className={sticky ? 'sticky top-16 z-30' : undefined}>
+            {entries.map((entry) => (
+                <BannerRow
+                    key={entry.variant}
+                    message={entry.message}
+                    variant={entry.variant}
+                    onDismiss={() => setDismissed(true)}
+                />
+            ))}
         </div>
     );
 }

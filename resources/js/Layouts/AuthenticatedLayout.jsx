@@ -49,7 +49,7 @@ const USER_MENU_ITEMS = [
     },
 ];
 
-export default function AuthenticatedLayout({ header, children }) {
+export default function AuthenticatedLayout({ header, banner, children }) {
     const user = usePage().props.auth.user;
     const { openChat, readSignal, composeOpen, setComposeOpen, setIsAuthenticated } = useChatWidget();
     const reducedMotion = useReducedMotion() ?? false;
@@ -825,6 +825,7 @@ export default function AuthenticatedLayout({ header, children }) {
             />
 
             <FlashBanner />
+            {banner}
 
             {header && (
                 <header className="border-b border-gray-100 bg-white">

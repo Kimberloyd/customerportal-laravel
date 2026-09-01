@@ -31,8 +31,35 @@ class ShowTest extends TestCase
         $response->assertInertia(fn ($page) => $page
             ->component('PurchaseOrders/Show')
             ->where('order.po_number', $order->po_number)
+            ->where('order.customer_id', $customer->id)
+            ->where('order.items.0.product_name', $product->product_name)
+            ->where('editOrderCustomers.0.id', $customer->id)
+            ->where('lockedCustomerId', $customer->id)
+            ->missing('editOrderProducts')
             ->where('isCustomerViewer', true)
         );
+    }
+
+    public function test_edit_modal_loads_the_product_catalog_on_demand(): void
+    {
+        $user = User::factory()->create(['role' => 'customer']);
+        $customer = $this->makeCustomer('Own Co', $user);
+        $product = $this->makeProduct('Searchable product');
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
+            ['product_id' => $product->id, 'quantity' => 2],
+        ]);
+
+        $response = $this->actingAsUser($user)->get("/orders/{$order->id}", [
+            'X-Inertia' => 'true',
+            'X-Inertia-Version' => hash_file('xxh128', public_path('build/manifest.json')),
+            'X-Inertia-Partial-Component' => 'PurchaseOrders/Show',
+            'X-Inertia-Partial-Data' => 'editOrderProducts',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('component', 'PurchaseOrders/Show')
+            ->assertJsonCount(1, 'props.editOrderProducts')
+            ->assertJsonPath('props.editOrderProducts.0.product_name', 'Searchable product');
     }
 
     public function test_non_owning_customer_gets_403(): void

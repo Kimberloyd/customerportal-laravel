@@ -3,7 +3,6 @@
 namespace Tests\Feature\PurchaseOrders;
 
 use App\Models\CustomerMessage;
-use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderNotification;
 use App\Models\User;
@@ -15,10 +14,10 @@ use Tests\TestCase;
 
 class NotificationTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesOrderFixtures;
+    use RefreshDatabase;
 
-    public function test_customer_created_order_produces_one_inbox_message(): void
+    public function test_customer_created_order_produces_a_portal_notification_without_a_chat_message(): void
     {
         $user = User::factory()->create(['role' => 'customer']);
         $customer = $this->makeCustomer('Own Co', $user);
@@ -32,20 +31,13 @@ class NotificationTest extends TestCase
             'quantity' => [1],
         ]);
 
-        $this->assertSame(1, CustomerMessage::count());
-        $message = CustomerMessage::first();
-        $this->assertSame($customer->id, $message->customer_id);
-        $this->assertSame('company', $message->sender_type);
-        $this->assertSame('open', $message->status);
-        $this->assertFalse($message->is_read);
-        $this->assertStringContainsString('Submitted', $message->subject);
-        $this->assertNotNull($message->public_token);
-        $this->assertTrue($message->public_token_expires_at->isFuture());
+        $this->assertSame(0, CustomerMessage::count());
 
-        $record = PurchaseOrderNotification::where('channel', 'inbox')->first();
+        $record = PurchaseOrderNotification::where('channel', 'portal')->first();
         $this->assertNotNull($record);
         $this->assertSame('sent', $record->status);
-        $this->assertSame((string) $message->id, $record->external_reference);
+        $this->assertNull($record->external_reference);
+        $this->assertStringContainsString('received', $record->note);
     }
 
     public function test_customer_created_order_texts_the_customer_when_sms_is_enabled(): void
@@ -99,6 +91,73 @@ class NotificationTest extends TestCase
         $this->assertSame('skipped', $record->status);
     }
 
+    public function test_facebook_is_not_marked_sent_when_messenger_is_not_configured(): void
+    {
+        config([
+            'services.po_notifications.facebook_enabled' => true,
+            'services.facebook.page_access_token' => null,
+        ]);
+        $staff = User::factory()->create(['role' => 'employee']);
+        $customerUser = User::factory()->create(['role' => 'customer']);
+        $customer = $this->makeCustomer('Own Co', $customerUser);
+        $product = $this->makeProduct('Widget');
+
+        $this->makeThread(null, [
+            'assigned_user_id' => $staff->id,
+            'channel' => 'facebook_messenger',
+            'external_sender_id' => 'facebook-recipient',
+        ]);
+
+        $this->actingAsUser($customerUser)->post('/orders', [
+            'po_number' => 'PO-'.uniqid(),
+            'customer_id' => $customer->id,
+            'product_id' => [$product->id],
+            'product_search' => [''],
+            'quantity' => [1],
+        ]);
+
+        $record = PurchaseOrderNotification::where('channel', 'facebook')->first();
+        $this->assertNotNull($record);
+        $this->assertSame('skipped', $record->status);
+        $this->assertStringContainsString('not configured', $record->note);
+        $this->assertSame(1, CustomerMessage::count());
+    }
+
+    public function test_facebook_is_not_marked_sent_without_a_provider_reference(): void
+    {
+        config([
+            'services.po_notifications.facebook_enabled' => true,
+            'services.facebook.page_access_token' => 'test-token',
+        ]);
+        Http::fake([
+            'graph.facebook.com/*' => Http::response([], 200),
+        ]);
+        $staff = User::factory()->create(['role' => 'employee']);
+        $customerUser = User::factory()->create(['role' => 'customer']);
+        $customer = $this->makeCustomer('Own Co', $customerUser);
+        $product = $this->makeProduct('Widget');
+
+        $this->makeThread(null, [
+            'assigned_user_id' => $staff->id,
+            'channel' => 'facebook_messenger',
+            'external_sender_id' => 'facebook-recipient',
+        ]);
+
+        $this->actingAsUser($customerUser)->post('/orders', [
+            'po_number' => 'PO-'.uniqid(),
+            'customer_id' => $customer->id,
+            'product_id' => [$product->id],
+            'product_search' => [''],
+            'quantity' => [1],
+        ]);
+
+        $record = PurchaseOrderNotification::where('channel', 'facebook')->first();
+        $this->assertNotNull($record);
+        $this->assertSame('failed', $record->status);
+        $this->assertStringContainsString('message reference', $record->note);
+        $this->assertSame(1, CustomerMessage::count());
+    }
+
     public function test_staff_created_order_still_notifies_the_customer(): void
     {
         $staff = User::factory()->create(['role' => 'employee']);
@@ -116,8 +175,8 @@ class NotificationTest extends TestCase
         // Order events notify the customer regardless of which side (the
         // customer themself or staff acting on their behalf) triggered
         // them -- a staff-created order is no exception.
-        $this->assertSame(1, CustomerMessage::count());
-        $record = PurchaseOrderNotification::where('channel', 'inbox')->first();
+        $this->assertSame(0, CustomerMessage::count());
+        $record = PurchaseOrderNotification::where('channel', 'portal')->first();
         $this->assertNotNull($record);
         $this->assertSame('sent', $record->status);
     }
@@ -138,14 +197,12 @@ class NotificationTest extends TestCase
             "quantity_{$item->id}" => 8,
         ]);
 
-        $message = CustomerMessage::first();
-        $this->assertNotNull($message);
-        $this->assertStringContainsString('Updated', $message->subject);
+        $this->assertSame(0, CustomerMessage::count());
 
-        $record = PurchaseOrderNotification::where('channel', 'inbox')->first();
+        $record = PurchaseOrderNotification::where('channel', 'portal')->first();
         $this->assertNotNull($record);
         $this->assertSame('sent', $record->status);
-        $this->assertSame((string) $message->id, $record->external_reference);
+        $this->assertNull($record->external_reference);
     }
 
     public function test_fulfillment_update_notifies_the_customer(): void
@@ -162,11 +219,9 @@ class NotificationTest extends TestCase
             "received_{$item->id}" => 2,
         ]);
 
-        $message = CustomerMessage::first();
-        $this->assertNotNull($message);
-        $this->assertStringContainsString('Delivery Updated', $message->subject);
+        $this->assertSame(0, CustomerMessage::count());
 
-        $record = PurchaseOrderNotification::where('channel', 'inbox')->first();
+        $record = PurchaseOrderNotification::where('channel', 'portal')->first();
         $this->assertNotNull($record);
         $this->assertSame('sent', $record->status);
     }
@@ -182,11 +237,9 @@ class NotificationTest extends TestCase
 
         $this->actingAsUser($staff)->post("/orders/{$order->id}/complete");
 
-        $message = CustomerMessage::first();
-        $this->assertNotNull($message);
-        $this->assertStringContainsString('Completed', $message->subject);
+        $this->assertSame(0, CustomerMessage::count());
 
-        $record = PurchaseOrderNotification::where('channel', 'inbox')->first();
+        $record = PurchaseOrderNotification::where('channel', 'portal')->first();
         $this->assertNotNull($record);
         $this->assertSame('sent', $record->status);
     }
@@ -202,11 +255,9 @@ class NotificationTest extends TestCase
 
         $this->actingAsUser($staff)->post("/orders/{$order->id}/cancel");
 
-        $message = CustomerMessage::first();
-        $this->assertNotNull($message);
-        $this->assertStringContainsString('Cancelled', $message->subject);
+        $this->assertSame(0, CustomerMessage::count());
 
-        $record = PurchaseOrderNotification::where('channel', 'inbox')->first();
+        $record = PurchaseOrderNotification::where('channel', 'portal')->first();
         $this->assertNotNull($record);
         $this->assertSame('sent', $record->status);
     }

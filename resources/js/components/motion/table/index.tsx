@@ -219,7 +219,7 @@ export function Table<T>({
   return (
     <div
       className={cn(
-        "w-full overflow-hidden border border-border bg-background text-sm",
+        "w-full overflow-hidden rounded-xl border border-border bg-background text-sm",
         className,
       )}
     >

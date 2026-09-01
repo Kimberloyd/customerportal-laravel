@@ -1,4 +1,7 @@
 export function statusBadge(status) {
+    if (status === 'received') {
+        return { label: 'Order Received', status: 'success' };
+    }
     if (status === 'partial' || status === 'processing') {
         return { label: 'Partial', status: 'warning', pulse: true };
     }

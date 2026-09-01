@@ -21,18 +21,24 @@ class PurchaseOrder extends Model
     // actually built in a later phase; kept identical here so nothing
     // drifts in the meantime.
     public const STATUS_SUBMITTED = 'submitted';
+
     // Not part of the Flask original -- set the first time a staff member
     // (never the customer) opens a submitted order, so the team can see
     // at a glance which new orders someone has already started looking
     // at. Purely informational: it carries no other behavior difference
     // from "submitted" and updateDeliveryStatus() treats it the same way.
     public const STATUS_REVIEWING = 'reviewing';
+
     public const STATUS_PARTIAL = 'partial';
+
     public const STATUS_PROCESSING = 'processing';
+
     public const STATUS_COMPLETED = 'completed';
+
     public const STATUS_CANCELLED = 'cancelled';
 
     public const TERMINAL_STATUSES = [self::STATUS_COMPLETED, self::STATUS_CANCELLED];
+
     public const IN_PROGRESS_STATUSES = [self::STATUS_PARTIAL, self::STATUS_PROCESSING];
 
     protected function casts(): array
@@ -41,6 +47,7 @@ class PurchaseOrder extends Model
             'submitted_at' => 'datetime',
             'updated_at' => 'datetime',
             'completed_at' => 'datetime',
+            'customer_received_at' => 'datetime',
         ];
     }
 
@@ -101,6 +108,7 @@ class PurchaseOrder extends Model
         $totalDelivered = (int) $this->items->sum(fn ($item) => $item->delivered_quantity ?? 0);
 
         if ($totalDelivered <= 0) {
+            $this->completed_at = null;
             // Don't clobber "reviewing" back to "submitted" on an
             // unrelated edit (e.g. changing quantities/remarks) made
             // before fulfillment starts -- that would erase the "someone
@@ -110,6 +118,7 @@ class PurchaseOrder extends Model
             }
         } elseif ($totalDelivered < $totalOrdered) {
             $this->status = self::STATUS_PARTIAL;
+            $this->completed_at = null;
         } else {
             $this->status = self::STATUS_COMPLETED;
             if ($this->completed_at === null) {

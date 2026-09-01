@@ -7,12 +7,14 @@ use App\Exceptions\UserActionException;
 use App\Models\Customer;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
+use App\Models\PurchaseOrderNotification;
 use App\Support\CustomerScope;
 use App\Support\InventoryApiClient;
 use App\Support\OrderAudit;
 use App\Support\OrderNotifications;
 use App\Support\PoAttachment;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -130,6 +132,36 @@ class PurchaseOrderController extends Controller
             ),
             'lockedCustomerId' => $customer?->id,
             'openCreateOrder' => $request->boolean('create'),
+            'canViewMessageLog' => Auth::user()->role === 'admin',
+        ]);
+    }
+
+    public function messageLog(PurchaseOrder $order): JsonResponse
+    {
+        abort_if(Auth::user()->role !== 'admin', 403);
+
+        $entries = PurchaseOrderNotification::query()
+            ->where('purchase_order_id', $order->id)
+            ->whereIn('channel', ['portal', 'sms', 'facebook'])
+            ->latest('created_at')
+            ->latest('id')
+            ->get()
+            ->map(fn (PurchaseOrderNotification $entry) => [
+                'id' => $entry->id,
+                'channel' => $entry->channel,
+                'status' => $entry->status,
+                'recipient' => $entry->recipient,
+                'external_reference' => $entry->external_reference,
+                'note' => $entry->note,
+                'created_at' => $entry->created_at?->toIso8601String(),
+            ]);
+
+        return response()->json([
+            'order' => [
+                'id' => $order->id,
+                'po_number' => $order->po_number,
+            ],
+            'entries' => $entries,
         ]);
     }
 
@@ -294,9 +326,14 @@ class PurchaseOrderController extends Controller
         return redirect()->route('purchase-orders.index')->with('success', 'Order created.');
     }
 
-    public function edit(PurchaseOrder $order): Response
+    public function edit(PurchaseOrder $order): Response|RedirectResponse
     {
         $this->authorizeOrderAccess($order);
+
+        if (in_array($order->status, PurchaseOrder::TERMINAL_STATUSES, true)) {
+            return redirect()->route('purchase-orders.show', $order)
+                ->with('error', "This {$order->status} order can no longer be edited.");
+        }
 
         $order->load(['customer', 'items']);
 
@@ -306,7 +343,6 @@ class PurchaseOrderController extends Controller
             : Customer::query()->orderBy('company_name')->get(['id', 'company_name'])->toArray();
 
         $isTerminal = in_array($order->status, PurchaseOrder::TERMINAL_STATUSES, true);
-
         return Inertia::render('PurchaseOrders/Edit', [
             'order' => [
                 'id' => $order->id,
@@ -332,6 +368,31 @@ class PurchaseOrderController extends Controller
         $this->authorizeOrderAccess($order);
 
         $previousCustomerId = $order->customer_id;
+        $submittedItems = $request->has('items') ? $request->input('items') : null;
+        $availableProducts = collect();
+
+        if (
+            is_array($submittedItems)
+            && ! in_array($order->status, PurchaseOrder::TERMINAL_STATUSES, true)
+        ) {
+            $newProductIds = collect($submittedItems)
+                ->filter(fn ($line) => is_array($line) && empty($line['id']))
+                ->map(fn ($line) => filter_var(
+                    $line['product_id'] ?? null,
+                    FILTER_VALIDATE_INT,
+                    ['options' => ['min_range' => 1]],
+                ))
+                ->filter(fn ($id) => $id !== false)
+                ->unique()
+                ->values();
+
+            if ($newProductIds->isNotEmpty()) {
+                $availableProducts = $this->activeProducts()
+                    ->whereIn('id', $newProductIds->all())
+                    ->keyBy('id');
+            }
+        }
+
         $attachmentToDeleteAfterCommit = null;
         $newlySavedAttachment = null;
         $changeSummary = null;
@@ -343,35 +404,24 @@ class PurchaseOrderController extends Controller
                 &$attachmentToDeleteAfterCommit,
                 &$newlySavedAttachment,
                 &$changeSummary,
+                $submittedItems,
+                $availableProducts,
             ) {
                 $locked = PurchaseOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
                 $locked->load(['items', 'customer']);
 
-                $isTerminal = in_array($locked->status, PurchaseOrder::TERMINAL_STATUSES, true);
+                $canEditItems = ! in_array($locked->status, PurchaseOrder::TERMINAL_STATUSES, true);
+                if (! $canEditItems) {
+                    throw new UserActionException("This {$locked->status} order can no longer be edited.");
+                }
                 $changes = [];
                 $customer = CustomerScope::forCurrentUser();
 
-                if (! $isTerminal) {
+                if ($canEditItems) {
                     $customerId = $customer?->id ?? (int) $request->input('customer_id');
                     $newCustomer = Customer::find($customerId);
                     if (! $newCustomer) {
                         throw new UserActionException('Select a customer from the list.');
-                    }
-
-                    $proposedQuantities = [];
-                    foreach ($locked->items as $item) {
-                        $quantity = (int) $request->input("quantity_{$item->id}", 0);
-                        $delivered = $item->delivered_quantity ?? 0;
-
-                        if ($quantity < 1) {
-                            throw new UserActionException('Enter an ordered quantity of at least 1.');
-                        }
-                        if ($quantity < $delivered) {
-                            throw new UserActionException(
-                                "{$item->display_name} quantity cannot be lower than {$delivered} already delivered."
-                            );
-                        }
-                        $proposedQuantities[$item->id] = $quantity;
                     }
 
                     if ($locked->customer_id !== $newCustomer->id) {
@@ -379,14 +429,10 @@ class PurchaseOrderController extends Controller
                         $locked->customer_id = $newCustomer->id;
                     }
 
-                    foreach ($locked->items as $item) {
-                        $quantity = $proposedQuantities[$item->id];
-                        if ($item->quantity !== $quantity) {
-                            $changes[] = "{$item->display_name} quantity changed from {$item->quantity} to {$quantity}.";
-                            $item->quantity = $quantity;
-                            $item->line_total = $quantity * ($item->unit_price ?? 0);
-                            $item->save();
-                        }
+                    if (is_array($submittedItems)) {
+                        $this->syncOrderItems($locked, $submittedItems, $availableProducts, $changes);
+                    } else {
+                        $this->updateExistingItemQuantities($request, $locked, $changes);
                     }
 
                     $locked->load('items');
@@ -399,7 +445,7 @@ class PurchaseOrderController extends Controller
                     $locked->remarks = $newRemarks;
                 }
 
-                if (! $isTerminal) {
+                if ($canEditItems) {
                     if ($request->boolean('remove_attachment') && $locked->po_file) {
                         $attachmentToDeleteAfterCommit = $locked->po_file;
                         $locked->po_file = null;
@@ -552,6 +598,55 @@ class PurchaseOrderController extends Controller
         return redirect()->route('purchase-orders.show', $order->id)->with('success', 'Delivery quantities updated.');
     }
 
+    public function confirmReceived(Request $request, PurchaseOrder $order): RedirectResponse
+    {
+        $this->authorizeOrderAccess($order);
+        abort_unless(Auth::user()->role === 'customer', 403);
+
+        $confirmed = false;
+
+        try {
+            DB::transaction(function () use ($request, $order, &$confirmed) {
+                $locked = PurchaseOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
+
+                if ($locked->status !== PurchaseOrder::STATUS_COMPLETED) {
+                    throw new UserActionException(
+                        'This order can be marked as received after all items have been delivered.',
+                    );
+                }
+
+                // A retry or double-click must not change the original
+                // acknowledgement time or create another audit entry.
+                if ($locked->customer_received_at !== null) {
+                    return;
+                }
+
+                $locked->customer_received_at = now();
+                $locked->save();
+
+                OrderAudit::record(
+                    $locked,
+                    'Order Received',
+                    'The customer confirmed that the completed order was received.',
+                    $request,
+                );
+                $confirmed = true;
+            });
+        } catch (UserActionException $e) {
+            return redirect()->route('purchase-orders.show', $order->id)->with('error', $e->getMessage());
+        }
+
+        if (! $confirmed) {
+            return redirect()->route('purchase-orders.show', $order->id)
+                ->with('success', 'This order was already marked as received.');
+        }
+
+        PurchaseOrderChanged::dispatch($order->id, 'customer-received');
+
+        return redirect()->route('purchase-orders.show', $order->id)
+            ->with('success', 'Order received. Thank you for confirming delivery.');
+    }
+
     public function cancel(Request $request, PurchaseOrder $order)
     {
         $this->authorizeOrderAccess($order);
@@ -593,15 +688,23 @@ class PurchaseOrderController extends Controller
         $order->load(['customer', 'items', 'auditLogs.actor']);
 
         $isTerminal = in_array($order->status, PurchaseOrder::TERMINAL_STATUSES, true);
+        $canEditItems = ! $isTerminal;
+        $scopedCustomer = CustomerScope::forCurrentUser();
+        $editOrderCustomers = $scopedCustomer
+            ? [['id' => $scopedCustomer->id, 'company_name' => $scopedCustomer->company_name]]
+            : Customer::query()->orderBy('company_name')->get(['id', 'company_name'])->toArray();
 
         return Inertia::render('PurchaseOrders/Show', [
             'order' => [
                 'id' => $order->id,
                 'po_number' => $order->po_number,
+                'customer_id' => $order->customer_id,
                 'submitted_at' => $order->submitted_at?->toIso8601String(),
                 'updated_at' => $order->updated_at?->toIso8601String(),
+                'customer_received_at' => $order->customer_received_at?->toIso8601String(),
                 'status' => $order->status,
                 'is_terminal' => $isTerminal,
+                'can_edit_items' => $canEditItems,
                 'remarks' => $order->remarks,
                 'total' => $order->total,
                 'has_attachment' => (bool) $order->po_file,
@@ -616,6 +719,11 @@ class PurchaseOrderController extends Controller
                 'items' => $order->items->map(fn (PurchaseOrderItem $item) => [
                     'id' => $item->id,
                     'display_name' => $item->display_name,
+                    'product_name' => $item->product_name,
+                    'generic_name' => $item->generic_name,
+                    'dosage' => $item->dosage,
+                    'sku' => $item->sku,
+                    'unit' => $item->unit,
                     'quantity' => $item->quantity,
                     'delivered_quantity' => $item->delivered_quantity,
                     'pending_quantity' => $item->pending_quantity,
@@ -634,7 +742,18 @@ class PurchaseOrderController extends Controller
             'isCustomerViewer' => $isCustomerViewer,
             'canManageFulfillment' => ! $isCustomerViewer,
             'canComplete' => ! $isCustomerViewer && ! $isTerminal,
+            'canConfirmReceived' => $isCustomerViewer
+                && $order->status === PurchaseOrder::STATUS_COMPLETED
+                && $order->customer_received_at === null,
             'canCancel' => ! $isTerminal,
+            'editOrderCustomers' => $editOrderCustomers,
+            'editOrderProducts' => Inertia::optional(
+                fn () => $this->activeProducts(cached: true)
+                    ->sortBy('product_name', SORT_STRING | SORT_FLAG_CASE)
+                    ->values()
+                    ->all(),
+            ),
+            'lockedCustomerId' => $scopedCustomer?->id,
         ]);
     }
 
@@ -669,7 +788,208 @@ class PurchaseOrderController extends Controller
             'delivered_quantity' => (int) $order->items->sum('delivered_quantity'),
             'balance_units' => $order->balance_units,
             'status' => $order->status,
+            'display_status' => $order->customer_received_at ? 'received' : $order->status,
         ];
+    }
+
+    /**
+     * Preserve the legacy edit-page payload while the shared order modal
+     * submits the richer item list used for adding and removing products.
+     *
+     * @param  array<int, string>  $changes
+     */
+    private function updateExistingItemQuantities(
+        Request $request,
+        PurchaseOrder $order,
+        array &$changes,
+    ): void {
+        foreach ($order->items as $item) {
+            $quantity = (int) $request->input("quantity_{$item->id}", 0);
+            $delivered = (int) ($item->delivered_quantity ?? 0);
+
+            if ($quantity < 1) {
+                throw new UserActionException('Enter an ordered quantity of at least 1.');
+            }
+            if ($quantity < $delivered) {
+                throw new UserActionException(
+                    "{$item->display_name} quantity cannot be lower than {$delivered} already delivered."
+                );
+            }
+            if ($item->quantity !== $quantity) {
+                $changes[] = "{$item->display_name} quantity changed from {$item->quantity} to {$quantity}.";
+                $item->quantity = $quantity;
+                $item->line_total = $quantity * ($item->unit_price ?? 0);
+                $item->save();
+            }
+        }
+    }
+
+    /**
+     * Synchronize modal product rows without trusting client-supplied item or
+     * catalogue identifiers. Existing rows must belong to this order, and
+     * new rows must resolve against the current active inventory catalogue.
+     *
+     * @param  array<int, mixed>  $submittedItems
+     * @param  Collection<int, object>  $availableProducts
+     * @param  array<int, string>  $changes
+     */
+    private function syncOrderItems(
+        PurchaseOrder $order,
+        array $submittedItems,
+        Collection $availableProducts,
+        array &$changes,
+    ): void {
+        if ($submittedItems === []) {
+            throw new UserActionException('Keep at least one product in the order.');
+        }
+
+        $existingItems = $order->items->keyBy('id');
+        $existingQuantities = [];
+        $newLines = [];
+
+        foreach (array_values($submittedItems) as $index => $line) {
+            if (! is_array($line)) {
+                throw new UserActionException('One product line could not be read. Remove it and add it again.');
+            }
+
+            $quantity = filter_var(
+                $line['quantity'] ?? null,
+                FILTER_VALIDATE_INT,
+                ['options' => ['min_range' => 1]],
+            );
+            if ($quantity === false) {
+                throw new UserActionException('Enter a whole-number quantity of at least 1 for every product.');
+            }
+
+            $rawItemId = $line['id'] ?? null;
+            if ($rawItemId !== null && $rawItemId !== '') {
+                $itemId = filter_var(
+                    $rawItemId,
+                    FILTER_VALIDATE_INT,
+                    ['options' => ['min_range' => 1]],
+                );
+                $item = $itemId === false ? null : $existingItems->get($itemId);
+
+                if (! $item || array_key_exists($itemId, $existingQuantities)) {
+                    throw new UserActionException(
+                        'One product line no longer matches this order. Refresh the page and try again.',
+                    );
+                }
+
+                $delivered = (int) ($item->delivered_quantity ?? 0);
+                if ($quantity < $delivered) {
+                    throw new UserActionException(
+                        "Keep {$item->display_name} at {$delivered} or more because {$delivered} unit(s) have already been delivered.",
+                    );
+                }
+
+                $existingQuantities[$itemId] = $quantity;
+
+                continue;
+            }
+
+            $productId = filter_var(
+                $line['product_id'] ?? null,
+                FILTER_VALIDATE_INT,
+                ['options' => ['min_range' => 1]],
+            );
+            $product = $productId === false ? null : $availableProducts->get($productId);
+
+            if (! $product) {
+                throw new UserActionException(
+                    'One selected product is no longer available. Remove it and choose another product.',
+                );
+            }
+
+            $newLines[] = [$product, $quantity];
+        }
+
+        $signatures = [];
+        foreach (array_keys($existingQuantities) as $itemId) {
+            $signatures[$this->productSignature($existingItems->get($itemId))] = true;
+        }
+        foreach ($newLines as [$product]) {
+            $signature = $this->productSignature($product);
+            if (isset($signatures[$signature])) {
+                throw new UserActionException(
+                    "{$product->product_name} is already in this order. Increase its quantity instead.",
+                );
+            }
+            $signatures[$signature] = true;
+        }
+
+        foreach ($existingItems as $item) {
+            if (array_key_exists($item->id, $existingQuantities)) {
+                continue;
+            }
+
+            $delivered = (int) ($item->delivered_quantity ?? 0);
+            if ($delivered > 0) {
+                throw new UserActionException(
+                    "{$item->display_name} cannot be removed because {$delivered} unit(s) have already been delivered. Keep this product in the order.",
+                );
+            }
+        }
+
+        foreach ($existingQuantities as $itemId => $quantity) {
+            $item = $existingItems->get($itemId);
+            if ($item->quantity === $quantity) {
+                continue;
+            }
+
+            $changes[] = "{$item->display_name} quantity changed from {$item->quantity} to {$quantity}.";
+            $item->quantity = $quantity;
+            $item->line_total = $quantity * ($item->unit_price ?? 0);
+            $item->save();
+        }
+
+        foreach ($existingItems as $item) {
+            if (array_key_exists($item->id, $existingQuantities)) {
+                continue;
+            }
+
+            $changes[] = "{$item->display_name} removed from the order.";
+            $item->delete();
+        }
+
+        foreach ($newLines as [$product, $quantity]) {
+            $unitPrice = $product->unit_price ?? 0;
+            PurchaseOrderItem::create([
+                'purchase_order_id' => $order->id,
+                'quantity' => $quantity,
+                'delivered_quantity' => 0,
+                'unit_price' => $unitPrice,
+                'line_total' => $quantity * $unitPrice,
+                'product_name' => $product->product_name,
+                'generic_name' => $product->generic_name,
+                'sku' => $product->sku,
+                'unit' => $product->unit,
+                'dosage' => $product->dosage,
+                'description' => $product->description,
+            ]);
+            $changes[] = "{$product->product_name} added with quantity {$quantity}.";
+        }
+
+        $order->unsetRelation('items');
+        $order->load('items');
+    }
+
+    private function productSignature(object $product): string
+    {
+        $sku = strtolower(trim((string) ($product->sku ?? '')));
+        if ($sku !== '') {
+            return "sku:{$sku}";
+        }
+
+        return 'details:'.implode('|', array_map(
+            fn ($value) => strtolower(trim((string) $value)),
+            [
+                $product->product_name ?? '',
+                $product->generic_name ?? '',
+                $product->dosage ?? '',
+                $product->unit ?? '',
+            ],
+        ));
     }
 
     private function authorizeOrderAccess(PurchaseOrder $order): void

@@ -135,6 +135,19 @@ function SuggestionMenu({ menuRef, position, items, activeIndex, onHover, onSele
     );
 }
 
+function isSameProduct(line, product) {
+    if (line.product_id && String(line.product_id) === String(product.id)) return true;
+
+    const lineSku = String(line.sku ?? '').trim().toLowerCase();
+    const productSku = String(product.sku ?? '').trim().toLowerCase();
+    if (lineSku && productSku) return lineSku === productSku;
+
+    return ['product_name', 'generic_name', 'dosage', 'unit'].every(
+        (field) => String(line[field] ?? '').trim().toLowerCase()
+            === String(product[field] ?? '').trim().toLowerCase(),
+    );
+}
+
 export default function CreateOrderModal({
     open,
     onOpenChange,
@@ -144,7 +157,11 @@ export default function CreateOrderModal({
     productsError = false,
     onRetryProducts,
     lockedCustomerId = null,
+    initialOrder = null,
 }) {
+    const isEditing = initialOrder !== null;
+    const canEditItems = !isEditing || Boolean(initialOrder?.can_edit_items);
+    const editDetailsLocked = isEditing && !canEditItems;
     // A locked customer (portal accounts scoped to one customer) skips the
     // Customer step entirely instead of showing it pre-filled and disabled.
     const stepLabels = lockedCustomerId
@@ -174,11 +191,44 @@ export default function CreateOrderModal({
         clearErrors,
         reset,
     } = useForm({
-        customer_id: lockedCustomerId ?? '',
-        po_number: '',
-        remarks: '',
+        customer_id: lockedCustomerId ?? initialOrder?.customer_id ?? '',
+        po_number: initialOrder?.po_number ?? '',
+        remarks: initialOrder?.remarks ?? '',
         po_attachment: null,
+        remove_attachment: false,
     });
+
+    useEffect(() => {
+        if (!open) return;
+
+        setData({
+            customer_id: lockedCustomerId ?? initialOrder?.customer_id ?? '',
+            po_number: initialOrder?.po_number ?? '',
+            remarks: initialOrder?.remarks ?? '',
+            po_attachment: null,
+            remove_attachment: false,
+        });
+        setLines((initialOrder?.items ?? []).map((item) => ({
+            key: String(item.id),
+            item_id: item.id,
+            product_id: null,
+            product_name: item.product_name ?? item.display_name,
+            generic_name: item.generic_name ?? '',
+            dosage: item.dosage ?? '',
+            sku: item.sku ?? '',
+            unit: item.unit ?? '',
+            quantity: item.quantity,
+            delivered_quantity: item.delivered_quantity ?? 0,
+        })));
+        setSelectedLineIds([]);
+        setAttachmentItems([]);
+        setClientErrors({});
+        clearErrors();
+        setCurrentStep(1);
+        setStepperKey((key) => key + 1);
+        // Reinitialize only when this modal opens for a different order.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, initialOrder?.id]);
 
     const clearFieldError = (field) => {
         clearErrors(field);
@@ -245,10 +295,10 @@ export default function CreateOrderModal({
         if (itemErrorKeys.length) clearErrors(...itemErrorKeys);
 
         setLines((current) => {
-            const existing = current.find((line) => line.product_id === product.id);
+            const existing = current.find((line) => isSameProduct(line, product));
             if (existing) {
                 return current.map((line) =>
-                    line.product_id === product.id
+                    line.key === existing.key
                         ? { ...line, quantity: Number(line.quantity) + 1 }
                         : line,
                 );
@@ -263,6 +313,7 @@ export default function CreateOrderModal({
                     generic_name: product.generic_name,
                     dosage: product.dosage,
                     sku: product.sku,
+                    unit: product.unit,
                     quantity: 1,
                 },
             ];
@@ -327,7 +378,8 @@ export default function CreateOrderModal({
                 cell: (line) => (
                     <Input
                         type="number"
-                        min={1}
+                        min={isEditing ? Math.max(1, line.delivered_quantity) : 1}
+                        disabled={editDetailsLocked}
                         value={line.quantity}
                         onChange={(value) => updateQuantity(line.key, value)}
                         classNames={{
@@ -337,23 +389,31 @@ export default function CreateOrderModal({
                     />
                 ),
             },
-            {
-                key: 'actions',
-                header: '',
-                width: '48px',
-                cell: (line) => (
-                    <button
-                        type="button"
-                        onClick={() => setLines((current) => current.filter((item) => item.key !== line.key))}
-                        aria-label={`Remove ${line.product_name}`}
-                        className="grid h-7 w-7 place-items-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800"
-                    >
-                        <Trash2 className="h-4 w-4" />
-                    </button>
-                ),
-            },
+            ...(canEditItems
+                ? [{
+                      key: 'actions',
+                      header: '',
+                      width: '48px',
+                      cell: (line) => (
+                          <button
+                              type="button"
+                              disabled={isEditing && line.item_id && line.delivered_quantity > 0}
+                              onClick={() => setLines((current) => current.filter((item) => item.key !== line.key))}
+                              aria-label={isEditing && line.item_id && line.delivered_quantity > 0
+                                  ? `${line.product_name} cannot be removed because it has delivered units`
+                                  : `Remove ${line.product_name}`}
+                              title={isEditing && line.item_id && line.delivered_quantity > 0
+                                  ? 'Delivered products cannot be removed.'
+                                  : undefined}
+                              className="grid h-7 w-7 place-items-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent"
+                          >
+                              <Trash2 className="h-4 w-4" />
+                          </button>
+                      ),
+                  }]
+                : []),
         ],
-        [],
+        [canEditItems, editDetailsLocked, isEditing],
     );
 
     const validateCustomer = () => {
@@ -371,12 +431,14 @@ export default function CreateOrderModal({
         }
 
         const invalidLine = lines.find(
-            (line) => !Number.isInteger(Number(line.quantity)) || Number(line.quantity) < 1,
+            (line) => !Number.isInteger(Number(line.quantity))
+                || Number(line.quantity) < (isEditing ? Math.max(1, line.delivered_quantity) : 1),
         );
         if (invalidLine) {
+            const minimum = isEditing ? Math.max(1, invalidLine.delivered_quantity) : 1;
             setClientErrors((current) => ({
                 ...current,
-                items: `Enter a quantity of at least 1 for ${invalidLine.product_name}.`,
+                items: `Enter a quantity of at least ${minimum} for ${invalidLine.product_name}.`,
             }));
             return false;
         }
@@ -409,18 +471,42 @@ export default function CreateOrderModal({
     const submit = () => {
         if (processing || !validateCustomer() || !validateProducts() || !validateDetails()) return;
 
-        transform((values) => ({
-            ...values,
-            po_number: values.po_number.trim(),
-            product_id: lines.map((line) => line.product_id),
-            product_search: lines.map((line) => line.product_name),
-            quantity: lines.map((line) => line.quantity),
-        }));
+        transform((values) => {
+            if (isEditing) {
+                return {
+                    _method: 'put',
+                    customer_id: values.customer_id,
+                    remarks: values.remarks,
+                    po_attachment: values.po_attachment,
+                    remove_attachment: values.remove_attachment,
+                    items: lines.map((line) => ({
+                        id: line.item_id,
+                        product_id: line.product_id,
+                        quantity: line.quantity,
+                    })),
+                };
+            }
 
-        post(route('purchase-orders.store'), {
+            return {
+                ...values,
+                po_number: values.po_number.trim(),
+                product_id: lines.map((line) => line.product_id),
+                product_search: lines.map((line) => line.product_name),
+                quantity: lines.map((line) => line.quantity),
+            };
+        });
+
+        const endpoint = isEditing
+            ? route('purchase-orders.update', initialOrder.id)
+            : route('purchase-orders.store');
+
+        post(endpoint, {
             forceFormData: true,
             preserveScroll: true,
-            onSuccess: resetAndClose,
+            onSuccess: (page) => {
+                if (isEditing && page.props.flash?.error) return;
+                resetAndClose();
+            },
             onError: (serverErrors) => {
                 let targetStep = detailsStepIndex;
                 if (!lockedCustomerId && serverErrors.customer_id) targetStep = 1;
@@ -444,9 +530,11 @@ export default function CreateOrderModal({
         <Modal
             open={open}
             onClose={close}
-            title="Create order"
+            title={isEditing ? `Edit ${initialOrder.po_number}` : 'Create order'}
             description={
-                lockedCustomerId
+                isEditing
+                    ? 'Review the existing order details and save your changes.'
+                    : lockedCustomerId
                     ? 'Add products and enter the order details.'
                     : 'Choose a customer, add products, and enter the order details.'
             }
@@ -474,7 +562,9 @@ export default function CreateOrderModal({
                         loading={processing}
                         disabled={currentStep === productsStepIndex && productsLoading}
                     >
-                        {currentStep === totalSteps ? 'Submit order' : 'Continue'}
+                        {currentStep === totalSteps
+                            ? (isEditing ? 'Save changes' : 'Submit order')
+                            : 'Continue'}
                     </Button>
                 </>
             }
@@ -496,6 +586,7 @@ export default function CreateOrderModal({
                         <div ref={customerField.fieldRef} className="relative w-full">
                             <Input
                                 value={customerField.query}
+                                disabled={editDetailsLocked}
                                 onChange={(value) => {
                                     customerField.setQuery(value);
                                     customerField.setActiveIndex(0);
@@ -537,7 +628,7 @@ export default function CreateOrderModal({
 
                 <Step>
                     <div className="space-y-3 pt-2">
-                        {productsError ? (
+                        {canEditItems && (productsError ? (
                             <div className="flex justify-center">
                                 <button
                                     type="button"
@@ -551,6 +642,7 @@ export default function CreateOrderModal({
                             <div ref={productField.fieldRef} className="relative w-full">
                                 <Input
                                     value={productField.query}
+                                    disabled={productsLoading}
                                     onChange={(value) => {
                                         productField.setQuery(value);
                                         productField.setActiveIndex(0);
@@ -578,10 +670,15 @@ export default function CreateOrderModal({
                                     />
                                 )}
                             </div>
+                        ))}
+                        {isEditing && canEditItems && (
+                            <p className="text-xs text-muted-foreground">
+                                Search to add products. Products with delivered units cannot be removed or reduced below the delivered quantity.
+                            </p>
                         )}
                         <div className="flex items-center justify-between text-sm text-muted-foreground">
                             <span>{lines.length} {lines.length === 1 ? 'product' : 'products'}</span>
-                            <div className="flex items-center gap-2">
+                            {canEditItems && <div className="flex items-center gap-2">
                                 <span>{selectedLineIds.length} selected</span>
                                 {selectedLineIds.length > 0 && (
                                     <button
@@ -593,7 +690,7 @@ export default function CreateOrderModal({
                                         <Trash2 className="h-4 w-4" />
                                     </button>
                                 )}
-                            </div>
+                            </div>}
                         </div>
                         <Table
                             data={lines}
@@ -601,11 +698,13 @@ export default function CreateOrderModal({
                             getRowId={(line) => line.key}
                             height={lines.length === 0 ? 160 : Math.min(lines.length * 48 + 52, 304)}
                             resizable
-                            selectable
+                            selectable={canEditItems}
                             selectedRowIds={selectedLineIds}
                             onSelectionChange={setSelectedLineIds}
                             emptyState={
-                                productsError
+                                isEditing
+                                    ? 'No products have been added to this order.'
+                                    : productsError
                                     ? "Couldn't load products."
                                     : productsLoading
                                         ? 'Loading products…'
@@ -629,6 +728,7 @@ export default function CreateOrderModal({
                             <Input
                                 id="create-order-po-number"
                                 type="text"
+                                disabled={isEditing}
                                 value={data.po_number}
                                 onChange={(value) => {
                                     setData('po_number', value);
@@ -638,15 +738,27 @@ export default function CreateOrderModal({
                                 classNames={{ field: 'rounded-md' }}
                             />
                         </div>
-                        <div>
+                        {canEditItems && <div>
                             <label className="mb-1 block text-sm font-medium text-gray-700">
                                 Attachment <span className="font-normal text-gray-400">(optional)</span>
                             </label>
+                            {isEditing && initialOrder.has_attachment && (
+                                <label className="mb-3 flex items-center gap-2 text-sm text-gray-600">
+                                    <input
+                                        type="checkbox"
+                                        checked={data.remove_attachment}
+                                        onChange={(event) => setData('remove_attachment', event.target.checked)}
+                                        className="rounded border-gray-300 text-primary focus:ring-primary"
+                                    />
+                                    Remove existing attachment
+                                </label>
+                            )}
                             <AttachmentUpload
                                 value={attachmentItems}
                                 onValueChange={(items) => {
                                     setAttachmentItems(items);
                                     setData('po_attachment', items[0]?.file ?? null);
+                                    if (items[0]?.file) setData('remove_attachment', false);
                                     clearFieldError('po_attachment');
                                 }}
                                 onFilesRejected={(files, reason) => {
@@ -669,7 +781,7 @@ export default function CreateOrderModal({
                                     {errors.po_attachment ?? clientErrors.po_attachment}
                                 </p>
                             )}
-                        </div>
+                        </div>}
                         <div>
                             <label htmlFor="create-order-remarks" className="mb-1 block text-sm font-medium text-gray-700">
                                 Remarks <span className="font-normal text-gray-400">(optional)</span>
@@ -725,7 +837,10 @@ export default function CreateOrderModal({
                                 <div className="flex items-center justify-between gap-4 px-3 py-2">
                                     <span className="text-gray-500">Attachment</span>
                                     <span className="truncate font-medium text-gray-900">
-                                        {attachmentItems[0]?.name ?? '—'}
+                                        {attachmentItems[0]?.name
+                                            ?? (isEditing && initialOrder.has_attachment && !data.remove_attachment
+                                                ? 'Current attachment'
+                                                : '—')}
                                     </span>
                                 </div>
                                 <div className="flex items-start justify-between gap-4 px-3 py-2">
@@ -737,7 +852,9 @@ export default function CreateOrderModal({
                             </div>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                            Review the details above, then submit to place this order.
+                            {isEditing
+                                ? 'Review the details above, then save your changes.'
+                                : 'Review the details above, then submit to place this order.'}
                         </p>
                     </div>
                 </Step>

@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import CreateOrderModal from '@/components/CreateOrderModal';
+import OrderMessageLogModal from '@/components/OrderMessageLogModal';
 import { Dropdown } from '@/components/interior/dropdown';
 import { Pagination } from '@/components/interior/pagination';
 import { AnimatedBadge } from '@/components/motion/animated-badge';
@@ -9,7 +10,7 @@ import { Input } from '@/components/motion/input';
 import { statusBadge, formatDateTime } from '@/utils/orderDisplay';
 import { usePurchaseOrderRealtime } from '@/hooks/usePurchaseOrderRealtime';
 import { Head, router } from '@inertiajs/react';
-import { MoreHorizontal, Search, SquareArrowOutUpRight } from 'lucide-react';
+import { ListChecks, MoreHorizontal, Search, SquareArrowOutUpRight } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export default function Index({
@@ -19,6 +20,7 @@ export default function Index({
     createOrderProducts,
     lockedCustomerId,
     openCreateOrder = false,
+    canViewMessageLog = false,
 }) {
     usePurchaseOrderRealtime();
 
@@ -26,6 +28,7 @@ export default function Index({
     const [createOrderOpen, setCreateOrderOpen] = useState(openCreateOrder);
     const [productsLoading, setProductsLoading] = useState(false);
     const [productsError, setProductsError] = useState(false);
+    const [messageLogOrder, setMessageLogOrder] = useState(null);
 
     const loadCreateOrderProducts = useCallback(() => {
         router.reload({
@@ -71,6 +74,11 @@ export default function Index({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [search]);
 
+    const goToOrder = useCallback(
+        (order) => router.visit(route('purchase-orders.show', order.id)),
+        [],
+    );
+
     const columns = useMemo(
         () => [
             {
@@ -86,12 +94,13 @@ export default function Index({
                 key: 'status',
                 header: 'Status',
                 cell: (order) => {
-                    const badge = statusBadge(order.status);
+                    const badge = statusBadge(order.display_status ?? order.status);
                     return (
                         <div className="flex justify-start">
                             <AnimatedBadge
                                 status={badge.status}
                                 size="sm"
+                                pulse={false}
                                 className="border-0 bg-transparent px-0 shadow-none"
                             >
                                 {badge.label}
@@ -118,6 +127,14 @@ export default function Index({
                             icon: <SquareArrowOutUpRight />,
                             onSelect: () => goToOrder(order),
                         },
+                        ...(canViewMessageLog
+                            ? [{
+                                value: 'message-log',
+                                label: 'Message Log',
+                                icon: <ListChecks />,
+                                onSelect: () => setMessageLogOrder(order),
+                            }]
+                            : []),
                     ];
 
                     return (
@@ -140,10 +157,8 @@ export default function Index({
                 },
             },
         ],
-        [],
+        [canViewMessageLog, goToOrder],
     );
-
-    const goToOrder = (order) => router.visit(route('purchase-orders.show', order.id));
 
     return (
         <AuthenticatedLayout
@@ -212,6 +227,12 @@ export default function Index({
                 productsError={productsError}
                 onRetryProducts={loadCreateOrderProducts}
                 lockedCustomerId={lockedCustomerId}
+            />
+
+            <OrderMessageLogModal
+                order={messageLogOrder}
+                open={messageLogOrder !== null}
+                onClose={() => setMessageLogOrder(null)}
             />
         </AuthenticatedLayout>
     );

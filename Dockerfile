@@ -2,13 +2,9 @@
 # runtime image. Mirrors the sibling Flask app's Dockerfile conventions
 # (non-root user, minimal runtime layer) -- see /workspace/customerportal/Dockerfile.
 #
-# NOTE: unlike the Flask Dockerfile, these base images are pinned by
-# tag only, not by digest. This sandbox has no registry access to look
-# up the current digest for either image, so a plausible-looking digest
-# would just be a guess dressed up as a fact -- pin these by digest
-# deliberately once a real build has been run and the digest is known,
-# the same way the Flask image documents doing.
-FROM node:20-slim AS assets
+# Keep the readable tag for maintenance while the verified digest makes
+# the build immutable. Refresh both together during a deliberate upgrade.
+FROM node:20-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0 AS assets
 WORKDIR /app
 ARG VITE_REVERB_APP_KEY
 ARG VITE_REVERB_HOST
@@ -18,12 +14,12 @@ ENV VITE_REVERB_APP_KEY=${VITE_REVERB_APP_KEY} \
     VITE_REVERB_HOST=${VITE_REVERB_HOST} \
     VITE_REVERB_PORT=${VITE_REVERB_PORT} \
     VITE_REVERB_SCHEME=${VITE_REVERB_SCHEME}
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json package-lock.json .npmrc ./
+RUN npm ci --ignore-scripts
 COPY . .
 RUN npm run build
 
-FROM php:8.4-fpm-alpine AS runtime
+FROM php:8.4-fpm-alpine@sha256:6cb5e4ffa03a7c1b01bb5b120ab3684ef76b75aa5ca417e343936db3f71f419f AS runtime
 
 RUN apk add --no-cache \
         icu-libs \
@@ -70,9 +66,9 @@ RUN sed -i \
 
 WORKDIR /app
 
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2@sha256:4d71c3c2109c61d5415544264b59ad4087e4c5b7244481723664138fd36d5040 /usr/bin/composer /usr/bin/composer
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-scripts --no-interaction --optimize-autoloader --no-progress
+RUN composer install --no-dev --no-scripts --no-plugins --no-interaction --optimize-autoloader --no-progress
 
 COPY --chown=app:app . .
 COPY --from=assets --chown=app:app /app/public/build ./public/build

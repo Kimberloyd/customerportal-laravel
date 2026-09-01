@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
  * Feeds the header notification bell from purchase_order_notifications --
  * mirrors MessageThread::unreadCount()'s role-based scoping (customers see
  * only their own orders' notifications, staff see every order's), but reads
- * the 'inbox' channel only: that's the one row OrderNotifications writes
+ * the 'portal' channel only: that's the one row OrderNotifications writes
  * per order event regardless of which other channels (email/sms/facebook)
  * also fired for it, so showing only it avoids surfacing the same event
  * three or four times in the same list.
@@ -24,7 +24,7 @@ class OrderNotificationFeed
             ->latest('created_at')
             ->limit($limit)
             ->get()
-            ?? new Collection();
+            ?? new Collection;
     }
 
     /**
@@ -59,7 +59,7 @@ class OrderNotificationFeed
         }
 
         $query = PurchaseOrderNotification::query()
-            ->where('channel', 'inbox')
+            ->where('channel', 'portal')
             ->where('status', 'sent');
 
         if ($user->role === 'customer') {

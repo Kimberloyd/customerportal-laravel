@@ -427,7 +427,11 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
                             navigationLabel={`Jump to a message with ${chat.name}`}
                             className="h-full"
                             viewportClassName="px-3 py-3"
-                            contentClassName="flex min-h-full flex-col justify-end"
+                            contentClassName={`flex min-h-full flex-col ${
+                                !loading && messages.length === 0
+                                    ? 'items-center justify-center text-center'
+                                    : 'justify-end'
+                            }`}
                         >
                             {loading ? (
                                 <p className="px-1 text-sm text-stone-500 dark:text-stone-400">

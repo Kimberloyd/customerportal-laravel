@@ -16,10 +16,10 @@ const range = (from: number, to: number) =>
   Array.from({ length: to - from + 1 }, (_, i) => from + i);
 
 const arrow = (can: boolean) =>
-  `flex h-8 w-8 shrink-0 items-center justify-center border border-stone-300 outline-none transition-colors duration-150 focus-visible:bg-[#4568FF]/[0.06] focus-visible:shadow-[inset_0_0_0_1px_#4568FF] dark:border-white/20 dark:focus-visible:bg-[#93B0FF]/[0.1] dark:focus-visible:shadow-[inset_0_0_0_1px_#93B0FF] ${
+  `flex h-8 w-8 shrink-0 items-center justify-center border border-muted-foreground/80 bg-background outline-none transition-colors duration-150 focus-visible:bg-primary/[0.06] focus-visible:text-primary focus-visible:shadow-[inset_0_0_0_1px_var(--ring)] disabled:cursor-not-allowed dark:border-white/40 dark:bg-transparent dark:focus-visible:bg-[#93B0FF]/[0.1] dark:focus-visible:text-[#93B0FF] dark:focus-visible:shadow-[inset_0_0_0_1px_#93B0FF] ${
     can
-      ? "text-stone-500 hover:bg-stone-100 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-white/[0.06] dark:hover:text-stone-200"
-      : "text-stone-300 dark:text-white/20"
+      ? "text-muted-foreground hover:bg-muted hover:text-foreground dark:text-stone-300 dark:hover:bg-white/10 dark:hover:text-white"
+      : "text-muted-foreground/40 dark:text-white/30"
   }`;
 
 export type PaginationItem = number | "gap-l" | "gap-r";
@@ -194,6 +194,7 @@ export function Pagination({
           type="button"
           aria-label="Previous page"
           aria-disabled={!canPrev}
+          disabled={!canPrev}
           onClick={() => canPrev && pagination.prev()}
           className={arrow(canPrev)}
         >
@@ -206,7 +207,7 @@ export function Pagination({
             animate={{ x: thumbIndex * (slot + GAP) }}
             transition={reduced ? STILL : CELL}
             style={{ width: slot }}
-            className="absolute inset-y-0 left-0 bg-stone-800 dark:bg-stone-100"
+            className="absolute inset-y-0 left-0 bg-primary dark:bg-[#93B0FF]"
           />
           <ol className="relative flex" style={{ gap: GAP }}>
             {items.map((item) => {
@@ -216,7 +217,7 @@ export function Pagination({
                     key={item}
                     aria-hidden
                     style={{ width: slot }}
-                    className="flex h-8 items-center justify-center border border-stone-300 text-[12.5px] text-stone-400 dark:border-white/20 dark:text-stone-500"
+                    className="flex h-8 items-center justify-center border border-muted-foreground/80 bg-background text-[12.5px] text-muted-foreground/70 dark:border-white/40 dark:bg-transparent dark:text-stone-400"
                   >
                     &hellip;
                   </li>
@@ -231,10 +232,10 @@ export function Pagination({
                     aria-label={`Page ${item}`}
                     aria-current={selected ? "page" : undefined}
                     onClick={() => pagination.goTo(item)}
-                    className={`flex h-8 w-full items-center justify-center border text-[12.5px] tabular-nums outline-none transition-colors duration-150 focus-visible:bg-[#4568FF]/[0.06] focus-visible:shadow-[inset_0_0_0_1px_#4568FF] dark:focus-visible:bg-[#93B0FF]/[0.1] dark:focus-visible:shadow-[inset_0_0_0_1px_#93B0FF] ${
+                    className={`flex h-8 w-full items-center justify-center border text-[12.5px] tabular-nums outline-none transition-colors duration-150 focus-visible:shadow-[inset_0_0_0_1px_var(--ring)] dark:focus-visible:shadow-[inset_0_0_0_1px_#93B0FF] ${
                       selected
-                        ? "border-stone-800 font-medium text-white dark:border-stone-100 dark:text-stone-900"
-                        : "border-stone-300 text-stone-500 hover:bg-stone-100 hover:text-stone-800 dark:border-white/20 dark:text-stone-400 dark:hover:bg-white/[0.06] dark:hover:text-stone-200"
+                        ? "border-primary bg-transparent font-medium text-primary-foreground dark:border-[#93B0FF] dark:text-stone-950"
+                        : "border-muted-foreground/80 bg-background text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:bg-primary/[0.06] focus-visible:text-primary dark:border-white/40 dark:bg-transparent dark:text-stone-300 dark:hover:bg-white/10 dark:hover:text-white dark:focus-visible:bg-[#93B0FF]/[0.1] dark:focus-visible:text-[#93B0FF]"
                     }`}
                   >
                     <motion.span
@@ -257,6 +258,7 @@ export function Pagination({
           type="button"
           aria-label="Next page"
           aria-disabled={!canNext}
+          disabled={!canNext}
           onClick={() => canNext && pagination.next()}
           className={arrow(canNext)}
         >

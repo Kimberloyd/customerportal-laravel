@@ -1,3 +1,41 @@
+# Compose reads .env for interpolation, but each container receives only the
+# allowlisted values below. Adding a new secret to .env does not grant it to
+# every PHP process automatically.
+x-laravel-base-environment: &laravel-base-environment
+  APP_NAME: ${APP_NAME:-Customer Portal}
+  APP_ENV: production
+  APP_KEY: ${APP_KEY:?APP_KEY is required}
+  APP_DEBUG: "false"
+  APP_URL: ${APP_URL:-https://customerportal.theomeds.com}
+  APP_LOCALE: ${APP_LOCALE:-en}
+  APP_FALLBACK_LOCALE: ${APP_FALLBACK_LOCALE:-en}
+  APP_MAINTENANCE_DRIVER: ${APP_MAINTENANCE_DRIVER:-file}
+  LOG_CHANNEL: ${LOG_CHANNEL:-stderr}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+
+x-database-environment: &database-environment
+  DB_CONNECTION: ${DB_CONNECTION:-mysql}
+  DB_HOST: ${DB_HOST:-db}
+  DB_PORT: ${DB_PORT:-3306}
+  DB_DATABASE: ${DB_DATABASE:-customer_portal}
+  DB_USERNAME: ${DB_USERNAME:-customer_portal}
+  DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+
+x-redis-environment: &redis-environment
+  REDIS_CLIENT: ${REDIS_CLIENT:-phpredis}
+  REDIS_HOST: ${REDIS_HOST:-redis}
+  REDIS_PASSWORD: ${REDIS_PASSWORD:-null}
+  REDIS_PORT: ${REDIS_PORT:-6379}
+
+x-reverb-environment: &reverb-environment
+  BROADCAST_CONNECTION: ${BROADCAST_CONNECTION:-reverb}
+  REVERB_APP_ID: ${REVERB_APP_ID:?REVERB_APP_ID is required}
+  REVERB_APP_KEY: ${REVERB_APP_KEY:?REVERB_APP_KEY is required}
+  REVERB_APP_SECRET: ${REVERB_APP_SECRET:?REVERB_APP_SECRET is required}
+  REVERB_HOST: ${REVERB_HOST:-reverb}
+  REVERB_PORT: ${REVERB_PORT:-8080}
+  REVERB_SCHEME: ${REVERB_SCHEME:-http}
+
 services:
   app:
     image: customerportal-laravel-app:latest
@@ -8,10 +46,55 @@ services:
         VITE_REVERB_HOST: ${VITE_REVERB_HOST:-}
         VITE_REVERB_PORT: ${VITE_REVERB_PORT:-}
         VITE_REVERB_SCHEME: ${VITE_REVERB_SCHEME:-}
-    env_file:
-      - .env
     environment:
-      APP_ENV: production
+      <<: [*laravel-base-environment, *database-environment, *redis-environment, *reverb-environment]
+      APP_PREVIOUS_KEYS: ${APP_PREVIOUS_KEYS:-}
+      ACCOUNT_DELETION_RETENTION_DAYS: ${ACCOUNT_DELETION_RETENTION_DAYS:-30}
+      DATA_ERASURE_DEADLINE_DAYS: ${DATA_ERASURE_DEADLINE_DAYS:-30}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
+      SESSION_DRIVER: ${SESSION_DRIVER:-cookie}
+      SESSION_LIFETIME: ${SESSION_LIFETIME:-120}
+      SESSION_ENCRYPT: ${SESSION_ENCRYPT:-false}
+      SESSION_SECURE_COOKIE: ${SESSION_SECURE_COOKIE:-true}
+      SESSION_PATH: ${SESSION_PATH:-/}
+      SESSION_DOMAIN: ${SESSION_DOMAIN:-null}
+      CACHE_STORE: ${CACHE_STORE:-file}
+      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-redis}
+      FILESYSTEM_DISK: ${FILESYSTEM_DISK:-local}
+      MAIL_MAILER: ${MAIL_MAILER:-log}
+      MAIL_SCHEME: ${MAIL_SCHEME:-null}
+      MAIL_HOST: ${MAIL_HOST:-127.0.0.1}
+      MAIL_PORT: ${MAIL_PORT:-2525}
+      MAIL_USERNAME: ${MAIL_USERNAME:-null}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-null}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-hello@example.com}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Customer Portal}
+      POSTMARK_API_KEY: ${POSTMARK_API_KEY:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_BUCKET: ${AWS_BUCKET:-}
+      AWS_URL: ${AWS_URL:-}
+      AWS_ENDPOINT: ${AWS_ENDPOINT:-}
+      AWS_USE_PATH_STYLE_ENDPOINT: ${AWS_USE_PATH_STYLE_ENDPOINT:-false}
+      INVENTORY_API_BASE_URL: ${INVENTORY_API_BASE_URL:-https://inventoryapp.theomeds.com/theomeds/inventoryapp/v1}
+      INVENTORY_API_TOKEN: ${INVENTORY_API_TOKEN:?INVENTORY_API_TOKEN is required}
+      PO_NOTIFICATIONS_EMAIL_ENABLED: ${PO_NOTIFICATIONS_EMAIL_ENABLED:-false}
+      PO_NOTIFICATIONS_FACEBOOK_ENABLED: ${PO_NOTIFICATIONS_FACEBOOK_ENABLED:-false}
+      PO_NOTIFICATIONS_SMS_ENABLED: ${PO_NOTIFICATIONS_SMS_ENABLED:-false}
+      PUBLIC_CONVERSATION_LINK_TTL_HOURS: ${PUBLIC_CONVERSATION_LINK_TTL_HOURS:-720}
+      PUBLIC_CONVERSATION_REPLY_MAX_LENGTH: ${PUBLIC_CONVERSATION_REPLY_MAX_LENGTH:-2000}
+      PUBLIC_CONVERSATION_REPLY_WINDOW_SECONDS: ${PUBLIC_CONVERSATION_REPLY_WINDOW_SECONDS:-900}
+      PUBLIC_CONVERSATION_REPLY_LIMIT: ${PUBLIC_CONVERSATION_REPLY_LIMIT:-5}
+      META_MESSENGER_PAGE_ACCESS_TOKEN: ${META_MESSENGER_PAGE_ACCESS_TOKEN:-}
+      META_MESSENGER_APP_SECRET: ${META_MESSENGER_APP_SECRET:-}
+      META_MESSENGER_WEBHOOK_VERIFY_TOKEN: ${META_MESSENGER_WEBHOOK_VERIFY_TOKEN:-}
+      META_MESSENGER_GRAPH_API_VERSION: ${META_MESSENGER_GRAPH_API_VERSION:-v19.0}
+      SEMAPHORE_API_KEY: ${SEMAPHORE_API_KEY:-}
+      SEMAPHORE_SENDER_NAME: ${SEMAPHORE_SENDER_NAME:-}
+      LOGIN_LOCKOUT_THRESHOLD: ${LOGIN_LOCKOUT_THRESHOLD:-5}
+      LOGIN_LOCKOUT_WINDOW_MINUTES: ${LOGIN_LOCKOUT_WINDOW_MINUTES:-15}
     restart: unless-stopped
     volumes:
       - laravel_storage:/app/storage/app/private
@@ -59,10 +142,13 @@ services:
 
   reverb:
     image: customerportal-laravel-app:latest
-    env_file:
-      - .env
     environment:
-      APP_ENV: production
+      <<: [*laravel-base-environment, *redis-environment, *reverb-environment]
+      REVERB_SERVER_HOST: ${REVERB_SERVER_HOST:-0.0.0.0}
+      REVERB_SERVER_PORT: ${REVERB_SERVER_PORT:-8080}
+      REVERB_SERVER_PATH: ${REVERB_SERVER_PATH:-}
+      REVERB_ALLOWED_ORIGINS: ${REVERB_ALLOWED_ORIGINS:?REVERB_ALLOWED_ORIGINS is required}
+      REVERB_SCALING_ENABLED: ${REVERB_SCALING_ENABLED:-false}
     command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
     depends_on:
       app:
@@ -99,10 +185,10 @@ services:
 
   broadcast-worker:
     image: customerportal-laravel-app:latest
-    env_file:
-      - .env
     environment:
-      APP_ENV: production
+      <<: [*laravel-base-environment, *database-environment, *redis-environment, *reverb-environment]
+      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-redis}
+      CACHE_STORE: file
     command: ["php", "artisan", "queue:work", "--queue=broadcasts", "--sleep=1", "--tries=3", "--timeout=60"]
     depends_on:
       app:
@@ -131,7 +217,7 @@ services:
       flask:
 
   redis:
-    image: redis:7-alpine
+    image: redis:7-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
     command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
     restart: unless-stopped
     volumes:
@@ -149,10 +235,14 @@ services:
 
   scheduler:
     image: customerportal-laravel-app:latest
-    env_file:
-      - .env
     environment:
-      APP_ENV: production
+      <<: [*laravel-base-environment, *database-environment]
+      CACHE_STORE: file
+      FILESYSTEM_DISK: ${FILESYSTEM_DISK:-local}
+      ACCOUNT_DELETION_RETENTION_DAYS: ${ACCOUNT_DELETION_RETENTION_DAYS:-30}
+      DATA_ERASURE_DEADLINE_DAYS: ${DATA_ERASURE_DEADLINE_DAYS:-30}
+      INVENTORY_API_BASE_URL: ${INVENTORY_API_BASE_URL:-https://inventoryapp.theomeds.com/theomeds/inventoryapp/v1}
+      INVENTORY_API_TOKEN: ${INVENTORY_API_TOKEN:?INVENTORY_API_TOKEN is required}
     command: ["php", "artisan", "schedule:work"]
     depends_on:
       app:

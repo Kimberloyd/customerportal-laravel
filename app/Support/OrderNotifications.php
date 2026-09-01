@@ -8,7 +8,6 @@ use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderNotification;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 
 /**
  * Ports notify_purchase_order_submitted() from
@@ -17,7 +16,8 @@ use Illuminate\Support\Str;
  * or a staff member created it. Each is wrapped separately so one
  * failing never blocks the others, matching Flask exactly.
  *
- * All four are real: createInboxMessage() is a pure DB write,
+ * All four are real: createPortalNotification() writes the notification
+ * bell record without creating a chat message,
  * sendFacebookSummary() notifies every sales agent who has linked their
  * own Facebook account (see MessageController::widgetFacebookLink -- these
  * Facebook contacts are internal staff, not customers) with who ordered
@@ -29,7 +29,7 @@ use Illuminate\Support\Str;
  *
  * Every other order event (updated, fulfillment updated, completed,
  * cancelled) -- again regardless of which side triggered it -- gets at
- * least the inbox notification below, each written alongside a
+ * least the portal notification below, each written as a
  * PurchaseOrderNotification audit row so the full lifecycle of an order
  * has a queryable notification trail, not just the creation step.
  */
@@ -38,10 +38,10 @@ class OrderNotifications
     public static function submitted(PurchaseOrder $order): void
     {
         try {
-            self::createInboxMessage($order);
+            self::createPortalNotification($order);
         } catch (\Throwable $e) {
-            Log::error("Failed to create purchase order inbox message for {$order->po_number}.", ['exception' => $e]);
-            self::record($order, 'inbox', 'failed', note: $e->getMessage());
+            Log::error("Failed to create purchase order portal notification for {$order->po_number}.", ['exception' => $e]);
+            self::record($order, 'portal', 'failed', note: $e->getMessage());
         }
 
         try {
@@ -68,10 +68,8 @@ class OrderNotifications
 
     public static function updated(PurchaseOrder $order, string $summary): void
     {
-        self::notifyInboxSafely(
+        self::notifyPortalSafely(
             $order,
-            "Order {$order->po_number} Updated",
-            "Your order was updated.\n\nPO Number: {$order->po_number}\n\n{$summary}",
             // The bell shows this alone, without the email's "Order was
             // updated" framing around it -- the change summary itself
             // (e.g. "Widget A quantity changed from 5 to 8.") already says
@@ -84,10 +82,8 @@ class OrderNotifications
 
     public static function fulfillmentUpdated(PurchaseOrder $order, string $summary): void
     {
-        self::notifyInboxSafely(
+        self::notifyPortalSafely(
             $order,
-            "Order {$order->po_number} Delivery Updated",
-            "Your order's delivery was updated.\n\nPO Number: {$order->po_number}\n\n{$summary}",
             $summary,
             'fulfillment update',
         );
@@ -95,12 +91,8 @@ class OrderNotifications
 
     public static function completed(PurchaseOrder $order): void
     {
-        self::notifyInboxSafely(
+        self::notifyPortalSafely(
             $order,
-            "Order {$order->po_number} Completed",
-            "Your order has been completed.\n\n"
-                ."PO Number: {$order->po_number}\n\n"
-                ."All ordered quantities have been delivered.",
             'All ordered quantities have been delivered.',
             'completion',
         );
@@ -108,12 +100,8 @@ class OrderNotifications
 
     public static function cancelled(PurchaseOrder $order): void
     {
-        self::notifyInboxSafely(
+        self::notifyPortalSafely(
             $order,
-            "Order {$order->po_number} Cancelled",
-            "Your order was cancelled.\n\n"
-                ."PO Number: {$order->po_number}\n\n"
-                ."Contact us if you believe this was a mistake.",
             'Order cancelled. Contact us if this was a mistake.',
             'cancellation',
         );
@@ -125,13 +113,13 @@ class OrderNotifications
      * inside submitted(), but never bubbles up and blocks the order
      * action (fulfillment/completion/cancellation) that triggered it.
      */
-    private static function notifyInboxSafely(PurchaseOrder $order, string $subject, string $body, string $bellNote, string $eventLabel): void
+    private static function notifyPortalSafely(PurchaseOrder $order, string $bellNote, string $eventLabel): void
     {
         try {
-            self::notifyInbox($order, $subject, $body, $bellNote);
+            self::notifyPortal($order, $bellNote);
         } catch (\Throwable $e) {
             Log::error("Failed to create purchase order {$eventLabel} notification for {$order->po_number}.", ['exception' => $e]);
-            self::record($order, 'inbox', 'failed', note: $e->getMessage());
+            self::record($order, 'portal', 'failed', note: $e->getMessage());
         }
     }
 
@@ -160,54 +148,25 @@ class OrderNotifications
         ]);
     }
 
-    private static function createInboxMessage(PurchaseOrder $order): void
+    private static function createPortalNotification(PurchaseOrder $order): void
     {
-        self::notifyInbox(
+        self::notifyPortal(
             $order,
-            "Order {$order->po_number} Submitted",
-            "Your order was submitted.\n\n"
-                ."PO Number: {$order->po_number}\n\n"
-                ."Our team has been notified and will review your order shortly.\n"
-                ."You will receive another update once your order is processed.",
             'Order received — we\'ll review it shortly.',
         );
     }
 
     /**
-     * Writes one inbox message for the order's customer and the matching
-     * PurchaseOrderNotification row -- the shared primitive every
+     * Writes one PurchaseOrderNotification row for the notification bell.
+     * It deliberately does not create a CustomerMessage: that model is
+     * reserved for actual portal and Facebook chat conversations.
+     * This is the shared primitive every
      * customer-facing order event (submitted, updated, fulfillment
-     * updated, completed, cancelled) funnels through, so the message
-     * shape and the record it leaves behind stay consistent everywhere.
-     *
-     * $bellNote is deliberately separate from $subject: the email/inbox
-     * subject line reads naturally as "Order PO-XXXX Updated", but the
-     * notification bell shows entries for several different orders
-     * side by side, where a plain state description ("Widget A quantity
-     * changed from 5 to 8.") is more scannable than a repeated verb.
+     * updated, completed, cancelled) funnels through.
      */
-    private static function notifyInbox(PurchaseOrder $order, string $subject, string $body, string $bellNote): void
+    private static function notifyPortal(PurchaseOrder $order, string $bellNote): void
     {
-        $now = now();
-        $ttlHours = (int) config('services.po_notifications.public_conversation_link_ttl_hours', 720);
-
-        $message = CustomerMessage::create([
-            'customer_id' => $order->customer_id,
-            'subject' => $subject,
-            'body' => $body,
-            'sender_type' => 'company',
-            // A system-generated receipt, not a staff reply someone is
-            // waiting to be seen -- shouldn't badge the Chats/notification
-            // icons the way an actual unread message from a person would.
-            'is_read' => true,
-            'public_token' => CustomerMessage::hashPublicToken(Str::random(43)),
-            'public_token_expires_at' => $now->clone()->addHours($ttlHours),
-            'status' => 'open',
-            'created_at' => $now,
-            'updated_at' => $now,
-        ]);
-
-        self::record($order, 'inbox', 'sent', externalReference: (string) $message->id, note: $bellNote);
+        self::record($order, 'portal', 'sent', note: $bellNote);
     }
 
     private static function sendEmail(PurchaseOrder $order): void
@@ -267,6 +226,13 @@ class OrderNotifications
         if (! config('services.po_notifications.facebook_enabled', false)) {
             Log::info("Facebook Messenger notification skipped for {$order->po_number}: feature not enabled in this environment.");
             self::record($order, 'facebook', 'skipped', note: 'feature not enabled in this environment');
+
+            return;
+        }
+
+        if (! FacebookMessenger::isConfigured()) {
+            Log::info("Facebook Messenger notification skipped for {$order->po_number}: Messenger API not configured in this environment.");
+            self::record($order, 'facebook', 'skipped', note: 'Messenger API not configured in this environment');
 
             return;
         }
