@@ -373,6 +373,12 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                 active: route().current('settings.*'),
                 label: 'Settings',
             },
+            {
+                key: 'faq',
+                href: route('faq'),
+                active: route().current('faq'),
+                label: 'FAQ',
+            },
         ],
         [user.role],
     );
@@ -397,6 +403,14 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                 keywords: ['purchase', 'po'],
                 icon: Package,
                 onSelect: navigate('purchase-orders.index'),
+            },
+            {
+                id: 'nav-faq',
+                label: 'Frequently Asked Questions',
+                group: 'Navigate',
+                keywords: ['help', 'faq', 'support', 'questions'],
+                icon: MessageCircle,
+                onSelect: navigate('faq'),
             },
             ...(user.role === 'admin'
                 ? [
@@ -665,6 +679,12 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                         >
                             Dashboard
                         </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            href={route('purchase-orders.index')}
+                            active={route().current('purchase-orders.*')}
+                        >
+                            Orders
+                        </ResponsiveNavLink>
                     </div>
 
                     <div className="border-t border-gray-200 pb-1 pt-4">
@@ -680,6 +700,12 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                         <div className="mt-3 space-y-1">
                             <ResponsiveNavLink href={route('settings.edit')}>
                                 Settings
+                            </ResponsiveNavLink>
+                            <ResponsiveNavLink
+                                href={route('faq')}
+                                active={route().current('faq')}
+                            >
+                                FAQ
                             </ResponsiveNavLink>
                             <ResponsiveNavLink
                                 method="post"
@@ -830,13 +856,14 @@ export default function AuthenticatedLayout({ header, banner, children }) {
             <FooterSimple
                 companyName="Theomeds Marketing Inc."
                 logoSrc="/images/TM Horizontal Lockup_Transparent BG.png"
-                description="Delay is not an Option"
+                description="Delay is not an OPTION"
                 linkGroups={[
                     {
                         heading: 'Navigate',
                         items: [
                             { name: 'Dashboard', url: route('dashboard') },
                             { name: 'Orders', url: route('purchase-orders.index') },
+                            { name: 'FAQ', url: route('faq') },
                         ],
                     },
                 ]}

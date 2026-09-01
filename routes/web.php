@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FacebookWebhookController;
+use App\Http\Controllers\FaqController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PublicConversationController;
@@ -22,6 +23,10 @@ Route::redirect('/', '/dashboard');
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware('auth')
     ->name('dashboard');
+
+Route::get('/faq', [FaqController::class, 'index'])
+    ->middleware('auth')
+    ->name('faq');
 
 Route::middleware('auth')->prefix('orders')->name('purchase-orders.')->group(function () {
     Route::get('/', [PurchaseOrderController::class, 'index'])->name('index');

@@ -39,10 +39,12 @@ class FacebookMessenger
 
         $version = config('services.facebook.graph_api_version', 'v19.0');
         $token = config('services.facebook.page_access_token');
-        $url = "https://graph.facebook.com/{$version}/me/messages?".http_build_query(['access_token' => $token]);
+        $url = "https://graph.facebook.com/{$version}/me/messages";
 
         try {
-            $response = Http::asJson()->timeout(10)->post($url, [
+            // Keep the Page access token out of the URL so it cannot leak
+            // through reverse-proxy access logs or exception URLs.
+            $response = Http::withToken($token)->asJson()->timeout(10)->post($url, [
                 'recipient' => ['id' => $thread->external_sender_id],
                 'messaging_type' => 'RESPONSE',
                 'message' => ['text' => $body],

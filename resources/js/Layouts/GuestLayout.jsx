@@ -1,5 +1,4 @@
 import { Link } from '@inertiajs/react';
-import Typewriter from '../../../components/fancy/text/typewriter';
 
 export default function GuestLayout({ children }) {
     return (
@@ -15,21 +14,13 @@ export default function GuestLayout({ children }) {
                         alt="Theomeds Marketing"
                         className="h-24 w-auto"
                     />
-                </Link>
+                    </Link>
 
-                <div className="relative z-10 flex flex-1 items-center">
-                    <div className="max-w-xl text-left text-4xl font-semibold leading-tight tracking-tight text-gray-900 xl:text-5xl">
-                        Delay is not an{' '}
-                        <Typewriter
-                            text={['option.', 'excuse.', 'alternative.']}
-                            speed={50}
-                            waitTime={2000}
-                            deleteSpeed={30}
-                            className="text-[#00A652]"
-                            cursorClassName="ml-1 text-[#00A652]"
-                        />
+                    <div className="relative z-10 flex flex-1 items-center">
+                        <div className="max-w-xl text-left text-4xl font-semibold leading-tight tracking-tight text-gray-900 xl:text-5xl">
+                            Delay is not an <span className="text-[#00A652]">OPTION</span>.
+                        </div>
                     </div>
-                </div>
 
                 <p className="relative z-10 max-w-lg pb-2 text-left text-lg leading-8 text-gray-600">
                     Sign in to manage purchase orders, account activity, and customer communication.
