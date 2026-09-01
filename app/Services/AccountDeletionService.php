@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Support\UserAudit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Throwable;
@@ -196,8 +197,12 @@ final class AccountDeletionService
             'order_audits_as_actor' => PurchaseOrderAudit::where('actor_user_id', $user->id)->get()->toArray(),
             'login_attempts' => LoginAttempt::where('email', $user->email)->get()->toArray(),
             'security_artifact_counts' => [
-                'sessions' => DB::table('sessions')->where('user_id', $user->id)->count(),
-                'password_reset_tokens' => DB::table('password_reset_tokens')->where('email', $user->email)->count(),
+                'sessions' => $this->countWhereIfTableExists('sessions', 'user_id', $user->id),
+                'password_reset_tokens' => $this->countWhereIfTableExists(
+                    'password_reset_tokens',
+                    'email',
+                    $user->email,
+                ),
             ],
         ];
 
@@ -223,8 +228,12 @@ final class AccountDeletionService
             $email = $locked->email;
 
             $counts = [
-                'sessions_deleted' => DB::table('sessions')->where('user_id', $locked->id)->delete(),
-                'reset_tokens_deleted' => DB::table('password_reset_tokens')->where('email', $email)->delete(),
+                'sessions_deleted' => $this->deleteWhereIfTableExists('sessions', 'user_id', $locked->id),
+                'reset_tokens_deleted' => $this->deleteWhereIfTableExists(
+                    'password_reset_tokens',
+                    'email',
+                    $email,
+                ),
                 'login_attempts_deleted' => LoginAttempt::where('email', $email)->delete(),
                 'customers_detached' => Customer::where('user_id', $locked->id)->update(['user_id' => null]),
                 'conversations_detached' => CustomerMessage::where('assigned_user_id', $locked->id)
@@ -277,8 +286,26 @@ final class AccountDeletionService
 
     private function deleteAuthenticationArtifacts(User $user): void
     {
-        DB::table('sessions')->where('user_id', $user->id)->delete();
-        DB::table('password_reset_tokens')->where('email', $user->email)->delete();
+        $this->deleteWhereIfTableExists('sessions', 'user_id', $user->id);
+        $this->deleteWhereIfTableExists('password_reset_tokens', 'email', $user->email);
+    }
+
+    private function deleteWhereIfTableExists(string $table, string $column, mixed $value): int
+    {
+        if (! Schema::hasTable($table)) {
+            return 0;
+        }
+
+        return DB::table($table)->where($column, $value)->delete();
+    }
+
+    private function countWhereIfTableExists(string $table, string $column, mixed $value): int
+    {
+        if (! Schema::hasTable($table)) {
+            return 0;
+        }
+
+        return DB::table($table)->where($column, $value)->count();
     }
 
     /** @return array<int, int> */

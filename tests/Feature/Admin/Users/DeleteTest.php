@@ -8,6 +8,7 @@ use App\Models\LoginAttempt;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Tests\Concerns\CreatesOrderFixtures;
 use Tests\TestCase;
 
@@ -147,6 +148,30 @@ class DeleteTest extends TestCase
         $admin = User::factory()->admin()->create();
         $target = User::factory()->customer()->create();
         $customer = $this->makeCustomer('Retained Customer', $target);
+
+        $this->actingAsUser($admin)
+            ->delete("/admin/users/{$target->id}/erase-now", [
+                'confirmation' => $target->full_name,
+            ])
+            ->assertSessionHas('success');
+
+        $this->assertNull(User::withTrashed()->find($target->id));
+        $this->assertNull($customer->fresh()->user_id);
+        $this->assertDatabaseHas('data_subject_requests', [
+            'subject_user_id' => null,
+            'request_type' => 'erasure',
+            'status' => 'completed',
+        ]);
+    }
+
+    public function test_formal_erasure_succeeds_when_optional_auth_tables_are_absent(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $target = User::factory()->customer()->create();
+        $customer = $this->makeCustomer('Customer Without Auth Tables', $target);
+
+        Schema::drop('sessions');
+        Schema::drop('password_reset_tokens');
 
         $this->actingAsUser($admin)
             ->delete("/admin/users/{$target->id}/erase-now", [
