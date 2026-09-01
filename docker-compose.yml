@@ -149,6 +149,11 @@ services:
       REVERB_SERVER_PATH: ${REVERB_SERVER_PATH:-}
       REVERB_ALLOWED_ORIGINS: ${REVERB_ALLOWED_ORIGINS:?REVERB_ALLOWED_ORIGINS is required}
       REVERB_SCALING_ENABLED: ${REVERB_SCALING_ENABLED:-false}
+      # Reverb polls Laravel's cache for graceful restart signals. Keep this
+      # process on its writable tmpfs-backed file cache; without an explicit
+      # store Laravel falls back to the database cache and default SQLite
+      # connection because this deliberately isolated service has no DB env.
+      CACHE_STORE: file
     command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
     depends_on:
       app:
