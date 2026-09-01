@@ -10,7 +10,7 @@ class NotificationController extends Controller
     {
         $notifications = OrderNotificationFeed::recent()->map(fn ($notification) => [
             'id' => $notification->id,
-            'note' => $notification->note,
+            'note' => OrderNotificationFeed::messageForCurrentUser($notification),
             'created_at' => $notification->created_at?->toIso8601String(),
             'order_id' => $notification->purchaseOrder?->id,
             'po_number' => $notification->purchaseOrder?->po_number,
