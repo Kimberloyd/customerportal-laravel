@@ -150,6 +150,7 @@ class EditTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
         $target = User::factory()->create(['role' => 'customer']);
         $customer = $this->makeCustomer('Own Co', $target);
+        $originalSessionVersion = $target->session_version;
 
         $this->actingAsUser($admin)->put("/admin/users/{$target->id}", [
             'full_name' => $target->full_name,
@@ -159,6 +160,13 @@ class EditTest extends TestCase
         ]);
 
         $this->assertNull($customer->fresh()->user_id);
+        $this->assertSame($originalSessionVersion + 1, $target->fresh()->session_version);
+
+        $target->refresh();
+        $this->withSession(['session_version' => $originalSessionVersion])
+            ->actingAs($target)
+            ->get('/dashboard')
+            ->assertRedirect(route('login'));
     }
 
     public function test_change_list_audit_details_for_role_and_status(): void

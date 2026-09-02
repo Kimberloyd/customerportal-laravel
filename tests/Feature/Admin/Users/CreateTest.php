@@ -43,15 +43,15 @@ class CreateTest extends TestCase
         $this->assertSame(1, User::count());
     }
 
-    public function test_password_must_be_at_least_twelve_characters(): void
+    public function test_password_must_be_at_least_eight_characters(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
 
         $response = $this->actingAsUser($admin)->post('/admin/users', [
             'full_name' => 'New Guy',
             'email' => 'new@example.com',
-            'password' => 'short1234',
-            'password_confirmation' => 'short1234',
+            'password' => 'short7',
+            'password_confirmation' => 'short7',
             'role' => 'employee',
         ]);
 
@@ -71,6 +71,21 @@ class CreateTest extends TestCase
         ]);
 
         $response->assertSessionHasErrors('password_confirmation');
+    }
+
+    public function test_password_can_include_the_account_holders_name(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAsUser($admin)->post('/admin/users', [
+            'full_name' => 'Juniper Vale',
+            'email' => 'juniper@example.com',
+            'password' => 'JuniperGarden2026!',
+            'password_confirmation' => 'JuniperGarden2026!',
+            'role' => 'employee',
+        ])->assertRedirect(route('admin.dashboard', ['tab' => 'accounts']));
+
+        $this->assertDatabaseHas('users', ['email' => 'juniper@example.com']);
     }
 
     public function test_duplicate_email_rejected(): void

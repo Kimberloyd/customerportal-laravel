@@ -6,6 +6,7 @@ use App\Models\CustomerMessage;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderNotification;
 use App\Models\User;
+use App\Support\OrderNotifications;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -203,6 +204,33 @@ class NotificationTest extends TestCase
         $this->assertNotNull($record);
         $this->assertSame('sent', $record->status);
         $this->assertNull($record->external_reference);
+    }
+
+    public function test_every_order_lifecycle_update_texts_the_customer_when_sms_is_enabled(): void
+    {
+        config(['services.po_notifications.sms_enabled' => true, 'services.semaphore.api_key' => 'test-key']);
+        Http::fake([
+            'api.semaphore.co/*' => Http::response([['message_id' => 1, 'status' => 'Queued']]),
+        ]);
+        $user = User::factory()->create(['role' => 'customer', 'phone' => '09171234567']);
+        $customer = $this->makeCustomer('Acme Co', $user);
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now());
+
+        OrderNotifications::updated($order, 'Quantity updated.');
+        OrderNotifications::fulfillmentUpdated($order, 'Delivery updated.');
+        OrderNotifications::completed($order);
+        OrderNotifications::cancelled($order);
+        OrderNotifications::received($order);
+
+        Http::assertSentCount(5);
+        $this->assertSame(
+            5,
+            PurchaseOrderNotification::query()
+                ->where('purchase_order_id', $order->id)
+                ->where('channel', 'sms')
+                ->where('status', 'sent')
+                ->count(),
+        );
     }
 
     public function test_fulfillment_update_notifies_the_customer(): void

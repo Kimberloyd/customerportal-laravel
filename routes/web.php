@@ -37,6 +37,7 @@ Route::middleware('auth')->prefix('orders')->name('purchase-orders.')->group(fun
     Route::get('/{order}/attachment', [PurchaseOrderController::class, 'attachment'])->name('attachment');
     Route::get('/{order}/edit', [PurchaseOrderController::class, 'edit'])->name('edit');
     Route::put('/{order}', [PurchaseOrderController::class, 'update'])->name('update');
+    Route::delete('/{order}', [PurchaseOrderController::class, 'destroy'])->name('destroy');
     Route::post('/{order}/complete', [PurchaseOrderController::class, 'complete'])->name('complete');
     Route::post('/{order}/receive', [PurchaseOrderController::class, 'receive'])->name('receive');
     Route::post('/{order}/confirm-received', [PurchaseOrderController::class, 'confirmReceived'])

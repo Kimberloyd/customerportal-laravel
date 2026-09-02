@@ -856,7 +856,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
             <FooterSimple
                 companyName="Theomeds Marketing Inc."
                 logoSrc="/images/TM Horizontal Lockup_Transparent BG.png"
-                description="Delay is not an OPTION"
+                description="Delay is not an Option"
                 linkGroups={[
                     {
                         heading: 'Navigate',

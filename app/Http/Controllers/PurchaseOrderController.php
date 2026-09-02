@@ -6,6 +6,7 @@ use App\Events\PurchaseOrderChanged;
 use App\Exceptions\UserActionException;
 use App\Models\Customer;
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderAudit;
 use App\Models\PurchaseOrderItem;
 use App\Models\PurchaseOrderNotification;
 use App\Support\CustomerScope;
@@ -133,6 +134,7 @@ class PurchaseOrderController extends Controller
             'lockedCustomerId' => $customer?->id,
             'openCreateOrder' => $request->boolean('create'),
             'canViewMessageLog' => Auth::user()->role === 'admin',
+            'canDeleteOrders' => Auth::user()->role === 'admin',
         ]);
     }
 
@@ -641,6 +643,8 @@ class PurchaseOrderController extends Controller
                 ->with('success', 'This order was already marked as received.');
         }
 
+        OrderNotifications::received($order);
+
         PurchaseOrderChanged::dispatch($order->id, 'customer-received');
 
         return redirect()->route('purchase-orders.show', $order->id)
@@ -673,6 +677,30 @@ class PurchaseOrderController extends Controller
         PurchaseOrderChanged::dispatch($order->id, 'cancelled');
 
         return redirect()->route('purchase-orders.index')->with('success', 'Order cancelled.');
+    }
+
+    public function destroy(PurchaseOrder $order): RedirectResponse
+    {
+        abort_unless(Auth::user()->role === 'admin', 403);
+
+        $deletedCustomerId = null;
+
+        DB::transaction(function () use ($order, &$deletedCustomerId): void {
+            $locked = PurchaseOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
+            $deletedCustomerId = $locked->customer_id;
+            $attachment = $locked->po_file;
+
+            PurchaseOrderNotification::where('purchase_order_id', $locked->id)->delete();
+            PurchaseOrderAudit::where('purchase_order_id', $locked->id)->delete();
+            PurchaseOrderItem::where('purchase_order_id', $locked->id)->delete();
+            $locked->delete();
+
+            DB::afterCommit(fn () => PoAttachment::delete($attachment));
+        });
+
+        PurchaseOrderChanged::dispatch($order->id, 'deleted', $deletedCustomerId);
+
+        return redirect()->route('purchase-orders.index')->with('success', 'Order deleted permanently.');
     }
 
     public function show(Request $request, PurchaseOrder $order): Response

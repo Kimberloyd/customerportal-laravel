@@ -28,8 +28,8 @@ use Illuminate\Support\Facades\Mail;
  * nobody to notify.
  *
  * Every other order event (updated, fulfillment updated, completed,
- * cancelled) -- again regardless of which side triggered it -- gets at
- * least the portal notification below, each written as a
+ * cancelled, received) -- again regardless of which side triggered it --
+ * gets both a portal notification and an SMS attempt, each written as a
  * PurchaseOrderNotification audit row so the full lifecycle of an order
  * has a queryable notification trail, not just the creation step.
  */
@@ -52,7 +52,7 @@ class OrderNotifications
         }
 
         try {
-            self::sendSms($order);
+            self::sendSms($order, self::smsSummaryBody($order));
         } catch (\Throwable $e) {
             Log::warning("Failed to send purchase order SMS notification for {$order->po_number}.", ['exception' => $e]);
             self::record($order, 'sms', 'failed', note: $e->getMessage());
@@ -68,7 +68,7 @@ class OrderNotifications
 
     public static function updated(PurchaseOrder $order, string $summary): void
     {
-        self::notifyPortalSafely(
+        self::notifyCustomerSafely(
             $order,
             // The bell shows this alone, without the email's "Order was
             // updated" framing around it -- the change summary itself
@@ -77,33 +77,47 @@ class OrderNotifications
             // would only restate what the reader is about to read anyway.
             $summary,
             'update',
+            "Order {$order->po_number} was updated. View your portal for the latest details.",
         );
     }
 
     public static function fulfillmentUpdated(PurchaseOrder $order, string $summary): void
     {
-        self::notifyPortalSafely(
+        self::notifyCustomerSafely(
             $order,
             $summary,
             'fulfillment update',
+            "Order {$order->po_number} delivery was updated. View your portal for the latest details.",
         );
     }
 
     public static function completed(PurchaseOrder $order): void
     {
-        self::notifyPortalSafely(
+        self::notifyCustomerSafely(
             $order,
             'All ordered quantities have been delivered.',
             'completion',
+            "Order {$order->po_number} is complete. All items have been delivered.",
         );
     }
 
     public static function cancelled(PurchaseOrder $order): void
     {
-        self::notifyPortalSafely(
+        self::notifyCustomerSafely(
             $order,
             'Order cancelled. Contact us if this was a mistake.',
             'cancellation',
+            "Order {$order->po_number} was cancelled. Contact us if this was a mistake.",
+        );
+    }
+
+    public static function received(PurchaseOrder $order): void
+    {
+        self::notifyCustomerSafely(
+            $order,
+            'Thank you for confirming receipt.',
+            'receipt confirmation',
+            "Order {$order->po_number} has been marked as received. Thank you.",
         );
     }
 
@@ -113,13 +127,25 @@ class OrderNotifications
      * inside submitted(), but never bubbles up and blocks the order
      * action (fulfillment/completion/cancellation) that triggered it.
      */
-    private static function notifyPortalSafely(PurchaseOrder $order, string $bellNote, string $eventLabel): void
+    private static function notifyCustomerSafely(
+        PurchaseOrder $order,
+        string $bellNote,
+        string $eventLabel,
+        string $smsBody,
+    ): void
     {
         try {
             self::notifyPortal($order, $bellNote);
         } catch (\Throwable $e) {
             Log::error("Failed to create purchase order {$eventLabel} notification for {$order->po_number}.", ['exception' => $e]);
             self::record($order, 'portal', 'failed', note: $e->getMessage());
+        }
+
+        try {
+            self::sendSms($order, $smsBody);
+        } catch (\Throwable $e) {
+            Log::warning("Failed to send purchase order {$eventLabel} SMS notification for {$order->po_number}.", ['exception' => $e]);
+            self::record($order, 'sms', 'failed', note: $e->getMessage());
         }
     }
 
@@ -192,7 +218,7 @@ class OrderNotifications
         self::record($order, 'email', 'sent', recipient: $email);
     }
 
-    private static function sendSms(PurchaseOrder $order): void
+    private static function sendSms(PurchaseOrder $order, string $body): void
     {
         if (! config('services.po_notifications.sms_enabled', false)) {
             Log::info("SMS notification skipped for {$order->po_number}: feature not enabled in this environment.");
@@ -211,7 +237,7 @@ class OrderNotifications
             return;
         }
 
-        $messageId = SemaphoreSms::send($phone, self::smsSummaryBody($order));
+        $messageId = SemaphoreSms::send($phone, $body);
 
         if ($messageId) {
             Log::info("SMS order summary sent for {$order->po_number} (Semaphore message id {$messageId}).");

@@ -65,7 +65,7 @@ export function SecurityFields({ data, updateField, errors, isEdit, optional = i
                     error={errors.password}
                     classNames={FIELD_CLASS_NAMES}
                 />
-                <p className="mt-1 text-xs text-gray-500">At least 12 characters.</p>
+                <p className="mt-1 text-xs text-gray-500">At least 8 characters.</p>
             </div>
 
             <div>

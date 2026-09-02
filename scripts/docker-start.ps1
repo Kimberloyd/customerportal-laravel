@@ -163,8 +163,8 @@ while ($true) {
 
 Write-Host ""
 Write-Host "Customer Portal is running:"
-Write-Host "  App:  http://localhost:8090"
-Write-Host "  Reverb WebSocket: ws://localhost:8080"
+Write-Host "  App:  http://localhost:8180"
+Write-Host "  Reverb WebSocket: ws://localhost:8181"
 Write-Host "  Vite: http://localhost:$env:VITE_HOST_PORT"
 Write-Host ""
 Write-Host "Logs:  docker compose -f $composeFile logs -f"

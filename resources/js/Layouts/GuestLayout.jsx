@@ -17,8 +17,8 @@ export default function GuestLayout({ children }) {
                     </Link>
 
                     <div className="relative z-10 flex flex-1 items-center">
-                        <div className="max-w-xl text-left text-4xl font-semibold leading-tight tracking-tight text-gray-900 xl:text-5xl">
-                            Delay is not an <span className="text-[#00A652]">OPTION</span>.
+                        <div className="max-w-xl text-left font-display text-4xl italic leading-tight tracking-wide text-foreground/80 xl:text-5xl">
+                            Delay is not an <span className="text-[#00A652]">Option</span>.
                         </div>
                     </div>
 

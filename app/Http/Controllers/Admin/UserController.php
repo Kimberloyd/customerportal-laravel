@@ -13,8 +13,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -27,7 +25,7 @@ use Inertia\Response;
  */
 class UserController extends Controller
 {
-    private const MIN_PASSWORD_LENGTH = 12;
+    private const MIN_PASSWORD_LENGTH = 8;
 
     public function __construct(
         private readonly AdminUserListing $userListing,
@@ -128,6 +126,12 @@ class UserController extends Controller
             $changes[] = 'password reset';
         }
         if ($user->role !== $previousRole) {
+            // A role change can add or remove customer-scoped data access.
+            // End the target's existing sessions so their next request
+            // reloads authorization from the updated account record.
+            if (! $values['password']) {
+                $user->session_version = ($user->session_version ?? 0) + 1;
+            }
             $changes[] = "role {$previousRole} -> {$user->role}";
         }
         if ($user->is_active !== $previousActive) {
@@ -165,7 +169,7 @@ class UserController extends Controller
         $password = (string) $request->input('password', '');
         $passwordConfirmation = (string) $request->input('password_confirmation', '');
 
-        $this->assertSecurePassword($password, $passwordConfirmation, $user->email, $user->full_name, $user->password_hash);
+        $this->assertSecurePassword($password, $passwordConfirmation, $user->password_hash);
 
         $isSelf = $user->id === Auth::id();
 
@@ -297,19 +301,11 @@ class UserController extends Controller
 
     /**
      * Shared by resetPassword() and validateUserForm(). Beyond the minimum
-     * length, this rejects two classes of weak password an attacker who
-     * already knows (or is) the account -- exactly the position an admin
-     * resetting someone else's password is in -- would try first: the
-     * account's own name/email, and its current password. It also runs
-     * Laravel's k-anonymity Have I Been Pwned check (Password::uncompromised())
-     * so a password already exposed in a known breach corpus is rejected
-     * even if nothing about this specific account made it guessable.
+     * length, this rejects reuse of the account's current password.
      */
     private function assertSecurePassword(
         string $password,
         string $confirmation,
-        ?string $email = null,
-        ?string $fullName = null,
         ?string $currentPasswordHash = null,
     ): void {
         if (strlen($password) < self::MIN_PASSWORD_LENGTH) {
@@ -319,33 +315,6 @@ class UserController extends Controller
         }
         if ($password !== $confirmation) {
             throw ValidationException::withMessages(['password_confirmation' => 'Enter the same password again.']);
-        }
-
-        $lowerPassword = strtolower($password);
-
-        if ($email) {
-            $emailLocalPart = strtolower(strstr($email, '@', true) ?: $email);
-            // Substring, not exact-match: "jayjaron2024" and "Jay Jaron!!"
-            // are just as guessable as the bare local part, so a password
-            // that merely contains it is rejected too.
-            if (strlen($emailLocalPart) >= 3 && str_contains($lowerPassword, $emailLocalPart)) {
-                throw ValidationException::withMessages([
-                    'password' => "Don't use the account's email address as the password.",
-                ]);
-            }
-        }
-
-        if ($fullName) {
-            $nameParts = array_filter(preg_split('/\s+/', strtolower($fullName)) ?: []);
-            foreach ($nameParts as $part) {
-                // Skip short parts ("de", "jr") so common syllables don't
-                // false-positive on an otherwise unrelated password.
-                if (strlen($part) >= 3 && str_contains($lowerPassword, $part)) {
-                    throw ValidationException::withMessages([
-                        'password' => "Don't use the account holder's name as the password.",
-                    ]);
-                }
-            }
         }
 
         // Hash::check() throws for anything that isn't bcrypt -- accounts
@@ -364,18 +333,6 @@ class UserController extends Controller
             ]);
         }
 
-        // Fails open (treats the password as fine) if the Have I Been Pwned
-        // API can't be reached, so an outage there never blocks account
-        // creation or a password reset.
-        $breachCheck = Validator::make(
-            ['password' => $password],
-            ['password' => [Password::min(self::MIN_PASSWORD_LENGTH)->uncompromised()]],
-        );
-        if ($breachCheck->fails()) {
-            throw ValidationException::withMessages([
-                'password' => 'This password has appeared in a known data breach. Choose a different one.',
-            ]);
-        }
     }
 
     private function customerOptions()
@@ -421,8 +378,6 @@ class UserController extends Controller
             $this->assertSecurePassword(
                 $password,
                 $passwordConfirmation,
-                $email,
-                $fullName,
                 $user?->password_hash,
             );
         }

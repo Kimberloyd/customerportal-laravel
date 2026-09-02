@@ -1,4 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import ConfirmationDialog from '@/components/ConfirmationDialog';
 import CreateOrderModal from '@/components/CreateOrderModal';
 import OrderMessageLogModal from '@/components/OrderMessageLogModal';
 import { Dropdown } from '@/components/interior/dropdown';
@@ -10,7 +11,7 @@ import { Input } from '@/components/motion/input';
 import { statusBadge, formatDateTime } from '@/utils/orderDisplay';
 import { usePurchaseOrderRealtime } from '@/hooks/usePurchaseOrderRealtime';
 import { Head, router } from '@inertiajs/react';
-import { ListChecks, MoreHorizontal, Search, SquareArrowOutUpRight } from 'lucide-react';
+import { ListChecks, MoreHorizontal, Search, SquareArrowOutUpRight, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const PAGE_SIZE = 10;
@@ -27,6 +28,7 @@ export default function Index({
     lockedCustomerId,
     openCreateOrder = false,
     canViewMessageLog = false,
+    canDeleteOrders = false,
 }) {
     usePurchaseOrderRealtime();
 
@@ -35,6 +37,21 @@ export default function Index({
     const [productsLoading, setProductsLoading] = useState(false);
     const [productsError, setProductsError] = useState(false);
     const [messageLogOrder, setMessageLogOrder] = useState(null);
+    const [orderPendingDeletion, setOrderPendingDeletion] = useState(null);
+    const [isDeletingOrder, setIsDeletingOrder] = useState(false);
+
+    const deleteOrder = useCallback(() => {
+        if (!orderPendingDeletion) return;
+
+        router.delete(route('purchase-orders.destroy', orderPendingDeletion.id), {
+            preserveScroll: true,
+            onStart: () => setIsDeletingOrder(true),
+            onFinish: () => {
+                setIsDeletingOrder(false);
+                setOrderPendingDeletion(null);
+            },
+        });
+    }, [orderPendingDeletion]);
 
     const loadCreateOrderProducts = useCallback(() => {
         router.reload({
@@ -141,6 +158,15 @@ export default function Index({
                                 onSelect: () => setMessageLogOrder(order),
                             }]
                             : []),
+                        ...(canDeleteOrders
+                            ? [{
+                                value: 'delete',
+                                label: 'Delete',
+                                icon: <Trash2 />,
+                                onSelect: () => setOrderPendingDeletion(order),
+                                destructive: true,
+                            }]
+                            : []),
                     ];
 
                     return (
@@ -163,7 +189,7 @@ export default function Index({
                 },
             },
         ],
-        [canViewMessageLog, goToOrder],
+        [canDeleteOrders, canViewMessageLog, goToOrder],
     );
 
     return (
@@ -244,6 +270,19 @@ export default function Index({
                 order={messageLogOrder}
                 open={messageLogOrder !== null}
                 onClose={() => setMessageLogOrder(null)}
+            />
+
+            <ConfirmationDialog
+                open={orderPendingDeletion !== null}
+                onOpenChange={(open) => !open && !isDeletingOrder && setOrderPendingDeletion(null)}
+                title={`Delete purchase order ${orderPendingDeletion?.po_number ?? ''}?`}
+                description="This permanently deletes this order, its line items, message log, and attachment. This cannot be undone."
+                confirmLabel="Delete order"
+                cancelLabel="Keep order"
+                onConfirm={deleteOrder}
+                confirmationText={orderPendingDeletion?.po_number}
+                destructive
+                processing={isDeletingOrder}
             />
         </AuthenticatedLayout>
     );

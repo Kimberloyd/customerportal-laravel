@@ -1,12 +1,13 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import CreateOrderModal from '@/components/CreateOrderModal';
 import { Input } from '@/components/motion/input';
+import { AnimatedBadge } from '@/components/motion/animated-badge';
 import { Table } from '@/components/motion/table';
 import { Tooltip } from '@/components/motion/tooltip';
 import { OrderActivityFeed } from '@/components/timelines-activity-feed';
 import { Button } from '@/components/ui/button';
 import { AutoHeightReveal, Modal } from '@/components/interior/modal';
-import { formatDateTime } from '@/utils/orderDisplay';
+import { formatDateTime, statusBadge } from '@/utils/orderDisplay';
 import { PdfPreview } from '@/components/PdfPreview';
 import ConfirmationDialog from '@/components/ConfirmationDialog';
 import { usePurchaseOrderRealtime } from '@/hooks/usePurchaseOrderRealtime';
@@ -42,6 +43,7 @@ export default function Show({
     usePurchaseOrderRealtime(order.id);
 
     const showDeliverColumn = canManageFulfillment && !order.is_terminal;
+    const currentStatus = statusBadge(order.display_status ?? order.status);
     const [attachmentPreviewOpen, setAttachmentPreviewOpen] = useState(false);
     const [pendingAction, setPendingAction] = useState(null);
     const [actionProcessing, setActionProcessing] = useState(false);
@@ -299,7 +301,8 @@ export default function Show({
 
             <div className="mx-auto max-w-7xl space-y-10 px-4 py-8 sm:px-6 lg:px-8">
                 <div className="rounded-xl border border-gray-200 bg-white">
-                    <div className="p-6">
+                    <div className="grid gap-6 p-6 md:grid-cols-2">
+                        <div>
                         <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Customer</h3>
                         <p className="mt-2 font-medium text-gray-900">{order.customer.name}</p>
                         <dl className="mt-4 space-y-1.5 border-t border-gray-100 pt-4 text-sm">
@@ -379,6 +382,18 @@ export default function Show({
                                 </div>
                             )}
                         </dl>
+                        </div>
+
+                        <div className="flex min-h-32 items-center justify-center border-t border-gray-100 pt-6 md:min-h-0 md:border-l md:border-t-0 md:pl-6 md:pt-0">
+                            <AnimatedBadge
+                                status={currentStatus.status}
+                                size="md"
+                                pulse={currentStatus.pulse ?? false}
+                                className="border-0 bg-transparent px-0 text-2xl font-semibold shadow-none [&_svg]:!h-6 [&_svg]:!w-6"
+                            >
+                                {currentStatus.label}
+                            </AnimatedBadge>
+                        </div>
                     </div>
                 </div>
 

@@ -23,7 +23,7 @@
 #   docker compose -f docker-compose.local.yml exec app php artisan migrate   # only for a fresh/empty DB
 #   docker compose -f docker-compose.local.yml exec vite npm ci               # first time only, for the Vite container
 #
-# App: http://localhost:8090
+# App: http://localhost:8180
 # Vite dev server (HMR): http://localhost:5273 by default -- app.blade.php's @vite
 # directive talks to it automatically in APP_ENV=local.
 
@@ -54,7 +54,7 @@ services:
             args:
                 VITE_REVERB_APP_KEY: customerportal-local-key
                 VITE_REVERB_HOST: localhost
-                VITE_REVERB_PORT: 8080
+                VITE_REVERB_PORT: 8181
                 VITE_REVERB_SCHEME: http
         working_dir: /app
         volumes:
@@ -66,7 +66,7 @@ services:
             # already applied to node_modules on the vite service below.
             - customerportal_local_vendor:/app/vendor
         ports:
-            - '8090:8000'
+            - '8180:8000'
         depends_on:
             db:
                 condition: service_healthy
@@ -110,7 +110,7 @@ services:
             - .:/app
             - customerportal_local_vendor:/app/vendor
         ports:
-            - '8080:8080'
+            - '8181:8080'
         depends_on:
             app:
                 condition: service_healthy
