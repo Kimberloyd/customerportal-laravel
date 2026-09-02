@@ -44,6 +44,21 @@ class EmployeeCustomerAccountTest extends TestCase
         $this->assertDatabaseMissing('users', ['email' => 'reserved@example.com']);
     }
 
+    public function test_employee_can_view_only_their_assigned_customers(): void
+    {
+        $employee = User::factory()->create(['role' => 'employee']);
+        $otherEmployee = User::factory()->create(['role' => 'employee']);
+        $mine = $this->makeCustomer('My Customer');
+        $mine->update(['assigned_employee_id' => $employee->id]);
+        $other = $this->makeCustomer('Other Customer');
+        $other->update(['assigned_employee_id' => $otherEmployee->id]);
+
+        $this->actingAsUser($employee)->get('/customer-accounts/create')->assertInertia(fn ($page) => $page
+            ->where('assignedCustomers.0.company_name', 'My Customer')
+            ->missing('assignedCustomers.1')
+        );
+    }
+
     public function test_admin_and_customer_cannot_use_employee_customer_account_routes(): void
     {
         $this->actingAsUser(User::factory()->create(['role' => 'admin']))->get('/customer-accounts/create')->assertForbidden();

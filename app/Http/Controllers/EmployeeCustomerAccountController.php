@@ -24,6 +24,11 @@ class EmployeeCustomerAccountController extends Controller
             'customers' => Customer::query()->where('is_active', true)->whereNull('user_id')
                 ->where(fn ($query) => $query->whereNull('assigned_employee_id')->orWhere('assigned_employee_id', $employee->id))
                 ->orderBy('company_name')->get(['id', 'company_name', 'assigned_employee_id']),
+            'assignedCustomers' => Customer::query()
+                ->where('assigned_employee_id', $employee->id)
+                ->with('user:id,full_name,email,phone,is_active')
+                ->orderBy('company_name')
+                ->get(['id', 'company_name', 'customer_code', 'channel', 'user_id', 'is_active']),
         ]);
     }
 
