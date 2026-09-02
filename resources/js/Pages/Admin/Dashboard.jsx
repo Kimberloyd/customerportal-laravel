@@ -4,11 +4,12 @@ import { UserModal } from '@/components/CreateUserModal';
 import { CustomersPanel } from '@/components/CustomersPanel';
 import { ProductsPanel } from '@/components/ProductsPanel';
 import { ResetPasswordModal } from '@/components/ResetPasswordModal';
+import { TeamsPanel } from '@/components/TeamsPanel';
 import { Button } from '@/components/ui/button';
 import { Deferred, Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
 
-export default function Dashboard({ activeTab, products, customers, users, filters, roleLabels, accountForm }) {
+export default function Dashboard({ activeTab, products, customers, users, filters, roleLabels, accountForm, teams, employees }) {
     const [userModal, setUserModal] = useState({ open: false, user: null });
     const [resettingUser, setResettingUser] = useState(null);
 
@@ -67,6 +68,12 @@ export default function Dashboard({ activeTab, products, customers, users, filte
                     >
                         Accounts
                     </Link>
+                    <Link
+                        href={route('admin.dashboard', { tab: 'teams' })}
+                        className={`block text-sm ${activeTab === 'teams' ? 'font-semibold text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                        Teams
+                    </Link>
                 </nav>
 
                 <div className="lg:col-span-10">
@@ -121,6 +128,7 @@ export default function Dashboard({ activeTab, products, customers, users, filte
                             />
                         </Deferred>
                     )}
+                    {activeTab === 'teams' && <TeamsPanel teams={teams} employees={employees} />}
                 </div>
             </div>
 

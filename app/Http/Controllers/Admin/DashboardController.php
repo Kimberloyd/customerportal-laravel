@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Models\Team;
+use App\Models\User;
 use App\Support\AdminUserListing;
 use App\Support\InventoryApiClient;
 use Illuminate\Http\Request;
@@ -29,6 +31,7 @@ class DashboardController extends Controller
             ...match ($tab) {
                 'customers' => $this->listCustomers($request->query()),
                 'accounts' => $this->listAccounts($request->query()),
+                'teams' => $this->listTeams(),
                 default => $this->listProducts($request->query()),
             },
         ]);
@@ -120,5 +123,14 @@ class DashboardController extends Controller
         }
 
         return $customerQuery->orderByDesc('created_at')->paginate(10)->withQueryString();
+    }
+
+    private function listTeams(): array
+    {
+        return [
+            'teams' => Team::with(['members:id,full_name,email'])->orderBy('name')->get(),
+            'employees' => User::query()->where('role', 'employee')->where('is_active', true)
+                ->orderBy('full_name')->get(['id', 'full_name', 'email']),
+        ];
     }
 }

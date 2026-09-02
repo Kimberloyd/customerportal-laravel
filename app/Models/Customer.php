@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
-    'user_id', 'external_id', 'customer_code', 'company_name', 'channel', 'is_active', 'created_at',
+    'user_id', 'assigned_employee_id', 'external_id', 'customer_code', 'company_name', 'channel', 'is_active', 'created_at',
 ])]
 class Customer extends Model
 {
@@ -25,6 +25,11 @@ class Customer extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function assignedEmployee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_employee_id');
     }
 
     public function orders(): HasMany

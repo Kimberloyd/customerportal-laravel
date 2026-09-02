@@ -367,6 +367,9 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                       },
                   ]
                 : []),
+            ...(user.role === 'employee'
+                ? [{ key: 'customer-accounts', href: route('customer-accounts.create'), active: route().current('customer-accounts.*'), label: 'Customers' }]
+                : []),
             {
                 key: 'settings',
                 href: route('settings.edit'),

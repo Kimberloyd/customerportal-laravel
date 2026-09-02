@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\TeamController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EmployeeCustomerAccountController;
 use App\Http\Controllers\FacebookWebhookController;
 use App\Http\Controllers\FaqController;
 use App\Http\Controllers\MessageController;
@@ -53,6 +55,15 @@ Route::middleware('auth')->prefix('customers')->name('customers.')->group(functi
 Route::get('/admin', [AdminDashboardController::class, 'index'])
     ->middleware('auth')
     ->name('admin.dashboard');
+
+Route::middleware('auth')->prefix('admin/teams')->name('admin.teams.')->group(function () {
+    Route::post('/', [TeamController::class, 'store'])->name('store');
+});
+
+Route::middleware('auth')->prefix('customer-accounts')->name('customer-accounts.')->group(function () {
+    Route::get('/create', [EmployeeCustomerAccountController::class, 'create'])->name('create');
+    Route::post('/', [EmployeeCustomerAccountController::class, 'store'])->name('store');
+});
 
 Route::middleware('auth')->prefix('admin/users')->name('admin.users.')->group(function () {
     Route::get('/', [UserController::class, 'index'])->name('index');
