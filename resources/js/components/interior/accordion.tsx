@@ -296,28 +296,28 @@ function AccordionRow({
           className="relative z-10 flex w-full items-center gap-3 px-4 py-4 text-left outline-none transition-colors duration-150 focus-visible:bg-[#4568FF]/[0.06] focus-visible:shadow-[inset_0_0_0_1px_#4568FF] dark:focus-visible:bg-[#93B0FF]/[0.1] dark:focus-visible:shadow-[inset_0_0_0_1px_#93B0FF]"
         >
           <span
-            className={`min-w-0 flex-1 truncate text-[15px] font-medium transition-colors duration-150 ${
+            className={`min-w-0 flex-1 truncate text-base font-medium transition-colors duration-150 ${
               open
                 ? "text-stone-900 dark:text-stone-50"
-                : "text-stone-700 dark:text-stone-200"
+                : "text-stone-800 dark:text-stone-200"
             }`}
           >
             {item.title}
           </span>
 
           {item.meta ? (
-            <span className="shrink-0 text-[12.5px] tabular-nums text-stone-600 dark:text-stone-400">
+            <span className="shrink-0 text-sm tabular-nums text-stone-700 dark:text-stone-300">
               {item.meta}
             </span>
           ) : null}
 
           <motion.svg
-            width="15"
-            height="15"
+            width="18"
+            height="18"
             viewBox="0 0 256 256"
             fill="none"
             aria-hidden="true"
-            className="shrink-0 text-stone-500 dark:text-stone-400"
+            className="shrink-0 text-stone-600 dark:text-stone-300"
             initial={false}
             animate={{ rotate: open ? 180 : 0 }}
             transition={reduced ? { duration: 0 } : CHEVRON}
@@ -349,7 +349,7 @@ function AccordionRow({
               scrollbarGutter: "stable",
             }}
           >
-            <div className="px-4 pb-4 pt-3.5 text-[13.5px] leading-relaxed text-stone-600 dark:text-stone-400">
+            <div className="px-4 pb-4 pt-3.5 text-base leading-relaxed text-stone-700 dark:text-stone-300">
               {item.content}
             </div>
           </div>

@@ -58,6 +58,51 @@ class PurchaseOrderController extends Controller
         $endDate = trim((string) $request->query('end_date', ''));
         $statusFilter = trim((string) $request->query('status', 'all')) ?: 'all';
 
+        return Inertia::render('PurchaseOrders/Index', [
+            'orders' => Inertia::defer(
+                fn () => $this->listOrders(
+                    $customer,
+                    $search,
+                    $dateFilter,
+                    $month,
+                    $startDate,
+                    $endDate,
+                    $statusFilter,
+                ),
+                'orders',
+            ),
+            'filters' => [
+                'search' => $search,
+                'date_filter' => $dateFilter,
+                'month' => $month,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'status' => $statusFilter,
+            ],
+            'createOrderCustomers' => $customers,
+            'createOrderProducts' => Inertia::optional(
+                fn () => $this->activeProducts(cached: true)
+                    ->sortBy('product_name', SORT_STRING | SORT_FLAG_CASE)
+                    ->values()
+                    ->all(),
+            ),
+            'lockedCustomerId' => $customer?->id,
+            'openCreateOrder' => $request->boolean('create'),
+            'canViewMessageLog' => in_array(Auth::user()->role, ['admin', 'employee'], true),
+            'canDeleteOrders' => in_array(Auth::user()->role, ['admin', 'employee'], true),
+        ]);
+    }
+
+    private function listOrders(
+        ?Customer $customer,
+        string $search,
+        string $dateFilter,
+        string $month,
+        string $startDate,
+        string $endDate,
+        string $statusFilter,
+    )
+    {
         $query = PurchaseOrder::query()->with(['customer', 'items']);
         if ($customer) {
             $query->where('customer_id', $customer->id);
@@ -114,28 +159,7 @@ class PurchaseOrderController extends Controller
             ->withQueryString()
             ->through(fn (PurchaseOrder $order) => $this->serializeForList($order));
 
-        return Inertia::render('PurchaseOrders/Index', [
-            'orders' => $orders,
-            'filters' => [
-                'search' => $search,
-                'date_filter' => $dateFilter,
-                'month' => $month,
-                'start_date' => $startDate,
-                'end_date' => $endDate,
-                'status' => $statusFilter,
-            ],
-            'createOrderCustomers' => $customers,
-            'createOrderProducts' => Inertia::optional(
-                fn () => $this->activeProducts(cached: true)
-                    ->sortBy('product_name', SORT_STRING | SORT_FLAG_CASE)
-                    ->values()
-                    ->all(),
-            ),
-            'lockedCustomerId' => $customer?->id,
-            'openCreateOrder' => $request->boolean('create'),
-            'canViewMessageLog' => in_array(Auth::user()->role, ['admin', 'employee'], true),
-            'canDeleteOrders' => in_array(Auth::user()->role, ['admin', 'employee'], true),
-        ]);
+        return $orders;
     }
 
     public function messageLog(PurchaseOrder $order): JsonResponse

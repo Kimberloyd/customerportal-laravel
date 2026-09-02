@@ -373,12 +373,16 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                 active: route().current('settings.*'),
                 label: 'Settings',
             },
-            {
-                key: 'faq',
-                href: route('faq'),
-                active: route().current('faq'),
-                label: 'FAQ',
-            },
+            ...(user.role === 'admin'
+                ? []
+                : [
+                      {
+                          key: 'faq',
+                          href: route('faq'),
+                          active: route().current('faq'),
+                          label: 'FAQ',
+                      },
+                  ]),
         ],
         [user.role],
     );
@@ -701,12 +705,14 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                             <ResponsiveNavLink href={route('settings.edit')}>
                                 Settings
                             </ResponsiveNavLink>
-                            <ResponsiveNavLink
-                                href={route('faq')}
-                                active={route().current('faq')}
-                            >
-                                FAQ
-                            </ResponsiveNavLink>
+                            {user.role !== 'admin' && (
+                                <ResponsiveNavLink
+                                    href={route('faq')}
+                                    active={route().current('faq')}
+                                >
+                                    FAQ
+                                </ResponsiveNavLink>
+                            )}
                             <ResponsiveNavLink
                                 method="post"
                                 href={route('logout.all')}

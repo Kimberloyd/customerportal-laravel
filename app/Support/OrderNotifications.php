@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Mail\OrderSubmittedMail;
+use App\Models\AppSetting;
 use App\Models\CustomerMessage;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderNotification;
@@ -35,6 +36,9 @@ use Illuminate\Support\Facades\Mail;
  */
 class OrderNotifications
 {
+    /** AppSetting key holding the administrator's runtime SMS on/off override. */
+    public const SMS_ENABLED_SETTING = 'po_notifications.sms_enabled';
+
     public static function submitted(PurchaseOrder $order): void
     {
         try {
@@ -218,11 +222,31 @@ class OrderNotifications
         self::record($order, 'email', 'sent', recipient: $email);
     }
 
+    /**
+     * True when SMS sending is on. An administrator's runtime toggle (see
+     * AppSetting and SettingsController::updateSms) wins when it has been set;
+     * otherwise this is the env-level PO_NOTIFICATIONS_SMS_ENABLED flag exactly
+     * as before.
+     */
+    public static function smsEnabled(): bool
+    {
+        return AppSetting::boolean(
+            self::SMS_ENABLED_SETTING,
+            (bool) config('services.po_notifications.sms_enabled', false),
+        );
+    }
+
     private static function sendSms(PurchaseOrder $order, string $body): void
     {
-        if (! config('services.po_notifications.sms_enabled', false)) {
-            Log::info("SMS notification skipped for {$order->po_number}: feature not enabled in this environment.");
-            self::record($order, 'sms', 'skipped', note: 'feature not enabled in this environment');
+        if (! self::smsEnabled()) {
+            // Distinguish an admin switching sending off from an environment
+            // that never had it on, so the audit trail explains which it was.
+            $reason = config('services.po_notifications.sms_enabled', false)
+                ? 'sending turned off by an administrator'
+                : 'feature not enabled in this environment';
+
+            Log::info("SMS notification skipped for {$order->po_number}: {$reason}.");
+            self::record($order, 'sms', 'skipped', note: $reason);
 
             return;
         }

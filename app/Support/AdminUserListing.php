@@ -20,11 +20,40 @@ final class AdminUserListing
      */
     public function get(array $query): array
     {
+        return [
+            'users' => $this->users($query),
+            'filters' => $this->filters($query),
+            'roleLabels' => self::ROLE_LABELS,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $query
+     * @return array{search: string, role: string, retention_days: int}
+     */
+    public function filters(array $query): array
+    {
         $search = trim((string) ($query['search'] ?? ''));
         $role = strtolower(trim((string) ($query['role'] ?? 'all'))) ?: 'all';
         if (! array_key_exists($role, self::ROLE_LABELS)) {
             $role = 'all';
         }
+
+        return [
+            'search' => $search,
+            'role' => $role,
+            'retention_days' => max(1, (int) config('account-deletion.retention_days')),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $query
+     */
+    public function users(array $query)
+    {
+        $filters = $this->filters($query);
+        $search = $filters['search'];
+        $role = $filters['role'];
 
         // Pending-deletion accounts stay visible to administrators during the
         // retention window so the deletion can be cancelled before purge.
@@ -71,14 +100,6 @@ final class AdminUserListing
             'linked_customer_name' => $linkedCustomers->get($user->id)?->company_name,
         ]);
 
-        return [
-            'users' => $users,
-            'filters' => [
-                'search' => $search,
-                'role' => $role,
-                'retention_days' => max(1, (int) config('account-deletion.retention_days')),
-            ],
-            'roleLabels' => self::ROLE_LABELS,
-        ];
+        return $users;
     }
 }

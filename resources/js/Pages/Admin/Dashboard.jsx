@@ -79,23 +79,47 @@ export default function Dashboard({ activeTab, products, customers, users, filte
                         </Deferred>
                     )}
                     {activeTab === 'customers' && (
-                        <CustomersPanel
-                            customers={customers}
-                            filters={filters}
-                            filterRouteName="admin.dashboard"
-                            filterExtraParams={{ tab: 'customers' }}
-                        />
+                        <Deferred
+                            data="customers"
+                            fallback={(
+                                <CustomersPanel
+                                    filters={filters}
+                                    filterRouteName="admin.dashboard"
+                                    filterExtraParams={{ tab: 'customers' }}
+                                    loading
+                                />
+                            )}
+                        >
+                            <CustomersPanel
+                                customers={customers}
+                                filters={filters}
+                                filterRouteName="admin.dashboard"
+                                filterExtraParams={{ tab: 'customers' }}
+                            />
+                        </Deferred>
                     )}
                     {activeTab === 'accounts' && (
-                        <AccountsPanel
-                            users={users}
-                            filters={filters}
-                            roleLabels={roleLabels}
-                            filterRouteName="admin.dashboard"
-                            filterExtraParams={{ tab: 'accounts' }}
-                            onEdit={(user) => setUserModal({ open: true, user })}
-                            onResetPassword={setResettingUser}
-                        />
+                        <Deferred
+                            data="users"
+                            fallback={(
+                                <AccountsPanel
+                                    filters={filters}
+                                    filterRouteName="admin.dashboard"
+                                    filterExtraParams={{ tab: 'accounts' }}
+                                    loading
+                                />
+                            )}
+                        >
+                            <AccountsPanel
+                                users={users}
+                                filters={filters}
+                                roleLabels={roleLabels}
+                                filterRouteName="admin.dashboard"
+                                filterExtraParams={{ tab: 'accounts' }}
+                                onEdit={(user) => setUserModal({ open: true, user })}
+                                onResetPassword={setResettingUser}
+                            />
+                        </Deferred>
                     )}
                 </div>
             </div>

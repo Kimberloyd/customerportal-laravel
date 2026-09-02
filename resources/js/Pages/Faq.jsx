@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Accordion } from '@/components/interior/accordion';
 import { Button } from '@/components/ui/button';
 import { Head, Link } from '@inertiajs/react';
-import { ArrowRight, ClipboardList, LayoutDashboard, PackageCheck } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 function Term({ children }) {
     return <strong className="font-medium text-stone-800 dark:text-stone-100">{children}</strong>;
@@ -87,55 +87,50 @@ export default function Faq() {
             <Head title="Frequently Asked Questions" />
 
             <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-                <section className="overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/[0.08] via-card to-card px-6 py-8 sm:px-8 sm:py-10">
-                    <p className="text-sm font-semibold text-primary">HELP CENTER</p>
+                <section className="overflow-hidden rounded-2xl border border-border bg-card px-6 py-8 text-center sm:px-8 sm:py-10">
+                    <p className="text-base font-semibold tracking-wide text-primary">HELP CENTER</p>
                     <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
                         Answers for managing your orders
                     </h1>
-                    <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+                    <p className="mx-auto mt-3 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
                         Find quick guidance on submitting purchase orders, tracking deliveries,
                         receiving updates, and contacting the Theomeds team.
                     </p>
-                    <div className="mt-6 flex flex-wrap gap-3">
-                        <Button asChild variant="primary" leadingIcon={ClipboardList}>
+                    <div className="mt-6 flex flex-wrap justify-center gap-3">
+                        <Button asChild variant="tertiary">
                             <Link href={route('purchase-orders.index')}>View Orders</Link>
                         </Button>
-                        <Button asChild variant="tertiary" leadingIcon={LayoutDashboard}>
+                        <Button asChild variant="primary">
                             <Link href={route('dashboard')}>Go to Dashboard</Link>
                         </Button>
                     </div>
                 </section>
 
                 <section className="mt-8" aria-labelledby="faq-list-heading">
-                    <div className="mb-4 flex items-start gap-3">
-                        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-                            <PackageCheck className="size-5" aria-hidden="true" />
-                        </span>
-                        <div>
-                            <h2 id="faq-list-heading" className="text-lg font-semibold text-foreground">
-                                Common questions
-                            </h2>
-                            <p className="mt-1 text-sm text-muted-foreground">
-                                Select a question to see the answer.
-                            </p>
-                        </div>
+                    <div className="mb-4">
+                        <h2 id="faq-list-heading" className="text-xl font-semibold text-foreground">
+                            Common questions
+                        </h2>
+                        <p className="mt-1 text-base text-muted-foreground">
+                            Select a question to see the answer.
+                        </p>
                     </div>
 
-                    <Accordion items={FAQ_ITEMS} defaultOpen={['create-order']} maxPanelHeight={320} />
+                    <Accordion items={FAQ_ITEMS} defaultOpen={['create-order']} maxPanelHeight={400} />
                 </section>
 
                 <section className="mt-8 rounded-xl border border-border bg-card p-5 sm:flex sm:items-center sm:justify-between sm:gap-6">
                     <div>
-                        <h2 className="text-base font-semibold text-foreground">Still need help?</h2>
-                        <p className="mt-1 text-sm text-muted-foreground">
+                        <h2 className="text-lg font-semibold text-foreground">Still need help?</h2>
+                        <p className="mt-1 text-base text-muted-foreground">
                             Use the message icon in the header to contact the Theomeds team.
                         </p>
                     </div>
                     <Link
                         href={route('dashboard')}
-                        className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline sm:mt-0"
+                        className="mt-4 inline-flex items-center gap-1 text-base font-medium text-primary hover:underline sm:mt-0"
                     >
-                        Return to dashboard <ArrowRight className="size-4" aria-hidden="true" />
+                        Return to dashboard <ArrowRight className="size-5" aria-hidden="true" />
                     </Link>
                 </section>
             </div>

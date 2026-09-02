@@ -12,14 +12,27 @@ const HORIZONTAL_SCROLLBAR_HEIGHT = 20;
 const TABLE_VIEWPORT_HEIGHT =
     (PAGE_SIZE + 1) * TABLE_ROW_HEIGHT + HORIZONTAL_SCROLLBAR_HEIGHT;
 
-export function CustomersPanel({ customers, filters, filterRouteName, filterExtraParams = {} }) {
+export function CustomersPanel({ customers = { data: [], last_page: 1, current_page: 1 }, filters, filterRouteName, filterExtraParams = {}, loading = false }) {
     const [search, setSearch] = useState(filters.search);
+    const [tableLoading, setTableLoading] = useState(false);
+    const latestFilterVisit = useRef(0);
 
     const applyFilters = (overrides = {}) => {
+        const visit = ++latestFilterVisit.current;
+
         router.get(
             route(filterRouteName),
             { search, status: filters.status, ...filterExtraParams, ...overrides },
-            { preserveState: true, preserveScroll: true },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                onStart: () => setTableLoading(true),
+                onFinish: () => {
+                    if (visit === latestFilterVisit.current) {
+                        setTableLoading(false);
+                    }
+                },
+            },
         );
     };
 
@@ -83,6 +96,7 @@ export function CustomersPanel({ customers, filters, filterRouteName, filterExtr
                 className="[&>div]:!overflow-x-auto [&>div]:!overflow-y-hidden"
                 rowHeight={TABLE_ROW_HEIGHT}
                 height={TABLE_VIEWPORT_HEIGHT}
+                loading={loading || tableLoading}
                 resizable
                 emptyState="No customers found. Try a different search."
                 emptyStateHeight={PAGE_SIZE * TABLE_ROW_HEIGHT}

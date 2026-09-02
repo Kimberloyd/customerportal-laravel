@@ -67,6 +67,41 @@ class DashboardController extends Controller
             $status = 'active';
         }
 
+        return [
+            'customers' => Inertia::defer(
+                fn () => $this->customers($search, $status),
+                'customers',
+            ),
+            'filters' => [
+                'search' => $search,
+                'status' => $status,
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $query
+     */
+    private function listAccounts(array $query): array
+    {
+        return [
+            'users' => Inertia::defer(
+                fn () => $this->userListing->users($query),
+                'accounts',
+            ),
+            'filters' => $this->userListing->filters($query),
+            'roleLabels' => AdminUserListing::ROLE_LABELS,
+            'accountForm' => [
+                'allowAdminCreation' => false,
+                'customers' => Customer::where('is_active', true)
+                    ->orderBy('company_name')
+                    ->get(['id', 'company_name', 'user_id']),
+            ],
+        ];
+    }
+
+    private function customers(string $search, string $status)
+    {
         $customerQuery = Customer::query();
 
         if ($status === 'active') {
@@ -84,28 +119,6 @@ class DashboardController extends Controller
             });
         }
 
-        return [
-            'customers' => $customerQuery->orderByDesc('created_at')->paginate(10)->withQueryString(),
-            'filters' => [
-                'search' => $search,
-                'status' => $status,
-            ],
-        ];
-    }
-
-    /**
-     * @param  array<string, mixed>  $query
-     */
-    private function listAccounts(array $query): array
-    {
-        return [
-            ...$this->userListing->get($query),
-            'accountForm' => [
-                'allowAdminCreation' => false,
-                'customers' => Customer::where('is_active', true)
-                    ->orderBy('company_name')
-                    ->get(['id', 'company_name', 'user_id']),
-            ],
-        ];
+        return $customerQuery->orderByDesc('created_at')->paginate(10)->withQueryString();
     }
 }

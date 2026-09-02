@@ -7,16 +7,16 @@ const AUTO_DISMISS_MS = 5000;
 const BANNER_STYLES = {
     success: {
         icon: CircleCheck,
-        container: 'border-green-200 bg-green-50',
-        content: 'text-green-700',
-        dismiss: 'text-green-700 hover:text-green-900',
+        container: 'border-green-300 bg-green-50',
+        content: 'text-green-800',
+        dismiss: 'text-green-800 hover:text-green-950',
         role: 'status',
     },
     error: {
         icon: CircleAlert,
-        container: 'border-red-200 bg-red-50',
-        content: 'text-red-700',
-        dismiss: 'text-red-700 hover:text-red-900',
+        container: 'border-red-300 bg-red-50',
+        content: 'text-red-800',
+        dismiss: 'text-red-800 hover:text-red-950',
         role: 'alert',
     },
     link: {
@@ -41,9 +41,9 @@ function BannerRow({ message, variant, onDismiss }) {
 
     return (
         <div className={`border-y ${style.container}`} role={style.role} aria-live={style.role === 'status' ? 'polite' : undefined}>
-            <div className={`mx-auto flex max-w-7xl items-center justify-between px-4 py-3 text-sm sm:px-6 lg:px-8 ${style.content}`}>
+            <div className={`mx-auto flex max-w-7xl items-center justify-between px-4 py-3 text-base sm:px-6 lg:px-8 ${style.content}`}>
                 <span className="flex items-center gap-2">
-                    <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
                     {message}
                 </span>
                 <button
@@ -52,7 +52,7 @@ function BannerRow({ message, variant, onDismiss }) {
                     className={`ml-4 shrink-0 ${style.dismiss}`}
                     aria-label="Dismiss notification"
                 >
-                    <X className="h-4 w-4" />
+                    <X className="h-5 w-5" />
                 </button>
             </div>
         </div>
@@ -90,7 +90,7 @@ export default function FlashBanner({ message = null, variant = 'warning', stick
     }
 
     return (
-        <div className={sticky ? 'sticky top-16 z-30' : undefined}>
+        <div className={sticky ? 'sticky top-[calc(4rem+1px)] z-30' : undefined}>
             {entries.map((entry) => (
                 <BannerRow
                     key={entry.variant}

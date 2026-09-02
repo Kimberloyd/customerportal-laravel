@@ -22,13 +22,18 @@ export default function Orders({ orders, filters, customers, summary }) {
     const [endDate, setEndDate] = useState(filters.end_date);
     const [customerId, setCustomerId] = useState(filters.customer_id ?? '');
     const [status, setStatus] = useState(filters.status);
+    const [tableLoading, setTableLoading] = useState(false);
 
     const applyFilters = (e) => {
         e.preventDefault();
         router.get(
             route('reports.orders'),
             { date_filter: dateFilter, month, start_date: startDate, end_date: endDate, customer_id: customerId, status },
-            { preserveState: true },
+            {
+                preserveState: true,
+                onStart: () => setTableLoading(true),
+                onFinish: () => setTableLoading(false),
+            },
         );
     };
 
@@ -192,6 +197,7 @@ export default function Orders({ orders, filters, customers, summary }) {
                         data={orders.data}
                         columns={columns}
                         getRowId={(order) => String(order.id)}
+                        loading={tableLoading}
                         resizable
                         emptyState="No orders found. Try a different date range or filter."
                     />
@@ -203,6 +209,8 @@ export default function Orders({ orders, filters, customers, summary }) {
                                     key={index}
                                     href={link.url ?? '#'}
                                     preserveScroll
+                                    onStart={() => setTableLoading(true)}
+                                    onFinish={() => setTableLoading(false)}
                                     className={`rounded px-3 py-1 ${
                                         link.active
                                             ? 'bg-gray-800 text-white'

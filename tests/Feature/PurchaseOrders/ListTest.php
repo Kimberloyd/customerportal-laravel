@@ -31,8 +31,10 @@ class ListTest extends TestCase
 
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
-            ->where('orders.total', 1)
-            ->where('orders.data.0.customer_name', 'Own Co')
+            ->missing('orders')
+            ->loadDeferredProps('orders', fn ($deferred) => $deferred
+                ->where('orders.total', 1)
+                ->where('orders.data.0.customer_name', 'Own Co'))
         );
     }
 
@@ -60,8 +62,10 @@ class ListTest extends TestCase
         $response = $this->actingAsUser($staff)->get('/orders?search=acme');
 
         $response->assertInertia(fn ($page) => $page
-            ->where('orders.total', 1)
-            ->where('orders.data.0.customer_name', 'Acme Co')
+            ->missing('orders')
+            ->loadDeferredProps('orders', fn ($deferred) => $deferred
+                ->where('orders.total', 1)
+                ->where('orders.data.0.customer_name', 'Acme Co'))
         );
     }
 
@@ -86,7 +90,9 @@ class ListTest extends TestCase
 
         $response = $this->actingAsUser($staff)->get('/orders?status=active');
 
-        $response->assertInertia(fn ($page) => $page->where('orders.total', 2));
+        $response->assertInertia(fn ($page) => $page
+            ->missing('orders')
+            ->loadDeferredProps('orders', fn ($deferred) => $deferred->where('orders.total', 2)));
     }
 
     public function test_month_date_filter_narrows_to_that_month(): void
@@ -104,7 +110,9 @@ class ListTest extends TestCase
 
         $response = $this->actingAsUser($staff)->get('/orders?date_filter=month&month=2026-03');
 
-        $response->assertInertia(fn ($page) => $page->where('orders.total', 1));
+        $response->assertInertia(fn ($page) => $page
+            ->missing('orders')
+            ->loadDeferredProps('orders', fn ($deferred) => $deferred->where('orders.total', 1)));
     }
 
     public function test_list_paginates(): void
@@ -122,10 +130,12 @@ class ListTest extends TestCase
         $response = $this->actingAsUser($staff)->get('/orders');
 
         $response->assertInertia(fn ($page) => $page
-            ->where('orders.total', 30)
-            ->where('orders.per_page', 10)
-            ->has('orders.data', 10)
-            ->where('orders.last_page', 3)
+            ->missing('orders')
+            ->loadDeferredProps('orders', fn ($deferred) => $deferred
+                ->where('orders.total', 30)
+                ->where('orders.per_page', 10)
+                ->has('orders.data', 10)
+                ->where('orders.last_page', 3))
         );
     }
 }

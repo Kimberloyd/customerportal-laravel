@@ -105,7 +105,13 @@
         --border: hsl(var(--border-hsl));
         --muted-hsl: 238 4.8% 95.9%;
         --muted: hsl(var(--muted-hsl));
-        --muted-foreground-hsl: 238 3.8% 46.1%;
+        /* Secondary text, darkened from L46.1%->L35%. The old value cleared
+         * only 4.81:1 on white -- AA for normal text, but this token carries
+         * nearly all the app's supporting copy at small sizes, where AA is
+         * thin for older and low-vision readers. L35% passes AAA at 7.3:1 on
+         * white and 6.6:1 on --muted, and stays clearly lighter than
+         * --foreground so the type hierarchy is unchanged. */
+        --muted-foreground-hsl: 238 3.8% 35%;
         --muted-foreground: hsl(var(--muted-foreground-hsl));
         /* Brand indigo (#2E3192) -- the app's one true interactive accent:
          * primary buttons, links, active states, focus rings. Passes
@@ -138,6 +144,12 @@
         /* Brand teal (#1A6A75), used unchanged -- already passes at 6.2:1. */
         --info-hsl: 187 64% 28%;
         --info: hsl(var(--info-hsl));
+        /* Added by the Fluid Functionalism switch. --overlay is the one the
+         * switch actually reads (it color-mixes it into the unchecked track's
+         * hover); the other two come with that theme and are unused so far. */
+        --overlay: 0 0 0;
+        --selected: #D4D4D4;
+        --destructive-light: #FEF2F2;
     }
 }
 

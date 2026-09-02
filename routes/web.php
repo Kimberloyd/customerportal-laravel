@@ -94,6 +94,9 @@ Route::middleware('auth')->prefix('notifications')->name('notifications.')->grou
 Route::middleware('auth')->prefix('settings')->name('settings.')->group(function () {
     Route::get('/', [SettingsController::class, 'edit'])->name('edit');
     Route::put('/', [SettingsController::class, 'update'])->name('update');
+    // Admin-only; the role check lives in the controller alongside the other
+    // role gates in this app rather than in a dedicated middleware.
+    Route::put('/sms', [SettingsController::class, 'updateSms'])->name('sms.update');
 });
 
 Route::middleware('auth')->prefix('reports')->name('reports.')->group(function () {

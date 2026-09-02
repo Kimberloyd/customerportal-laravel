@@ -66,14 +66,29 @@ class DashboardTest extends TestCase
             ->where('activeTab', 'accounts')
             ->where('filters.search', 'jane')
             ->where('filters.role', 'employee')
-            ->has('users.data', 1)
-            ->where('users.data.0.email', 'jane-account@example.com')
-            ->where('users.data.0.phone', '5551234567')
-            ->where('users.data.0.linked_customer_id', null)
-            ->where('users.data.0.is_self', false)
-            ->missing('users.data.0.password_hash')
             ->where('accountForm.allowAdminCreation', false)
-            ->has('accountForm.customers'));
+            ->has('accountForm.customers')
+            ->missing('users')
+            ->loadDeferredProps('accounts', fn ($deferred) => $deferred
+                ->has('users.data', 1)
+                ->where('users.data.0.email', 'jane-account@example.com')
+                ->where('users.data.0.phone', '5551234567')
+                ->where('users.data.0.linked_customer_id', null)
+                ->where('users.data.0.is_self', false)
+                ->missing('users.data.0.password_hash')));
+    }
+
+    public function test_admin_defers_the_customers_table(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $response = $this->actingAsUser($admin)->get('/admin?tab=customers');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->where('activeTab', 'customers')
+            ->missing('customers')
+            ->loadDeferredProps('customers', fn ($deferred) => $deferred->has('customers.data')));
     }
 
     public function test_product_search_uses_the_complete_catalog_without_an_upstream_query(): void

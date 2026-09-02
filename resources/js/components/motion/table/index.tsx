@@ -5,6 +5,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Checkbox } from "@/components/motion/checkbox";
+import { Skeleton } from "@/components/loading-ui/skeleton";
 import { cn } from "@/lib/utils";
 import { EditableCell } from "./editable-cell";
 import { RowHandle } from "./row-handle";
@@ -213,6 +214,21 @@ export function Table<T>({
   const [hoveredRowIndex, setHoveredRowIndex] = useState<number | null>(null);
   // Real columns + checkbox; the trailing spacer adds one more in colSpans.
   const leadColumns = columns.length + (selectable ? 1 : 0);
+
+  if (loading) {
+    return (
+      <div
+        aria-busy="true"
+        aria-label="Loading table"
+        className={cn(
+          "w-full overflow-hidden rounded-xl bg-background",
+          className,
+        )}
+      >
+        <Skeleton className="w-full rounded-none" style={{ height }} />
+      </div>
+    );
+  }
 
   return (
     <div

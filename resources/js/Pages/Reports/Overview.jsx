@@ -34,13 +34,18 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
     const [startDate, setStartDate] = useState(filters.start_date);
     const [endDate, setEndDate] = useState(filters.end_date);
     const [customerId, setCustomerId] = useState(filters.customer_id ?? '');
+    const [tableLoading, setTableLoading] = useState(false);
 
     const applyFilters = (e) => {
         e.preventDefault();
         router.get(
             route('reports.overview'),
             { range, start_date: startDate, end_date: endDate, customer_id: customerId },
-            { preserveState: true },
+            {
+                preserveState: true,
+                onStart: () => setTableLoading(true),
+                onFinish: () => setTableLoading(false),
+            },
         );
     };
 
@@ -201,6 +206,7 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                     data={productPerformanceRows}
                     columns={productPerformanceColumns}
                     getRowId={(p) => p.__rowId}
+                    loading={tableLoading}
                     resizable
                     emptyState="No report data is available for this period. Try a different date range."
                 />
@@ -214,6 +220,7 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                             data={customerPerformanceRows}
                             columns={customerPerformanceColumns}
                             getRowId={(c) => c.__rowId}
+                            loading={tableLoading}
                             resizable
                             emptyState="No report data is available for this period. Try a different date range."
                         />

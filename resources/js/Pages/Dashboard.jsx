@@ -424,6 +424,7 @@ function CustomerDashboard({ dashboard }) {
                     className="[&>div]:!overflow-x-auto [&>div]:!overflow-y-hidden"
                     rowHeight={CUSTOMER_TABLE_ROW_HEIGHT}
                     height={CUSTOMER_TABLE_HEIGHT}
+                    loading={refreshingSummary}
                     emptyState="No orders yet. Create an order to start tracking it here."
                 />
             </section>
@@ -565,6 +566,7 @@ function CompanyDashboard({ dashboard }) {
                     data={dashboard.recent_orders}
                     columns={recentOrderColumns}
                     getRowId={(order) => String(order.id)}
+                    loading={refreshingSummary}
                     emptyState="No orders have been submitted yet."
                 />
             </section>
