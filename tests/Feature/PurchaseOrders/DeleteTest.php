@@ -62,13 +62,27 @@ class DeleteTest extends TestCase
         );
     }
 
-    public function test_non_administrators_cannot_delete_orders(): void
+    public function test_employee_can_permanently_delete_an_order(): void
     {
         $employee = User::factory()->create(['role' => 'employee']);
         $customer = $this->makeCustomer();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now());
 
         $this->actingAsUser($employee)
+            ->delete(route('purchase-orders.destroy', $order))
+            ->assertRedirect(route('purchase-orders.index'))
+            ->assertSessionHas('success', 'Order deleted permanently.');
+
+        $this->assertDatabaseMissing('purchase_orders', ['id' => $order->id]);
+    }
+
+    public function test_customers_cannot_delete_orders(): void
+    {
+        $customerUser = User::factory()->create(['role' => 'customer']);
+        $customer = $this->makeCustomer();
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now());
+
+        $this->actingAsUser($customerUser)
             ->delete(route('purchase-orders.destroy', $order))
             ->assertForbidden();
 

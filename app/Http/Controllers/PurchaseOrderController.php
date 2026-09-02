@@ -134,7 +134,7 @@ class PurchaseOrderController extends Controller
             'lockedCustomerId' => $customer?->id,
             'openCreateOrder' => $request->boolean('create'),
             'canViewMessageLog' => Auth::user()->role === 'admin',
-            'canDeleteOrders' => Auth::user()->role === 'admin',
+            'canDeleteOrders' => in_array(Auth::user()->role, ['admin', 'employee'], true),
         ]);
     }
 
@@ -681,7 +681,8 @@ class PurchaseOrderController extends Controller
 
     public function destroy(PurchaseOrder $order): RedirectResponse
     {
-        abort_unless(Auth::user()->role === 'admin', 403);
+        // Deletion is a company-staff action; customer accounts can never remove orders.
+        abort_unless(in_array(Auth::user()->role, ['admin', 'employee'], true), 403);
 
         $deletedCustomerId = null;
 
