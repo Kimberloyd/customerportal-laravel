@@ -170,6 +170,7 @@ export function UserModal({ open, onOpenChange, user = null, allowAdminCreation 
                             customers={customers}
                             isSelf={Boolean(user?.is_self)}
                             editingUserId={user?.id}
+                            showActiveControl={isEdit}
                         />
                     </Step>
                 </Stepper>

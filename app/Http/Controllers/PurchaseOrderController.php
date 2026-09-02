@@ -133,14 +133,14 @@ class PurchaseOrderController extends Controller
             ),
             'lockedCustomerId' => $customer?->id,
             'openCreateOrder' => $request->boolean('create'),
-            'canViewMessageLog' => Auth::user()->role === 'admin',
+            'canViewMessageLog' => in_array(Auth::user()->role, ['admin', 'employee'], true),
             'canDeleteOrders' => in_array(Auth::user()->role, ['admin', 'employee'], true),
         ]);
     }
 
     public function messageLog(PurchaseOrder $order): JsonResponse
     {
-        abort_if(Auth::user()->role !== 'admin', 403);
+        abort_unless(in_array(Auth::user()->role, ['admin', 'employee'], true), 403);
 
         $entries = PurchaseOrderNotification::query()
             ->where('purchase_order_id', $order->id)

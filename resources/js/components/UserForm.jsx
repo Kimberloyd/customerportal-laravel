@@ -83,7 +83,7 @@ export function SecurityFields({ data, updateField, errors, isEdit, optional = i
     );
 }
 
-export function AccessFields({ data, updateField, errors, allowAdminCreation, customers, isSelf, editingUserId }) {
+export function AccessFields({ data, updateField, errors, allowAdminCreation, customers, isSelf, editingUserId, showActiveControl = true }) {
     const roleOptions = allowAdminCreation ? ['employee', 'customer', 'admin'] : ['employee', 'customer'];
     const roleItems = roleOptions.map((role) => ({ value: role, label: ROLE_LABELS[role] }));
     const selectedRoleLabel = ROLE_LABELS[data.role] ?? 'Choose an account type';
@@ -166,17 +166,19 @@ export function AccessFields({ data, updateField, errors, allowAdminCreation, cu
                 </div>
             )}
 
-            <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                    type="checkbox"
-                    checked={data.is_active}
-                    disabled={isSelf}
-                    onChange={(e) => updateField('is_active', e.target.checked)}
-                    className="disabled:opacity-50"
-                />
-                Active
-                {isSelf && <span className="text-xs text-gray-500">(you cannot deactivate your own account)</span>}
-            </label>
+            {showActiveControl && (
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                        type="checkbox"
+                        checked={data.is_active}
+                        disabled={isSelf}
+                        onChange={(e) => updateField('is_active', e.target.checked)}
+                        className="disabled:opacity-50"
+                    />
+                    Active
+                    {isSelf && <span className="text-xs text-gray-500">(you cannot deactivate your own account)</span>}
+                </label>
+            )}
         </>
     );
 }
@@ -199,6 +201,7 @@ export default function UserForm({ data, setData, errors, clearErrors, allowAdmi
                 customers={customers}
                 isSelf={isSelf}
                 editingUserId={editingUserId}
+                showActiveControl={isEdit}
             />
         </>
     );

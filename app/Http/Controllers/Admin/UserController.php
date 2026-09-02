@@ -70,7 +70,7 @@ class UserController extends Controller
                 'email' => $values['email'],
                 'phone' => $values['phone'],
                 'role' => $values['role'],
-                'is_active' => $request->input('is_active') === '1',
+                'is_active' => true,
                 'password_hash' => Hash::make($values['password']),
                 'session_version' => 0,
             ]);

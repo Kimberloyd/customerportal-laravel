@@ -183,11 +183,13 @@ class CreateTest extends TestCase
             'password_confirmation' => 'password12345',
             'role' => 'customer',
             'customer_id' => $customer->id,
+            'is_active' => '0',
         ]);
 
         $response->assertRedirect(route('admin.dashboard', ['tab' => 'accounts']));
         $newUser = User::where('email', 'newcust@example.com')->first();
         $this->assertNotNull($newUser);
+        $this->assertTrue($newUser->is_active);
         $this->assertTrue(Hash::check('password12345', $newUser->password_hash));
         $this->assertSame($newUser->id, $customer->fresh()->user_id);
     }
