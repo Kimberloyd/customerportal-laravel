@@ -28,7 +28,7 @@ const userFormValues = (user) => ({
     is_active: user?.is_active ?? true,
 });
 
-export function UserModal({ open, onOpenChange, user = null, allowAdminCreation = false, customers = [] }) {
+export function UserModal({ open, onOpenChange, user = null, customers = [] }) {
     const isEdit = user !== null;
     const stepFields = isEdit ? EDIT_STEP_FIELDS : CREATE_STEP_FIELDS;
     const totalSteps = stepFields.length;
@@ -111,7 +111,7 @@ export function UserModal({ open, onOpenChange, user = null, allowAdminCreation 
             description={
                 isEdit
                     ? "Update this account's profile and access."
-                    : 'Create a portal account and choose what the account holder can access.'
+                    : 'Create an administrator or employee portal account.'
             }
             maxWidth={640}
             maxHeight="90vh"
@@ -166,7 +166,7 @@ export function UserModal({ open, onOpenChange, user = null, allowAdminCreation 
                             data={data}
                             updateField={updateField}
                             errors={errors}
-                            allowAdminCreation={allowAdminCreation || user?.role === 'admin'}
+                            allowCustomerRole={user?.role === 'customer'}
                             customers={customers}
                             isSelf={Boolean(user?.is_self)}
                             editingUserId={user?.id}

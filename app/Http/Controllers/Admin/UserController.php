@@ -39,7 +39,6 @@ class UserController extends Controller
         return Inertia::render('Admin/Users/Index', [
             ...$this->userListing->get($request->query()),
             'accountForm' => [
-                'allowAdminCreation' => false,
                 'customers' => $this->customerOptions(),
             ],
         ]);
@@ -49,10 +48,7 @@ class UserController extends Controller
     {
         $this->requireAdmin();
 
-        $allowAdminCreation = $this->allowAdminCreationFromRequest($request);
-
         return Inertia::render('Admin/Users/Create', [
-            'allowAdminCreation' => $allowAdminCreation,
             'customers' => $this->customerOptions(),
         ]);
     }
@@ -61,8 +57,7 @@ class UserController extends Controller
     {
         $this->requireAdmin();
 
-        $allowAdminCreation = $this->allowAdminCreationFromRequest($request);
-        $values = $this->validateUserForm($request, null, $allowAdminCreation);
+        $values = $this->validateUserForm($request);
 
         DB::transaction(function () use ($values, $request) {
             $user = User::create([
@@ -90,8 +85,7 @@ class UserController extends Controller
     {
         $this->requireAdmin();
 
-        $allowAdminCreation = $this->allowAdminCreationFromRequest($request) || $user->role === 'admin';
-        $values = $this->validateUserForm($request, $user, $allowAdminCreation);
+        $values = $this->validateUserForm($request, $user);
 
         $previousRole = $user->role;
         $previousActive = $user->is_active;
@@ -290,15 +284,6 @@ class UserController extends Controller
         abort_if(Auth::user()->role !== 'admin', 403);
     }
 
-    private function allowAdminCreationFromRequest(Request $request): bool
-    {
-        if (Auth::user()->role !== 'admin') {
-            return false;
-        }
-
-        return $request->input('allow_admin') === '1';
-    }
-
     /**
      * Shared by resetPassword() and validateUserForm(). Beyond the minimum
      * length, this rejects reuse of the account's current password.
@@ -345,7 +330,7 @@ class UserController extends Controller
     /**
      * @return array{full_name: string, email: string, phone: ?string, password: string, role: string, customer_id: ?int}
      */
-    private function validateUserForm(Request $request, ?User $user, bool $allowAdminCreation): array
+    private function validateUserForm(Request $request, ?User $user = null): array
     {
         $fullName = trim((string) $request->input('full_name', ''));
         $email = strtolower(trim((string) $request->input('email', '')));
@@ -355,9 +340,13 @@ class UserController extends Controller
         $selectedRole = strtolower(trim((string) $request->input('role', $user?->role ?? 'employee')));
         $selectedCustomerId = $request->input('customer_id') ? (int) $request->input('customer_id') : null;
 
-        $allowedRoles = ['employee', 'customer'];
-        if ($allowAdminCreation) {
-            $allowedRoles[] = 'admin';
+        // Customer accounts are created only through the employee customer-account
+        // flow, which also assigns the customer to its responsible employee.
+        // An existing customer account remains editable so an admin can maintain it
+        // or move it to a staff role, but no other account can be converted into one.
+        $allowedRoles = ['employee', 'admin'];
+        if ($user?->role === 'customer') {
+            $allowedRoles[] = 'customer';
         }
 
         if ($fullName === '') {

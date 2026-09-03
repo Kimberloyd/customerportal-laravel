@@ -83,8 +83,8 @@ export function SecurityFields({ data, updateField, errors, isEdit, optional = i
     );
 }
 
-export function AccessFields({ data, updateField, errors, allowAdminCreation, customers, isSelf, editingUserId, showActiveControl = true }) {
-    const roleOptions = allowAdminCreation ? ['employee', 'customer', 'admin'] : ['employee', 'customer'];
+export function AccessFields({ data, updateField, errors, allowCustomerRole = false, customers, isSelf, editingUserId, showActiveControl = true }) {
+    const roleOptions = allowCustomerRole ? ['employee', 'admin', 'customer'] : ['employee', 'admin'];
     const roleItems = roleOptions.map((role) => ({ value: role, label: ROLE_LABELS[role] }));
     const selectedRoleLabel = ROLE_LABELS[data.role] ?? 'Choose an account type';
     const customerItems = customers.map((customer) => {
@@ -183,7 +183,7 @@ export function AccessFields({ data, updateField, errors, allowAdminCreation, cu
     );
 }
 
-export default function UserForm({ data, setData, errors, clearErrors, allowAdminCreation, customers, isEdit, isSelf, editingUserId }) {
+export default function UserForm({ data, setData, errors, clearErrors, customers, isEdit, isSelf, editingUserId }) {
     const updateField = (field, value) => {
         setData(field, value);
         clearErrors(field);
@@ -197,7 +197,6 @@ export default function UserForm({ data, setData, errors, clearErrors, allowAdmi
                 data={data}
                 updateField={updateField}
                 errors={errors}
-                allowAdminCreation={allowAdminCreation}
                 customers={customers}
                 isSelf={isSelf}
                 editingUserId={editingUserId}

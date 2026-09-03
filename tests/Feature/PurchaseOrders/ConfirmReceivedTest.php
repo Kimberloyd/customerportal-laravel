@@ -135,7 +135,9 @@ class ConfirmReceivedTest extends TestCase
         $this->actingAsUser($user)
             ->get(route('purchase-orders.index'))
             ->assertInertia(fn ($page) => $page
-                ->where('orders.data.0.status', PurchaseOrder::STATUS_COMPLETED)
-                ->where('orders.data.0.display_status', 'received'));
+                ->missing('orders')
+                ->loadDeferredProps('orders', fn ($deferred) => $deferred
+                    ->where('orders.data.0.status', PurchaseOrder::STATUS_COMPLETED)
+                    ->where('orders.data.0.display_status', 'received')));
     }
 }

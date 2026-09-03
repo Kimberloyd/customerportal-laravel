@@ -125,6 +125,39 @@ class OrderNotifications
         );
     }
 
+    public static function returnRequested(PurchaseOrder $order): void
+    {
+        try {
+            self::notifyPortal($order, 'Return requested — staff review is needed.');
+        } catch (\Throwable $e) {
+            Log::error("Failed to create return-request notification for {$order->po_number}.", ['exception' => $e]);
+            self::record($order, 'portal', 'failed', note: $e->getMessage());
+        }
+    }
+
+    public static function returnUpdated(PurchaseOrder $order, string $status): void
+    {
+        [$note, $eventLabel, $smsBody] = match ($status) {
+            'approved' => [
+                'Your return request was approved. Our team will coordinate the return.',
+                'return approval',
+                "Your return request for order {$order->po_number} was approved. Our team will coordinate the return.",
+            ],
+            'rejected' => [
+                'Your return request was not approved. See the return details for the reason.',
+                'return decision',
+                "Your return request for order {$order->po_number} was not approved. See the portal for details.",
+            ],
+            'received' => [
+                'Your returned products were received by our team.',
+                'return receipt',
+                "Returned products for order {$order->po_number} were received by our team.",
+            ],
+        };
+
+        self::notifyCustomerSafely($order, $note, $eventLabel, $smsBody);
+    }
+
     /**
      * Shared best-effort wrapper for the single-channel events above --
      * a failure here is logged and recorded exactly like the channels
@@ -136,8 +169,7 @@ class OrderNotifications
         string $bellNote,
         string $eventLabel,
         string $smsBody,
-    ): void
-    {
+    ): void {
         try {
             self::notifyPortal($order, $bellNote);
         } catch (\Throwable $e) {

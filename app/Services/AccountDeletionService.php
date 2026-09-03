@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\CustomerMessage;
 use App\Models\DataSubjectRequest;
 use App\Models\LoginAttempt;
+use App\Models\ProductReturn;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderAudit;
 use App\Models\User;
@@ -157,6 +158,12 @@ final class AccountDeletionService
         $orders = PurchaseOrder::whereIn('customer_id', $customerIds)
             ->with(['items', 'auditLogs'])
             ->get();
+        $productReturns = ProductReturn::query()
+            ->where('requested_by_user_id', $user->id)
+            ->orWhere('reviewed_by_user_id', $user->id)
+            ->orWhere('received_by_user_id', $user->id)
+            ->with('items')
+            ->get();
 
         $conversationFields = [
             'id', 'customer_id', 'assigned_user_id', 'subject', 'body', 'parent_id',
@@ -187,6 +194,7 @@ final class AccountDeletionService
             ],
             'linked_customers' => Customer::whereIn('id', $customerIds)->get()->toArray(),
             'purchase_orders' => $orders->toArray(),
+            'product_returns' => $productReturns->toArray(),
             'conversations' => $conversations->toArray(),
             'admin_audits' => AdminAudit::where(function ($query) use ($user) {
                 $query->where('actor_user_id', $user->id)
@@ -238,6 +246,18 @@ final class AccountDeletionService
                 'customers_detached' => Customer::where('user_id', $locked->id)->update(['user_id' => null]),
                 'conversations_detached' => CustomerMessage::where('assigned_user_id', $locked->id)
                     ->update(['assigned_user_id' => null]),
+                'return_requests_anonymized' => ProductReturn::where('requested_by_user_id', $locked->id)
+                    ->update([
+                        'requested_by_user_id' => null,
+                        'reason' => 'Personal data removed after account erasure.',
+                    ]),
+                'return_reviews_anonymized' => ProductReturn::where('reviewed_by_user_id', $locked->id)
+                    ->update([
+                        'reviewed_by_user_id' => null,
+                        'review_note' => null,
+                    ]),
+                'return_receipts_anonymized' => ProductReturn::where('received_by_user_id', $locked->id)
+                    ->update(['received_by_user_id' => null]),
             ];
 
             PurchaseOrderAudit::where('actor_user_id', $locked->id)

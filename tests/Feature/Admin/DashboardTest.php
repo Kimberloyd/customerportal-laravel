@@ -66,7 +66,6 @@ class DashboardTest extends TestCase
             ->where('activeTab', 'accounts')
             ->where('filters.search', 'jane')
             ->where('filters.role', 'employee')
-            ->where('accountForm.allowAdminCreation', false)
             ->has('accountForm.customers')
             ->missing('users')
             ->loadDeferredProps('accounts', fn ($deferred) => $deferred

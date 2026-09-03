@@ -8,6 +8,7 @@ use App\Models\PurchaseOrderAudit;
 use App\Models\PurchaseOrderItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class DashboardTest extends TestCase
@@ -156,6 +157,125 @@ class DashboardTest extends TestCase
                 ->has('customerDashboard.action_required', 0)
                 ->has('customerDashboard.active_orders', 0)
                 ->has('customerDashboard.recent_orders', 0));
+    }
+
+    public function test_company_dashboard_exposes_a_dense_year_of_order_activity(): void
+    {
+        $this->travelTo(Carbon::parse('2026-06-15 12:00:00'));
+
+        $staff = User::factory()->create(['role' => 'employee']);
+        $customer = Customer::create(['company_name' => 'Example Hospital', 'is_active' => true]);
+        $order = $this->createOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now()->subDay());
+
+        foreach ([now(), now(), now()->subDays(3)] as $createdAt) {
+            PurchaseOrderAudit::create([
+                'purchase_order_id' => $order->id,
+                'action' => 'Order Submitted',
+                'actor_user_id' => $staff->id,
+                'actor_role' => 'employee',
+                'created_at' => $createdAt,
+            ]);
+        }
+
+        $this->actingAsUser($staff)->get('/dashboard')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->missing('companyCharts')
+                ->loadDeferredProps('charts', fn ($charts) => $charts
+                    // The whole calendar year, so the grid draws a complete
+                    // Jan-Dec block instead of stopping at today. 2026 has 365 days.
+                    ->has('companyCharts.order_activity', 365)
+                    // Index 165 is 2026-06-15, the frozen "today".
+                    ->where('companyCharts.order_activity.165.value', 2)
+                    ->where('companyCharts.order_activity.165.t',
+                        Carbon::parse('2026-06-15', 'UTC')->getTimestamp() * 1000)
+                    ->where('companyCharts.order_activity.162.value', 1)
+                    ->where('companyCharts.order_activity.164.value', 0)
+                    // Oldest first, and never reaching back into last year.
+                    ->where('companyCharts.order_activity.0.t',
+                        Carbon::parse('2026-01-01', 'UTC')->getTimestamp() * 1000)
+                    // Padded through December 31st, with days still to come at zero.
+                    ->where('companyCharts.order_activity.364.t',
+                        Carbon::parse('2026-12-31', 'UTC')->getTimestamp() * 1000)
+                    ->where('companyCharts.order_activity.364.value', 0)
+                    // The streak marker stays on today, not the padded tail.
+                    ->where('companyCharts.activity_through',
+                        Carbon::parse('2026-06-15', 'UTC')->getTimestamp() * 1000)));
+    }
+
+    public function test_company_dashboard_reports_fulfillment_lead_times_in_hours(): void
+    {
+        $this->travelTo(Carbon::parse('2026-06-15 12:00:00'));
+
+        $staff = User::factory()->create(['role' => 'employee']);
+        $customer = Customer::create(['company_name' => 'Example Hospital', 'is_active' => true]);
+
+        $this->createOrder($customer, PurchaseOrder::STATUS_COMPLETED, Carbon::parse('2026-06-10 08:00:00'))
+            ->update(['completed_at' => Carbon::parse('2026-06-11 08:00:00')]);
+        $this->createOrder($customer, PurchaseOrder::STATUS_COMPLETED, Carbon::parse('2026-06-12 10:00:00'))
+            ->update(['completed_at' => Carbon::parse('2026-06-12 12:30:00')]);
+        // Still open, so it has no lead time to measure yet.
+        $this->createOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now()->subDay());
+
+        $this->actingAsUser($staff)->get('/dashboard')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->loadDeferredProps('charts', fn ($charts) => $charts
+                    ->has('companyCharts.lead_times', 2)
+                    ->where('companyCharts.lead_times.0', 24)
+                    ->where('companyCharts.lead_times.1', 2.5)));
+    }
+
+    public function test_company_dashboard_buckets_open_orders_by_age(): void
+    {
+        $this->travelTo(Carbon::parse('2026-06-15 12:00:00'));
+
+        $staff = User::factory()->create(['role' => 'employee']);
+        $customer = Customer::create(['company_name' => 'Example Hospital', 'is_active' => true]);
+
+        $this->createOrder($customer, PurchaseOrder::STATUS_SUBMITTED, Carbon::parse('2026-06-14 09:00:00'));
+        $this->createOrder($customer, PurchaseOrder::STATUS_REVIEWING, Carbon::parse('2026-06-11 09:00:00'));
+        $this->createOrder($customer, PurchaseOrder::STATUS_PARTIAL, Carbon::parse('2026-06-07 09:00:00'));
+        $this->createOrder($customer, PurchaseOrder::STATUS_PROCESSING, Carbon::parse('2026-05-20 09:00:00'));
+        // Closed orders are not waiting on anyone.
+        $this->createOrder($customer, PurchaseOrder::STATUS_COMPLETED, Carbon::parse('2026-06-14 09:00:00'));
+
+        $this->actingAsUser($staff)->get('/dashboard')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->loadDeferredProps('charts', fn ($charts) => $charts
+                    ->has('companyCharts.open_order_aging', 4)
+                    ->where('companyCharts.open_order_aging.0.bucket', '0-2 days')
+                    ->where('companyCharts.open_order_aging.0.orders', 1)
+                    ->where('companyCharts.open_order_aging.1.orders', 1)
+                    ->where('companyCharts.open_order_aging.2.orders', 1)
+                    ->where('companyCharts.open_order_aging.3.bucket', 'Over 10 days')
+                    ->where('companyCharts.open_order_aging.3.orders', 1)));
+    }
+
+    public function test_company_dashboard_builds_reorder_cohorts(): void
+    {
+        $this->travelTo(Carbon::parse('2026-06-15 12:00:00'));
+
+        $staff = User::factory()->create(['role' => 'employee']);
+        $returning = Customer::create(['company_name' => 'Returning Hospital', 'is_active' => true]);
+        $once = Customer::create(['company_name' => 'One Off Clinic', 'is_active' => true]);
+
+        // Cohort Apr 2026: ordered again two months later, skipping May.
+        $this->createOrder($returning, PurchaseOrder::STATUS_COMPLETED, Carbon::parse('2026-04-10 09:00:00'));
+        $this->createOrder($returning, PurchaseOrder::STATUS_SUBMITTED, Carbon::parse('2026-06-02 09:00:00'));
+        // Same cohort, never came back.
+        $this->createOrder($once, PurchaseOrder::STATUS_COMPLETED, Carbon::parse('2026-04-12 09:00:00'));
+
+        $this->actingAsUser($staff)->get('/dashboard')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->loadDeferredProps('charts', fn ($charts) => $charts
+                    ->has('companyCharts.reorder_cohorts', 1)
+                    ->where('companyCharts.reorder_cohorts.0.label', 'Apr 2026')
+                    ->where('companyCharts.reorder_cohorts.0.size', 2)
+                    // Placing the cohort is 100%; May empty; June only the returner.
+                    ->where('companyCharts.reorder_cohorts.0.retention', [100, 0, 50])));
     }
 
     private function createOrder(

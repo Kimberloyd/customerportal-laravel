@@ -31,7 +31,6 @@ export default function Index({ users, filters, roleLabels, accountForm }) {
                 open={editingUser !== null}
                 onOpenChange={(open) => !open && setEditingUser(null)}
                 user={editingUser}
-                allowAdminCreation={accountForm?.allowAdminCreation}
                 customers={accountForm?.customers}
             />
 

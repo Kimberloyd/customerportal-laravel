@@ -8,8 +8,8 @@ use App\Support\AdminUserListing;
 use App\Support\OrderNotifications;
 use App\Support\SemaphoreSms;
 use App\Support\UserAudit;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -25,9 +25,13 @@ use Inertia\Response;
  */
 class SettingsController extends Controller
 {
-    public function edit(): Response
+    /** Rows of message history per page in the Semaphore panel. */
+    private const SMS_PAGE_SIZE = 6;
+
+    public function edit(Request $request): Response
     {
         $user = Auth::user();
+        $page = max(1, (int) $request->query('sms_page', 1));
 
         return Inertia::render('Settings/Edit', [
             'user' => [
@@ -42,6 +46,28 @@ class SettingsController extends Controller
                     'enabled' => OrderNotifications::smsEnabled(),
                     'configured' => SemaphoreSms::isConfigured(),
                 ]
+                : null,
+            // Round trips to Semaphore, so they stay off the critical path --
+            // the settings form renders immediately and the panel fills in.
+            // Each is independently nullable: one endpoint being down still
+            // shows the other.
+            'semaphore' => $user->role === 'admin'
+                ? Inertia::defer(function () use ($page) {
+                    // Semaphore does not provide a total. Fetch one extra row
+                    // so the shared numbered pagination only exposes a next
+                    // page when there is actually another message to show.
+                    $messages = SemaphoreSms::messages(self::SMS_PAGE_SIZE + 1, $page);
+                    $hasMore = is_array($messages) && count($messages) > self::SMS_PAGE_SIZE;
+
+                    return [
+                        'account' => SemaphoreSms::account(),
+                        'messages' => is_array($messages)
+                            ? array_slice($messages, 0, self::SMS_PAGE_SIZE)
+                            : null,
+                        'page' => $page,
+                        'has_more' => $hasMore,
+                    ];
+                }, 'semaphore')
                 : null,
         ]);
     }

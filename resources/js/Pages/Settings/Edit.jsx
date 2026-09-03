@@ -1,13 +1,21 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import FlashBanner from '@/components/FlashBanner';
+import { Pagination } from '@/components/interior/pagination';
 import { Input } from '@/components/motion/input';
+import { Table } from '@/components/motion/table';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import axios from 'axios';
-import { Head, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { Head, router, useForm } from '@inertiajs/react';
+import { useMemo, useState } from 'react';
 
 const FIELD_CLASS_NAMES = { field: 'h-10 rounded-md', input: 'text-sm' };
+
+// One page fits exactly, so the table paginates rather than scrolling. Must
+// match SettingsController::SMS_PAGE_SIZE.
+const MESSAGE_PAGE_SIZE = 6;
+const MESSAGE_ROW_HEIGHT = 52;
+const MESSAGE_TABLE_HEIGHT = MESSAGE_PAGE_SIZE * MESSAGE_ROW_HEIGHT + 20;
 
 /**
  * Section heading: the bold title with a muted line under it that opens each
@@ -63,12 +71,183 @@ function Tabs({ tabs, active, onChange }) {
     );
 }
 
+const DATE_TIME = new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+});
+
+function formatWhen(value) {
+    if (!value) return '—';
+
+    const parsed = new Date(value);
+
+    return Number.isNaN(parsed.getTime()) ? value : DATE_TIME.format(parsed);
+}
+
+function formatNumber(value) {
+    return typeof value === 'number' ? value.toLocaleString() : value ?? '—';
+}
+
+function SkeletonLines({ rows = 3 }) {
+    return (
+        <div className="animate-pulse space-y-2" aria-hidden="true">
+            {Array.from({ length: rows }, (_, index) => (
+                <div key={index} className="h-4 rounded bg-muted" />
+            ))}
+        </div>
+    );
+}
+
+function Unavailable({ children }) {
+    return <p className="text-sm text-muted-foreground">{children}</p>;
+}
+
+/**
+ * Live account usage read from Semaphore. Every block is independently
+ * nullable, so one endpoint being down (or rate limited) greys out just that
+ * block instead of the whole panel.
+ */
+function SemaphoreUsage({ semaphore }) {
+    // Absent until the deferred request lands.
+    const loading = semaphore === undefined;
+    const account = semaphore?.account ?? null;
+    const page = semaphore?.page ?? 1;
+    const hasMore = semaphore?.has_more ?? false;
+    // Semaphore has no total-page field. The server requests one additional
+    // row, so this shows exactly one next page only when one is available.
+    const pageCount = Math.max(1, page + (hasMore ? 1 : 0));
+
+    // Only the deferred prop is re-requested, so the form above keeps its state
+    // and the page does not jump back to the top on a page change.
+    const goToPage = (next) => {
+        if (next < 1) return;
+
+        router.get(
+            route('settings.edit'),
+            { sms_page: next },
+            {
+                only: ['semaphore'],
+                preserveState: true,
+                preserveScroll: true,
+            },
+        );
+    };
+
+    // Semaphore has no guaranteed unique key across every response shape, so a
+    // stable row id is derived once here rather than in getRowId, which the
+    // table calls on every render.
+    const messages = useMemo(() => {
+        if (!semaphore?.messages) return semaphore?.messages ?? null;
+
+        return semaphore.messages.map((entry, index) => ({
+            ...entry,
+            rowId: String(entry.message_id ?? `${entry.recipient ?? ''}-${entry.created_at ?? index}`),
+        }));
+    }, [semaphore]);
+
+    const messageColumns = useMemo(
+        () => [
+            {
+                key: 'recipient',
+                header: 'Recipient',
+                cell: (entry) => (
+                    <span className="tabular-nums font-medium text-foreground">
+                        {entry.recipient ?? '—'}
+                    </span>
+                ),
+            },
+            {
+                key: 'message',
+                header: 'Message',
+                cell: (entry) => (
+                    <span className="line-clamp-2 text-muted-foreground">{entry.message ?? '—'}</span>
+                ),
+            },
+            { key: 'status', header: 'Status', cell: (entry) => entry.status ?? '—' },
+            {
+                key: 'created_at',
+                header: 'Sent',
+                cell: (entry) => (
+                    <span className="tabular-nums">{formatWhen(entry.created_at)}</span>
+                ),
+            },
+        ],
+        [],
+    );
+
+    return (
+        <>
+            <Row
+                label="Credits remaining"
+                description="Each text costs one credit per 160 characters."
+            >
+                {loading ? (
+                    <SkeletonLines rows={2} />
+                ) : account ? (
+                    <div>
+                        <p className="text-3xl font-semibold text-foreground">
+                            {formatNumber(account.credit_balance)}
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            {account.account_name ?? 'Semaphore account'}
+                            {account.status ? ` · ${account.status}` : ''}
+                        </p>
+                    </div>
+                ) : (
+                    <Unavailable>
+                        Semaphore did not return a balance. It may be rate limited — this
+                        panel refreshes about once a minute.
+                    </Unavailable>
+                )}
+            </Row>
+
+            {/* Full width rather than inside a Row -- four columns do not fit
+                the Row grid's max-w-xl content column. */}
+            <div className="border-t border-border py-5">
+                <p className="text-sm font-medium text-foreground">Recent messages</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                    The latest texts sent through this account.
+                </p>
+                <div className="mt-4">
+                    {messages === null && !loading ? (
+                        <Unavailable>Message history is unavailable right now.</Unavailable>
+                    ) : (
+                        <>
+                            <Table
+                                data={messages ?? []}
+                                columns={messageColumns}
+                                getRowId={(entry) => entry.rowId}
+                                className="[&>div]:!overflow-x-auto [&>div]:!overflow-y-hidden"
+                                loading={loading}
+                                rowHeight={MESSAGE_ROW_HEIGHT}
+                                height={MESSAGE_TABLE_HEIGHT}
+                                emptyState="No texts have been sent from this account yet."
+                            />
+
+                            <div className="mt-4 flex justify-end">
+                                {pageCount > 1 && (
+                                    <Pagination
+                                        count={pageCount}
+                                        page={page}
+                                        onPageChange={goToPage}
+                                        label="Recent messages pagination"
+                                    />
+                                )}
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
+        </>
+    );
+}
+
 /**
  * Runtime kill switch for outbound order SMS. Admin-only -- the server gates
  * this too (SettingsController::updateSms), the `sms` prop is simply absent for
  * everyone else.
  */
-function NotificationsSection({ sms, onSaved }) {
+function NotificationsSection({ sms, semaphore, onSaved }) {
     // Held locally and flipped before the request goes out, so the switch
     // animates under the cursor instead of waiting on the round-trip. The save
     // then happens in the background; only a failure moves it back.
@@ -135,7 +314,9 @@ function NotificationsSection({ sms, onSaved }) {
                 </div>
             </Row>
 
-            {!sms.configured && (
+            {sms.configured ? (
+                <SemaphoreUsage semaphore={semaphore} />
+            ) : (
                 <div className="mt-5 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900" role="alert">
                     <p className="font-medium">SMS is not configured</p>
                     <p className="mt-1">
@@ -147,7 +328,7 @@ function NotificationsSection({ sms, onSaved }) {
     );
 }
 
-export default function Edit({ user, sms }) {
+export default function Edit({ user, sms, semaphore }) {
     const { data, setData, put, processing, errors, clearErrors } = useForm({
         full_name: user.full_name,
         phone: user.phone ?? '',
@@ -157,7 +338,7 @@ export default function Edit({ user, sms }) {
     // rather than a lone tab that looks like a broken nav.
     const tabs = [
         { key: 'details', label: 'My details' },
-        ...(sms ? [{ key: 'notifications', label: 'Notifications' }] : []),
+        ...(sms ? [{ key: 'notifications', label: 'Semaphore SMS Integration' }] : []),
     ];
     const [active, setActive] = useState('details');
     const [smsFlash, setSmsFlash] = useState(null);
@@ -257,7 +438,7 @@ export default function Edit({ user, sms }) {
                 )}
 
                 {active === 'notifications' && sms && (
-                    <NotificationsSection sms={sms} onSaved={showSmsSaved} />
+                    <NotificationsSection sms={sms} semaphore={semaphore} onSaved={showSmsSaved} />
                 )}
             </div>
         </AuthenticatedLayout>

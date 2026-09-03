@@ -169,21 +169,39 @@ class EditTest extends TestCase
             ->assertRedirect(route('login'));
     }
 
-    public function test_change_list_audit_details_for_role_and_status(): void
+    public function test_admin_cannot_convert_an_employee_into_a_customer_account(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $target = User::factory()->create(['role' => 'employee', 'is_active' => true]);
+        $employee = User::factory()->create(['role' => 'employee']);
+        $customer = $this->makeCustomer('Fresh Co');
+
+        $this->actingAsUser($admin)->put("/admin/users/{$employee->id}", [
+            'full_name' => $employee->full_name,
+            'email' => $employee->email,
+            'role' => 'customer',
+            'customer_id' => $customer->id,
+            'is_active' => '1',
+        ])->assertSessionHasErrors('role');
+
+        $this->assertSame('employee', $employee->fresh()->role);
+        $this->assertNull($customer->fresh()->user_id);
+    }
+
+    public function test_change_list_audit_details_for_existing_customer_role_and_status(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $target = User::factory()->create(['role' => 'customer', 'is_active' => true]);
+        $this->makeCustomer('Own Co', $target);
 
         $this->actingAsUser($admin)->put("/admin/users/{$target->id}", [
             'full_name' => $target->full_name,
             'email' => $target->email,
-            'role' => 'customer',
-            'customer_id' => $this->makeCustomer()->id,
+            'role' => 'employee',
             'is_active' => '0',
         ]);
 
         $audit = AdminAudit::where('action', 'updated')->first();
-        $this->assertSame('role employee -> customer, deactivated', $audit->details);
+        $this->assertSame('role customer -> employee, deactivated', $audit->details);
     }
 
     public function test_no_op_edit_records_profile_details_updated(): void

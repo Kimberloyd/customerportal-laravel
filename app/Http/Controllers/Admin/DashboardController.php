@@ -95,7 +95,6 @@ class DashboardController extends Controller
             'filters' => $this->userListing->filters($query),
             'roleLabels' => AdminUserListing::ROLE_LABELS,
             'accountForm' => [
-                'allowAdminCreation' => false,
                 'customers' => Customer::where('is_active', true)
                     ->orderBy('company_name')
                     ->get(['id', 'company_name', 'user_id']),

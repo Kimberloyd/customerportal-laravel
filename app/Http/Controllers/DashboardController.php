@@ -113,6 +113,18 @@ class DashboardController extends Controller
                 'recent_orders' => $recentOrders,
                 'recent_activity' => $recentActivity,
             ],
+            // A year of audit rows, every completed order's lead time and the
+            // cohort scan are the slowest work on this page, and none of it is
+            // above the fold. Deferring lets the shell paint immediately while
+            // the charts hold a skeleton. Deferred props must be top level --
+            // Inertia only scans the outermost array for them.
+            'companyCharts' => Inertia::defer(fn () => [
+                'order_activity' => $this->orderActivityCalendar(),
+                'activity_through' => $this->activityThrough(),
+                'lead_times' => $this->fulfillmentLeadTimes(),
+                'open_order_aging' => $this->openOrderAging(),
+                'reorder_cohorts' => $this->reorderCohorts(),
+            ], 'charts'),
         ]);
     }
 
@@ -307,6 +319,223 @@ class DashboardController extends Controller
             $currentStart,
             $tomorrow,
         );
+    }
+
+    /**
+     * Daily order activity for the calendar heatmap, covering the whole current
+     * calendar year. A rolling 365-day window would reach back into last year
+     * and print the same month name at both ends of the grid, so the window is
+     * anchored to January 1st through December 31st.
+     *
+     * The series is dense -- every day of the year is present, quiet ones as
+     * zeros -- so the grid draws a complete year rather than stopping at today.
+     * Days still to come are zeros too, and read as quiet days; `activityThrough()`
+     * marks where today falls so the streak count ignores them.
+     *
+     * @return array<int, array{t: int, value: int}>
+     */
+    private function orderActivityCalendar(): array
+    {
+        $tomorrow = now()->startOfDay()->addDay();
+        $start = now()->startOfYear();
+        $end = now()->endOfYear()->startOfDay()->addDay();
+
+        $dailyTotals = PurchaseOrderAudit::query()
+            ->selectRaw('DATE(created_at) as metric_date, COUNT(*) as metric_total')
+            ->where('created_at', '>=', $start)
+            ->where('created_at', '<', $tomorrow)
+            ->groupBy('metric_date')
+            ->pluck('metric_total', 'metric_date')
+            ->all();
+
+        $days = [];
+
+        for ($day = $start->copy(); $day->lt($end); $day->addDay()) {
+            $date = $day->toDateString();
+
+            $days[] = [
+                // The heatmap reads every cell with timeZone: 'UTC', so each day
+                // has to be the UTC midnight of that calendar date -- not the
+                // local midnight, which would shift cells into the wrong column.
+                't' => Carbon::createFromFormat('Y-m-d', $date, 'UTC')
+                    ->startOfDay()
+                    ->getTimestamp() * 1000,
+                'value' => (int) ($dailyTotals[$date] ?? 0),
+            ];
+        }
+
+        return $days;
+    }
+
+    /**
+     * UTC midnight of today, matching how `orderActivityCalendar()` stamps each
+     * day. The heatmap counts its current streak back from here -- without it a
+     * grid padded to December 31st would always report a broken streak, because
+     * the series ends on a day that has not happened yet.
+     */
+    private function activityThrough(): int
+    {
+        return Carbon::createFromFormat('Y-m-d', now()->toDateString(), 'UTC')
+            ->startOfDay()
+            ->getTimestamp() * 1000;
+    }
+
+    /**
+     * Hours between submission and completion for each order completed in the
+     * last year. The histogram bins these itself, so this stays raw samples.
+     *
+     * @return array<int, float>
+     */
+    private function fulfillmentLeadTimes(): array
+    {
+        $since = now()->startOfDay()->subDays(365);
+
+        return PurchaseOrder::query()
+            ->whereNotNull('submitted_at')
+            ->whereNotNull('completed_at')
+            ->where('completed_at', '>=', $since)
+            ->whereColumn('completed_at', '>=', 'submitted_at')
+            ->orderBy('completed_at')
+            ->get(['submitted_at', 'completed_at'])
+            ->map(fn (PurchaseOrder $order) => round(
+                $order->submitted_at->diffInMinutes($order->completed_at) / 60,
+                2,
+            ))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Open orders bucketed by how long they have been waiting. Every bucket is
+     * always present so the bars keep a stable order and identity.
+     *
+     * @return array<int, array{bucket: string, orders: int}>
+     */
+    private function openOrderAging(): array
+    {
+        $today = now()->startOfDay();
+        $threeDays = $today->copy()->subDays(2);
+        $sixDays = $today->copy()->subDays(5);
+        $elevenDays = $today->copy()->subDays(10);
+
+        $buckets = PurchaseOrder::query()
+            ->whereIn('status', [
+                PurchaseOrder::STATUS_SUBMITTED,
+                PurchaseOrder::STATUS_REVIEWING,
+                PurchaseOrder::STATUS_PARTIAL,
+                PurchaseOrder::STATUS_PROCESSING,
+            ])
+            ->whereNotNull('submitted_at')
+            ->selectRaw(
+                'COALESCE(SUM(CASE WHEN submitted_at >= ? THEN 1 ELSE 0 END), 0) as fresh, '
+                .'COALESCE(SUM(CASE WHEN submitted_at < ? AND submitted_at >= ? THEN 1 ELSE 0 END), 0) as recent, '
+                .'COALESCE(SUM(CASE WHEN submitted_at < ? AND submitted_at >= ? THEN 1 ELSE 0 END), 0) as stale, '
+                .'COALESCE(SUM(CASE WHEN submitted_at < ? THEN 1 ELSE 0 END), 0) as overdue',
+                [
+                    $threeDays,
+                    $threeDays, $sixDays,
+                    $sixDays, $elevenDays,
+                    $elevenDays,
+                ],
+            )
+            ->first();
+
+        return [
+            ['bucket' => '0-2 days', 'orders' => (int) ($buckets?->fresh ?? 0)],
+            ['bucket' => '3-5 days', 'orders' => (int) ($buckets?->recent ?? 0)],
+            ['bucket' => '6-10 days', 'orders' => (int) ($buckets?->stale ?? 0)],
+            ['bucket' => 'Over 10 days', 'orders' => (int) ($buckets?->overdue ?? 0)],
+        ];
+    }
+
+    /**
+     * Reorder retention: customers are grouped by the month of their first ever
+     * order, then measured on whether they ordered again in each later month.
+     * Period 0 is always 100% -- placing the cohort is what defines it.
+     *
+     * @return array<int, array{label: string, size: int, retention: array<int, int>}>
+     */
+    private function reorderCohorts(int $months = 12): array
+    {
+        $windowStart = now()->startOfMonth()->subMonths($months - 1);
+
+        // A customer's cohort is fixed by their first order ever, so this is
+        // deliberately unbounded -- restricting it to the window would file a
+        // long-standing customer into a cohort they don't belong to.
+        $firstOrders = PurchaseOrder::query()
+            ->whereNotNull('submitted_at')
+            ->selectRaw('customer_id, MIN(submitted_at) as first_at')
+            ->groupBy('customer_id')
+            ->pluck('first_at', 'customer_id');
+
+        $cohortOf = [];
+
+        foreach ($firstOrders as $customerId => $firstAt) {
+            $firstMonth = Carbon::parse($firstAt)->startOfMonth();
+
+            if ($firstMonth->lt($windowStart)) {
+                continue;
+            }
+
+            $cohortOf[(int) $customerId] = (int) $windowStart->diffInMonths($firstMonth);
+        }
+
+        if ($cohortOf === []) {
+            return [];
+        }
+
+        $activity = PurchaseOrder::query()
+            ->whereNotNull('submitted_at')
+            ->where('submitted_at', '>=', $windowStart)
+            ->whereIn('customer_id', array_keys($cohortOf))
+            ->get(['customer_id', 'submitted_at']);
+
+        $activeMonths = [];
+
+        foreach ($activity as $order) {
+            $month = (int) $windowStart->diffInMonths($order->submitted_at->copy()->startOfMonth());
+            $activeMonths[(int) $order->customer_id][$month] = true;
+        }
+
+        $members = [];
+
+        foreach ($cohortOf as $customerId => $cohort) {
+            $members[$cohort][] = $customerId;
+        }
+
+        $cohorts = [];
+
+        for ($cohort = 0; $cohort < $months; $cohort++) {
+            $customerIds = $members[$cohort] ?? [];
+
+            if ($customerIds === []) {
+                continue;
+            }
+
+            $size = count($customerIds);
+            $observed = $months - $cohort;
+            $retention = [];
+
+            for ($period = 0; $period < $observed; $period++) {
+                $returned = 0;
+
+                foreach ($customerIds as $customerId) {
+                    if (isset($activeMonths[$customerId][$cohort + $period])) {
+                        $returned++;
+                    }
+                }
+
+                $retention[] = (int) round(($returned / $size) * 100);
+            }
+
+            $cohorts[] = [
+                'label' => $windowStart->copy()->addMonths($cohort)->format('M Y'),
+                'size' => $size,
+                'retention' => $retention,
+            ];
+        }
+
+        return $cohorts;
     }
 
     /**

@@ -46,6 +46,12 @@ const FAQ_ITEMS = [
         content: 'When an order is marked Completed, open the order and select "Order Received." This lets Theomeds know that the delivery reached your facility.',
     },
     {
+        id: 'product-returns',
+        title: 'How do product returns work?',
+        meta: 'Returns',
+        content: 'After you confirm receipt of a completed order, you can request a return from the order page within 7 days. Select only the delivered products and quantities you want to return, explain the reason, and submit the request. Theomeds will approve or decline it before arranging collection or delivery. Returned products are recorded separately; this portal does not issue credits or refunds automatically.',
+    },
+    {
         id: 'order-notifications',
         title: 'Where can I see order updates?',
         meta: 'Updates',

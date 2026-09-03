@@ -10,6 +10,7 @@ use App\Http\Controllers\FacebookWebhookController;
 use App\Http\Controllers\FaqController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ProductReturnController;
 use App\Http\Controllers\PublicConversationController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\ReportController;
@@ -45,6 +46,8 @@ Route::middleware('auth')->prefix('orders')->name('purchase-orders.')->group(fun
     Route::post('/{order}/confirm-received', [PurchaseOrderController::class, 'confirmReceived'])
         ->name('confirm-received');
     Route::post('/{order}/cancel', [PurchaseOrderController::class, 'cancel'])->name('cancel');
+    Route::post('/{order}/returns', [ProductReturnController::class, 'store'])->name('returns.store');
+    Route::put('/returns/{return}', [ProductReturnController::class, 'update'])->name('returns.update');
 });
 
 Route::middleware('auth')->prefix('customers')->name('customers.')->group(function () {

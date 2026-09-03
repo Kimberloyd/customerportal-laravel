@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Events\PurchaseOrderChanged;
 use App\Exceptions\UserActionException;
 use App\Models\Customer;
+use App\Models\ProductReturn;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderAudit;
 use App\Models\PurchaseOrderItem;
@@ -101,8 +102,7 @@ class PurchaseOrderController extends Controller
         string $startDate,
         string $endDate,
         string $statusFilter,
-    )
-    {
+    ) {
         $query = PurchaseOrder::query()->with(['customer', 'items']);
         if ($customer) {
             $query->where('customer_id', $customer->id);
@@ -369,6 +369,7 @@ class PurchaseOrderController extends Controller
             : Customer::query()->orderBy('company_name')->get(['id', 'company_name'])->toArray();
 
         $isTerminal = in_array($order->status, PurchaseOrder::TERMINAL_STATUSES, true);
+
         return Inertia::render('PurchaseOrders/Edit', [
             'order' => [
                 'id' => $order->id,
@@ -717,6 +718,7 @@ class PurchaseOrderController extends Controller
 
             PurchaseOrderNotification::where('purchase_order_id', $locked->id)->delete();
             PurchaseOrderAudit::where('purchase_order_id', $locked->id)->delete();
+            ProductReturn::where('purchase_order_id', $locked->id)->delete();
             PurchaseOrderItem::where('purchase_order_id', $locked->id)->delete();
             $locked->delete();
 
@@ -740,12 +742,31 @@ class PurchaseOrderController extends Controller
 
         $order->load(['customer', 'items', 'auditLogs.actor']);
 
+        $order->load([
+            'returns.items.purchaseOrderItem',
+            'returns.reviewedBy',
+            'returns.receivedBy',
+        ]);
+
         $isTerminal = in_array($order->status, PurchaseOrder::TERMINAL_STATUSES, true);
         $canEditItems = ! $isTerminal;
         $scopedCustomer = CustomerScope::forCurrentUser();
         $editOrderCustomers = $scopedCustomer
             ? [['id' => $scopedCustomer->id, 'company_name' => $scopedCustomer->company_name]]
             : Customer::query()->orderBy('company_name')->get(['id', 'company_name'])->toArray();
+        $receivedReturnQuantities = $order->returns
+            ->where('status', ProductReturn::STATUS_RECEIVED)
+            ->flatMap(fn (ProductReturn $return) => $return->items)
+            ->groupBy('purchase_order_item_id')
+            ->map(fn ($items) => (int) $items->sum('quantity'));
+        $returnWindowEndsAt = $order->customer_received_at?->copy()
+            ->addDays(ProductReturnController::RETURN_WINDOW_DAYS);
+        $hasOpenReturn = $order->returns
+            ->contains(fn (ProductReturn $return) => in_array($return->status, ProductReturn::OPEN_STATUSES, true));
+        $hasReturnableItems = $order->items->contains(
+            fn (PurchaseOrderItem $item) => (int) $item->delivered_quantity
+                > (int) ($receivedReturnQuantities[$item->id] ?? 0),
+        );
 
         return Inertia::render('PurchaseOrders/Show', [
             'order' => [
@@ -782,6 +803,10 @@ class PurchaseOrderController extends Controller
                     'pending_quantity' => $item->pending_quantity,
                     'unit_price' => $item->unit_price,
                     'line_total' => $item->line_total,
+                    'returnable_quantity' => max(
+                        (int) $item->delivered_quantity - (int) ($receivedReturnQuantities[$item->id] ?? 0),
+                        0,
+                    ),
                 ]),
                 'audit_logs' => $order->auditLogs->map(fn ($audit) => [
                     'created_at' => $audit->created_at?->toIso8601String(),
@@ -791,6 +816,25 @@ class PurchaseOrderController extends Controller
                     'details' => $audit->details,
                     'remarks' => $audit->remarks,
                 ]),
+                'returns' => $order->returns
+                    ->sortByDesc('requested_at')
+                    ->values()
+                    ->map(fn (ProductReturn $return) => [
+                        'id' => $return->id,
+                        'status' => $return->status,
+                        'reason' => $return->reason,
+                        'review_note' => $return->review_note,
+                        'requested_at' => $return->requested_at?->toIso8601String(),
+                        'reviewed_at' => $return->reviewed_at?->toIso8601String(),
+                        'received_at' => $return->received_at?->toIso8601String(),
+                        'reviewed_by_name' => $isCustomerViewer ? null : $return->reviewedBy?->full_name,
+                        'received_by_name' => $isCustomerViewer ? null : $return->receivedBy?->full_name,
+                        'items' => $return->items->map(fn ($item) => [
+                            'purchase_order_item_id' => $item->purchase_order_item_id,
+                            'display_name' => $item->purchaseOrderItem?->display_name ?? 'Product',
+                            'quantity' => $item->quantity,
+                        ]),
+                    ]),
             ],
             'isCustomerViewer' => $isCustomerViewer,
             'canManageFulfillment' => ! $isCustomerViewer,
@@ -799,6 +843,17 @@ class PurchaseOrderController extends Controller
                 && $order->status === PurchaseOrder::STATUS_COMPLETED
                 && $order->customer_received_at === null,
             'canCancel' => ! $isTerminal,
+            'canRequestReturn' => $isCustomerViewer
+                && $order->status === PurchaseOrder::STATUS_COMPLETED
+                && $order->customer_received_at !== null
+                && $returnWindowEndsAt?->isFuture()
+                && ! $hasOpenReturn
+                && $hasReturnableItems,
+            'canManageReturns' => ! $isCustomerViewer,
+            'returnPolicy' => [
+                'window_days' => ProductReturnController::RETURN_WINDOW_DAYS,
+                'window_ends_at' => $returnWindowEndsAt?->toIso8601String(),
+            ],
             'editOrderCustomers' => $editOrderCustomers,
             'editOrderProducts' => Inertia::optional(
                 fn () => $this->activeProducts(cached: true)

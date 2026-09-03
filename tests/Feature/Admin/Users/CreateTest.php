@@ -6,7 +6,6 @@ use App\Models\AdminAudit;
 use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Hash;
 use Tests\Concerns\CreatesOrderFixtures;
 use Tests\TestCase;
 
@@ -104,26 +103,11 @@ class CreateTest extends TestCase
         $this->assertSame(1, User::count());
     }
 
-    public function test_admin_role_rejected_without_allow_admin_param(): void
+    public function test_admin_can_create_an_admin_account(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
 
         $response = $this->actingAsUser($admin)->post('/admin/users', [
-            'full_name' => 'New Guy',
-            'email' => 'new@example.com',
-            'password' => 'password12345',
-            'password_confirmation' => 'password12345',
-            'role' => 'admin',
-        ]);
-
-        $response->assertSessionHasErrors('role');
-    }
-
-    public function test_admin_role_accepted_with_allow_admin_param(): void
-    {
-        $admin = User::factory()->create(['role' => 'admin']);
-
-        $response = $this->actingAsUser($admin)->post('/admin/users?allow_admin=1', [
             'full_name' => 'New Admin',
             'email' => 'newadmin@example.com',
             'password' => 'password12345',
@@ -135,43 +119,7 @@ class CreateTest extends TestCase
         $this->assertSame('admin', User::where('email', 'newadmin@example.com')->first()->role);
     }
 
-    public function test_customer_role_requires_valid_active_unlinked_customer(): void
-    {
-        $admin = User::factory()->create(['role' => 'admin']);
-        $inactiveCustomer = $this->makeCustomer('Inactive Co');
-        $inactiveCustomer->update(['is_active' => false]);
-
-        $response = $this->actingAsUser($admin)->post('/admin/users', [
-            'full_name' => 'New Customer User',
-            'email' => 'newcust@example.com',
-            'password' => 'password12345',
-            'password_confirmation' => 'password12345',
-            'role' => 'customer',
-            'customer_id' => $inactiveCustomer->id,
-        ]);
-
-        $response->assertSessionHasErrors('customer_id');
-    }
-
-    public function test_customer_already_linked_to_another_user_rejected(): void
-    {
-        $admin = User::factory()->create(['role' => 'admin']);
-        $otherUser = User::factory()->create(['role' => 'customer']);
-        $customer = $this->makeCustomer('Linked Co', $otherUser);
-
-        $response = $this->actingAsUser($admin)->post('/admin/users', [
-            'full_name' => 'New Customer User',
-            'email' => 'newcust@example.com',
-            'password' => 'password12345',
-            'password_confirmation' => 'password12345',
-            'role' => 'customer',
-            'customer_id' => $customer->id,
-        ]);
-
-        $response->assertSessionHasErrors('customer_id');
-    }
-
-    public function test_creates_user_and_links_customer_successfully(): void
+    public function test_customer_role_is_rejected_from_admin_account_creation(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
         $customer = $this->makeCustomer('Fresh Co');
@@ -183,15 +131,11 @@ class CreateTest extends TestCase
             'password_confirmation' => 'password12345',
             'role' => 'customer',
             'customer_id' => $customer->id,
-            'is_active' => '0',
         ]);
 
-        $response->assertRedirect(route('admin.dashboard', ['tab' => 'accounts']));
-        $newUser = User::where('email', 'newcust@example.com')->first();
-        $this->assertNotNull($newUser);
-        $this->assertTrue($newUser->is_active);
-        $this->assertTrue(Hash::check('password12345', $newUser->password_hash));
-        $this->assertSame($newUser->id, $customer->fresh()->user_id);
+        $response->assertSessionHasErrors('role');
+        $this->assertDatabaseMissing('users', ['email' => 'newcust@example.com']);
+        $this->assertNull($customer->fresh()->user_id);
     }
 
     public function test_writes_audit_row_on_create(): void

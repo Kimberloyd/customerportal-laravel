@@ -138,7 +138,6 @@ export default function Dashboard({ activeTab, products, customers, users, filte
                     open={userModal.open}
                     onOpenChange={setUserModalOpen}
                     user={userModal.user}
-                    allowAdminCreation={accountForm?.allowAdminCreation}
                     customers={accountForm?.customers}
                 />
             )}

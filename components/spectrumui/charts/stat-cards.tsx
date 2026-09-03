@@ -188,7 +188,7 @@ function StatCard({
       }
     >
       <div className="flex min-w-0 flex-col justify-between">
-        <p className="truncate text-[13px] text-neutral-500 dark:text-neutral-400">{label}</p>
+        <p className="truncate text-sm text-neutral-500 dark:text-neutral-400">{label}</p>
         <p className="mt-1.5 text-[27px] font-medium leading-none tracking-tight text-neutral-950 dark:text-white">
           <RollingNumber
             value={hover != null ? shown : displayValue}
@@ -196,7 +196,7 @@ function StatCard({
             animate={!reduce}
           />
         </p>
-        <p className="mt-2 h-[17px] overflow-hidden whitespace-nowrap text-[12.5px] font-medium leading-none">
+        <p className="mt-2 h-[17px] overflow-hidden whitespace-nowrap text-xs font-medium leading-none">
           {hover != null && series ? (
             <span className="text-neutral-400 dark:text-neutral-500">
               day {hover + 1} of {n}

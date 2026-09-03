@@ -7,6 +7,9 @@ use App\Models\User;
 use App\Support\OrderNotifications;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class SettingsTest extends TestCase
@@ -169,5 +172,33 @@ class SettingsTest extends TestCase
         $this->actingAsUser($admin)
             ->get('/settings')
             ->assertInertia(fn ($page) => $page->has('sms.enabled')->has('sms.configured'));
+    }
+
+    public function test_sms_history_uses_a_lookahead_record_for_numbered_pagination(): void
+    {
+        Cache::flush();
+        config(['services.semaphore.api_key' => 'test-key']);
+        $admin = User::factory()->create(['role' => 'admin']);
+        $messages = array_map(
+            fn (int $id) => ['message_id' => $id, 'recipient' => '639000000000', 'message' => "Text {$id}"],
+            range(1, 7),
+        );
+        Http::fake([
+            'api.semaphore.co/api/v4/messages*' => Http::response($messages),
+            'api.semaphore.co/api/v4/account*' => Http::response(['credit_balance' => 25]),
+        ]);
+
+        $response = $this->actingAsUser($admin)->get('/settings?sms_page=2');
+
+        $response->assertInertia(fn ($page) => $page
+            ->missing('semaphore')
+            ->loadDeferredProps('semaphore', fn ($deferred) => $deferred
+                ->where('semaphore.page', 2)
+                ->where('semaphore.has_more', true)
+                ->has('semaphore.messages', 6)));
+        Http::assertSent(fn (Request $request) => str_starts_with(
+            $request->url(),
+            'https://api.semaphore.co/api/v4/messages',
+        ) && (int) $request['limit'] === 7 && (int) $request['page'] === 2);
     }
 }

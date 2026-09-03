@@ -5,6 +5,8 @@ namespace Tests\Feature\Admin\Users;
 use App\Models\AdminAudit;
 use App\Models\DataSubjectRequest;
 use App\Models\LoginAttempt;
+use App\Models\ProductReturn;
+use App\Models\PurchaseOrder;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -120,6 +122,34 @@ class DeleteTest extends TestCase
             'subject_user_id' => null, 'request_type' => 'routine_deletion', 'status' => 'completed',
         ]);
         $this->assertNotNull(AdminAudit::where('action', 'account erasure completed')->first());
+    }
+
+    public function test_purge_retains_return_history_but_anonymizes_the_requester(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $target = User::factory()->customer()->create();
+        $customer = $this->makeCustomer('Return Customer', $target);
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_COMPLETED, now(), [
+            ['product_id' => $this->makeProduct()->id, 'quantity' => 1, 'delivered_quantity' => 1],
+        ]);
+        $return = ProductReturn::create([
+            'purchase_order_id' => $order->id,
+            'customer_id' => $customer->id,
+            'requested_by_user_id' => $target->id,
+            'status' => ProductReturn::STATUS_REQUESTED,
+            'reason' => 'Contains a customer-provided return explanation.',
+            'requested_at' => now(),
+        ]);
+
+        $this->actingAsUser($admin)->delete("/admin/users/{$target->id}");
+        User::withTrashed()->findOrFail($target->id)->forceFill(['purge_after' => now()->subMinute()])->save();
+        $this->artisan('accounts:purge-deleted')->assertSuccessful();
+
+        $this->assertDatabaseHas('product_returns', [
+            'id' => $return->id,
+            'requested_by_user_id' => null,
+            'reason' => 'Personal data removed after account erasure.',
+        ]);
     }
 
     public function test_data_export_excludes_credentials_and_records_request(): void

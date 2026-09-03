@@ -441,7 +441,7 @@ export function RangeSelector({
             aria-selected={active}
             onClick={() => onChange(range.label)}
             className={cn(
-              'relative z-10 rounded-full px-2.5 py-1 font-mono text-[11px] leading-none tracking-wide transition-colors duration-200',
+              'relative z-10 rounded-full px-2.5 py-1 font-sans text-xs leading-none tracking-wide transition-colors duration-200',
               'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/25',
               active
                 ? 'text-neutral-950 dark:text-white'
@@ -817,9 +817,9 @@ function StateShell({
         >
           {icon}
         </span>
-        <p className="text-[13px] font-medium text-neutral-900 dark:text-neutral-100">{title}</p>
+        <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{title}</p>
         {description ? (
-          <p className="text-[12px] leading-relaxed text-neutral-500 dark:text-neutral-400">
+          <p className="text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">
             {description}
           </p>
         ) : null}
@@ -830,13 +830,13 @@ function StateShell({
 }
 
 const actionClass =
-  'inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3 py-1.5 text-[12px] font-medium text-neutral-900 shadow-xs transition-colors hover:bg-black/[0.03] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-black/20 dark:border-white/12 dark:bg-white/[0.06] dark:text-white dark:hover:bg-white/[0.1] dark:focus-visible:ring-white/25';
+  'inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3 py-1.5 text-sm font-medium text-neutral-900 shadow-xs transition-colors hover:bg-black/[0.03] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-black/20 dark:border-white/12 dark:bg-white/[0.06] dark:text-white dark:hover:bg-white/[0.1] dark:focus-visible:ring-white/25';
 
 export function ChartEmpty({
   height = 300,
   variant = 'line',
-  title = 'No data yet',
-  description = 'Once events start arriving this chart will fill in automatically.',
+  title = 'Nothing to show yet',
+  description = 'This chart fills in on its own as records are added.',
   action,
 }: {
   height?: number;
@@ -869,10 +869,10 @@ export function ChartEmpty({
 export function ChartError({
   height = 300,
   variant = 'line',
-  title = 'Could not load this chart',
-  description = 'The request failed. Check the connection and try again.',
+  title = 'This chart didn\'t load',
+  description = 'The data couldn\'t be reached. Try again, or reload the page if this keeps happening.',
   onRetry,
-  retryLabel = 'Retry',
+  retryLabel = 'Try again',
 }: {
   height?: number;
   variant?: SkeletonVariant;

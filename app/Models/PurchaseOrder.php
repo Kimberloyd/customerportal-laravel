@@ -66,6 +66,11 @@ class PurchaseOrder extends Model
         return $this->hasMany(PurchaseOrderAudit::class)->orderByDesc('created_at');
     }
 
+    public function returns(): HasMany
+    {
+        return $this->hasMany(ProductReturn::class);
+    }
+
     public function getTotalAttribute(): string
     {
         return (string) $this->items->sum(fn ($item) => $item->line_total ?? 0);

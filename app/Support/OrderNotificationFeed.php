@@ -62,6 +62,10 @@ class OrderNotificationFeed
             return "Order for {$customerName} was cancelled.";
         }
 
+        if (str_starts_with($note, 'Return requested')) {
+            return "Return request from {$customerName} needs review.";
+        }
+
         return "{$customerName}: {$note}";
     }
 

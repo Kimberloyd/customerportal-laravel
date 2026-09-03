@@ -10,6 +10,7 @@ import { AutoHeightReveal, Modal } from '@/components/interior/modal';
 import { formatDateTime, statusBadge } from '@/utils/orderDisplay';
 import { PdfPreview } from '@/components/PdfPreview';
 import ConfirmationDialog from '@/components/ConfirmationDialog';
+import ProductReturnPanel from '@/components/ProductReturnPanel';
 import { usePurchaseOrderRealtime } from '@/hooks/usePurchaseOrderRealtime';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { FileText } from 'lucide-react';
@@ -36,6 +37,9 @@ export default function Show({
     canComplete,
     canConfirmReceived,
     canCancel,
+    canRequestReturn,
+    canManageReturns,
+    returnPolicy,
     editOrderCustomers = [],
     editOrderProducts,
     lockedCustomerId = null,
@@ -446,6 +450,13 @@ export default function Show({
                         )}
                     </form>
                 </div>
+
+                <ProductReturnPanel
+                    order={order}
+                    canRequestReturn={canRequestReturn}
+                    canManageReturns={canManageReturns}
+                    returnPolicy={returnPolicy}
+                />
 
                 <div>
                     <div className="mb-3">

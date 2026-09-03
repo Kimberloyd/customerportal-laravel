@@ -2,19 +2,21 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import FlashBanner from '@/components/FlashBanner';
 import { AnimatedBadge } from '@/components/motion/animated-badge';
 import { Table } from '@/components/motion/table';
-import { Timeline, styleFor, timeLabel } from '@/components/timelines-activity-feed';
 import { Button } from '@/components/ui/button';
 import { usePurchaseOrderRealtime } from '@/hooks/usePurchaseOrderRealtime';
 import { formatDateTime, statusBadge } from '@/utils/orderDisplay';
 import { Head, Link } from '@inertiajs/react';
 import {
     ArrowRight,
-    ChartColumn,
     ClipboardList,
     MessageSquare,
     Plus,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { BarChart } from '../../../components/spectrumui/charts/bar-chart';
+import { CalendarHeatmap } from '../../../components/spectrumui/charts/calendar-heatmap';
+import { CohortChart } from '../../../components/spectrumui/charts/cohort-chart';
+import { HistogramChart } from '../../../components/spectrumui/charts/histogram-chart';
 import { StatCards } from '../../../components/spectrumui/charts/stat-cards';
 
 const CUSTOMER_TABLE_ROW_HEIGHT = 48;
@@ -53,50 +55,6 @@ function EmptyState({ children }) {
             {children}
         </div>
     );
-}
-
-function toActivityTimelineEntry(activity) {
-    const { Icon, tone } = styleFor(activity.action);
-
-    return {
-        key: String(activity.id),
-        createdAt: activity.created_at,
-        icon: Icon,
-        tone,
-        render: () => (
-            <div>
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                    <p className="text-sm font-medium text-foreground">
-                        {activity.action}
-                        {activity.po_number && (
-                            <>
-                                {' · '}
-                                <Link
-                                    href={route('purchase-orders.show', activity.order_id)}
-                                    className="text-primary hover:underline"
-                                >
-                                    {activity.po_number}
-                                </Link>
-                            </>
-                        )}
-                    </p>
-                    <time
-                        dateTime={activity.created_at ?? undefined}
-                        className="shrink-0 text-[11px] tabular-nums text-muted-foreground"
-                    >
-                        {timeLabel(activity.created_at)}
-                    </time>
-                </div>
-                {activity.details && (
-                    <p className="mt-1 text-sm text-foreground/80">{activity.details}</p>
-                )}
-                <p className="mt-1 text-xs text-muted-foreground">
-                    {activity.actor_name ?? 'System'}
-                    {activity.actor_role ? ` (${activity.actor_role})` : ''}
-                </p>
-            </div>
-        ),
-    };
 }
 
 function DeliveryProgress({ delivered, ordered }) {
@@ -333,155 +291,153 @@ function CustomerDashboard({ dashboard }) {
     );
 }
 
-function CompanyDashboard({ dashboard }) {
-    const [refreshingSummary, setRefreshingSummary] = useState(false);
+// One measure, so the bars carry no identity of their own -- the heading names
+// them and the legend would only repeat it.
+const AGING_SERIES = [{ key: 'orders', label: 'Open orders' }];
 
-    usePurchaseOrderRealtime(null, {
-        only: ['companyDashboard'],
-        onStart: () => setRefreshingSummary(true),
-        onFinish: () => setRefreshingSummary(false),
-    });
-
-    const recentOrderColumns = useMemo(
-        () => [
-            {
-                key: 'po_number',
-                header: 'PO Number',
-                cell: (order) => (
-                    <Link
-                        href={route('purchase-orders.show', order.id)}
-                        className="font-medium text-foreground transition-colors hover:text-primary"
-                    >
-                        {order.po_number}
-                    </Link>
-                ),
-            },
-            { key: 'customer_name', header: 'Customer' },
-            { key: 'status', header: 'Status', cell: (order) => <Status order={order} /> },
-            {
-                key: 'balance_units',
-                header: 'Balance',
-                cell: (order) => <span className="tabular-nums">{order.balance_units}</span>,
-            },
-            {
-                key: 'submitted_at',
-                header: 'Submitted',
-                cell: (order) => formatDateTime(order.submitted_at),
-            },
-        ],
-        [],
-    );
-
+function ChartLabel({ children }) {
     return (
-        <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
-            <StatCards cards={dashboard.metrics} />
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-primary">
+            {children}
+        </p>
+    );
+}
 
-            <div className="grid gap-6 lg:grid-cols-3">
-                <section className="rounded-xl border border-border bg-card lg:col-span-2">
-                    <div className="border-b border-border p-5">
-                        <SectionHeading
-                            title="Needs Attention"
-                            description="Open orders that still require review or fulfillment."
-                            action={(
-                                <Link
-                                    href={route('purchase-orders.index')}
-                                    className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-                                >
-                                    View all <ArrowRight className="size-4" aria-hidden="true" />
-                                </Link>
-                            )}
-                        />
-                    </div>
-                    {dashboard.needs_attention.length === 0 ? (
-                        <EmptyState>No open orders need attention.</EmptyState>
-                    ) : (
-                        <ul className="divide-y divide-border">
-                            {dashboard.needs_attention.map((order) => (
-                                <li key={order.id}>
-                                    <Link
-                                        href={route('purchase-orders.show', order.id)}
-                                        className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
-                                    >
-                                        <div className="min-w-0">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <span className="font-medium text-foreground">{order.po_number}</span>
-                                                <Status order={order} />
-                                            </div>
-                                            <p className="mt-1 truncate text-sm text-muted-foreground">
-                                                {order.customer_name}
-                                            </p>
-                                        </div>
-                                        <div className="shrink-0 text-left sm:text-right">
-                                            <p className="text-sm font-medium tabular-nums text-foreground">
-                                                {order.delivered_units} of {order.ordered_units} units delivered
-                                            </p>
-                                            <p className="mt-1 text-xs text-muted-foreground">
-                                                Submitted {formatDateTime(order.submitted_at)}
-                                            </p>
-                                        </div>
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </section>
-
-                <section className="rounded-xl border border-border bg-card p-5">
-                    <SectionHeading
-                        title="Quick Actions"
-                        description="Common company tasks."
-                    />
-                    <div className="mt-5 grid gap-3">
-                        <Button asChild variant="primary" className="w-full justify-start" leadingIcon={Plus}>
-                            <Link href={route('purchase-orders.index', { create: 1 })}>Create Order</Link>
-                        </Button>
-                        <Button asChild variant="tertiary" className="w-full justify-start" leadingIcon={ClipboardList}>
-                            <Link href={route('purchase-orders.index')}>View Orders</Link>
-                        </Button>
-                        <Button asChild variant="tertiary" className="w-full justify-start" leadingIcon={ChartColumn}>
-                            <Link href={route('reports.overview')}>View Reports</Link>
-                        </Button>
-                        <div className="mt-2 flex items-start gap-3 rounded-xl bg-muted/60 p-4 text-sm text-muted-foreground">
-                            <MessageSquare className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-                            <p>Use the message icon in the header to contact a customer.</p>
-                        </div>
-                    </div>
-                </section>
-            </div>
-
-            <section className="space-y-4">
-                <SectionHeading
-                    title="Recent Orders"
-                    description="The five most recently submitted purchase orders."
-                />
-                <Table
-                    data={dashboard.recent_orders}
-                    columns={recentOrderColumns}
-                    getRowId={(order) => String(order.id)}
-                    loading={refreshingSummary}
-                    emptyState="No orders have been submitted yet."
-                />
-            </section>
-
-            <section className="rounded-xl border border-border bg-card p-5">
-                <SectionHeading
-                    title="Recent Activity"
-                    description="The latest recorded changes across purchase orders."
-                />
-                <div className="mt-5">
-                    <Timeline
-                        entries={dashboard.recent_activity.map(toActivityTimelineEntry)}
-                        emptyTitle="No order activity has been recorded yet."
-                        emptyDescription="Company order changes will appear here as they happen."
-                    />
-                </div>
-            </section>
-
+// Stands in for the whole card, not just the plot -- a chart's own heading and
+// legend would otherwise render real-looking zeroes over a skeleton grid.
+function ChartSkeleton({ height }) {
+    return (
+        <div className="animate-pulse" aria-hidden="true">
+            <div className="h-5 w-48 rounded bg-muted" />
+            <div className="mt-2 h-4 w-32 rounded bg-muted" />
+            <div className="mt-5 rounded-lg bg-muted" style={{ height }} />
         </div>
     );
 }
 
-export default function Dashboard({ companyDashboard = null, customerDashboard = null }) {
+function ChartCard({ category, loading = false, skeletonHeight = 260, children }) {
+    return (
+        <section aria-busy={loading || undefined}>
+            <ChartLabel>{category}</ChartLabel>
+            <div className="rounded-xl border border-border bg-card p-5">
+                {loading ? <ChartSkeleton height={skeletonHeight} /> : children}
+            </div>
+        </section>
+    );
+}
+
+function CompanyDashboard({ dashboard, charts }) {
+    usePurchaseOrderRealtime(null, {
+        // Ask for the deferred charts by name too, otherwise a realtime refresh
+        // would replace them with nothing and strand every chart in its skeleton.
+        only: ['companyDashboard', 'companyCharts'],
+    });
+
+    // Absent until the deferred request lands -- that gap is the skeleton.
+    const loading = charts === undefined;
+
+    const orderActivity = charts?.order_activity ?? [];
+    const leadTimes = charts?.lead_times ?? [];
+    const openOrderAging = charts?.open_order_aging ?? [];
+    const reorderCohorts = charts?.reorder_cohorts ?? [];
+
+    // The activity series is always a dense 365 days, so its length says nothing
+    // about whether anything actually happened.
+    const hasActivity = useMemo(
+        () => orderActivity.some((day) => day.value > 0),
+        [orderActivity],
+    );
+
+    const openOrderTotal = useMemo(
+        () => openOrderAging.reduce((total, bucket) => total + bucket.orders, 0),
+        [openOrderAging],
+    );
+
+    // Lead times run from hours to weeks depending on the customer, so the axis
+    // picks one unit for the whole plot rather than mixing them per tick.
+    const formatLeadTime = useMemo(() => {
+        const longest = leadTimes.reduce((max, hours) => Math.max(max, hours), 0);
+
+        return longest >= 72
+            ? (value) => `${(value / 24).toFixed(value < 24 ? 1 : 0)}d`
+            : (value) => `${Math.round(value)}h`;
+    }, [leadTimes]);
+
+    return (
+        <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+            <section>
+                <ChartLabel>Stats</ChartLabel>
+                <StatCards cards={dashboard.metrics} />
+            </section>
+
+            <ChartCard category="Calendar Heatmap" loading={loading} skeletonHeight={175}>
+                <CalendarHeatmap
+                    data={orderActivity}
+                    // The default 13px cap leaves a year's 53 columns well short
+                    // of a full-width card. This is an upper bound, not a fixed
+                    // size -- the component still shrinks cells on narrow screens.
+                    cell={20}
+                    label="order updates"
+                    periodLabel="this year"
+                    currentThrough={charts?.activity_through}
+                    status={hasActivity ? 'ready' : 'empty'}
+                />
+            </ChartCard>
+
+            <div className="grid gap-6 lg:grid-cols-2">
+                <ChartCard category="Bar Chart" loading={loading} skeletonHeight={260}>
+                    <SectionHeading
+                        title="Open Order Aging"
+                        description="How long open orders have been waiting since submission."
+                    />
+                    <div className="mt-6">
+                        {openOrderTotal === 0 ? (
+                            <EmptyState>
+                                Nothing is waiting right now. Orders appear here while they are being
+                                reviewed or fulfilled.
+                            </EmptyState>
+                        ) : (
+                            <BarChart
+                                data={openOrderAging}
+                                categoryKey="bucket"
+                                series={AGING_SERIES}
+                                layout="horizontal"
+                                categoryWidth={96}
+                                showLegend={false}
+                            />
+                        )}
+                    </div>
+                </ChartCard>
+
+                <ChartCard category="Histogram" loading={loading} skeletonHeight={320}>
+                    <HistogramChart
+                        data={leadTimes}
+                        label="Fulfillment lead time"
+                        sampleLabel="completed orders"
+                        format={formatLeadTime}
+                        status={leadTimes.length > 0 ? 'ready' : 'empty'}
+                    />
+                </ChartCard>
+            </div>
+
+            <ChartCard category="Cohort" loading={loading} skeletonHeight={260}>
+                <CohortChart
+                    data={reorderCohorts}
+                    period="Month"
+                    memberLabel="customers"
+                    label="Customer reorder retention"
+                    status={reorderCohorts.length > 0 ? 'ready' : 'empty'}
+                />
+            </ChartCard>
+        </div>
+    );
+}
+
+export default function Dashboard({
+    companyDashboard = null,
+    companyCharts = undefined,
+    customerDashboard = null,
+}) {
     const submittedCount = companyDashboard?.summary.submitted ?? 0;
     const readyToConfirmCount = customerDashboard?.summary.ready_to_confirm ?? 0;
     const banner = submittedCount > 0
@@ -510,7 +466,9 @@ export default function Dashboard({ companyDashboard = null, customerDashboard =
             }
         >
             <Head title="Dashboard" />
-            {companyDashboard && <CompanyDashboard dashboard={companyDashboard} />}
+            {companyDashboard && (
+                <CompanyDashboard dashboard={companyDashboard} charts={companyCharts} />
+            )}
             {customerDashboard && <CustomerDashboard dashboard={customerDashboard} />}
         </AuthenticatedLayout>
     );
