@@ -50,6 +50,11 @@ class DashboardTest extends TestCase
                 ->where('companyDashboard.summary.reviewing', 1)
                 ->where('companyDashboard.summary.partial', 1)
                 ->where('companyDashboard.summary.completed_today', 1)
+                ->has('companyDashboard.metrics', 4)
+                ->where('companyDashboard.metrics.0.label', 'Orders submitted')
+                ->where('companyDashboard.metrics.0.value', 4)
+                ->where('companyDashboard.metrics.3.label', 'Order updates')
+                ->where('companyDashboard.metrics.3.value', 1)
                 ->has('companyDashboard.needs_attention', 3)
                 ->where('companyDashboard.needs_attention.0.id', $submitted->id)
                 ->where('companyDashboard.needs_attention.2.delivered_units', 4)
@@ -99,6 +104,17 @@ class DashboardTest extends TestCase
         $received->save();
         $this->createOrder($otherCustomer, PurchaseOrder::STATUS_SUBMITTED, now());
 
+        PurchaseOrderAudit::create([
+            'purchase_order_id' => $submitted->id,
+            'action' => 'Order Reviewing',
+            'created_at' => now(),
+        ]);
+        PurchaseOrderAudit::create([
+            'purchase_order_id' => $received->id,
+            'action' => 'Fulfillment Updated',
+            'created_at' => now()->subDays(31),
+        ]);
+
         $this->actingAsUser($user)->get('/dashboard')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -110,6 +126,13 @@ class DashboardTest extends TestCase
                 ->where('customerDashboard.summary.in_progress', 1)
                 ->where('customerDashboard.summary.ready_to_confirm', 1)
                 ->where('customerDashboard.summary.received', 1)
+                ->has('customerDashboard.metrics', 4)
+                ->where('customerDashboard.metrics.0.label', 'Orders submitted')
+                ->where('customerDashboard.metrics.0.value', 4)
+                ->where('customerDashboard.metrics.0.previous', 0)
+                ->where('customerDashboard.metrics.3.label', 'Order updates')
+                ->where('customerDashboard.metrics.3.value', 1)
+                ->where('customerDashboard.metrics.3.previous', 1)
                 ->has('customerDashboard.action_required', 1)
                 ->where('customerDashboard.action_required.0.id', $readyToConfirm->id)
                 ->has('customerDashboard.active_orders', 2)

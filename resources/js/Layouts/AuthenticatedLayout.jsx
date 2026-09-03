@@ -796,7 +796,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                                 <Bell aria-hidden="true" className="h-5 w-5" />
                                             </div>
                                             <h3 className="mt-3 text-[13px] font-medium text-stone-900 dark:text-stone-100">You're all caught up</h3>
-                                            <p className="mt-1 max-w-xs text-[12.5px] text-stone-500 dark:text-stone-400">
+                                            <p className="mt-1 max-w-xs text-sm text-muted-foreground dark:text-stone-400">
                                                 New activity on your orders will appear here.
                                             </p>
                                         </div>
@@ -813,7 +813,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                                         onClick={closeNotifications}
                                                         className="block rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-stone-100 dark:hover:bg-white/[0.06]"
                                                     >
-                                                        <p className="text-[13px] font-medium text-stone-900 dark:text-stone-100">
+                                                        <p className="text-sm font-medium text-foreground dark:text-stone-100">
                                                             {notification.note ?? 'Order updated'}
                                                         </p>
                                                         <p className="mt-0.5 text-[12px] text-stone-500 dark:text-stone-400">

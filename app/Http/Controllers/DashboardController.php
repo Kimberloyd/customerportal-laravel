@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderAudit;
 use App\Support\CustomerScope;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -107,6 +108,7 @@ class DashboardController extends Controller
                     'partial' => (int) ($summary?->partial_orders ?? 0),
                     'completed_today' => (int) ($summary?->completed_today ?? 0),
                 ],
+                'metrics' => $this->dashboardMetrics(),
                 'needs_attention' => $needsAttention,
                 'recent_orders' => $recentOrders,
                 'recent_activity' => $recentActivity,
@@ -131,6 +133,7 @@ class DashboardController extends Controller
                     'ready_to_confirm' => 0,
                     'received' => 0,
                 ],
+                'metrics' => [],
                 'action_required' => [],
                 'active_orders' => [],
                 'recent_orders' => [],
@@ -204,6 +207,7 @@ class DashboardController extends Controller
                 'ready_to_confirm' => (int) ($summary?->ready_to_confirm ?? 0),
                 'received' => (int) ($summary?->received_orders ?? 0),
             ],
+            'metrics' => $this->dashboardMetrics($customer->id),
             'action_required' => $actionRequired,
             'active_orders' => $activeOrders,
             'recent_orders' => $recentOrders,
@@ -228,6 +232,124 @@ class DashboardController extends Controller
                 : max(0, (int) ($order->ordered_units ?? 0) - (int) ($order->delivered_units ?? 0)),
             'submitted_at' => $order->submitted_at?->toIso8601String(),
             'updated_at' => $order->updated_at?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * Return the real activity data used by the Spectrum stat cards.
+     *
+     * @return array<int, array{label: string, series: array<int, int>, value: int, previous: int, deltaLabel: string}>
+     */
+    private function dashboardMetrics(?int $customerId = null): array
+    {
+        return [
+            $this->purchaseOrderMetric('Orders submitted', 'submitted_at', $customerId),
+            $this->purchaseOrderMetric('Orders completed', 'completed_at', $customerId),
+            $this->purchaseOrderMetric('Deliveries received', 'customer_received_at', $customerId),
+            $this->orderUpdateMetric($customerId),
+        ];
+    }
+
+    /**
+     * @return array{label: string, series: array<int, int>, value: int, previous: int, deltaLabel: string}
+     */
+    private function purchaseOrderMetric(string $label, string $dateColumn, ?int $customerId): array
+    {
+        // The column is an internal allowlist, never a request value, so the
+        // grouped expression cannot be altered by a dashboard visitor.
+        if (! in_array($dateColumn, ['submitted_at', 'completed_at', 'customer_received_at'], true)) {
+            throw new \InvalidArgumentException('Unsupported purchase-order metric column.');
+        }
+
+        [$previousStart, $currentStart, $tomorrow] = $this->metricRange();
+
+        $query = PurchaseOrder::query()
+            ->selectRaw("DATE({$dateColumn}) as metric_date, COUNT(*) as metric_total")
+            ->whereNotNull($dateColumn)
+            ->where($dateColumn, '>=', $previousStart)
+            ->where($dateColumn, '<', $tomorrow);
+
+        if ($customerId !== null) {
+            $query->where('customer_id', $customerId);
+        }
+
+        return $this->metricCard(
+            $label,
+            $query->groupBy('metric_date')->pluck('metric_total', 'metric_date')->all(),
+            $previousStart,
+            $currentStart,
+            $tomorrow,
+        );
+    }
+
+    /**
+     * @return array{label: string, series: array<int, int>, value: int, previous: int, deltaLabel: string}
+     */
+    private function orderUpdateMetric(?int $customerId): array
+    {
+        [$previousStart, $currentStart, $tomorrow] = $this->metricRange();
+
+        $query = PurchaseOrderAudit::query()
+            ->selectRaw('DATE(purchase_order_audits.created_at) as metric_date, COUNT(*) as metric_total')
+            ->where('purchase_order_audits.created_at', '>=', $previousStart)
+            ->where('purchase_order_audits.created_at', '<', $tomorrow);
+
+        if ($customerId !== null) {
+            $query
+                ->join('purchase_orders as metric_orders', 'metric_orders.id', '=', 'purchase_order_audits.purchase_order_id')
+                ->where('metric_orders.customer_id', $customerId);
+        }
+
+        return $this->metricCard(
+            'Order updates',
+            $query->groupBy('metric_date')->pluck('metric_total', 'metric_date')->all(),
+            $previousStart,
+            $currentStart,
+            $tomorrow,
+        );
+    }
+
+    /**
+     * @return array{0: Carbon, 1: Carbon, 2: Carbon}
+     */
+    private function metricRange(): array
+    {
+        $tomorrow = now()->startOfDay()->addDay();
+        $currentStart = $tomorrow->copy()->subDays(30);
+
+        return [$currentStart->copy()->subDays(30), $currentStart, $tomorrow];
+    }
+
+    /**
+     * @param  array<string, int|string>  $dailyTotals
+     * @return array{label: string, series: array<int, int>, value: int, previous: int, deltaLabel: string}
+     */
+    private function metricCard(
+        string $label,
+        array $dailyTotals,
+        Carbon $previousStart,
+        Carbon $currentStart,
+        Carbon $tomorrow,
+    ): array {
+        $series = [];
+        $previous = 0;
+
+        for ($day = $previousStart->copy(); $day->lt($tomorrow); $day->addDay()) {
+            $total = (int) ($dailyTotals[$day->toDateString()] ?? 0);
+
+            if ($day->lt($currentStart)) {
+                $previous += $total;
+            } else {
+                $series[] = $total;
+            }
+        }
+
+        return [
+            'label' => $label,
+            'series' => $series,
+            'value' => array_sum($series),
+            'previous' => $previous,
+            'deltaLabel' => 'vs previous 30 days',
         ];
     }
 }

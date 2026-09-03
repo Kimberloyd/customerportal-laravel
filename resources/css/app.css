@@ -4,87 +4,44 @@
 
 @layer base {
     @font-face {
-        font-family: 'Helvetica Now';
-        src: url('/fonts/Helvetica%20Now/HelveticaNowDisplayLight.otf') format('opentype');
+        font-family: 'Google Sans';
+        src: url('/fonts/Google%20Sans/GoogleSans-VariableFont_GRAD,opsz,wght.woff2') format('woff2');
         font-style: normal;
-        font-weight: 300;
+        font-weight: 400 700;
         font-display: swap;
     }
 
     @font-face {
-        font-family: 'Helvetica Now';
-        src: url('/fonts/Helvetica%20Now/HelveticaNowDisplay.otf') format('opentype');
+        font-family: 'Montserrat';
+        src: url('/fonts/Montserrat/Montserrat-VariableFont_wght.woff2') format('woff2');
         font-style: normal;
-        font-weight: 400;
+        font-weight: 100 900;
         font-display: swap;
     }
 
     @font-face {
-        font-family: 'Helvetica Now';
-        src: url('/fonts/Helvetica%20Now/HelveticaNowDisplayIt.otf') format('opentype');
+        font-family: 'Montserrat';
+        src: url('/fonts/Montserrat/Montserrat-Italic-VariableFont_wght.woff2') format('woff2');
         font-style: italic;
-        font-weight: 400;
-        font-display: swap;
-    }
-
-    @font-face {
-        font-family: 'Helvetica Now';
-        src: url('/fonts/Helvetica%20Now/HelveticaNowDisplayMedium.otf') format('opentype');
-        font-style: normal;
-        font-weight: 500;
-        font-display: swap;
-    }
-
-    @font-face {
-        font-family: 'Helvetica Now';
-        src: url('/fonts/Helvetica%20Now/HelveticaNowDisplayMdIt.otf') format('opentype');
-        font-style: italic;
-        font-weight: 500;
-        font-display: swap;
-    }
-
-    @font-face {
-        font-family: 'Helvetica Now';
-        src: url('/fonts/Helvetica%20Now/HelveticaNowDisplayMedium.otf') format('opentype');
-        font-style: normal;
-        font-weight: 600;
-        font-display: swap;
-    }
-
-    @font-face {
-        font-family: 'Helvetica Now';
-        src: url('/fonts/Helvetica%20Now/HelveticaNowDisplayMdIt.otf') format('opentype');
-        font-style: italic;
-        font-weight: 600;
-        font-display: swap;
-    }
-
-    @font-face {
-        font-family: 'Helvetica Now';
-        src: url('/fonts/Helvetica%20Now/HelveticaNowDisplayBold.otf') format('opentype');
-        font-style: normal;
-        font-weight: 700;
-        font-display: swap;
-    }
-
-    @font-face {
-        font-family: 'Helvetica Now';
-        src: url('/fonts/Helvetica%20Now/HelveticaNowDisplayBdIt.otf') format('opentype');
-        font-style: italic;
-        font-weight: 700;
-        font-display: swap;
-    }
-
-    @font-face {
-        font-family: 'Helvetica Now';
-        src: url('/fonts/Helvetica%20Now/HelveticaNowDisplayBlack.otf') format('opentype');
-        font-style: normal;
-        font-weight: 800 900;
+        font-weight: 100 900;
         font-display: swap;
     }
 
     html {
         @apply font-sans;
+    }
+
+    body {
+        @apply text-base leading-6 text-foreground;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        @apply font-display;
     }
 
     :root {
@@ -150,6 +107,33 @@
         --overlay: 0 0 0;
         --selected: #D4D4D4;
         --destructive-light: #FEF2F2;
+    }
+}
+
+@layer components {
+    /*
+     * Shared typography roles. Use these for new application UI instead of
+     * introducing one-off text-[...] values. The Spectrum UI sources retain
+     * their upstream sizing so the installed component remains visually exact.
+     */
+    .type-caption {
+        @apply text-xs leading-4;
+    }
+
+    .type-label {
+        @apply text-sm font-medium leading-5;
+    }
+
+    .type-body {
+        @apply text-base leading-6;
+    }
+
+    .type-section-heading {
+        @apply text-lg font-semibold leading-6 tracking-tight;
+    }
+
+    .type-page-heading {
+        @apply text-2xl font-semibold leading-8 tracking-tight;
     }
 }
 

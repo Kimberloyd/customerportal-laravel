@@ -16,7 +16,7 @@ const FIELD_CLASS_NAMES = { field: 'h-10 rounded-md', input: 'text-sm' };
 function SectionHeading({ title, description }) {
     return (
         <div className="pb-5">
-            <h2 className="text-base font-semibold text-foreground">{title}</h2>
+            <h2 className="type-section-heading text-foreground">{title}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         </div>
     );

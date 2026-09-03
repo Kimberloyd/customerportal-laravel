@@ -472,7 +472,7 @@ export function Modal({
                   <AutoHeightReveal>
                     <p
                       id={descriptionId}
-                      className="mt-1 text-[12.5px] leading-relaxed text-stone-500 dark:text-stone-400"
+                      className="mt-1 text-sm leading-5 text-muted-foreground dark:text-stone-400"
                     >
                       {description}
                     </p>
@@ -493,7 +493,7 @@ export function Modal({
             </div>
 
             {children ? (
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4 text-[13px] leading-relaxed">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4 text-sm leading-6">
                 {children}
               </div>
             ) : null}

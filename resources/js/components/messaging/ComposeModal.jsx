@@ -153,7 +153,7 @@ export default function ComposeModal({ open, onClose, accounts }) {
                             }}
                             placeholder="Search accounts"
                             aria-label="Search accounts"
-                            className="min-w-0 flex-1 border-0 bg-transparent p-0 text-[13px] text-stone-900 outline-none placeholder:text-stone-400 focus:ring-0 dark:text-stone-100"
+                            className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-0 dark:text-stone-100"
                         />
                     </div>
 

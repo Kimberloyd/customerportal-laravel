@@ -91,7 +91,7 @@ export default function Orders({ orders, filters, customers, summary }) {
         <AuthenticatedLayout
             header={
                 <div className="no-print flex flex-wrap items-center justify-between gap-3">
-                    <h2 className="text-xl font-semibold leading-tight text-gray-800">Orders Report</h2>
+                    <h2 className="type-page-heading text-foreground">Orders Report</h2>
                     <div className="flex gap-2">
                         <Button variant="tertiary" size="compact" onClick={() => window.print()}>
                             Print
@@ -112,8 +112,8 @@ export default function Orders({ orders, filters, customers, summary }) {
                         href={route('reports.overview')}
                         className={`block text-sm ${
                             route().current('reports.overview')
-                                ? 'font-semibold text-gray-900'
-                                : 'text-gray-500 hover:text-gray-700'
+                                ? 'font-semibold text-foreground'
+                                : 'text-muted-foreground hover:text-foreground'
                         }`}
                     >
                         Overview
@@ -122,8 +122,8 @@ export default function Orders({ orders, filters, customers, summary }) {
                         href={route('reports.orders')}
                         className={`block text-sm ${
                             route().current('reports.orders')
-                                ? 'font-semibold text-gray-900'
-                                : 'text-gray-500 hover:text-gray-700'
+                                ? 'font-semibold text-foreground'
+                                : 'text-muted-foreground hover:text-foreground'
                         }`}
                     >
                         Reports
@@ -132,7 +132,7 @@ export default function Orders({ orders, filters, customers, summary }) {
 
                 <div className="space-y-6 lg:col-span-10">
                 <form onSubmit={applyFilters} className="no-print flex flex-wrap items-end gap-3 rounded-lg bg-white p-4 shadow-sm">
-                    <label className="flex flex-col text-sm text-gray-600">
+                    <label className="flex flex-col text-sm text-muted-foreground">
                         Date filter
                         <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="mt-1 rounded-md border-gray-300 text-sm">
                             <option value="all">All Dates</option>
@@ -150,7 +150,7 @@ export default function Orders({ orders, filters, customers, summary }) {
                         </>
                     )}
                     {customers.length > 1 && (
-                        <label className="flex flex-col text-sm text-gray-600">
+                        <label className="flex flex-col text-sm text-muted-foreground">
                             Customer
                             <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="mt-1 rounded-md border-gray-300 text-sm">
                                 <option value="">All Customers</option>
@@ -160,7 +160,7 @@ export default function Orders({ orders, filters, customers, summary }) {
                             </select>
                         </label>
                     )}
-                    <label className="flex flex-col text-sm text-gray-600">
+                    <label className="flex flex-col text-sm text-muted-foreground">
                         Status
                         <select value={status} onChange={(e) => setStatus(e.target.value)} className="mt-1 rounded-md border-gray-300 text-sm">
                             {STATUS_OPTIONS.map((opt) => (
@@ -175,20 +175,20 @@ export default function Orders({ orders, filters, customers, summary }) {
 
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                     <div className="rounded-lg bg-white p-4 shadow-sm">
-                        <h3 className="text-sm font-medium text-gray-500">Total Orders</h3>
-                        <p className="mt-1 text-2xl font-semibold text-gray-900">{summary.orders}</p>
+                        <p className="type-label text-muted-foreground">Total Orders</p>
+                        <p className="mt-1 text-2xl font-semibold text-foreground">{summary.orders}</p>
                     </div>
                     <div className="rounded-lg bg-white p-4 shadow-sm">
-                        <h3 className="text-sm font-medium text-gray-500">Ordered Units</h3>
-                        <p className="mt-1 text-2xl font-semibold text-gray-900">{summary.ordered_units}</p>
+                        <p className="type-label text-muted-foreground">Ordered Units</p>
+                        <p className="mt-1 text-2xl font-semibold text-foreground">{summary.ordered_units}</p>
                     </div>
                     <div className="rounded-lg bg-white p-4 shadow-sm">
-                        <h3 className="text-sm font-medium text-gray-500">Delivered Units</h3>
-                        <p className="mt-1 text-2xl font-semibold text-gray-900">{summary.delivered_units}</p>
+                        <p className="type-label text-muted-foreground">Delivered Units</p>
+                        <p className="mt-1 text-2xl font-semibold text-foreground">{summary.delivered_units}</p>
                     </div>
                     <div className="rounded-lg bg-white p-4 shadow-sm">
-                        <h3 className="text-sm font-medium text-gray-500">Balance Units</h3>
-                        <p className="mt-1 text-2xl font-semibold text-gray-900">{summary.balance_units}</p>
+                        <p className="type-label text-muted-foreground">Balance Units</p>
+                        <p className="mt-1 text-2xl font-semibold text-foreground">{summary.balance_units}</p>
                     </div>
                 </div>
 
@@ -215,8 +215,8 @@ export default function Orders({ orders, filters, customers, summary }) {
                                         link.active
                                             ? 'bg-gray-800 text-white'
                                             : link.url
-                                              ? 'text-gray-600 hover:bg-gray-100'
-                                              : 'cursor-not-allowed text-gray-300'
+                                              ? 'text-muted-foreground hover:bg-muted'
+                                              : 'cursor-not-allowed text-muted-foreground/50'
                                     }`}
                                     dangerouslySetInnerHTML={{ __html: link.label }}
                                 />

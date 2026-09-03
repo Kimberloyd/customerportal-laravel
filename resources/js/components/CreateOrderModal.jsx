@@ -105,7 +105,7 @@ function SuggestionMenu({ menuRef, position, items, activeIndex, onHover, onSele
             className="z-[60] max-h-64 overflow-y-auto rounded-[11px] border border-stone-200 bg-white p-[5px] shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)]"
         >
             {items.length === 0 ? (
-                <div className="px-2.5 py-2 text-[13px] text-muted-foreground">{emptyMessage}</div>
+                <div className="px-2.5 py-2 text-sm text-muted-foreground">{emptyMessage}</div>
             ) : (
                 items.map((item, index) => (
                     <button
@@ -114,7 +114,7 @@ function SuggestionMenu({ menuRef, position, items, activeIndex, onHover, onSele
                         onMouseDown={(event) => event.preventDefault()}
                         onMouseEnter={() => onHover(index)}
                         onClick={() => onSelect(item)}
-                        className={`flex w-full items-center gap-2 rounded-[7px] px-2.5 py-1.5 text-left text-[13px] ${
+                        className={`flex w-full items-center gap-2 rounded-[7px] px-2.5 py-1.5 text-left text-sm ${
                             index === activeIndex
                                 ? 'bg-stone-100 text-stone-900'
                                 : 'text-stone-700'
@@ -618,7 +618,7 @@ export default function CreateOrderModal({
                             )}
                         </div>
                         {(errors.customer_id || clientErrors.customer_id) && (
-                            <p id="create-order-customer-error" role="alert" className="text-xs text-red-600">
+                            <p id="create-order-customer-error" role="alert" className="text-sm text-destructive">
                                 {errors.customer_id ?? clientErrors.customer_id}
                             </p>
                         )}
@@ -712,7 +712,7 @@ export default function CreateOrderModal({
                             }
                         />
                         {itemErrors.length > 0 && (
-                            <div className="space-y-1 text-xs text-red-600" role="alert">
+                            <div className="space-y-1 text-sm text-destructive" role="alert">
                                 {itemErrors.map((message, index) => <p key={`${message}-${index}`}>{message}</p>)}
                             </div>
                         )}
@@ -777,7 +777,7 @@ export default function CreateOrderModal({
                                 description="PDF, PNG, or JPG — up to 8 MB"
                             />
                             {(errors.po_attachment || clientErrors.po_attachment) && (
-                                <p role="alert" className="mt-1 text-xs text-red-600">
+                                <p role="alert" className="mt-1 text-sm text-destructive">
                                     {errors.po_attachment ?? clientErrors.po_attachment}
                                 </p>
                             )}

@@ -471,7 +471,7 @@ export function Dropdown({
         aria-describedby={ariaDescribedBy}
         className={
           triggerClassName ??
-          "flex h-9 select-none items-center gap-2 whitespace-nowrap rounded-[9px] border border-stone-200 bg-white px-3 text-[13px] font-medium text-stone-700 shadow-none outline-none transition-colors duration-150 hover:border-stone-300 focus-visible:border-stone-400 disabled:opacity-50 dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:text-stone-200 dark:hover:border-white/20 dark:focus-visible:border-white/30"
+          "flex h-9 select-none items-center gap-2 whitespace-nowrap rounded-[9px] border border-stone-200 bg-white px-3 text-sm font-medium text-foreground shadow-none outline-none transition-colors duration-150 hover:border-stone-300 focus-visible:border-stone-400 disabled:opacity-50 dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:text-stone-200 dark:hover:border-white/20 dark:focus-visible:border-white/30"
         }
       >
         {trigger ?? (
@@ -567,7 +567,7 @@ export function Dropdown({
                     }}
                     placeholder={searchPlaceholder}
                     aria-label={searchPlaceholder}
-                    className="min-w-0 flex-1 border-0 bg-transparent p-0 text-[13px] text-stone-900 outline-none placeholder:text-stone-400 focus:ring-0 dark:text-stone-100"
+                    className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-0 dark:text-stone-100"
                   />
                 </div>
               </div>
@@ -602,7 +602,7 @@ export function Dropdown({
                   <li
                     key={item.value}
                     {...getItemProps(i)}
-                    className={`relative flex h-8 select-none items-center gap-2 rounded-[7px] px-2.5 text-[13px] ${
+                    className={`relative flex h-8 select-none items-center gap-2 rounded-[7px] px-2.5 text-sm ${
                       item.disabled
                         ? "cursor-not-allowed text-stone-500/70 dark:text-stone-400/70"
                         : item.destructive
@@ -658,7 +658,7 @@ export function Dropdown({
               {visibleItems.length === 0 && (
                 <li
                   role="presentation"
-                  className="flex h-8 items-center px-2.5 text-[13px] text-stone-500 dark:text-stone-400"
+                  className="flex h-8 items-center px-2.5 text-sm text-muted-foreground dark:text-stone-400"
                 >
                   {emptyLabel}
                 </li>

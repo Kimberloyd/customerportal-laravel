@@ -40,7 +40,7 @@ export default function Create({ customers = [], assignedCustomers = [] }) {
     return <AuthenticatedLayout header={<div className="flex items-center justify-between"><h2 className="text-xl font-semibold text-gray-800">Customers</h2><Button type="button" onClick={() => setOpen(true)}><Plus aria-hidden="true" className="mr-2 h-4 w-4" />Add customer account</Button></div>}>
         <Head title="Customers" />
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-            <div className="mb-6"><h1 className="text-lg font-semibold text-gray-900">My customers</h1><p className="mt-1 text-sm text-gray-600">Customer accounts you create are automatically assigned to you.</p></div>
+            <div className="mb-6"><h1 className="type-page-heading text-foreground">My customers</h1><p className="mt-1 text-sm text-muted-foreground">Customer accounts you create are automatically assigned to you.</p></div>
             <Table data={assignedCustomers} columns={columns} getRowId={(customer) => String(customer.id)} height={480} emptyState="You have no assigned customers yet. Add a customer account to get started." emptyStateHeight={240} />
         </div>
 

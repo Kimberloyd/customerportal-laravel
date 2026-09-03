@@ -15,8 +15,8 @@ const RANGE_OPTIONS = [
 function Tile({ label, value }) {
     return (
         <div className="rounded-lg bg-white p-4 shadow-sm">
-            <h3 className="text-sm font-medium text-gray-500">{label}</h3>
-            <p className="mt-1 text-2xl font-semibold text-gray-900">{value}</p>
+            <p className="type-label text-muted-foreground">{label}</p>
+            <p className="mt-1 text-2xl font-semibold text-foreground">{value}</p>
         </div>
     );
 }
@@ -85,7 +85,7 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
 
     return (
         <AuthenticatedLayout
-            header={<h2 className="text-xl font-semibold leading-tight text-gray-800">Analytics Overview</h2>}
+            header={<h2 className="type-page-heading text-foreground">Analytics Overview</h2>}
         >
             <Head title="Analytics Overview" />
 
@@ -95,8 +95,8 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                         href={route('reports.overview')}
                         className={`block text-sm ${
                             route().current('reports.overview')
-                                ? 'font-semibold text-gray-900'
-                                : 'text-gray-500 hover:text-gray-700'
+                                ? 'font-semibold text-foreground'
+                                : 'text-muted-foreground hover:text-foreground'
                         }`}
                     >
                         Overview
@@ -105,8 +105,8 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                         href={route('reports.orders')}
                         className={`block text-sm ${
                             route().current('reports.orders')
-                                ? 'font-semibold text-gray-900'
-                                : 'text-gray-500 hover:text-gray-700'
+                                ? 'font-semibold text-foreground'
+                                : 'text-muted-foreground hover:text-foreground'
                         }`}
                     >
                         Reports
@@ -115,7 +115,7 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
 
                 <div className="space-y-6 lg:col-span-10">
                 <form onSubmit={applyFilters} className="flex flex-wrap items-end gap-3 rounded-lg bg-white p-4 shadow-sm">
-                    <label className="flex flex-col text-sm text-gray-600">
+                    <label className="flex flex-col text-sm text-muted-foreground">
                         Period
                         <select value={range} onChange={(e) => setRange(e.target.value)} className="mt-1 rounded-md border-gray-300 text-sm">
                             {RANGE_OPTIONS.map((opt) => (
@@ -130,7 +130,7 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                         </>
                     )}
                     {!isCustomerView && (
-                        <label className="flex flex-col text-sm text-gray-600">
+                        <label className="flex flex-col text-sm text-muted-foreground">
                             Customer
                             <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="mt-1 rounded-md border-gray-300 text-sm">
                                 <option value="">All Customers</option>
@@ -153,7 +153,7 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                 </div>
 
                 <section className="rounded-lg bg-white p-4 shadow-sm">
-                    <h3 className="mb-3 text-lg font-semibold text-gray-900">Ordered vs Delivered</h3>
+                    <h3 className="type-section-heading mb-3 text-foreground">Ordered vs Delivered</h3>
                     <div className="flex items-end gap-3 overflow-x-auto pb-1">
                         {monthlyTrend.map((month) => (
                             <div key={month.full_label} className="flex min-w-[3rem] flex-1 flex-col items-center gap-1">
@@ -161,7 +161,7 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                                     <span className="w-1/2 rounded bg-primary" style={{ height: `${month.ordered_height}%` }} title={`Ordered: ${month.ordered}`} />
                                     <span className="w-1/2 rounded bg-success" style={{ height: `${month.delivered_height}%` }} title={`Delivered: ${month.delivered}`} />
                                 </div>
-                                <span className="text-xs text-gray-600">{month.label}</span>
+                                <span className="type-caption text-muted-foreground">{month.label}</span>
                             </div>
                         ))}
                     </div>
@@ -169,11 +169,11 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
 
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                     <section className="rounded-lg bg-white p-4 shadow-sm">
-                        <h3 className="mb-3 text-lg font-semibold text-gray-900">Order Status Mix</h3>
+                        <h3 className="type-section-heading mb-3 text-foreground">Order Status Mix</h3>
                         <div className="space-y-2">
                             {statusMix.map((row) => (
                                 <div key={row.key}>
-                                    <div className="flex justify-between text-sm text-gray-600">
+                                    <div className="flex justify-between text-sm text-muted-foreground">
                                         <span>{row.label}</span>
                                         <span>{row.count} ({row.percent}%)</span>
                                     </div>
@@ -184,11 +184,11 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                     </section>
 
                     <section className="rounded-lg bg-white p-4 shadow-sm">
-                        <h3 className="mb-3 text-lg font-semibold text-gray-900">Backlog Aging</h3>
+                        <h3 className="type-section-heading mb-3 text-foreground">Backlog Aging</h3>
                         <div className="space-y-2">
                             {agingRows.map((row) => (
                                 <div key={row.label}>
-                                    <div className="flex justify-between text-sm text-gray-600">
+                                    <div className="flex justify-between text-sm text-muted-foreground">
                                         <span>{row.label}</span>
                                         <span>{row.orders} orders · {row.units} units</span>
                                     </div>
@@ -200,7 +200,7 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                 </div>
 
                 <section className="rounded-lg bg-white p-4 shadow-sm">
-                    <h3 className="text-lg font-semibold text-gray-900">Product Fulfillment Gaps</h3>
+                    <h3 className="type-section-heading text-foreground">Product Fulfillment Gaps</h3>
                 </section>
                 <Table
                     data={productPerformanceRows}
@@ -214,7 +214,7 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                 {!isCustomerView && (
                     <>
                         <section className="rounded-lg bg-white p-4 shadow-sm">
-                            <h3 className="text-lg font-semibold text-gray-900">Customer Performance</h3>
+                            <h3 className="type-section-heading text-foreground">Customer Performance</h3>
                         </section>
                         <Table
                             data={customerPerformanceRows}

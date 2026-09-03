@@ -54,7 +54,7 @@ export function SecurityFields({ data, updateField, errors, isEdit, optional = i
         <>
             <div>
                 {optional && (
-                    <p className="text-xs text-gray-500">Leave blank to keep the current password.</p>
+                    <p className="text-sm text-muted-foreground">Leave blank to keep the current password.</p>
                 )}
                 <Input
                     label={isEdit ? 'New Password' : 'Password'}
@@ -65,7 +65,7 @@ export function SecurityFields({ data, updateField, errors, isEdit, optional = i
                     error={errors.password}
                     classNames={FIELD_CLASS_NAMES}
                 />
-                <p className="mt-1 text-xs text-gray-500">At least 8 characters.</p>
+                <p className="mt-1 text-sm text-muted-foreground">At least 8 characters.</p>
             </div>
 
             <div>
@@ -126,11 +126,11 @@ export function AccessFields({ data, updateField, errors, allowAdminCreation, cu
                     portal
                 />
                 {errors.role && (
-                    <p id="account-type-error" role="alert" className="mt-1 text-xs text-red-600">
+                    <p id="account-type-error" role="alert" className="mt-1 text-sm text-destructive">
                         {errors.role}
                     </p>
                 )}
-                {isSelf && <p className="mt-1 text-xs text-gray-500">You cannot change your own account type.</p>}
+                {isSelf && <p className="mt-1 text-sm text-muted-foreground">You cannot change your own account type.</p>}
             </div>
 
             {data.role === 'customer' && (
@@ -159,7 +159,7 @@ export function AccessFields({ data, updateField, errors, allowAdminCreation, cu
                         portal
                     />
                     {errors.customer_id && (
-                        <p id="linked-customer-error" role="alert" className="mt-1 text-xs text-red-600">
+                        <p id="linked-customer-error" role="alert" className="mt-1 text-sm text-destructive">
                             {errors.customer_id}
                         </p>
                     )}
@@ -176,7 +176,7 @@ export function AccessFields({ data, updateField, errors, allowAdminCreation, cu
                         className="disabled:opacity-50"
                     />
                     Active
-                    {isSelf && <span className="text-xs text-gray-500">(you cannot deactivate your own account)</span>}
+                    {isSelf && <span className="text-sm text-muted-foreground">(you cannot deactivate your own account)</span>}
                 </label>
             )}
         </>

@@ -1,6 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import FlashBanner from '@/components/FlashBanner';
-import { Skeleton } from '@/components/loading-ui/skeleton';
 import { AnimatedBadge } from '@/components/motion/animated-badge';
 import { Table } from '@/components/motion/table';
 import { Timeline, styleFor, timeLabel } from '@/components/timelines-activity-feed';
@@ -11,76 +10,12 @@ import { Head, Link } from '@inertiajs/react';
 import {
     ArrowRight,
     ChartColumn,
-    CircleCheck,
     ClipboardList,
-    Eye,
     MessageSquare,
-    PackageCheck,
     Plus,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-
-const SUMMARY_CARDS = [
-    {
-        key: 'submitted',
-        label: 'Submitted',
-        description: 'Waiting for review',
-        icon: ClipboardList,
-        iconClassName: 'bg-info/10 text-info',
-    },
-    {
-        key: 'reviewing',
-        label: 'Reviewing',
-        description: 'Currently being checked',
-        icon: Eye,
-        iconClassName: 'bg-primary/10 text-primary',
-    },
-    {
-        key: 'partial',
-        label: 'Partial',
-        description: 'Still has a balance',
-        icon: PackageCheck,
-        iconClassName: 'bg-amber-500/10 text-amber-600',
-    },
-    {
-        key: 'completed_today',
-        label: 'Completed Today',
-        description: 'Finished since midnight',
-        icon: CircleCheck,
-        iconClassName: 'bg-success/10 text-success',
-    },
-];
-
-const CUSTOMER_SUMMARY_CARDS = [
-    {
-        key: 'active',
-        label: 'Active Orders',
-        description: 'Being reviewed or fulfilled',
-        icon: ClipboardList,
-        iconClassName: 'bg-info/10 text-info',
-    },
-    {
-        key: 'in_progress',
-        label: 'Partial Deliveries',
-        description: 'Orders with items still due',
-        icon: PackageCheck,
-        iconClassName: 'bg-primary/10 text-primary',
-    },
-    {
-        key: 'ready_to_confirm',
-        label: 'Ready to Confirm',
-        description: 'Completed deliveries to review',
-        icon: Eye,
-        iconClassName: 'bg-amber-500/10 text-amber-600',
-    },
-    {
-        key: 'received',
-        label: 'Received',
-        description: 'Deliveries you confirmed',
-        icon: CircleCheck,
-        iconClassName: 'bg-success/10 text-success',
-    },
-];
+import { StatCards } from '../../../components/spectrumui/charts/stat-cards';
 
 const CUSTOMER_TABLE_ROW_HEIGHT = 48;
 const CUSTOMER_TABLE_HEIGHT = 6 * CUSTOMER_TABLE_ROW_HEIGHT + 20;
@@ -97,33 +32,6 @@ function Status({ order }) {
         >
             {badge.label}
         </AnimatedBadge>
-    );
-}
-
-function SummaryCard({ card, value, loading }) {
-    const Icon = card.icon;
-
-    return (
-        <article className="rounded-xl border border-border bg-card p-5">
-            <div className="flex items-start justify-between gap-4">
-                <div>
-                    <p className="text-sm font-medium text-muted-foreground">{card.label}</p>
-                    {loading ? (
-                        <Skeleton className="mt-2 h-9 w-10" />
-                    ) : (
-                        <p className="mt-2 text-3xl font-semibold tabular-nums text-foreground">{value}</p>
-                    )}
-                </div>
-                <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${card.iconClassName}`}>
-                    <Icon className="size-5" aria-hidden="true" />
-                </span>
-            </div>
-            {loading ? (
-                <Skeleton className="mt-3 h-4 w-28" />
-            ) : (
-                <p className="mt-3 text-sm text-muted-foreground">{card.description}</p>
-            )}
-        </article>
     );
 }
 
@@ -296,15 +204,8 @@ function CustomerDashboard({ dashboard }) {
                 </p>
             </section>
 
-            <section aria-label="Your order summary" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {CUSTOMER_SUMMARY_CARDS.map((card) => (
-                    <SummaryCard
-                        key={card.key}
-                        card={card}
-                        value={dashboard.summary[card.key]}
-                        loading={refreshingSummary}
-                    />
-                ))}
+            <section aria-label="Your order summary">
+                <StatCards cards={dashboard.metrics} />
             </section>
 
             <section className="rounded-xl border border-border bg-card">
@@ -473,16 +374,7 @@ function CompanyDashboard({ dashboard }) {
 
     return (
         <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
-            <section aria-label="Order summary" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {SUMMARY_CARDS.map((card) => (
-                    <SummaryCard
-                        key={card.key}
-                        card={card}
-                        value={dashboard.summary[card.key]}
-                        loading={refreshingSummary}
-                    />
-                ))}
-            </section>
+            <StatCards cards={dashboard.metrics} />
 
             <div className="grid gap-6 lg:grid-cols-3">
                 <section className="rounded-xl border border-border bg-card lg:col-span-2">

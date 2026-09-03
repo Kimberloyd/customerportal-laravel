@@ -303,7 +303,7 @@ export default function Show({
                 <div className="rounded-xl border border-gray-200 bg-white">
                     <div className="grid gap-6 p-6 md:grid-cols-2">
                         <div>
-                        <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Customer</h3>
+                        <p className="type-label uppercase tracking-wide text-muted-foreground">Customer</p>
                         <p className="mt-2 font-medium text-gray-900">{order.customer.name}</p>
                         <dl className="mt-4 space-y-1.5 border-t border-gray-100 pt-4 text-sm">
                             {order.has_attachment && (
