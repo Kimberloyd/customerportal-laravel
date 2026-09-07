@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\PurchaseOrderNotification;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 
@@ -77,13 +78,15 @@ class OrderNotificationFeed
      * to the last 24 hours, so a long-lived account isn't hit with its
      * entire order history as "unread" the first time it opens the bell.
      */
-    public static function recentCount(): int
+    public static function unreadSince(): CarbonInterface
     {
-        $user = Auth::user();
-        $since = $user?->notifications_read_at ?? now()->subHours(24);
+        return Auth::user()?->notifications_read_at ?? now()->subHours(24);
+    }
 
+    public static function recentCount(?CarbonInterface $since = null): int
+    {
         return self::scopedQuery()
-            ?->where('created_at', '>', $since)
+            ?->where('created_at', '>', $since ?? self::unreadSince())
             ->count()
             ?? 0;
     }

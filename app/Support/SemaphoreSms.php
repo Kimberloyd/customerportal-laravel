@@ -125,19 +125,30 @@ class SemaphoreSms
     }
 
     /**
-     * Recently sent messages, newest first.
+     * Recently sent messages, newest first. Sorted locally rather than
+     * trusting Semaphore's own response order -- it's been observed to
+     * return a page's rows out of date order, which silently broke the
+     * "newest first" contract this method promises.
      *
      * @return array<int, array<string, mixed>>|null
      */
     public static function messages(int $limit = 10, int $page = 1): ?array
     {
-        return self::readList(
+        $messages = self::readList(
             self::ENDPOINT,
             $limit,
             "semaphore.messages.{$limit}.{$page}",
             self::MESSAGES_CACHE_TTL,
             $page,
         );
+
+        if ($messages === null) {
+            return null;
+        }
+
+        usort($messages, fn (array $a, array $b) => strtotime($b['created_at'] ?? '') <=> strtotime($a['created_at'] ?? ''));
+
+        return $messages;
     }
 
     /**

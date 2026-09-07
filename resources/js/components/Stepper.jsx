@@ -1,5 +1,5 @@
 import React, { useState, Children, useRef, useLayoutEffect, useImperativeHandle } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useIsPresent } from 'motion/react';
 
 import './Stepper.css';
 
@@ -150,7 +150,7 @@ function StepContentWrapper({ isCompleted, currentStep, direction, children, cla
     >
       <AnimatePresence initial={false} mode="sync" custom={direction}>
         {!isCompleted && (
-          <SlideTransition key={currentStep} direction={direction} onHeightReady={h => setParentHeight(h)}>
+          <SlideTransition key={currentStep} direction={direction} onHeightReady={setParentHeight}>
             {children}
           </SlideTransition>
         )}
@@ -161,10 +161,17 @@ function StepContentWrapper({ isCompleted, currentStep, direction, children, cla
 
 function SlideTransition({ children, direction, onHeightReady }) {
   const containerRef = useRef(null);
+  const isPresent = useIsPresent();
 
   useLayoutEffect(() => {
-    if (containerRef.current) onHeightReady(containerRef.current.offsetHeight);
-  }, [children, onHeightReady]);
+    const element = containerRef.current;
+    if (!element || !isPresent) return;
+    const measure = () => onHeightReady(element.offsetHeight);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [isPresent, onHeightReady]);
 
   return (
     <motion.div

@@ -2,6 +2,7 @@ import echo from '@/echo';
 import FlashBanner from '@/components/FlashBanner';
 import ResponsiveNavLink from '@/components/ResponsiveNavLink';
 import { Dropdown as AccountDropdown } from '@/components/interior/dropdown';
+import { useModal } from '@/components/interior/modal';
 import { Tooltip } from '@/components/motion/tooltip';
 import ComposeModal from '@/components/messaging/ComposeModal';
 import { CommandPalette } from '@/components/motion/command-palette';
@@ -23,6 +24,7 @@ import {
     Search,
     ShieldCheck,
     SquarePen,
+    X,
 } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { createPortal } from 'react-dom';
@@ -55,6 +57,8 @@ export default function AuthenticatedLayout({ header, banner, children }) {
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
+    const closeMobileNav = useCallback(() => setShowingNavigationDropdown(false), []);
+    const mobileNav = useModal({ open: showingNavigationDropdown, onClose: closeMobileNav });
     const [notificationsOpen, setNotificationsOpen] = useState(false);
     const [notificationsPosition, setNotificationsPosition] = useState(null);
     const [paletteOpen, setPaletteOpen] = useState(false);
@@ -69,6 +73,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
     // only their own orders' notifications, staff see every order's.
     const [notificationCount, setNotificationCount] = useState(0);
     const [orderNotifications, setOrderNotifications] = useState([]);
+    const [notificationHighlight, setNotificationHighlight] = useState({ y: 0, height: 0, opacity: 0 });
     const [messageAccounts, setMessageAccounts] = useState(null);
     const [messageAccountsError, setMessageAccountsError] = useState(false);
     const mountedRef = useRef(true);
@@ -76,10 +81,18 @@ export default function AuthenticatedLayout({ header, banner, children }) {
     const notificationsPanelRef = useRef(null);
 
     const closeNotifications = useCallback(() => setNotificationsOpen(false), []);
+    const highlightNotification = (event) => {
+        const item = event.currentTarget;
+        setNotificationHighlight({ y: item.offsetTop, height: item.offsetHeight, opacity: 1 });
+    };
+    const clearNotificationHighlight = () => {
+        setNotificationHighlight((previous) => ({ ...previous, opacity: 0 }));
+    };
 
     useEffect(() => {
         if (!notificationsOpen) {
             setNotificationsPosition(null);
+            setNotificationHighlight({ y: 0, height: 0, opacity: 0 });
             return;
         }
 
@@ -161,6 +174,10 @@ export default function AuthenticatedLayout({ header, banner, children }) {
 
     const markAllNotificationsRead = useCallback(() => {
         setNotificationCount(0);
+        setOrderNotifications((notifications) => notifications.map((notification) => ({
+            ...notification,
+            is_unread: false,
+        })));
         axios.post(route('notifications.mark-all-read')).catch(() => {
             if (mountedRef.current) fetchRecentNotifications();
         });
@@ -454,9 +471,60 @@ export default function AuthenticatedLayout({ header, banner, children }) {
         <div className="min-h-screen bg-white">
             <nav className="sticky top-0 z-40 border-b border-gray-100 bg-white">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <div className="flex h-16 justify-between">
+                    <div className="relative flex h-16 justify-between">
+                        <div className="pointer-events-none absolute inset-x-0 flex h-16 items-center justify-center sm:hidden">
+                            <Link href="/" className="pointer-events-auto">
+                                <img
+                                    src="/images/TM Horizontal Lockup_Transparent BG.png"
+                                    alt="Logo"
+                                    className="block h-14 w-auto"
+                                />
+                            </Link>
+                        </div>
+
                         <div className="flex">
-                            <div className="flex shrink-0 items-center">
+                            <div className="flex items-center gap-2 sm:hidden">
+                                <button
+                                    onClick={() =>
+                                        setShowingNavigationDropdown(
+                                            (previousState) => !previousState,
+                                        )
+                                    }
+                                    className="inline-flex items-center justify-center rounded-md bg-transparent p-2 text-gray-400 transition duration-150 ease-in-out hover:text-gray-500 focus:text-gray-500 focus:outline-none"
+                                >
+                                    <svg
+                                        className="h-6 w-6"
+                                        stroke="currentColor"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            className={
+                                                !showingNavigationDropdown
+                                                    ? 'inline-flex'
+                                                    : 'hidden'
+                                            }
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth="2"
+                                            d="M4 6h16M4 12h16M4 18h16"
+                                        />
+                                        <path
+                                            className={
+                                                showingNavigationDropdown
+                                                    ? 'inline-flex'
+                                                    : 'hidden'
+                                            }
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth="2"
+                                            d="M6 18L18 6M6 6l12 12"
+                                        />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <div className="hidden shrink-0 items-center sm:flex">
                                 <Link href="/">
                                     <img
                                         src="/images/TM Horizontal Lockup_Transparent BG.png"
@@ -629,111 +697,107 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                 />
                             </div>
                         </div>
-
-                        <div className="-me-2 flex items-center sm:hidden">
-                            <button
-                                onClick={() =>
-                                    setShowingNavigationDropdown(
-                                        (previousState) => !previousState,
-                                    )
-                                }
-                                className="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none"
-                            >
-                                <svg
-                                    className="h-6 w-6"
-                                    stroke="currentColor"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        className={
-                                            !showingNavigationDropdown
-                                                ? 'inline-flex'
-                                                : 'hidden'
-                                        }
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="M4 6h16M4 12h16M4 18h16"
-                                    />
-                                    <path
-                                        className={
-                                            showingNavigationDropdown
-                                                ? 'inline-flex'
-                                                : 'hidden'
-                                        }
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="M6 18L18 6M6 6l12 12"
-                                    />
-                                </svg>
-                            </button>
-                        </div>
                     </div>
                 </div>
 
-                <div
-                    className={
-                        (showingNavigationDropdown ? 'block' : 'hidden') +
-                        ' sm:hidden'
-                    }
-                >
-                    <div className="space-y-1 pb-3 pt-2">
-                        <ResponsiveNavLink
-                            href={route('dashboard')}
-                            active={route().current('dashboard')}
-                        >
-                            Dashboard
-                        </ResponsiveNavLink>
-                        <ResponsiveNavLink
-                            href={route('purchase-orders.index')}
-                            active={route().current('purchase-orders.*')}
-                        >
-                            Orders
-                        </ResponsiveNavLink>
-                    </div>
-
-                    <div className="border-t border-gray-200 pb-1 pt-4">
-                        <div className="px-4">
-                            <div className="text-base font-medium text-gray-800">
-                                {user.full_name}
-                            </div>
-                            <div className="text-sm font-medium text-gray-500">
-                                {user.email}
-                            </div>
-                        </div>
-
-                        <div className="mt-3 space-y-1">
-                            <ResponsiveNavLink href={route('settings.edit')}>
-                                Settings
-                            </ResponsiveNavLink>
-                            {user.role !== 'admin' && (
-                                <ResponsiveNavLink
-                                    href={route('faq')}
-                                    active={route().current('faq')}
-                                >
-                                    FAQ
-                                </ResponsiveNavLink>
-                            )}
-                            <ResponsiveNavLink
-                                method="post"
-                                href={route('logout.all')}
-                                as="button"
-                            >
-                                Sign Out All Devices
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink
-                                method="post"
-                                href={route('logout')}
-                                as="button"
-                            >
-                                Log Out
-                            </ResponsiveNavLink>
-                        </div>
-                    </div>
-                </div>
             </nav>
+
+            {mobileNav.target &&
+                createPortal(
+                    <AnimatePresence>
+                        {showingNavigationDropdown && (
+                            <motion.div
+                                key="mobile-nav"
+                                {...mobileNav.overlayProps}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: reducedMotion ? 0 : 0.2, ease: EASE }}
+                                className="fixed inset-0 z-[70] bg-stone-900/40 sm:hidden"
+                            >
+                                <motion.div
+                                    {...mobileNav.panelProps}
+                                    aria-label="Navigation"
+                                    initial={{ x: '-100%' }}
+                                    animate={{ x: 0 }}
+                                    exit={{ x: '-100%' }}
+                                    transition={reducedMotion ? { duration: 0 } : OPEN_SPRING}
+                                    className="flex h-full w-full max-w-xs flex-col overflow-y-auto bg-white shadow-xl outline-none"
+                                >
+                                    <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-4 py-3">
+                                        <div className="min-w-0">
+                                            <div className="truncate text-base font-medium text-gray-800">
+                                                {user.full_name}
+                                            </div>
+                                            <div className="truncate text-sm font-medium text-gray-500">
+                                                {user.email}
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={closeMobileNav}
+                                            aria-label="Close navigation"
+                                            className="grid h-9 w-9 place-items-center rounded-md text-gray-400 outline-none transition-colors hover:bg-gray-100 hover:text-gray-500 focus-visible:ring-2 focus-visible:ring-ring"
+                                        >
+                                            <X aria-hidden="true" className="h-5 w-5" />
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <ResponsiveNavLink
+                                            href={route('dashboard')}
+                                            active={route().current('dashboard')}
+                                            onClick={closeMobileNav}
+                                        >
+                                            Dashboard
+                                        </ResponsiveNavLink>
+                                        <ResponsiveNavLink
+                                            href={route('purchase-orders.index')}
+                                            active={route().current('purchase-orders.*')}
+                                            onClick={closeMobileNav}
+                                        >
+                                            Orders
+                                        </ResponsiveNavLink>
+                                        <ResponsiveNavLink href={route('settings.edit')} onClick={closeMobileNav}>
+                                            Settings
+                                        </ResponsiveNavLink>
+                                        {user.role !== 'admin' && (
+                                            <ResponsiveNavLink
+                                                href={route('faq')}
+                                                active={route().current('faq')}
+                                                onClick={closeMobileNav}
+                                            >
+                                                FAQ
+                                            </ResponsiveNavLink>
+                                        )}
+                                    </div>
+
+                                    <div className="border-t border-gray-200 pb-1 pt-4">
+                                        <div className="space-y-1">
+                                            <ResponsiveNavLink
+                                                method="post"
+                                                href={route('logout.all')}
+                                                as="button"
+                                                onClick={closeMobileNav}
+                                            >
+                                                Sign Out All Devices
+                                            </ResponsiveNavLink>
+                                            <ResponsiveNavLink
+                                                method="post"
+                                                href={route('logout')}
+                                                as="button"
+                                                onClick={closeMobileNav}
+                                            >
+                                                Log Out
+                                            </ResponsiveNavLink>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>,
+                    mobileNav.target,
+                )}
 
             {typeof document !== 'undefined' &&
                 createPortal(
@@ -801,18 +865,46 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                             </p>
                                         </div>
                                     ) : (
-                                        <ul className="flex flex-col gap-1">
+                                        <ul
+                                            className="relative flex flex-col gap-1"
+                                            onPointerLeave={clearNotificationHighlight}
+                                            onBlur={(event) => {
+                                                if (!event.currentTarget.contains(event.relatedTarget)) clearNotificationHighlight();
+                                            }}
+                                        >
+                                            <motion.li
+                                                aria-hidden="true"
+                                                className="pointer-events-none absolute inset-x-0 top-0 rounded-[7px] bg-stone-100 dark:bg-white/10"
+                                                initial={false}
+                                                animate={notificationHighlight}
+                                                transition={reducedMotion
+                                                    ? { duration: 0 }
+                                                    : { type: 'spring', stiffness: 700, damping: 46, mass: 0.5, opacity: { duration: 0.1, ease: EASE } }}
+                                            />
                                             {orderNotifications.map((notification) => (
-                                                <li key={notification.id}>
+                                                <li
+                                                    key={notification.id}
+                                                    className="relative"
+                                                    onPointerMove={highlightNotification}
+                                                    onFocus={highlightNotification}
+                                                >
                                                     <Link
                                                         href={
                                                             notification.order_id
                                                                 ? route('purchase-orders.show', notification.order_id)
                                                                 : '#'
                                                         }
-                                                        onClick={closeNotifications}
-                                                        className="block rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-stone-100 dark:hover:bg-white/[0.06]"
+                                                        onClick={() => {
+                                                            markAllNotificationsRead();
+                                                            closeNotifications();
+                                                        }}
+                                                        className="relative block rounded-[7px] py-2.5 pl-3 pr-8 text-left"
                                                     >
+                                                        {notification.is_unread && (
+                                                            <span className="absolute right-3 top-4 h-2 w-2 rounded-full bg-red-600 dark:bg-red-400">
+                                                                <span className="sr-only">Unread</span>
+                                                            </span>
+                                                        )}
                                                         <p className="text-sm font-medium text-foreground dark:text-stone-100">
                                                             {notification.note ?? 'Order updated'}
                                                         </p>
@@ -873,6 +965,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                             { name: 'Dashboard', url: route('dashboard') },
                             { name: 'Orders', url: route('purchase-orders.index') },
                             { name: 'FAQ', url: route('faq') },
+                            { name: 'Terms & Privacy', url: route('terms-and-privacy') },
                         ],
                     },
                 ]}

@@ -1,475 +1,83 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import FlashBanner from '@/components/FlashBanner';
-import { AnimatedBadge } from '@/components/motion/animated-badge';
-import { Table } from '@/components/motion/table';
-import { Button } from '@/components/ui/button';
-import { usePurchaseOrderRealtime } from '@/hooks/usePurchaseOrderRealtime';
-import { formatDateTime, statusBadge } from '@/utils/orderDisplay';
-import { Head, Link } from '@inertiajs/react';
-import {
-    ArrowRight,
-    ClipboardList,
-    MessageSquare,
-    Plus,
-} from 'lucide-react';
-import { useMemo, useState } from 'react';
-import { BarChart } from '../../../components/spectrumui/charts/bar-chart';
-import { CalendarHeatmap } from '../../../components/spectrumui/charts/calendar-heatmap';
-import { CohortChart } from '../../../components/spectrumui/charts/cohort-chart';
-import { HistogramChart } from '../../../components/spectrumui/charts/histogram-chart';
-import { StatCards } from '../../../components/spectrumui/charts/stat-cards';
+import { AttentionPanel, MetricCard, OrderStages, RecentOrders } from '@/components/dashboard/OverviewPanels';
+import OrderTrend from '@/components/dashboard/OrderTrend';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { ArrowDownToLine, ArrowRight, CalendarDays, CheckCheck, Clock3, Package, RefreshCw } from 'lucide-react';
+import { MotionConfig, motion, useReducedMotion } from 'motion/react';
+import { useState } from 'react';
 
-const CUSTOMER_TABLE_ROW_HEIGHT = 48;
-const CUSTOMER_TABLE_HEIGHT = 6 * CUSTOMER_TABLE_ROW_HEIGHT + 20;
+const number = new Intl.NumberFormat('en-PH');
+const date = (value) => new Date(`${value}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
-function Status({ order }) {
-    const badge = statusBadge(order.display_status ?? order.status);
-
-    return (
-        <AnimatedBadge
-            status={badge.status}
-            size="sm"
-            pulse={false}
-            className="border-0 bg-transparent px-0 shadow-none"
-        >
-            {badge.label}
-        </AnimatedBadge>
-    );
-}
-
-function SectionHeading({ title, description, action }) {
-    return (
-        <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-                <h3 className="text-lg font-semibold text-foreground">{title}</h3>
-                {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
-            </div>
-            {action}
-        </div>
-    );
-}
-
-function EmptyState({ children }) {
-    return (
-        <div className="flex min-h-44 items-center justify-center px-6 text-center text-sm text-muted-foreground">
-            {children}
-        </div>
-    );
-}
-
-function DeliveryProgress({ delivered, ordered }) {
-    const percentage = ordered > 0
-        ? Math.min(100, Math.round((delivered / ordered) * 100))
-        : 0;
-
-    return (
-        <div className="mt-3">
-            <div className="mb-1.5 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                <span>{delivered} of {ordered} units delivered</span>
-                <span className="tabular-nums">{percentage}%</span>
-            </div>
-            <div
-                className="h-1.5 overflow-hidden rounded-full bg-muted"
-                role="progressbar"
-                aria-label={`${delivered} of ${ordered} units delivered`}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={percentage}
-            >
-                <div
-                    className="h-full rounded-full bg-primary transition-[width] duration-300"
-                    style={{ width: `${percentage}%` }}
-                />
-            </div>
-        </div>
-    );
-}
-
-function CustomerDashboard({ dashboard }) {
-    const [refreshingSummary, setRefreshingSummary] = useState(false);
-
-    usePurchaseOrderRealtime(null, {
-        only: ['customerDashboard'],
-        onStart: () => setRefreshingSummary(true),
-        onFinish: () => setRefreshingSummary(false),
+export default function Dashboard({ dashboard, workspace }) {
+    const { auth } = usePage().props;
+    const reducedMotion = useReducedMotion();
+    const [loading, setLoading] = useState(false);
+    const customer = workspace.is_customer;
+    const { current, previous, period } = dashboard;
+    const firstName = auth.user.full_name?.trim().split(/\s+/)[0] || 'there';
+    const ordersUrl = route('purchase-orders.index', { date_filter: 'custom', start_date: dashboard.start, end_date: dashboard.end });
+    const enter = (delay) => ({
+        initial: reducedMotion ? false : { opacity: 0, y: 12 },
+        animate: { opacity: 1, y: 0 },
+        transition: { duration: reducedMotion ? 0 : 0.4, delay: reducedMotion ? 0 : delay, ease: [0.23, 1, 0.32, 1] },
     });
-
-    const recentOrderColumns = useMemo(
-        () => [
-            {
-                key: 'po_number',
-                header: 'PO Number',
-                cell: (order) => (
-                    <Link
-                        href={route('purchase-orders.show', order.id)}
-                        className="font-medium text-foreground transition-colors hover:text-primary"
-                    >
-                        {order.po_number}
-                    </Link>
-                ),
-            },
-            { key: 'status', header: 'Status', cell: (order) => <Status order={order} /> },
-            {
-                key: 'delivered_units',
-                header: 'Delivered',
-                cell: (order) => (
-                    <span className="tabular-nums">
-                        {order.delivered_units} of {order.ordered_units}
-                    </span>
-                ),
-            },
-            {
-                key: 'balance_units',
-                header: 'Balance',
-                cell: (order) => <span className="tabular-nums">{order.balance_units}</span>,
-            },
-            {
-                key: 'submitted_at',
-                header: 'Submitted',
-                cell: (order) => formatDateTime(order.submitted_at),
-            },
-        ],
-        [],
-    );
-
-    if (!dashboard.linked) {
-        return (
-            <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-                <section className="flex min-h-80 flex-col items-center justify-center rounded-xl border border-border bg-card px-6 text-center">
-                    <span className="grid size-12 place-items-center rounded-xl bg-muted text-muted-foreground">
-                        <ClipboardList className="size-6" aria-hidden="true" />
-                    </span>
-                    <h3 className="mt-4 text-lg font-semibold text-foreground">
-                        Your orders aren&apos;t available yet
-                    </h3>
-                    <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-                        This account still needs to be connected to your customer record. Contact Theomeds support or your account administrator to finish setup.
-                    </p>
-                </section>
-            </div>
-        );
-    }
+    const visit = (days) => router.get(route('dashboard'), { period: days }, {
+        only: ['dashboard', 'workspace'], preserveState: true, preserveScroll: true,
+        onStart: () => setLoading(true), onFinish: () => setLoading(false),
+    });
+    const metrics = [
+        { label: customer ? 'Orders placed' : 'Orders received', value: number.format(current.orders), previous: number.format(previous.orders), icon: Package, note: 'All orders in this period', href: ordersUrl },
+        { label: 'Orders in progress', value: number.format(current.stages.review + current.stages.fulfillment), previous: number.format(previous.stages.review + previous.stages.fulfillment), icon: Clock3, note: 'Awaiting review or full delivery', href: `${ordersUrl}&status=active` },
+        { label: 'Completed orders', value: number.format(current.completed), previous: number.format(previous.completed), icon: CheckCheck, note: 'From orders placed in this period', href: `${ordersUrl}&status=completed` },
+        { label: customer ? 'Your delivery progress' : 'Quantity fulfilled', value: current.fulfillment === null ? '—' : `${number.format(current.fulfillment)}%`, previous: previous.fulfillment === null ? 'No quantities' : `${number.format(previous.fulfillment)}%`, icon: ArrowDownToLine, note: `${number.format(current.delivered_units)} of ${number.format(current.ordered_units)} units delivered`, href: ordersUrl },
+    ];
 
     return (
-        <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
-            <section>
-                <p className="text-sm font-medium text-primary">Order overview</p>
-                <h3 className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
-                    {dashboard.customer_name}
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                    Track current deliveries and review the latest activity on your orders.
-                </p>
-            </section>
-
-            <section aria-label="Your order summary">
-                <StatCards cards={dashboard.metrics} />
-            </section>
-
-            <section className="rounded-xl border border-border bg-card">
-                <div className="border-b border-border p-5">
-                    <SectionHeading
-                        title="Confirm Completed Deliveries"
-                        description="Review completed orders and confirm when the delivery has arrived."
-                        action={(
-                            <Link
-                                href={route('purchase-orders.index', { status: 'completed' })}
-                                className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-                            >
-                                View completed orders <ArrowRight className="size-4" aria-hidden="true" />
-                            </Link>
-                        )}
-                    />
-                </div>
-                {dashboard.action_required.length === 0 ? (
-                    <EmptyState>No completed deliveries are waiting for confirmation.</EmptyState>
-                ) : (
-                    <ul className="divide-y divide-border">
-                        {dashboard.action_required.map((order) => (
-                            <li key={order.id}>
-                                <Link
-                                    href={route('purchase-orders.show', order.id)}
-                                    className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
-                                >
-                                    <div>
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <span className="font-medium text-foreground">{order.po_number}</span>
-                                            <Status order={order} />
-                                        </div>
-                                        <p className="mt-1 text-sm text-muted-foreground">
-                                            Completed delivery · {order.ordered_units} units
-                                        </p>
+        <AuthenticatedLayout>
+            <Head title={customer ? 'Your overview' : 'Company overview'} />
+            <MotionConfig reducedMotion="user">
+                <div className="min-h-[70vh] border-b border-stone-200/70 bg-white dark:border-white/10 dark:bg-[#151619]">
+                    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+                        <motion.div {...enter(0)} className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
+                            <div>
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary dark:text-indigo-300">{customer ? workspace.name || 'Customer workspace' : 'Company workspace'}</p>
+                                <h1 className="text-2xl font-semibold leading-tight tracking-tight text-stone-900 sm:text-3xl dark:text-stone-100">{customer ? 'Your orders, at a glance.' : 'Company overview'}</h1>
+                                <p className="mt-2 max-w-xl text-sm leading-6 text-stone-600 dark:text-stone-400">{customer ? `Welcome back, ${firstName}. Follow your orders from request to delivery.` : `Welcome back, ${firstName}. Here’s where your orders stand.`}</p>
+                            </div>
+                        </motion.div>
+                        {!workspace.can_order && <div role="status" className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">Your account needs an active customer profile before you can place or view orders. Contact your company representative to link your account.</div>}
+                        <motion.div {...enter(0.04)} className="mb-5 mt-7 flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 text-sm text-stone-600 dark:text-stone-400"><CalendarDays aria-hidden="true" className="h-4 w-4" /><span>{date(dashboard.start)} – {date(dashboard.end)}, {dashboard.end.slice(0, 4)}</span><span className="text-xs text-stone-500">UTC</span></div>
+                            <div role="group" aria-label="Dashboard date range" className="flex rounded-xl border border-stone-200 bg-white p-1 shadow-sm dark:border-white/10 dark:bg-[#1d1e22]">
+                                {[7, 30, 90].map((days) => <button key={days} type="button" disabled={loading} aria-pressed={period === days} onClick={() => visit(days)} className={`relative min-h-9 rounded-lg px-4 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:cursor-wait ${period === days ? 'text-white' : 'text-stone-600 hover:text-stone-900 dark:text-stone-300'}`}>
+                                    {period === days && <motion.span layoutId="dashboard-period" className="absolute inset-0 rounded-lg bg-primary" transition={{ duration: reducedMotion ? 0 : 0.2 }} />}<span className="relative">{days} days</span>
+                                </button>)}
+                            </div>
+                        </motion.div>
+                        <div aria-busy={loading} className={`space-y-5 transition-opacity ${loading ? 'opacity-60' : ''}`}>
+                            <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:gap-4 lg:grid-cols-4">{metrics.map((metric, index) => <motion.div key={metric.label} {...enter(0.06 + index * 0.04)}><MetricCard {...metric} href={workspace.can_order ? metric.href : null} period={period} featured={index === 0} /></motion.div>)}</div>
+                            <motion.div {...enter(0.2)} className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+                                <section aria-labelledby="order-trend-heading" className="min-w-0 rounded-2xl border border-stone-200/80 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.02)] lg:col-span-2 dark:border-white/10 dark:bg-[#1d1e22]">
+                                    <div className="flex flex-wrap items-start justify-between gap-3 px-5 pt-5 sm:px-6">
+                                        <div><h2 id="order-trend-heading" className="type-section-heading text-stone-900 dark:text-stone-100">Order activity</h2><p className="mt-1 text-sm text-stone-500 dark:text-stone-400">Daily orders vs. the previous {period} days.</p></div>
+                                        {workspace.can_order && <Link href={ordersUrl} className="inline-flex items-center gap-1.5 rounded text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-indigo-300">View orders <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>}
                                     </div>
-                                    <span className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
-                                        Review delivery <ArrowRight className="size-4" aria-hidden="true" />
-                                    </span>
-                                </Link>
-                            </li>
-                        ))}
-                    </ul>
-                )}
-            </section>
-
-            <div className="grid gap-6 lg:grid-cols-3">
-                <section className="rounded-xl border border-border bg-card lg:col-span-2">
-                    <div className="border-b border-border p-5">
-                        <SectionHeading
-                            title="Active Orders"
-                            description="Orders currently being reviewed or fulfilled."
-                            action={(
-                                <Link
-                                    href={route('purchase-orders.index', { status: 'active' })}
-                                    className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-                                >
-                                    View all <ArrowRight className="size-4" aria-hidden="true" />
-                                </Link>
-                            )}
-                        />
-                    </div>
-                    {dashboard.active_orders.length === 0 ? (
-                        <EmptyState>No orders are currently being reviewed or fulfilled.</EmptyState>
-                    ) : (
-                        <ul className="divide-y divide-border">
-                            {dashboard.active_orders.map((order) => (
-                                <li key={order.id}>
-                                    <Link
-                                        href={route('purchase-orders.show', order.id)}
-                                        className="block px-5 py-4 transition-colors hover:bg-muted/50"
-                                    >
-                                        <div className="flex flex-wrap items-center justify-between gap-2">
-                                            <span className="font-medium text-foreground">{order.po_number}</span>
-                                            <Status order={order} />
-                                        </div>
-                                        <DeliveryProgress
-                                            delivered={order.delivered_units}
-                                            ordered={order.ordered_units}
-                                        />
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </section>
-
-                <section className="rounded-xl border border-border bg-card p-5">
-                    <SectionHeading
-                        title="Quick Actions"
-                        description="Start or find an order."
-                    />
-                    <div className="mt-5 grid gap-3">
-                        <Button asChild variant="primary" className="w-full justify-start" leadingIcon={Plus}>
-                            <Link href={route('purchase-orders.index', { create: 1 })}>Create Order</Link>
-                        </Button>
-                        <Button asChild variant="tertiary" className="w-full justify-start" leadingIcon={ClipboardList}>
-                            <Link href={route('purchase-orders.index')}>View All Orders</Link>
-                        </Button>
-                        <div className="mt-2 flex items-start gap-3 rounded-xl bg-muted/60 p-4 text-sm text-muted-foreground">
-                            <MessageSquare className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-                            <p>Use the message icon in the header if you need help with an order.</p>
+                                    <OrderTrend trend={dashboard.trend} empty={current.orders === 0 && previous.orders === 0} reducedMotion={reducedMotion} />
+                                    <OrderStages current={current} previous={previous} ordersUrl={ordersUrl} reducedMotion={reducedMotion} />
+                                </section>
+                                <AttentionPanel orders={dashboard.attention} count={dashboard.attention_count} customer={customer} reducedMotion={reducedMotion} canOrder={workspace.can_order} />
+                            </motion.div>
+                            <motion.div {...enter(0.26)}><RecentOrders orders={dashboard.recent} customer={customer} ordersUrl={ordersUrl} canOrder={workspace.can_order} reducedMotion={reducedMotion} /></motion.div>
                         </div>
+                        <div className="mt-5 flex flex-wrap items-center justify-between gap-2 text-xs leading-5 text-stone-500 dark:text-stone-400">
+                            <p>Progress reflects the latest status of orders placed in the selected period.</p>
+                            <button type="button" disabled={loading} onClick={() => visit(period)} className="inline-flex min-h-9 items-center gap-2 rounded-lg px-2 hover:bg-stone-200/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:cursor-wait"><RefreshCw aria-hidden="true" className={`h-3.5 w-3.5 ${loading && !reducedMotion ? 'animate-spin' : ''}`} />{loading ? 'Updating overview…' : `Updated ${new Date(dashboard.updated_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} · Refresh`}</button>
+                        </div>
+                        <span role="status" className="sr-only">{loading ? 'Updating dashboard.' : `Showing the last ${period} days.`}</span>
                     </div>
-                </section>
-            </div>
-
-            <section className="space-y-4">
-                <SectionHeading
-                    title="Recent Orders"
-                    description="Your five most recently submitted purchase orders."
-                />
-                <Table
-                    data={dashboard.recent_orders}
-                    columns={recentOrderColumns}
-                    getRowId={(order) => String(order.id)}
-                    className="[&>div]:!overflow-x-auto [&>div]:!overflow-y-hidden"
-                    rowHeight={CUSTOMER_TABLE_ROW_HEIGHT}
-                    height={CUSTOMER_TABLE_HEIGHT}
-                    loading={refreshingSummary}
-                    emptyState="No orders yet. Create an order to start tracking it here."
-                />
-            </section>
-        </div>
-    );
-}
-
-// One measure, so the bars carry no identity of their own -- the heading names
-// them and the legend would only repeat it.
-const AGING_SERIES = [{ key: 'orders', label: 'Open orders' }];
-
-function ChartLabel({ children }) {
-    return (
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-primary">
-            {children}
-        </p>
-    );
-}
-
-// Stands in for the whole card, not just the plot -- a chart's own heading and
-// legend would otherwise render real-looking zeroes over a skeleton grid.
-function ChartSkeleton({ height }) {
-    return (
-        <div className="animate-pulse" aria-hidden="true">
-            <div className="h-5 w-48 rounded bg-muted" />
-            <div className="mt-2 h-4 w-32 rounded bg-muted" />
-            <div className="mt-5 rounded-lg bg-muted" style={{ height }} />
-        </div>
-    );
-}
-
-function ChartCard({ category, loading = false, skeletonHeight = 260, children }) {
-    return (
-        <section aria-busy={loading || undefined}>
-            <ChartLabel>{category}</ChartLabel>
-            <div className="rounded-xl border border-border bg-card p-5">
-                {loading ? <ChartSkeleton height={skeletonHeight} /> : children}
-            </div>
-        </section>
-    );
-}
-
-function CompanyDashboard({ dashboard, charts }) {
-    usePurchaseOrderRealtime(null, {
-        // Ask for the deferred charts by name too, otherwise a realtime refresh
-        // would replace them with nothing and strand every chart in its skeleton.
-        only: ['companyDashboard', 'companyCharts'],
-    });
-
-    // Absent until the deferred request lands -- that gap is the skeleton.
-    const loading = charts === undefined;
-
-    const orderActivity = charts?.order_activity ?? [];
-    const leadTimes = charts?.lead_times ?? [];
-    const openOrderAging = charts?.open_order_aging ?? [];
-    const reorderCohorts = charts?.reorder_cohorts ?? [];
-
-    // The activity series is always a dense 365 days, so its length says nothing
-    // about whether anything actually happened.
-    const hasActivity = useMemo(
-        () => orderActivity.some((day) => day.value > 0),
-        [orderActivity],
-    );
-
-    const openOrderTotal = useMemo(
-        () => openOrderAging.reduce((total, bucket) => total + bucket.orders, 0),
-        [openOrderAging],
-    );
-
-    // Lead times run from hours to weeks depending on the customer, so the axis
-    // picks one unit for the whole plot rather than mixing them per tick.
-    const formatLeadTime = useMemo(() => {
-        const longest = leadTimes.reduce((max, hours) => Math.max(max, hours), 0);
-
-        return longest >= 72
-            ? (value) => `${(value / 24).toFixed(value < 24 ? 1 : 0)}d`
-            : (value) => `${Math.round(value)}h`;
-    }, [leadTimes]);
-
-    return (
-        <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
-            <section>
-                <ChartLabel>Stats</ChartLabel>
-                <StatCards cards={dashboard.metrics} />
-            </section>
-
-            <ChartCard category="Calendar Heatmap" loading={loading} skeletonHeight={175}>
-                <CalendarHeatmap
-                    data={orderActivity}
-                    // The default 13px cap leaves a year's 53 columns well short
-                    // of a full-width card. This is an upper bound, not a fixed
-                    // size -- the component still shrinks cells on narrow screens.
-                    cell={20}
-                    label="order updates"
-                    periodLabel="this year"
-                    currentThrough={charts?.activity_through}
-                    status={hasActivity ? 'ready' : 'empty'}
-                />
-            </ChartCard>
-
-            <div className="grid gap-6 lg:grid-cols-2">
-                <ChartCard category="Bar Chart" loading={loading} skeletonHeight={260}>
-                    <SectionHeading
-                        title="Open Order Aging"
-                        description="How long open orders have been waiting since submission."
-                    />
-                    <div className="mt-6">
-                        {openOrderTotal === 0 ? (
-                            <EmptyState>
-                                Nothing is waiting right now. Orders appear here while they are being
-                                reviewed or fulfilled.
-                            </EmptyState>
-                        ) : (
-                            <BarChart
-                                data={openOrderAging}
-                                categoryKey="bucket"
-                                series={AGING_SERIES}
-                                layout="horizontal"
-                                categoryWidth={96}
-                                showLegend={false}
-                            />
-                        )}
-                    </div>
-                </ChartCard>
-
-                <ChartCard category="Histogram" loading={loading} skeletonHeight={320}>
-                    <HistogramChart
-                        data={leadTimes}
-                        label="Fulfillment lead time"
-                        sampleLabel="completed orders"
-                        format={formatLeadTime}
-                        status={leadTimes.length > 0 ? 'ready' : 'empty'}
-                    />
-                </ChartCard>
-            </div>
-
-            <ChartCard category="Cohort" loading={loading} skeletonHeight={260}>
-                <CohortChart
-                    data={reorderCohorts}
-                    period="Month"
-                    memberLabel="customers"
-                    label="Customer reorder retention"
-                    status={reorderCohorts.length > 0 ? 'ready' : 'empty'}
-                />
-            </ChartCard>
-        </div>
-    );
-}
-
-export default function Dashboard({
-    companyDashboard = null,
-    companyCharts = undefined,
-    customerDashboard = null,
-}) {
-    const submittedCount = companyDashboard?.summary.submitted ?? 0;
-    const readyToConfirmCount = customerDashboard?.summary.ready_to_confirm ?? 0;
-    const banner = submittedCount > 0
-        ? (
-            <FlashBanner
-                message={`${submittedCount} submitted ${submittedCount === 1 ? 'order is' : 'orders are'} waiting for review.`}
-                variant="warning"
-            />
-        )
-        : readyToConfirmCount > 0
-            ? (
-                <FlashBanner
-                    message={`${readyToConfirmCount} completed ${readyToConfirmCount === 1 ? 'order is' : 'orders are'} ready for your confirmation.`}
-                    variant="warning"
-                />
-            )
-            : null;
-
-    return (
-        <AuthenticatedLayout
-            banner={banner}
-            header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    Dashboard
-                </h2>
-            }
-        >
-            <Head title="Dashboard" />
-            {companyDashboard && (
-                <CompanyDashboard dashboard={companyDashboard} charts={companyCharts} />
-            )}
-            {customerDashboard && <CustomerDashboard dashboard={customerDashboard} />}
+                </div>
+            </MotionConfig>
         </AuthenticatedLayout>
     );
 }

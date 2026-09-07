@@ -3,6 +3,7 @@
 namespace Tests\Feature\Notifications;
 
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderNotification;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\CreatesOrderFixtures;
@@ -144,6 +145,7 @@ class RecentTest extends TestCase
 
         $before = $this->actingAsUser($staff)->getJson(route('notifications.recent'));
         $this->assertSame(1, $before->json('count'));
+        $before->assertJsonPath('notifications.0.is_unread', true);
 
         $this->actingAsUser($staff)
             ->postJson(route('notifications.mark-all-read'))
@@ -152,8 +154,9 @@ class RecentTest extends TestCase
 
         $after = $this->actingAsUser($staff)->getJson(route('notifications.recent'));
         $this->assertSame(0, $after->json('count'));
+        $after->assertJsonPath('notifications.0.is_unread', false);
 
-        // The list itself is unaffected by "read" state -- only the badge count is.
+        // Marking notifications read keeps the history in the list.
         $this->assertCount(1, $after->json('notifications'));
     }
 
@@ -184,5 +187,38 @@ class RecentTest extends TestCase
 
         $response = $this->actingAsUser($staff)->getJson(route('notifications.recent'));
         $this->assertSame(1, $response->json('count'));
+        $response->assertJsonPath('notifications.0.is_unread', true);
+    }
+
+    public function test_unread_indicators_match_the_count_at_the_read_cutoff(): void
+    {
+        $this->freezeTime();
+        $staff = User::factory()->create(['role' => 'employee']);
+        $customer = $this->makeCustomer();
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now());
+
+        foreach ([null, now()->subHours(2)] as $readAt) {
+            PurchaseOrderNotification::query()->delete();
+            $staff->update(['notifications_read_at' => $readAt]);
+            $cutoff = $readAt ?? now()->subHours(24);
+
+            foreach ([-1, 0, 1, 2] as $seconds) {
+                PurchaseOrderNotification::create([
+                    'purchase_order_id' => $order->id,
+                    'channel' => 'portal',
+                    'status' => 'sent',
+                    'note' => 'Order updated.',
+                    'created_at' => $cutoff->copy()->addSeconds($seconds),
+                ]);
+            }
+
+            $this->actingAsUser($staff)->getJson(route('notifications.recent'))
+                ->assertOk()
+                ->assertJsonPath('count', 2)
+                ->assertJsonPath('notifications.0.is_unread', true)
+                ->assertJsonPath('notifications.1.is_unread', true)
+                ->assertJsonPath('notifications.2.is_unread', false)
+                ->assertJsonPath('notifications.3.is_unread', false);
+        }
     }
 }

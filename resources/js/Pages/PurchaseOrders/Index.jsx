@@ -14,6 +14,24 @@ import { Deferred, Head, router } from '@inertiajs/react';
 import { ListChecks, MoreHorizontal, Search, SquareArrowOutUpRight, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+// Matches the sm breakpoint used across this app's layouts -- below it the
+// orders table drops down to just PO Number, Date, and actions so rows fit
+// without horizontal scrolling.
+function useIsCompactViewport() {
+    const [isCompact, setIsCompact] = useState(false);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return undefined;
+        const query = window.matchMedia('(max-width: 639px)');
+        const update = () => setIsCompact(query.matches);
+        update();
+        query.addEventListener('change', update);
+        return () => query.removeEventListener('change', update);
+    }, []);
+
+    return isCompact;
+}
+
 const PAGE_SIZE = 10;
 const TABLE_ROW_HEIGHT = 48;
 const HORIZONTAL_SCROLLBAR_HEIGHT = 20;
@@ -32,6 +50,7 @@ export default function Index({
 }) {
     usePurchaseOrderRealtime();
 
+    const isCompactViewport = useIsCompactViewport();
     const [search, setSearch] = useState(filters.search);
     const [createOrderOpen, setCreateOrderOpen] = useState(openCreateOrder);
     const [productsLoading, setProductsLoading] = useState(false);
@@ -125,26 +144,28 @@ export default function Index({
                     <span className="font-medium text-gray-900">{order.po_number}</span>
                 ),
             },
-            { key: 'customer_name', header: 'Customer', sortable: true },
-            {
-                key: 'status',
-                header: 'Status',
-                cell: (order) => {
-                    const badge = statusBadge(order.display_status ?? order.status);
-                    return (
-                        <div className="flex justify-start">
-                            <AnimatedBadge
-                                status={badge.status}
-                                size="sm"
-                                pulse={false}
-                                className="border-0 bg-transparent px-0 shadow-none"
-                            >
-                                {badge.label}
-                            </AnimatedBadge>
-                        </div>
-                    );
+            ...(isCompactViewport ? [] : [
+                { key: 'customer_name', header: 'Customer', sortable: true },
+                {
+                    key: 'status',
+                    header: 'Status',
+                    cell: (order) => {
+                        const badge = statusBadge(order.display_status ?? order.status);
+                        return (
+                            <div className="flex justify-start">
+                                <AnimatedBadge
+                                    status={badge.status}
+                                    size="sm"
+                                    pulse={false}
+                                    className="border-0 bg-transparent px-0 shadow-none"
+                                >
+                                    {badge.label}
+                                </AnimatedBadge>
+                            </div>
+                        );
+                    },
                 },
-            },
+            ]),
             {
                 key: 'submitted_at',
                 header: 'Date',
@@ -202,7 +223,7 @@ export default function Index({
                 },
             },
         ],
-        [canDeleteOrders, canViewMessageLog, goToOrder],
+        [canDeleteOrders, canViewMessageLog, goToOrder, isCompactViewport],
     );
 
     return (

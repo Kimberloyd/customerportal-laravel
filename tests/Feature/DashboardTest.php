@@ -2,17 +2,17 @@
 
 namespace Tests\Feature;
 
-use App\Models\Customer;
 use App\Models\PurchaseOrder;
-use App\Models\PurchaseOrderAudit;
-use App\Models\PurchaseOrderItem;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Carbon;
+use Inertia\Testing\AssertableInertia as Assert;
+use Tests\Concerns\CreatesOrderFixtures;
 use Tests\TestCase;
 
 class DashboardTest extends TestCase
 {
+    use CreatesOrderFixtures;
     use RefreshDatabase;
 
     public function test_guests_are_redirected_to_login(): void
@@ -20,286 +20,132 @@ class DashboardTest extends TestCase
         $this->get('/dashboard')->assertRedirect('/login');
     }
 
-    public function test_staff_sees_the_company_dashboard(): void
-    {
-        $staff = User::factory()->create(['role' => 'employee']);
-        $customer = Customer::create([
-            'company_name' => 'Example Hospital',
-            'is_active' => true,
-        ]);
-
-        $submitted = $this->createOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now()->subHours(4));
-        $this->createOrder($customer, PurchaseOrder::STATUS_REVIEWING, now()->subHours(3));
-        $partial = $this->createOrder($customer, PurchaseOrder::STATUS_PARTIAL, now()->subHours(2), 10, 4);
-        $completed = $this->createOrder($customer, PurchaseOrder::STATUS_COMPLETED, now()->subHour(), 5, 5);
-        $completed->update(['completed_at' => now()]);
-
-        PurchaseOrderAudit::create([
-            'purchase_order_id' => $partial->id,
-            'action' => 'Fulfillment Updated',
-            'details' => '4 unit(s) delivered.',
-            'actor_user_id' => $staff->id,
-            'actor_role' => 'employee',
-            'created_at' => now(),
-        ]);
-
-        $this->actingAsUser($staff)->get('/dashboard')
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->component('Dashboard')
-                ->where('companyDashboard.summary.submitted', 1)
-                ->where('companyDashboard.summary.reviewing', 1)
-                ->where('companyDashboard.summary.partial', 1)
-                ->where('companyDashboard.summary.completed_today', 1)
-                ->has('companyDashboard.metrics', 4)
-                ->where('companyDashboard.metrics.0.label', 'Orders submitted')
-                ->where('companyDashboard.metrics.0.value', 4)
-                ->where('companyDashboard.metrics.3.label', 'Order updates')
-                ->where('companyDashboard.metrics.3.value', 1)
-                ->has('companyDashboard.needs_attention', 3)
-                ->where('companyDashboard.needs_attention.0.id', $submitted->id)
-                ->where('companyDashboard.needs_attention.2.delivered_units', 4)
-                ->where('companyDashboard.needs_attention.2.balance_units', 6)
-                ->has('companyDashboard.recent_orders', 4)
-                ->where('companyDashboard.recent_orders.0.id', $completed->id)
-                ->has('companyDashboard.recent_activity', 1)
-                ->where('companyDashboard.recent_activity.0.action', 'Fulfillment Updated')
-                ->where('companyDashboard.recent_activity.0.actor_name', $staff->full_name));
-    }
-
-    public function test_admin_sees_the_company_dashboard(): void
+    public function test_admin_sees_the_dashboard(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
 
         $this->actingAsUser($admin)->get('/dashboard')
             ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->component('Dashboard')
-                ->where('companyDashboard.summary.submitted', 0)
-                ->has('companyDashboard.needs_attention', 0)
-                ->has('companyDashboard.recent_orders', 0)
-                ->has('companyDashboard.recent_activity', 0));
+            ->assertInertia(fn ($page) => $page->component('Dashboard'));
     }
 
-    public function test_customer_sees_a_dashboard_scoped_to_their_orders(): void
+    public function test_employee_sees_the_dashboard(): void
     {
-        $user = User::factory()->create(['role' => 'customer']);
-        $customer = Customer::create([
-            'user_id' => $user->id,
-            'company_name' => 'Customer Hospital',
-            'is_active' => true,
-        ]);
-        $otherCustomer = Customer::create([
-            'company_name' => 'Other Hospital',
-            'is_active' => true,
-        ]);
+        $employee = User::factory()->create(['role' => 'employee']);
 
-        $submitted = $this->createOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now()->subHours(4));
-        $partial = $this->createOrder($customer, PurchaseOrder::STATUS_PARTIAL, now()->subHours(3), 10, 4);
-        $readyToConfirm = $this->createOrder($customer, PurchaseOrder::STATUS_COMPLETED, now()->subHours(2), 5, 5);
-        $readyToConfirm->completed_at = now()->subHour();
-        $readyToConfirm->save();
-        $received = $this->createOrder($customer, PurchaseOrder::STATUS_COMPLETED, now()->subHour(), 3, 3);
-        $received->completed_at = now()->subMinutes(30);
-        $received->customer_received_at = now()->subMinutes(15);
-        $received->save();
-        $this->createOrder($otherCustomer, PurchaseOrder::STATUS_SUBMITTED, now());
-
-        PurchaseOrderAudit::create([
-            'purchase_order_id' => $submitted->id,
-            'action' => 'Order Reviewing',
-            'created_at' => now(),
-        ]);
-        PurchaseOrderAudit::create([
-            'purchase_order_id' => $received->id,
-            'action' => 'Fulfillment Updated',
-            'created_at' => now()->subDays(31),
-        ]);
-
-        $this->actingAsUser($user)->get('/dashboard')
+        $this->actingAsUser($employee)->get('/dashboard')
             ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->component('Dashboard')
-                ->missing('companyDashboard')
-                ->where('customerDashboard.linked', true)
-                ->where('customerDashboard.customer_name', 'Customer Hospital')
-                ->where('customerDashboard.summary.active', 2)
-                ->where('customerDashboard.summary.in_progress', 1)
-                ->where('customerDashboard.summary.ready_to_confirm', 1)
-                ->where('customerDashboard.summary.received', 1)
-                ->has('customerDashboard.metrics', 4)
-                ->where('customerDashboard.metrics.0.label', 'Orders submitted')
-                ->where('customerDashboard.metrics.0.value', 4)
-                ->where('customerDashboard.metrics.0.previous', 0)
-                ->where('customerDashboard.metrics.3.label', 'Order updates')
-                ->where('customerDashboard.metrics.3.value', 1)
-                ->where('customerDashboard.metrics.3.previous', 1)
-                ->has('customerDashboard.action_required', 1)
-                ->where('customerDashboard.action_required.0.id', $readyToConfirm->id)
-                ->has('customerDashboard.active_orders', 2)
-                ->where('customerDashboard.active_orders.0.id', $partial->id)
-                ->where('customerDashboard.active_orders.1.id', $submitted->id)
-                ->has('customerDashboard.recent_orders', 4)
-                ->where('customerDashboard.recent_orders.0.id', $received->id));
+            ->assertInertia(fn ($page) => $page->component('Dashboard'));
     }
 
-    public function test_customer_without_a_customer_link_sees_setup_guidance(): void
+    public function test_customer_sees_the_dashboard(): void
     {
         $customer = User::factory()->create(['role' => 'customer']);
 
         $this->actingAsUser($customer)->get('/dashboard')
             ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->component('Dashboard')
-                ->missing('companyDashboard')
-                ->where('customerDashboard.linked', false)
-                ->where('customerDashboard.summary.active', 0)
-                ->has('customerDashboard.action_required', 0)
-                ->has('customerDashboard.active_orders', 0)
-                ->has('customerDashboard.recent_orders', 0));
+            ->assertInertia(fn ($page) => $page->component('Dashboard'));
     }
 
-    public function test_company_dashboard_exposes_a_dense_year_of_order_activity(): void
+    public function test_customer_metrics_trends_and_order_lists_are_scoped_to_their_account(): void
     {
-        $this->travelTo(Carbon::parse('2026-06-15 12:00:00'));
+        $this->travelTo(CarbonImmutable::parse('2026-09-07 12:00:00', 'UTC'));
+        $user = User::factory()->create(['role' => 'customer']);
+        $customer = $this->makeCustomer('Own Company', $user);
+        $other = $this->makeCustomer('Private Company');
+        $partial = $this->makeOrder($customer, PurchaseOrder::STATUS_PARTIAL, '2026-09-07 10:00:00', [
+            ['quantity' => 10, 'delivered_quantity' => 4, 'line_total' => 100],
+        ]);
+        $completed = $this->makeOrder($customer, PurchaseOrder::STATUS_COMPLETED, '2026-09-01 00:00:00', [
+            ['quantity' => 5, 'delivered_quantity' => 5, 'line_total' => 50],
+        ]);
+        $this->makeOrder($customer, PurchaseOrder::STATUS_CANCELLED, '2026-09-03 00:00:00', [
+            ['quantity' => 100, 'delivered_quantity' => 0, 'line_total' => 999],
+        ]);
+        $previous = $this->makeOrder($customer, PurchaseOrder::STATUS_COMPLETED, '2026-08-31 23:59:59', [
+            ['quantity' => 2, 'delivered_quantity' => 2, 'line_total' => 20],
+        ]);
+        $previous->customer_received_at = now();
+        $previous->save();
+        $this->makeOrder($other, PurchaseOrder::STATUS_SUBMITTED, now(), [
+            ['quantity' => 999, 'line_total' => 9999],
+        ]);
 
-        $staff = User::factory()->create(['role' => 'employee']);
-        $customer = Customer::create(['company_name' => 'Example Hospital', 'is_active' => true]);
-        $order = $this->createOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now()->subDay());
+        $this->actingAsUser($user)->get('/dashboard?period=7')->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('Dashboard')
+                ->where('workspace.name', 'Own Company')
+                ->where('workspace.is_customer', true)
+                ->where('dashboard.current.orders', 3)
+                ->where('dashboard.current.value', 150)
+                ->where('dashboard.current.ordered_units', 15)
+                ->where('dashboard.current.delivered_units', 9)
+                ->where('dashboard.current.fulfillment', 60)
+                ->where('dashboard.current.completed', 1)
+                ->where('dashboard.previous.orders', 1)
+                ->where('dashboard.previous.value', 20)
+                ->where('dashboard.previous.fulfillment', 100)
+                ->where('dashboard.trend.0.date', '2026-09-01')
+                ->where('dashboard.trend.0.current', 1)
+                ->where('dashboard.trend.6.previous', 1)
+                ->where('dashboard.trend', fn ($points) => collect($points)->sum('current') === 3)
+                ->where('dashboard.attention_count', 2)
+                ->where('dashboard.attention.0.id', $completed->id)
+                ->where('dashboard.attention.1.id', $partial->id)
+                ->has('dashboard.recent', 3));
+    }
 
-        foreach ([now(), now(), now()->subDays(3)] as $createdAt) {
-            PurchaseOrderAudit::create([
-                'purchase_order_id' => $order->id,
-                'action' => 'Order Submitted',
-                'actor_user_id' => $staff->id,
-                'actor_role' => 'employee',
-                'created_at' => $createdAt,
-            ]);
+    public function test_company_dashboard_includes_all_customers_and_prioritizes_unreviewed_orders(): void
+    {
+        $this->freezeTime();
+        $employee = User::factory()->create(['role' => 'employee']);
+        $first = $this->makeCustomer('First Company');
+        $second = $this->makeCustomer('Second Company');
+        $this->makeOrder($first, PurchaseOrder::STATUS_PARTIAL, now()->subDays(4));
+        $submitted = $this->makeOrder($second, PurchaseOrder::STATUS_SUBMITTED, now());
+        $old = $this->makeOrder($first, PurchaseOrder::STATUS_REVIEWING, now()->subDays(100));
+        $this->makeOrder($first, PurchaseOrder::STATUS_COMPLETED, now());
+
+        $this->actingAsUser($employee)->get('/dashboard')->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('workspace.is_customer', false)
+                ->where('dashboard.current.orders', 3)
+                ->where('dashboard.attention_count', 3)
+                ->where('dashboard.attention.0.id', $submitted->id)
+                ->where('dashboard.attention.1.id', $old->id)
+                ->has('dashboard.recent', 3));
+    }
+
+    public function test_missing_or_inactive_customer_profiles_never_expose_company_data(): void
+    {
+        $user = User::factory()->create(['role' => 'customer']);
+        $other = $this->makeCustomer('Private Company');
+        $this->makeOrder($other, PurchaseOrder::STATUS_SUBMITTED, now());
+
+        foreach (['missing', 'inactive'] as $scenario) {
+            if ($scenario === 'inactive') {
+                $this->makeCustomer('Inactive Company', $user)->update(['is_active' => false]);
+            }
+
+            $this->actingAsUser($user)->get('/dashboard')->assertOk()
+                ->assertInertia(fn (Assert $page) => $page->where('workspace.can_order', false)
+                    ->where('dashboard.current.orders', 0)
+                    ->where('dashboard.current.fulfillment', null)
+                    ->where('dashboard.attention_count', 0)
+                    ->has('dashboard.recent', 0)->has('dashboard.attention', 0));
         }
-
-        $this->actingAsUser($staff)->get('/dashboard')
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->missing('companyCharts')
-                ->loadDeferredProps('charts', fn ($charts) => $charts
-                    // The whole calendar year, so the grid draws a complete
-                    // Jan-Dec block instead of stopping at today. 2026 has 365 days.
-                    ->has('companyCharts.order_activity', 365)
-                    // Index 165 is 2026-06-15, the frozen "today".
-                    ->where('companyCharts.order_activity.165.value', 2)
-                    ->where('companyCharts.order_activity.165.t',
-                        Carbon::parse('2026-06-15', 'UTC')->getTimestamp() * 1000)
-                    ->where('companyCharts.order_activity.162.value', 1)
-                    ->where('companyCharts.order_activity.164.value', 0)
-                    // Oldest first, and never reaching back into last year.
-                    ->where('companyCharts.order_activity.0.t',
-                        Carbon::parse('2026-01-01', 'UTC')->getTimestamp() * 1000)
-                    // Padded through December 31st, with days still to come at zero.
-                    ->where('companyCharts.order_activity.364.t',
-                        Carbon::parse('2026-12-31', 'UTC')->getTimestamp() * 1000)
-                    ->where('companyCharts.order_activity.364.value', 0)
-                    // The streak marker stays on today, not the padded tail.
-                    ->where('companyCharts.activity_through',
-                        Carbon::parse('2026-06-15', 'UTC')->getTimestamp() * 1000)));
     }
 
-    public function test_company_dashboard_reports_fulfillment_lead_times_in_hours(): void
+    public function test_date_ranges_are_bounded_and_daily_series_include_zero_days(): void
     {
-        $this->travelTo(Carbon::parse('2026-06-15 12:00:00'));
-
-        $staff = User::factory()->create(['role' => 'employee']);
-        $customer = Customer::create(['company_name' => 'Example Hospital', 'is_active' => true]);
-
-        $this->createOrder($customer, PurchaseOrder::STATUS_COMPLETED, Carbon::parse('2026-06-10 08:00:00'))
-            ->update(['completed_at' => Carbon::parse('2026-06-11 08:00:00')]);
-        $this->createOrder($customer, PurchaseOrder::STATUS_COMPLETED, Carbon::parse('2026-06-12 10:00:00'))
-            ->update(['completed_at' => Carbon::parse('2026-06-12 12:30:00')]);
-        // Still open, so it has no lead time to measure yet.
-        $this->createOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now()->subDay());
-
-        $this->actingAsUser($staff)->get('/dashboard')
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->loadDeferredProps('charts', fn ($charts) => $charts
-                    ->has('companyCharts.lead_times', 2)
-                    ->where('companyCharts.lead_times.0', 24)
-                    ->where('companyCharts.lead_times.1', 2.5)));
-    }
-
-    public function test_company_dashboard_buckets_open_orders_by_age(): void
-    {
-        $this->travelTo(Carbon::parse('2026-06-15 12:00:00'));
-
-        $staff = User::factory()->create(['role' => 'employee']);
-        $customer = Customer::create(['company_name' => 'Example Hospital', 'is_active' => true]);
-
-        $this->createOrder($customer, PurchaseOrder::STATUS_SUBMITTED, Carbon::parse('2026-06-14 09:00:00'));
-        $this->createOrder($customer, PurchaseOrder::STATUS_REVIEWING, Carbon::parse('2026-06-11 09:00:00'));
-        $this->createOrder($customer, PurchaseOrder::STATUS_PARTIAL, Carbon::parse('2026-06-07 09:00:00'));
-        $this->createOrder($customer, PurchaseOrder::STATUS_PROCESSING, Carbon::parse('2026-05-20 09:00:00'));
-        // Closed orders are not waiting on anyone.
-        $this->createOrder($customer, PurchaseOrder::STATUS_COMPLETED, Carbon::parse('2026-06-14 09:00:00'));
-
-        $this->actingAsUser($staff)->get('/dashboard')
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->loadDeferredProps('charts', fn ($charts) => $charts
-                    ->has('companyCharts.open_order_aging', 4)
-                    ->where('companyCharts.open_order_aging.0.bucket', '0-2 days')
-                    ->where('companyCharts.open_order_aging.0.orders', 1)
-                    ->where('companyCharts.open_order_aging.1.orders', 1)
-                    ->where('companyCharts.open_order_aging.2.orders', 1)
-                    ->where('companyCharts.open_order_aging.3.bucket', 'Over 10 days')
-                    ->where('companyCharts.open_order_aging.3.orders', 1)));
-    }
-
-    public function test_company_dashboard_builds_reorder_cohorts(): void
-    {
-        $this->travelTo(Carbon::parse('2026-06-15 12:00:00'));
-
-        $staff = User::factory()->create(['role' => 'employee']);
-        $returning = Customer::create(['company_name' => 'Returning Hospital', 'is_active' => true]);
-        $once = Customer::create(['company_name' => 'One Off Clinic', 'is_active' => true]);
-
-        // Cohort Apr 2026: ordered again two months later, skipping May.
-        $this->createOrder($returning, PurchaseOrder::STATUS_COMPLETED, Carbon::parse('2026-04-10 09:00:00'));
-        $this->createOrder($returning, PurchaseOrder::STATUS_SUBMITTED, Carbon::parse('2026-06-02 09:00:00'));
-        // Same cohort, never came back.
-        $this->createOrder($once, PurchaseOrder::STATUS_COMPLETED, Carbon::parse('2026-04-12 09:00:00'));
-
-        $this->actingAsUser($staff)->get('/dashboard')
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->loadDeferredProps('charts', fn ($charts) => $charts
-                    ->has('companyCharts.reorder_cohorts', 1)
-                    ->where('companyCharts.reorder_cohorts.0.label', 'Apr 2026')
-                    ->where('companyCharts.reorder_cohorts.0.size', 2)
-                    // Placing the cohort is 100%; May empty; June only the returner.
-                    ->where('companyCharts.reorder_cohorts.0.retention', [100, 0, 50])));
-    }
-
-    private function createOrder(
-        Customer $customer,
-        string $status,
-        \DateTimeInterface $submittedAt,
-        int $orderedUnits = 1,
-        int $deliveredUnits = 0,
-    ): PurchaseOrder {
-        $order = PurchaseOrder::create([
-            'po_number' => 'PO-'.uniqid(),
-            'customer_id' => $customer->id,
-            'status' => $status,
-            'submitted_at' => $submittedAt,
-        ]);
-
-        PurchaseOrderItem::create([
-            'purchase_order_id' => $order->id,
-            'product_name' => 'Test Product',
-            'quantity' => $orderedUnits,
-            'delivered_quantity' => $deliveredUnits,
-            'unit_price' => 0,
-        ]);
-
-        return $order;
+        $user = User::factory()->create(['role' => 'admin']);
+        foreach (['7' => 7, '30' => 30, '90' => 90, '100000' => 30, 'bad' => 30, '0' => 30] as $period => $days) {
+            $this->actingAsUser($user)->get('/dashboard?period='.$period)->assertOk()
+                ->assertInertia(fn (Assert $page) => $page->where('dashboard.period', $days)
+                    ->has('dashboard.trend', $days)
+                    ->where('dashboard.current.orders', 0)
+                    ->where('dashboard.current.value', 0)
+                    ->where('dashboard.trend.0.current', 0));
+        }
+        $this->actingAsUser($user)->get('/dashboard?period[]=7')->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('dashboard.period', 30));
     }
 }

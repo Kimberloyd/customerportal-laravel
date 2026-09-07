@@ -159,6 +159,7 @@ function SemaphoreUsage({ semaphore }) {
             {
                 key: 'message',
                 header: 'Message',
+                width: '420px',
                 cell: (entry) => (
                     <span className="line-clamp-2 text-muted-foreground">{entry.message ?? '—'}</span>
                 ),

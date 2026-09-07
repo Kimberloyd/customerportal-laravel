@@ -15,6 +15,7 @@ use App\Http\Controllers\PublicConversationController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\TermsAndPrivacyController;
 use Illuminate\Support\Facades\Route;
 
 // Matches Flask's dashboard_bp, which handles both "/" and "/dashboard"
@@ -30,6 +31,9 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
 Route::get('/faq', [FaqController::class, 'index'])
     ->middleware('auth')
     ->name('faq');
+
+Route::get('/terms-and-privacy', [TermsAndPrivacyController::class, 'index'])
+    ->name('terms-and-privacy');
 
 Route::middleware('auth')->prefix('orders')->name('purchase-orders.')->group(function () {
     Route::get('/', [PurchaseOrderController::class, 'index'])->name('index');
@@ -112,6 +116,16 @@ Route::middleware('auth')->prefix('settings')->name('settings.')->group(function
     // role gates in this app rather than in a dedicated middleware.
     Route::put('/sms', [SettingsController::class, 'updateSms'])->name('sms.update');
 });
+
+if (app()->environment('local')) {
+    // TEMP DEBUG ROUTE -- for local visual verification only, removed before
+    // this change is committed.
+    Route::get('/__debug-login/{id}', function (int $id, \Illuminate\Http\Request $request) {
+        auth()->loginUsingId($id);
+        $request->session()->put('session_version', $request->user()->session_version);
+        return response('ok');
+    });
+}
 
 Route::middleware('auth')->prefix('reports')->name('reports.')->group(function () {
     Route::get('/overview', [ReportController::class, 'overview'])->name('overview');

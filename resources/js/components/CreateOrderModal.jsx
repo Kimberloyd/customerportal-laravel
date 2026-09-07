@@ -2,13 +2,33 @@ import ConfirmationDialog from '@/components/ConfirmationDialog';
 import Stepper, { Step } from '@/components/Stepper';
 import { Modal } from '@/components/interior/modal';
 import { AttachmentUpload } from '@/components/motion/attachment-upload';
+import { BottomSheet } from '@/components/motion/bottom-sheet';
 import { Input } from '@/components/motion/input';
 import { Table } from '@/components/motion/table';
 import { Button } from '@/components/ui/button';
 import { useForm } from '@inertiajs/react';
-import { Search, Trash2 } from 'lucide-react';
+import { Minus, Plus, Search, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+
+// Matches the sm breakpoint used across this app's layouts (AuthenticatedLayout
+// switches its own nav at the same width) -- below it the modal becomes a
+// bottom sheet instead, which suits a one-handed mobile flow better than a
+// centered dialog.
+function useIsCompactViewport() {
+    const [isCompact, setIsCompact] = useState(false);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return undefined;
+        const query = window.matchMedia('(max-width: 639px)');
+        const update = () => setIsCompact(query.matches);
+        update();
+        query.addEventListener('change', update);
+        return () => query.removeEventListener('change', update);
+    }, []);
+
+    return isCompact;
+}
 
 // Shared by the Customer and Products search fields: owns the query text,
 // open/active state, and the outside-click/reposition plumbing needed to
@@ -35,7 +55,26 @@ function useSuggestField() {
         const reposition = () => {
             const rect = fieldRef.current?.getBoundingClientRect();
             if (!rect) return;
-            setPosition({ top: rect.bottom + 6, left: rect.left, width: rect.width });
+            const margin = 6;
+            const preferredHeight = 256;
+            const viewportTop = window.visualViewport?.offsetTop ?? 0;
+            const viewportBottom = viewportTop + (window.visualViewport?.height ?? window.innerHeight);
+            const spaceBelow = viewportBottom - rect.bottom - margin;
+            const spaceAbove = rect.top - viewportTop - margin;
+            // Flip above the field when there isn't enough room below but there
+            // is more room above -- keeps the list from being squeezed to a
+            // sliver (or clipped) near the bottom of a short viewport, e.g.
+            // inside the mobile bottom sheet.
+            const placeAbove = spaceBelow < Math.min(preferredHeight, 160) && spaceAbove > spaceBelow;
+            const maxHeight = Math.max(0, Math.min(preferredHeight, placeAbove ? spaceAbove : spaceBelow));
+            setPosition({
+                left: rect.left,
+                width: rect.width,
+                maxHeight,
+                ...(placeAbove
+                    ? { bottom: window.innerHeight - rect.top + margin }
+                    : { top: rect.bottom + margin }),
+            });
         };
 
         reposition();
@@ -49,9 +88,13 @@ function useSuggestField() {
         };
         window.addEventListener('resize', dismiss);
         window.addEventListener('scroll', dismissUnlessMenuScroll, true);
+        window.visualViewport?.addEventListener('resize', reposition);
+        window.visualViewport?.addEventListener('scroll', reposition);
         return () => {
             window.removeEventListener('resize', dismiss);
             window.removeEventListener('scroll', dismissUnlessMenuScroll, true);
+            window.visualViewport?.removeEventListener('resize', reposition);
+            window.visualViewport?.removeEventListener('scroll', reposition);
         };
     }, [visible]);
 
@@ -99,10 +142,12 @@ function SuggestionMenu({ menuRef, position, items, activeIndex, onHover, onSele
             style={{
                 position: 'fixed',
                 top: position.top,
+                bottom: position.bottom,
                 left: position.left,
                 width: position.width,
+                maxHeight: position.maxHeight,
             }}
-            className="z-[60] max-h-64 overflow-y-auto rounded-[11px] border border-stone-200 bg-white p-[5px] shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)]"
+            className="z-[60] overflow-y-auto rounded-[11px] border border-stone-200 bg-white p-[5px]"
         >
             {items.length === 0 ? (
                 <div className="px-2.5 py-2 text-sm text-muted-foreground">{emptyMessage}</div>
@@ -171,6 +216,7 @@ export default function CreateOrderModal({
     const productsStepIndex = stepLabels.indexOf('Products') + 1;
     const detailsStepIndex = stepLabels.indexOf('Order details') + 1;
 
+    const isCompactViewport = useIsCompactViewport();
     const stepperRef = useRef(null);
     const [stepperKey, setStepperKey] = useState(0);
     const [currentStep, setCurrentStep] = useState(1);
@@ -364,30 +410,90 @@ export default function CreateOrderModal({
 
     const productLineColumns = useMemo(
         () => [
-            { key: 'product_name', header: 'Product Name', sortable: true },
-            { key: 'generic_name', header: 'Generic Name', sortable: true },
             {
-                key: 'dosage',
-                header: 'Variant',
+                key: 'product_name',
+                header: 'Product Name',
                 sortable: true,
-                cell: (line) => <span className="uppercase">{line.dosage ?? ''}</span>,
+                cell: isCompactViewport
+                    ? (line) => (
+                        <div className="min-w-0">
+                            <p className="truncate">{line.product_name}</p>
+                            {(line.generic_name || line.dosage) && (
+                                <p className="truncate text-xs text-muted-foreground">
+                                    {[line.generic_name, line.dosage ? line.dosage.toUpperCase() : null]
+                                        .filter(Boolean)
+                                        .join(' · ')}
+                                </p>
+                            )}
+                        </div>
+                    )
+                    : undefined,
             },
+            ...(isCompactViewport ? [] : [
+                { key: 'generic_name', header: 'Generic Name', sortable: true },
+                {
+                    key: 'dosage',
+                    header: 'Variant',
+                    sortable: true,
+                    cell: (line) => <span className="uppercase">{line.dosage ?? ''}</span>,
+                },
+            ]),
             {
                 key: 'quantity',
                 header: 'Quantity',
-                cell: (line) => (
-                    <Input
-                        type="number"
-                        min={isEditing ? Math.max(1, line.delivered_quantity) : 1}
-                        disabled={editDetailsLocked}
-                        value={line.quantity}
-                        onChange={(value) => updateQuantity(line.key, value)}
-                        classNames={{
-                            field: 'h-8 w-auto rounded-none',
-                            input: 'min-w-[2.75rem] [field-sizing:content]',
-                        }}
-                    />
-                ),
+                cell: (line) => {
+                    const minQuantity = isEditing ? Math.max(1, line.delivered_quantity) : 1;
+                    if (!isCompactViewport) {
+                        return (
+                            <Input
+                                type="number"
+                                min={minQuantity}
+                                disabled={editDetailsLocked}
+                                value={line.quantity}
+                                onChange={(value) => updateQuantity(line.key, value)}
+                                classNames={{
+                                    field: 'h-8 w-auto rounded-none',
+                                    input: 'w-auto min-w-[2.75rem] [field-sizing:content]',
+                                }}
+                            />
+                        );
+                    }
+
+                    const quantity = Number(line.quantity) || 0;
+                    return (
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                type="button"
+                                disabled={editDetailsLocked || quantity <= minQuantity}
+                                onClick={() => updateQuantity(line.key, String(Math.max(minQuantity, quantity - 1)))}
+                                aria-label={`Decrease quantity for ${line.product_name}`}
+                                className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border text-gray-600 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                            >
+                                <Minus className="h-3.5 w-3.5" />
+                            </button>
+                            <Input
+                                type="number"
+                                min={minQuantity}
+                                disabled={editDetailsLocked}
+                                value={line.quantity}
+                                onChange={(value) => updateQuantity(line.key, value)}
+                                classNames={{
+                                    field: 'h-8 w-auto rounded-full border-0 text-center',
+                                    input: 'w-auto min-w-[2rem] text-center [field-sizing:content]',
+                                }}
+                            />
+                            <button
+                                type="button"
+                                disabled={editDetailsLocked}
+                                onClick={() => updateQuantity(line.key, String(quantity + 1))}
+                                aria-label={`Increase quantity for ${line.product_name}`}
+                                className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border text-gray-600 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                            >
+                                <Plus className="h-3.5 w-3.5" />
+                            </button>
+                        </div>
+                    );
+                },
             },
             ...(canEditItems
                 ? [{
@@ -413,7 +519,7 @@ export default function CreateOrderModal({
                   }]
                 : []),
         ],
-        [canEditItems, editDetailsLocked, isEditing],
+        [canEditItems, editDetailsLocked, isEditing, isCompactViewport],
     );
 
     const validateCustomer = () => {
@@ -526,49 +632,40 @@ export default function CreateOrderModal({
     ].filter(Boolean);
     const totalQuantity = lines.reduce((sum, line) => sum + Number(line.quantity || 0), 0);
 
-    return (
-        <Modal
-            open={open}
-            onClose={close}
-            title={isEditing ? `Edit ${initialOrder.po_number}` : 'Create order'}
-            description={
-                isEditing
-                    ? 'Review the existing order details and save your changes.'
-                    : lockedCustomerId
-                    ? 'Add products and enter the order details.'
-                    : 'Choose a customer, add products, and enter the order details.'
-            }
-            maxWidth={900}
-            maxHeight="92vh"
-            closeOnBackdrop={!processing}
-            closeOnEscape={!processing}
-            className="[&>div:first-child]:px-6 [&>div:first-child]:pb-5 [&>div:first-child]:pt-6 [&>div:first-child_h2]:!text-lg [&>div:first-child_p]:!mt-3 [&>div:first-child_p]:!text-sm [&>div:last-child]:px-6 [&>div:last-child]:py-5"
-            footer={
-                <>
-                    <Button
-                        type="button"
-                        variant="tertiary"
-                        className="h-10 rounded-md px-5 text-sm"
-                        onClick={currentStep > 1 ? () => stepperRef.current?.back() : close}
-                        disabled={processing}
-                    >
-                        {currentStep > 1 ? 'Back' : 'Cancel'}
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="primary"
-                        className="h-10 rounded-md px-5 text-sm"
-                        onClick={goForward}
-                        loading={processing}
-                        disabled={currentStep === productsStepIndex && productsLoading}
-                    >
-                        {currentStep === totalSteps
-                            ? (isEditing ? 'Save changes' : 'Submit order')
-                            : 'Continue'}
-                    </Button>
-                </>
-            }
-        >
+    const modalTitle = isEditing ? `Edit ${initialOrder.po_number}` : 'Create order';
+    const modalDescription = isEditing
+        ? 'Review the existing order details and save your changes.'
+        : lockedCustomerId
+        ? 'Add products and enter the order details.'
+        : 'Choose a customer, add products, and enter the order details.';
+
+    const footerButtons = (
+        <>
+            <Button
+                type="button"
+                variant="tertiary"
+                className="h-10 rounded-md px-5 text-sm"
+                onClick={currentStep > 1 ? () => stepperRef.current?.back() : close}
+                disabled={processing}
+            >
+                {currentStep > 1 ? 'Back' : 'Cancel'}
+            </Button>
+            <Button
+                type="button"
+                variant="primary"
+                className="h-10 rounded-md px-5 text-sm"
+                onClick={goForward}
+                loading={processing}
+                disabled={currentStep === productsStepIndex && productsLoading}
+            >
+                {currentStep === totalSteps
+                    ? (isEditing ? 'Save changes' : 'Submit order')
+                    : 'Continue'}
+            </Button>
+        </>
+    );
+
+    const stepper = (
             <Stepper
                 ref={stepperRef}
                 key={stepperKey}
@@ -577,7 +674,7 @@ export default function CreateOrderModal({
                 onFinalStepCompleted={submit}
                 stepLabels={stepLabels}
                 hideDefaultFooter
-                stepContainerClassName="sticky top-0 z-10 bg-white dark:bg-[#1D1D1A]"
+                stepContainerClassName="sticky top-0 z-10 bg-white pt-4 dark:bg-[#1D1D1A]"
             >
                 {!lockedCustomerId && (
                 <Step>
@@ -601,7 +698,7 @@ export default function CreateOrderModal({
                                 leftIcon={<Search className="h-4 w-4" />}
                                 error={Boolean(errors.customer_id || clientErrors.customer_id)}
                                 classNames={{
-                                    field: 'h-9 rounded-full bg-transparent shadow-none',
+                                    field: 'h-9 rounded-[11px] bg-transparent shadow-none',
                                     input: 'text-sm',
                                 }}
                             />
@@ -654,7 +751,7 @@ export default function CreateOrderModal({
                                     placeholder="Search products"
                                     leftIcon={<Search className="h-4 w-4" />}
                                     classNames={{
-                                        field: 'h-9 rounded-full bg-transparent shadow-none',
+                                        field: 'h-9 rounded-[11px] bg-transparent shadow-none',
                                         input: 'text-sm',
                                     }}
                                 />
@@ -676,41 +773,51 @@ export default function CreateOrderModal({
                                 Search to add products. Products with delivered units cannot be removed or reduced below the delivered quantity.
                             </p>
                         )}
-                        <div className="flex items-center justify-between text-sm text-muted-foreground">
-                            <span>{lines.length} {lines.length === 1 ? 'product' : 'products'}</span>
-                            {canEditItems && <div className="flex items-center gap-2">
-                                <span>{selectedLineIds.length} selected</span>
-                                {selectedLineIds.length > 0 && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setConfirmBulkDeleteOpen(true)}
-                                        aria-label="Remove selected products"
-                                        className="grid h-7 w-7 place-items-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-800"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </button>
-                                )}
-                            </div>}
-                        </div>
-                        <Table
-                            data={lines}
-                            columns={productLineColumns}
-                            getRowId={(line) => line.key}
-                            height={lines.length === 0 ? 160 : Math.min(lines.length * 48 + 52, 304)}
-                            resizable
-                            selectable={canEditItems}
-                            selectedRowIds={selectedLineIds}
-                            onSelectionChange={setSelectedLineIds}
-                            emptyState={
-                                isEditing
-                                    ? 'No products have been added to this order.'
-                                    : productsError
-                                    ? "Couldn't load products."
-                                    : productsLoading
-                                        ? 'Loading products…'
-                                        : 'Search for a product to add it to this order.'
-                            }
-                        />
+                        {isCompactViewport && !isEditing && lines.length === 0 && !productsError && (
+                            <p className="text-xs text-muted-foreground">
+                                {productsLoading ? 'Loading products…' : 'Search for a product to add it to this order.'}
+                            </p>
+                        )}
+                        {(!isCompactViewport || lines.length > 0) && (
+                            <div className="flex items-center justify-between text-sm text-muted-foreground">
+                                <span>{lines.length} {lines.length === 1 ? 'product' : 'products'}</span>
+                                {canEditItems && <div className="flex items-center gap-2">
+                                    <span>{selectedLineIds.length} selected</span>
+                                    {selectedLineIds.length > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setConfirmBulkDeleteOpen(true)}
+                                            aria-label="Remove selected products"
+                                            className="grid h-7 w-7 place-items-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
+                                    )}
+                                </div>}
+                            </div>
+                        )}
+                        {(!isCompactViewport || lines.length > 0) && (
+                            <Table
+                                data={lines}
+                                columns={productLineColumns}
+                                getRowId={(line) => line.key}
+                                height={lines.length === 0 ? 160 : Math.min(lines.length * 48 + 52, 304)}
+                                className={isCompactViewport ? 'border-0 rounded-none [&_th]:!bg-transparent' : undefined}
+                                resizable
+                                selectable={canEditItems}
+                                selectedRowIds={selectedLineIds}
+                                onSelectionChange={setSelectedLineIds}
+                                emptyState={
+                                    isEditing
+                                        ? 'No products have been added to this order.'
+                                        : productsError
+                                        ? "Couldn't load products."
+                                        : productsLoading
+                                            ? 'Loading products…'
+                                            : 'Search for a product to add it to this order.'
+                                }
+                            />
+                        )}
                         {itemErrors.length > 0 && (
                             <div className="space-y-1 text-sm text-destructive" role="alert">
                                 {itemErrors.map((message, index) => <p key={`${message}-${index}`}>{message}</p>)}
@@ -859,6 +966,40 @@ export default function CreateOrderModal({
                     </div>
                 </Step>
             </Stepper>
+    );
+
+    return (
+        <>
+            {isCompactViewport ? (
+                <BottomSheet
+                    open={open}
+                    onOpenChange={(next) => {
+                        if (!next && !processing) close();
+                    }}
+                    title={modalTitle}
+                    description={modalDescription}
+                    snapPoints={['auto']}
+                    defaultSnap={0}
+                    footer={footerButtons}
+                >
+                    {stepper}
+                </BottomSheet>
+            ) : (
+                <Modal
+                    open={open}
+                    onClose={close}
+                    title={modalTitle}
+                    description={modalDescription}
+                    maxWidth={900}
+                    maxHeight="92vh"
+                    closeOnBackdrop={!processing}
+                    closeOnEscape={!processing}
+                    className="[&>div:first-child]:px-6 [&>div:first-child]:pb-5 [&>div:first-child]:pt-6 [&>div:first-child_h2]:!text-lg [&>div:first-child_p]:!mt-3 [&>div:first-child_p]:!text-sm [&>div:last-child]:px-6 [&>div:last-child]:py-5"
+                    footer={footerButtons}
+                >
+                    {stepper}
+                </Modal>
+            )}
 
             <ConfirmationDialog
                 open={confirmBulkDeleteOpen}
@@ -873,6 +1014,6 @@ export default function CreateOrderModal({
                     setConfirmBulkDeleteOpen(false);
                 }}
             />
-        </Modal>
+        </>
     );
 }

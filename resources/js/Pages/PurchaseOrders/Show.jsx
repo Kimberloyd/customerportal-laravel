@@ -392,7 +392,7 @@ export default function Show({
                             <AnimatedBadge
                                 status={currentStatus.status}
                                 size="md"
-                                pulse={currentStatus.pulse ?? false}
+                                pulse={false}
                                 className="border-0 bg-transparent px-0 text-2xl font-semibold shadow-none [&_svg]:!h-6 [&_svg]:!w-6"
                             >
                                 {currentStatus.label}

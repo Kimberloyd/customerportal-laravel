@@ -201,4 +201,30 @@ class SettingsTest extends TestCase
             'https://api.semaphore.co/api/v4/messages',
         ) && (int) $request['limit'] === 7 && (int) $request['page'] === 2);
     }
+
+    public function test_sms_history_sorts_newest_first_regardless_of_api_order(): void
+    {
+        Cache::flush();
+        config(['services.semaphore.api_key' => 'test-key']);
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        // Deliberately out of order, as Semaphore has been observed to
+        // return a page's rows -- the fix must not just trust the API.
+        Http::fake([
+            'api.semaphore.co/api/v4/messages*' => Http::response([
+                ['message_id' => 1, 'recipient' => '639000000000', 'message' => 'Oldest', 'created_at' => '2026-09-01 08:00:00'],
+                ['message_id' => 2, 'recipient' => '639000000000', 'message' => 'Newest', 'created_at' => '2026-09-03 08:00:00'],
+                ['message_id' => 3, 'recipient' => '639000000000', 'message' => 'Middle', 'created_at' => '2026-09-02 08:00:00'],
+            ]),
+            'api.semaphore.co/api/v4/account*' => Http::response(['credit_balance' => 25]),
+        ]);
+
+        $this->actingAsUser($admin)->get('/settings')
+            ->assertInertia(fn ($page) => $page
+                ->missing('semaphore')
+                ->loadDeferredProps('semaphore', fn ($deferred) => $deferred
+                    ->where('semaphore.messages.0.message', 'Newest')
+                    ->where('semaphore.messages.1.message', 'Middle')
+                    ->where('semaphore.messages.2.message', 'Oldest')));
+    }
 }

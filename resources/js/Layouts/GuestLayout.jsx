@@ -25,9 +25,22 @@ export default function GuestLayout({ children }) {
                 <p className="relative z-10 max-w-lg pb-2 text-left text-lg leading-8 text-gray-600">
                     Sign in to manage purchase orders, account activity, and customer communication.
                 </p>
+                <Link
+                    href={route('terms-and-privacy')}
+                    className="relative z-10 mt-3 text-sm font-medium text-primary underline-offset-4 hover:underline"
+                >
+                    Terms &amp; Privacy
+                </Link>
             </section>
 
-            <section className="relative flex min-h-screen items-center justify-center px-6 py-10 sm:px-10 lg:px-16">
+            <section className="relative flex min-h-screen flex-col items-center justify-center px-6 py-10 sm:px-10 lg:px-16">
+                <Link href="/" className="mb-8 block w-fit lg:hidden" aria-label="Theomeds Marketing home">
+                    <img
+                        src="/images/TM Horizontal Lockup_Transparent BG.png"
+                        alt="Theomeds Marketing"
+                        className="h-16 w-auto"
+                    />
+                </Link>
                 <div className="w-full max-w-md">
                     {children}
                 </div>
