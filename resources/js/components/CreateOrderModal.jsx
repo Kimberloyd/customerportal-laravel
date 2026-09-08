@@ -414,57 +414,79 @@ export default function CreateOrderModal({
                 key: 'product_name',
                 header: 'Product Name',
                 sortable: true,
-                cell: isCompactViewport
-                    ? (line) => (
-                        <div className="min-w-0">
-                            <p className="truncate">{line.product_name}</p>
-                            {(line.generic_name || line.dosage) && (
-                                <p className="truncate text-xs text-muted-foreground">
-                                    {[line.generic_name, line.dosage ? line.dosage.toUpperCase() : null]
-                                        .filter(Boolean)
-                                        .join(' · ')}
-                                </p>
-                            )}
-                        </div>
-                    )
-                    : undefined,
-            },
-            ...(isCompactViewport ? [] : [
-                { key: 'generic_name', header: 'Generic Name', sortable: true },
-                {
-                    key: 'dosage',
-                    header: 'Variant',
-                    sortable: true,
-                    cell: (line) => <span className="uppercase">{line.dosage ?? ''}</span>,
+                cell: (line) => {
+                    const product = [line.product_name, line.generic_name, line.dosage ? line.dosage.toUpperCase() : null]
+                        .filter(Boolean)
+                        .join(' · ');
+
+                    return (
+                        <span className="truncate" title={product}>
+                            {product}
+                        </span>
+                    );
                 },
-            ]),
+            },
             {
                 key: 'quantity',
                 header: 'Quantity',
                 cell: (line) => {
                     const minQuantity = isEditing ? Math.max(1, line.delivered_quantity) : 1;
+                    const quantity = Number(line.quantity) || 0;
+                    const alreadyDelivered = isEditing && line.delivered_quantity > 0;
+                    const locked = editDetailsLocked || alreadyDelivered;
+
                     if (!isCompactViewport) {
                         return (
-                            <Input
-                                type="number"
-                                min={minQuantity}
-                                disabled={editDetailsLocked}
-                                value={line.quantity}
-                                onChange={(value) => updateQuantity(line.key, value)}
-                                classNames={{
-                                    field: 'h-8 w-auto rounded-none',
-                                    input: 'w-auto min-w-[2.75rem] [field-sizing:content]',
-                                }}
-                            />
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    type="number"
+                                    min={minQuantity}
+                                    disabled={locked}
+                                    value={line.quantity}
+                                    onChange={(value) => updateQuantity(line.key, value)}
+                                    leftIcon={
+                                        <button
+                                            type="button"
+                                            disabled={locked || quantity <= minQuantity}
+                                            onClick={() => updateQuantity(line.key, String(Math.max(minQuantity, quantity - 1)))}
+                                            aria-label={`Decrease quantity for ${line.product_name}`}
+                                            className="pointer-events-auto grid h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-gray-100 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                                        >
+                                            <Minus className="h-3.5 w-3.5" />
+                                        </button>
+                                    }
+                                    rightIcon={
+                                        <button
+                                            type="button"
+                                            disabled={locked}
+                                            onClick={() => updateQuantity(line.key, String(quantity + 1))}
+                                            aria-label={`Increase quantity for ${line.product_name}`}
+                                            className="grid h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-gray-100 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                                        >
+                                            <Plus className="h-3.5 w-3.5" />
+                                        </button>
+                                    }
+                                    classNames={{
+                                        root: 'w-fit',
+                                        field: 'h-8 w-auto rounded-none',
+                                        input: 'w-20 min-w-[5rem] !pl-6 !pr-6 text-center [appearance:textfield] [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
+                                        leftIcon: 'pointer-events-auto left-0.5',
+                                        rightIcon: 'right-0.5 [&_button]:size-6',
+                                    }}
+                                />
+                                {alreadyDelivered && (
+                                    <span className="text-xs text-muted-foreground" title="Delivered products cannot be edited.">
+                                        Delivered
+                                    </span>
+                                )}
+                            </div>
                         );
                     }
-
-                    const quantity = Number(line.quantity) || 0;
                     return (
                         <div className="flex items-center gap-1.5">
                             <button
                                 type="button"
-                                disabled={editDetailsLocked || quantity <= minQuantity}
+                                disabled={locked || quantity <= minQuantity}
                                 onClick={() => updateQuantity(line.key, String(Math.max(minQuantity, quantity - 1)))}
                                 aria-label={`Decrease quantity for ${line.product_name}`}
                                 className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border text-gray-600 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
@@ -474,7 +496,7 @@ export default function CreateOrderModal({
                             <Input
                                 type="number"
                                 min={minQuantity}
-                                disabled={editDetailsLocked}
+                                disabled={locked}
                                 value={line.quantity}
                                 onChange={(value) => updateQuantity(line.key, value)}
                                 classNames={{
@@ -484,7 +506,7 @@ export default function CreateOrderModal({
                             />
                             <button
                                 type="button"
-                                disabled={editDetailsLocked}
+                                disabled={locked}
                                 onClick={() => updateQuantity(line.key, String(quantity + 1))}
                                 aria-label={`Increase quantity for ${line.product_name}`}
                                 className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border text-gray-600 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"

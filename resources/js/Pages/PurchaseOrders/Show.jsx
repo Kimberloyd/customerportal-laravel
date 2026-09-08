@@ -13,11 +13,10 @@ import ConfirmationDialog from '@/components/ConfirmationDialog';
 import ProductReturnPanel from '@/components/ProductReturnPanel';
 import { usePurchaseOrderRealtime } from '@/hooks/usePurchaseOrderRealtime';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { FileText } from 'lucide-react';
+import { FileText, Minus, Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const TABLE_ROW_HEIGHT = 48;
-const TABLE_MAX_HEIGHT = 440;
 
 function autoTableHeight(rowCount) {
     // A zero-row table doesn't render a normal 48px row -- it renders the
@@ -28,19 +27,19 @@ function autoTableHeight(rowCount) {
         return 160;
     }
 
-    return Math.min(TABLE_MAX_HEIGHT, (rowCount + 1) * TABLE_ROW_HEIGHT);
+    // No max-height cap: the trailing row can hold the Cancel/Edit/Settle
+    // actions, and capping height pushed that row into the table's own
+    // internal scroll area, making it silently unreachable.
+    return (rowCount + 1) * TABLE_ROW_HEIGHT;
 }
 
 export default function Show({
     order,
     canManageFulfillment,
-    canStartReview,
     canComplete,
-    canConfirmReceived,
     canCancel,
     canRequestReturn,
     canManageReturns,
-    returnPolicy,
     editOrderCustomers = [],
     editOrderProducts,
     lockedCustomerId = null,
@@ -53,6 +52,7 @@ export default function Show({
     const [pendingAction, setPendingAction] = useState(null);
     const [actionProcessing, setActionProcessing] = useState(false);
     const [editOrderOpen, setEditOrderOpen] = useState(false);
+    const [returnItemId, setReturnItemId] = useState(null);
     const [editProductsLoading, setEditProductsLoading] = useState(false);
     const [editProductsError, setEditProductsError] = useState(false);
     const attachmentUrl = order.has_attachment ? route('purchase-orders.attachment', order.id) : null;
@@ -127,18 +127,6 @@ export default function Show({
         setPendingAction('cancel');
     };
 
-    const confirmReceived = () => {
-        setPendingAction('received');
-    };
-
-    const startReview = () => {
-        router.post(route('purchase-orders.start-review', order.id), {}, {
-            preserveScroll: true,
-            onStart: () => setActionProcessing(true),
-            onFinish: () => setActionProcessing(false),
-        });
-    };
-
     const confirmPendingAction = () => {
         if (pendingAction === 'fulfillment') {
             confirmFulfillment();
@@ -148,7 +136,6 @@ export default function Show({
         const routeName = {
             complete: 'purchase-orders.complete',
             cancel: 'purchase-orders.cancel',
-            received: 'purchase-orders.confirm-received',
         }[pendingAction];
 
         if (!routeName) return;
@@ -171,17 +158,10 @@ export default function Show({
             destructive: false,
         },
         complete: {
-            title: 'Complete this order?',
-            description: 'This marks every remaining item as delivered and closes the order. This cannot be undone.',
-            confirmLabel: 'Complete order',
+            title: 'Close this order?',
+            description: 'This closes the fully delivered order. This cannot be undone.',
+            confirmLabel: 'Close order',
             cancelLabel: 'Keep order open',
-            destructive: false,
-        },
-        received: {
-            title: 'Mark this order as received?',
-            description: `Confirm that all items in order ${order.po_number} have arrived. This confirmation cannot be undone.`,
-            confirmLabel: 'Mark as received',
-            cancelLabel: 'Not yet',
             destructive: false,
         },
         cancel: {
@@ -198,7 +178,15 @@ export default function Show({
             {
                 key: 'display_name',
                 header: 'Product',
-                cell: (item) => (item.__isTotal ? null : item.display_name),
+                cell: (item) => {
+                    if (item.__isTotal) return null;
+
+                    const product = [item.display_name, item.generic_name, item.dosage]
+                        .filter(Boolean)
+                        .join(' ');
+
+                    return <span title={product}>{product}</span>;
+                },
             },
             {
                 key: 'quantity',
@@ -208,7 +196,69 @@ export default function Show({
             {
                 key: 'delivered_quantity',
                 header: 'Delivered',
-                cell: (item) => (item.__isTotal ? null : (item.delivered_quantity ?? 0)),
+                spanRow: (item) => (item.__isTotal ? (showDeliverColumn ? 3 : 2) : undefined),
+                cell: (item) =>
+                    item.__isTotal ? (
+                        <div className="flex flex-wrap justify-end gap-2">
+                            {canCancel && (
+                                <Button
+                                    type="button"
+                                    variant="tertiary"
+                                    size="compact"
+                                    className="rounded-md text-red-600 hover:text-red-700"
+                                    onClick={cancel}
+                                >
+                                    Cancel
+                                </Button>
+                            )}
+                            {order.can_edit_items && (
+                                <Button
+                                    type="button"
+                                    variant="tertiary"
+                                    size="compact"
+                                    className="rounded-md"
+                                    onClick={() => setEditOrderOpen(true)}
+                                >
+                                    Edit
+                                </Button>
+                            )}
+                            {canRequestReturn && (
+                                <Button
+                                    type="button"
+                                    variant="warning"
+                                    size="compact"
+                                    className="rounded-md"
+                                    onClick={() => setReturnItemId('blank')}
+                                >
+                                    Return
+                                </Button>
+                            )}
+                            {showDeliverColumn && (
+                                <Button
+                                    type="submit"
+                                    variant="primary"
+                                    size="compact"
+                                    className="rounded-md"
+                                    disabled={processing}
+                                >
+                                    Settle
+                                </Button>
+                            )}
+                            {canComplete && (
+                                <Button
+                                    type="button"
+                                    variant="primary"
+                                    size="compact"
+                                    className="rounded-md"
+                                    onClick={complete}
+                                >
+                                    Close Order
+                                </Button>
+                            )}
+                        </div>
+                    ) : (
+                        item.delivered_quantity ?? 0
+                    ),
             },
             {
                 key: 'pending_quantity',
@@ -221,38 +271,88 @@ export default function Show({
                           key: 'deliver_now',
                           header: 'Deliver Now',
                           width: '140px',
-                          cell: (item) =>
-                              item.__isTotal ? null : (
-                                  <Input
-                                      type="number"
-                                      min={0}
-                                      max={item.pending_quantity}
-                                      disabled={item.pending_quantity === 0}
-                                      value={data.received[item.id]}
-                                      onChange={(raw) => {
-                                          const clamped =
-                                              raw === ''
-                                                  ? ''
-                                                  : Math.max(0, Math.min(item.pending_quantity, Number(raw)));
-                                          setData('received', {
-                                              ...data.received,
-                                              [item.id]: clamped,
-                                          });
-                                      }}
-                                      classNames={{
-                                          field: 'h-8 w-auto rounded-none',
-                                          input: 'min-w-[2.75rem] [field-sizing:content]',
-                                      }}
-                                  />
-                              ),
+                          cell: (item) => {
+                              if (item.__isTotal) return null;
+
+                              const raw = data.received[item.id];
+                              const numeric = raw === '' || raw == null ? 0 : Number(raw);
+                              const setQty = (next) => {
+                                  const clamped = Math.max(0, Math.min(item.pending_quantity, next));
+                                  setData('received', {
+                                      ...data.received,
+                                      [item.id]: clamped,
+                                  });
+                              };
+
+                              return (
+                                  <div className="flex items-center gap-1">
+                                      <Input
+                                          type="number"
+                                          min={0}
+                                          max={item.pending_quantity}
+                                          disabled={item.pending_quantity === 0}
+                                          value={data.received[item.id]}
+                                          onChange={(value) => {
+                                              const clamped =
+                                                  value === ''
+                                                      ? ''
+                                                      : Math.max(0, Math.min(item.pending_quantity, Number(value)));
+                                              setData('received', {
+                                                  ...data.received,
+                                                  [item.id]: clamped,
+                                              });
+                                          }}
+                                          leftIcon={
+                                              <button
+                                                  type="button"
+                                                  disabled={item.pending_quantity === 0 || numeric <= 0}
+                                                  onClick={() => setQty(numeric - 1)}
+                                                  className="pointer-events-auto grid h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-gray-100 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                                              >
+                                                  <Minus className="h-3.5 w-3.5" />
+                                              </button>
+                                          }
+                                          rightIcon={
+                                              <button
+                                                  type="button"
+                                                  disabled={item.pending_quantity === 0 || numeric >= item.pending_quantity}
+                                                  onClick={() => setQty(numeric + 1)}
+                                                  className="grid h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-gray-100 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                                              >
+                                                  <Plus className="h-3.5 w-3.5" />
+                                              </button>
+                                          }
+                                          classNames={{
+                                              root: 'flex-1',
+                                              field: 'h-8 w-auto rounded-none',
+                                              input: 'min-w-[1.5rem] text-center [field-sizing:content] [appearance:textfield] [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
+                                              leftIcon: 'pointer-events-auto left-0.5',
+                                              rightIcon: 'right-0.5 [&_button]:size-6',
+                                          }}
+                                      />
+                                      <button
+                                          type="button"
+                                          disabled={item.pending_quantity === 0 || numeric >= item.pending_quantity}
+                                          onClick={() => setQty(item.pending_quantity)}
+                                          className="h-8 shrink-0 rounded px-2 text-xs font-medium text-primary hover:bg-primary/10 disabled:pointer-events-none disabled:opacity-40"
+                                      >
+                                          Max
+                                      </button>
+                                  </div>
+                              );
+                          },
                       },
                   ]
                 : []),
         ],
-        [showDeliverColumn, data.received],
+        [showDeliverColumn, data.received, processing, canCancel, order.can_edit_items, canRequestReturn, canComplete, complete],
     );
 
-    const itemRows = order.items;
+    const showActionsRow = showDeliverColumn || canCancel || order.can_edit_items || canRequestReturn || canComplete;
+
+    const itemRows = order.items.length
+        ? [...order.items, ...(showActionsRow ? [{ id: '__spacer', __isTotal: true }] : [])]
+        : [];
 
     return (
         <AuthenticatedLayout
@@ -270,48 +370,6 @@ export default function Show({
                             <span aria-current="page" className="text-gray-800">{order.po_number}</span>
                         </h2>
                     </nav>
-                    <div className="flex flex-wrap items-center justify-end gap-2">
-                        {canStartReview && (
-                            <Button variant="primary" disabled={actionProcessing} onClick={startReview}>
-                                Start Review
-                            </Button>
-                        )}
-                        {canConfirmReceived && (
-                            <Button
-                                variant="primary"
-                                onClick={confirmReceived}
-                            >
-                                Order Received
-                            </Button>
-                        )}
-                        {canCancel && (
-                            <Button
-                                variant="tertiary"
-                                className="text-red-600 hover:text-red-700"
-                                onClick={cancel}
-                            >
-                                Cancel Order
-                            </Button>
-                        )}
-                        {canComplete && (
-                            <Button
-                                variant="tertiary"
-                                className="text-green-700 hover:text-green-800"
-                                onClick={complete}
-                            >
-                                Mark Completed
-                            </Button>
-                        )}
-                        {order.can_edit_items && (
-                            <Button
-                                type="button"
-                                variant="tertiary"
-                                onClick={() => setEditOrderOpen(true)}
-                            >
-                                Edit Order
-                            </Button>
-                        )}
-                    </div>
                 </div>
             }
         >
@@ -393,12 +451,6 @@ export default function Show({
                                     </dd>
                                 </div>
                             )}
-                            {order.remarks && (
-                                <div className="flex gap-2">
-                                    <dt className="w-28 shrink-0 text-gray-500">Remarks</dt>
-                                    <dd className="text-gray-900">{order.remarks}</dd>
-                                </div>
-                            )}
                         </dl>
                         </div>
 
@@ -439,10 +491,13 @@ export default function Show({
                 )}
 
                 <div>
-                    <div className="mb-3 flex items-center justify-between">
-                        <h3 className="text-lg font-semibold text-gray-900">Items and Fulfillment</h3>
+                    <div className="mb-3 flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                            <h3 className="text-lg font-semibold text-gray-900">Items and Fulfillment</h3>
+                            <p className="mt-1 text-sm text-gray-500">Track ordered, delivered, and remaining quantities.</p>
+                        </div>
                         {showDeliverColumn && (
-                            <span className="text-sm text-gray-500">Enter the quantity delivered in this batch.</span>
+                            <span className="self-end text-sm text-gray-500">Enter the quantity delivered in this batch.</span>
                         )}
                     </div>
                     <form onSubmit={submitFulfillment}>
@@ -455,13 +510,6 @@ export default function Show({
                             resizable
                             emptyState="No products have been added to this order."
                         />
-                        {showDeliverColumn && (
-                            <div className="mt-3 flex justify-end">
-                                <Button type="submit" variant="primary" size="compact" disabled={processing}>
-                                    Settle
-                                </Button>
-                            </div>
-                        )}
                     </form>
                 </div>
 
@@ -469,7 +517,8 @@ export default function Show({
                     order={order}
                     canRequestReturn={canRequestReturn}
                     canManageReturns={canManageReturns}
-                    returnPolicy={returnPolicy}
+                    openReturnItemId={returnItemId}
+                    onOpenReturnItemHandled={() => setReturnItemId(null)}
                 />
 
                 <div>

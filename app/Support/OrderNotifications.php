@@ -42,7 +42,7 @@ class OrderNotifications
 
     public static function submitted(PurchaseOrder $order): void
     {
-        self::notifyPortalSafely($order, 'Order received. We\'ll review it shortly.', 'submission');
+        self::notifyPortalSafely($order, 'Order received. We\'ll prepare it for fulfillment.', 'submission');
         self::queue($order, 'submitted');
     }
 

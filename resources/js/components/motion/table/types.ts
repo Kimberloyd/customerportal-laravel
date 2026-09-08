@@ -20,6 +20,8 @@ export type TableColumn<T> = {
   width?: string;
   /** Custom cell renderer. Falls back to `row[key]`. */
   cell?: (row: T) => ReactNode;
+  /** For a given row, span this many columns to the right (including this one), skipping their cells. Return undefined/1 for a normal single cell. */
+  spanRow?: (row: T) => number | undefined;
   /** Render an inline text input for this column's cells (ignored when `cell` is set). */
   editable?: boolean;
   /** Value used for sorting. Falls back to `row[key]`. */

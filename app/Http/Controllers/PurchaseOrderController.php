@@ -38,9 +38,9 @@ class PurchaseOrderController extends Controller
 {
     private const PENDING_STATUSES = [
         PurchaseOrder::STATUS_SUBMITTED,
-        PurchaseOrder::STATUS_REVIEWING,
         PurchaseOrder::STATUS_PARTIAL,
         PurchaseOrder::STATUS_PROCESSING,
+        PurchaseOrder::STATUS_RETURNED,
     ];
 
     public function __construct(private readonly InventoryApiClient $inventory) {}
@@ -143,9 +143,7 @@ class PurchaseOrderController extends Controller
         } elseif ($statusFilter === 'partial') {
             $query->whereIn('status', PurchaseOrder::IN_PROGRESS_STATUSES);
         } elseif ($statusFilter === PurchaseOrder::STATUS_SUBMITTED) {
-            // "Reviewing" is a flavor of "submitted" -- see the model
-            // constant's docblock.
-            $query->whereIn('status', [PurchaseOrder::STATUS_SUBMITTED, PurchaseOrder::STATUS_REVIEWING]);
+            $query->where('status', PurchaseOrder::STATUS_SUBMITTED);
         } elseif ($statusFilter === PurchaseOrder::STATUS_COMPLETED) {
             $query->where('status', $statusFilter);
         } else {
@@ -532,7 +530,7 @@ class PurchaseOrderController extends Controller
     public function complete(Request $request, PurchaseOrder $order)
     {
         $this->authorizeOrderAccess($order);
-        abort_if(Auth::user()->role === 'customer', 403);
+        abort_unless(Auth::user()->role === 'customer', 403);
 
         try {
             DB::transaction(function () use ($request, $order) {
@@ -540,19 +538,21 @@ class PurchaseOrderController extends Controller
                 $locked->load('items');
 
                 if (in_array($locked->status, PurchaseOrder::TERMINAL_STATUSES, true)) {
-                    throw new UserActionException("This order is already {$locked->status} and cannot be completed.");
+                    throw new UserActionException("This order is already {$locked->status} and cannot be closed.");
                 }
 
-                foreach ($locked->items as $item) {
-                    $item->delivered_quantity = $item->quantity;
-                    $item->save();
+                if ($locked->items->isEmpty() || $locked->items->contains(
+                    fn (PurchaseOrderItem $item) => $item->pending_quantity > 0,
+                )) {
+                    throw new UserActionException('Every item must be delivered before closing this order.');
                 }
 
                 $locked->status = PurchaseOrder::STATUS_COMPLETED;
                 $locked->completed_at = now();
+                $locked->customer_received_at = now();
                 $locked->save();
 
-                OrderAudit::record($locked, 'Order Completed', 'All ordered quantities were marked delivered.', $request);
+                OrderAudit::record($locked, 'Order Closed', 'The customer confirmed delivery and closed the fully delivered order.', $request);
             });
         } catch (UserActionException $e) {
             return redirect()->route('purchase-orders.show', $order->id)->with('error', $e->getMessage());
@@ -562,7 +562,7 @@ class PurchaseOrderController extends Controller
 
         PurchaseOrderChanged::dispatch($order->id, 'completed');
 
-        return redirect()->route('purchase-orders.index')->with('success', 'Order marked as completed.');
+        return redirect()->route('purchase-orders.show', $order->id)->with('success', 'Order closed.');
     }
 
     public function receive(Request $request, PurchaseOrder $order)
@@ -579,6 +579,9 @@ class PurchaseOrderController extends Controller
 
                 if (in_array($locked->status, PurchaseOrder::TERMINAL_STATUSES, true)) {
                     throw new UserActionException("This order is already {$locked->status} and cannot receive deliveries.");
+                }
+                if ($locked->status === PurchaseOrder::STATUS_PROCESSING) {
+                    throw new UserActionException('All items are already delivered. Complete the order to close it.');
                 }
 
                 $receivedAny = false;
@@ -741,19 +744,13 @@ class PurchaseOrderController extends Controller
         $scopedCustomer = CustomerScope::forCurrentUser();
         $editOrderCustomers = CustomerAccess::applyToCustomers(Customer::query(), $request->user())
             ->orderBy('company_name')->get(['id', 'company_name'])->toArray();
-        $receivedReturnQuantities = $order->returns
-            ->where('status', ProductReturn::STATUS_RECEIVED)
-            ->flatMap(fn (ProductReturn $return) => $return->items)
-            ->groupBy('purchase_order_item_id')
-            ->map(fn ($items) => (int) $items->sum('quantity'));
-        $returnWindowEndsAt = $order->customer_received_at?->copy()
-            ->addDays(ProductReturnController::RETURN_WINDOW_DAYS);
         $hasOpenReturn = $order->returns
             ->contains(fn (ProductReturn $return) => in_array($return->status, ProductReturn::OPEN_STATUSES, true));
         $hasReturnableItems = $order->items->contains(
-            fn (PurchaseOrderItem $item) => (int) $item->delivered_quantity
-                > (int) ($receivedReturnQuantities[$item->id] ?? 0),
+            fn (PurchaseOrderItem $item) => (int) $item->delivered_quantity > 0,
         );
+        $isFullySettled = $order->items->isNotEmpty()
+            && $order->items->every(fn (PurchaseOrderItem $item) => $item->pending_quantity === 0);
 
         return Inertia::render('PurchaseOrders/Show', [
             'order' => [
@@ -790,10 +787,7 @@ class PurchaseOrderController extends Controller
                     'pending_quantity' => $item->pending_quantity,
                     'unit_price' => $item->unit_price,
                     'line_total' => $item->line_total,
-                    'returnable_quantity' => max(
-                        (int) $item->delivered_quantity - (int) ($receivedReturnQuantities[$item->id] ?? 0),
-                        0,
-                    ),
+                    'returnable_quantity' => (int) $item->delivered_quantity,
                 ]),
                 'audit_logs' => $order->auditLogs->map(fn ($audit) => [
                     'created_at' => $audit->created_at?->toIso8601String(),
@@ -824,24 +818,20 @@ class PurchaseOrderController extends Controller
                     ]),
             ],
             'isCustomerViewer' => $isCustomerViewer,
-            'canManageFulfillment' => ! $isCustomerViewer,
-            'canStartReview' => ! $isCustomerViewer && $order->status === PurchaseOrder::STATUS_SUBMITTED,
-            'canComplete' => ! $isCustomerViewer && ! $isTerminal,
+            'canManageFulfillment' => ! $isCustomerViewer && in_array($order->status, [
+                PurchaseOrder::STATUS_SUBMITTED,
+                PurchaseOrder::STATUS_PARTIAL,
+                PurchaseOrder::STATUS_RETURNED,
+            ], true),
+            'canComplete' => $isCustomerViewer && ! $isTerminal && $isFullySettled,
             'canConfirmReceived' => $isCustomerViewer
                 && $order->status === PurchaseOrder::STATUS_COMPLETED
                 && $order->customer_received_at === null,
             'canCancel' => ! $isTerminal,
             'canRequestReturn' => $isCustomerViewer
-                && $order->status === PurchaseOrder::STATUS_COMPLETED
-                && $order->customer_received_at !== null
-                && $returnWindowEndsAt?->isFuture()
                 && ! $hasOpenReturn
                 && $hasReturnableItems,
             'canManageReturns' => ! $isCustomerViewer,
-            'returnPolicy' => [
-                'window_days' => ProductReturnController::RETURN_WINDOW_DAYS,
-                'window_ends_at' => $returnWindowEndsAt?->toIso8601String(),
-            ],
             'editOrderCustomers' => $editOrderCustomers,
             'editOrderProducts' => Inertia::optional(
                 fn () => $this->activeProducts(cached: true)
@@ -865,19 +855,6 @@ class PurchaseOrderController extends Controller
         return Storage::disk('local')->response($path, null, [
             'Cache-Control' => 'private, no-store',
         ]);
-    }
-
-    public function startReview(Request $request, PurchaseOrder $order): RedirectResponse
-    {
-        $this->authorizeOrderAccess($order);
-        abort_if($request->user()->role === User::ROLE_CUSTOMER, 403);
-
-        $transitioned = $this->markReviewing($order, $request);
-
-        return back()->with(
-            $transitioned ? 'success' : 'error',
-            $transitioned ? 'Order review started.' : 'Only submitted orders can be moved to review.',
-        );
     }
 
     private function serializeForList(PurchaseOrder $order): array
@@ -986,9 +963,9 @@ class PurchaseOrderController extends Controller
                 }
 
                 $delivered = (int) ($item->delivered_quantity ?? 0);
-                if ($quantity < $delivered) {
+                if ($delivered > 0 && $quantity !== $delivered) {
                     throw new UserActionException(
-                        "Keep {$item->display_name} at {$delivered} or more because {$delivered} unit(s) have already been delivered.",
+                        "{$item->display_name} cannot be edited because {$delivered} unit(s) have already been delivered.",
                     );
                 }
 
@@ -1105,43 +1082,6 @@ class PurchaseOrderController extends Controller
     {
         abort_unless(CustomerAccess::applyToOrders(PurchaseOrder::query(), Auth::user())
             ->whereKey($order->id)->exists(), 403);
-    }
-
-    /**
-     * Flips a submitted order to "reviewing" the first time a staff
-     * member opens it. Guarded by a locked, status-scoped update so two
-     * staff opening the same order at once only produce one transition
-     * and one audit row -- and mutates the caller's $order in place so
-     * show() renders the new status without a second query.
-     */
-    private function markReviewing(PurchaseOrder $order, Request $request): bool
-    {
-        $transitioned = DB::transaction(function () use ($order, $request) {
-            $locked = PurchaseOrder::whereKey($order->id)
-                ->where('status', PurchaseOrder::STATUS_SUBMITTED)
-                ->lockForUpdate()
-                ->first();
-
-            if (! $locked) {
-                return false;
-            }
-
-            $locked->status = PurchaseOrder::STATUS_REVIEWING;
-            $locked->save();
-
-            OrderAudit::record($locked, 'Order Reviewing', 'A staff member opened this order for review.', $request);
-
-            $order->status = $locked->status;
-            $order->updated_at = $locked->updated_at;
-
-            return true;
-        });
-
-        if ($transitioned) {
-            PurchaseOrderChanged::dispatch($order->id, 'reviewing');
-        }
-
-        return $transitioned;
     }
 
     /**

@@ -46,7 +46,6 @@ Route::middleware('auth')->prefix('orders')->name('purchase-orders.')->group(fun
     Route::put('/{order}', [PurchaseOrderController::class, 'update'])->name('update');
     Route::delete('/{order}', [PurchaseOrderController::class, 'destroy'])->name('destroy');
     Route::post('/{order}/complete', [PurchaseOrderController::class, 'complete'])->name('complete');
-    Route::post('/{order}/start-review', [PurchaseOrderController::class, 'startReview'])->name('start-review');
     Route::post('/{order}/receive', [PurchaseOrderController::class, 'receive'])->name('receive');
     Route::post('/{order}/confirm-received', [PurchaseOrderController::class, 'confirmReceived'])
         ->name('confirm-received');

@@ -20,8 +20,6 @@ use Illuminate\Support\Facades\DB;
 
 class ProductReturnController extends Controller
 {
-    public const RETURN_WINDOW_DAYS = 7;
-
     public function store(Request $request, PurchaseOrder $order): RedirectResponse
     {
         $customer = CustomerScope::forCurrentUser();
@@ -31,8 +29,6 @@ class ProductReturnController extends Controller
             DB::transaction(function () use ($request, $order, $customer): void {
                 $lockedOrder = PurchaseOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
                 $lockedOrder->load('items');
-
-                $this->assertOrderCanBeReturned($lockedOrder);
 
                 if ($lockedOrder->returns()
                     ->whereIn('status', ProductReturn::OPEN_STATUSES)
@@ -126,6 +122,34 @@ class ProductReturnController extends Controller
                     $action = 'Return Approved';
                     $details = 'The return request was approved. Arrange collection or delivery with the customer.';
                     $notify = 'approved';
+
+                    // Persisted before the delivered-quantity deduction below
+                    // so that PurchaseOrder::hasProcessedReturn() -- queried
+                    // fresh from the database inside updateDeliveryStatus()
+                    // -- sees this return as approved rather than requested.
+                    $lockedReturn->save();
+
+                    $lockedReturn->load('items');
+                    $orderItems = PurchaseOrderItem::whereIn('id', $lockedReturn->items->pluck('purchase_order_item_id'))
+                        ->lockForUpdate()
+                        ->get()
+                        ->keyBy('id');
+
+                    foreach ($lockedReturn->items as $returnItem) {
+                        $orderItem = $orderItems->get($returnItem->purchase_order_item_id);
+                        if (! $orderItem) {
+                            continue;
+                        }
+
+                        $orderItem->delivered_quantity = max(
+                            (int) $orderItem->delivered_quantity - (int) $returnItem->quantity,
+                            0,
+                        );
+                        $orderItem->save();
+                    }
+
+                    $order->load('items');
+                    $order->updateDeliveryStatus();
                 } elseif ($nextStatus === ProductReturn::STATUS_REJECTED) {
                     if ($lockedReturn->status !== ProductReturn::STATUS_REQUESTED) {
                         throw new UserActionException('Only a requested return can be rejected.');
@@ -153,6 +177,7 @@ class ProductReturnController extends Controller
                     $notify = 'received';
                 }
 
+                $order->save();
                 $lockedReturn->save();
                 OrderAudit::record($order, $action, $details, $request);
             });
@@ -165,17 +190,6 @@ class ProductReturnController extends Controller
 
         return redirect()->route('purchase-orders.show', $order)
             ->with('success', $this->successMessage($notify));
-    }
-
-    private function assertOrderCanBeReturned(PurchaseOrder $order): void
-    {
-        if ($order->status !== PurchaseOrder::STATUS_COMPLETED || $order->customer_received_at === null) {
-            throw new UserActionException('Returns can be requested after the completed order has been confirmed as received.');
-        }
-
-        if (now()->greaterThan($order->customer_received_at->copy()->addDays(self::RETURN_WINDOW_DAYS))) {
-            throw new UserActionException('The 7-day return request window for this order has ended. Contact our team for help.');
-        }
     }
 
     /**
@@ -216,22 +230,6 @@ class ProductReturnController extends Controller
 
         if ($quantities === []) {
             throw new UserActionException('Select at least one delivered product to return.');
-        }
-
-        $receivedQuantities = ProductReturnItem::query()
-            ->whereIn('purchase_order_item_id', array_keys($quantities))
-            ->whereHas('productReturn', fn ($query) => $query
-                ->where('purchase_order_id', $order->id)
-                ->where('status', ProductReturn::STATUS_RECEIVED))
-            ->selectRaw('purchase_order_item_id, SUM(quantity) as total')
-            ->groupBy('purchase_order_item_id')
-            ->pluck('total', 'purchase_order_item_id');
-
-        foreach ($quantities as $itemId => [$item, $quantity]) {
-            $available = (int) $item->delivered_quantity - (int) ($receivedQuantities[$itemId] ?? 0);
-            if ($quantity > $available) {
-                throw new UserActionException("{$item->display_name} has only {$available} delivered unit(s) remaining for return.");
-            }
         }
 
         return array_values($quantities);

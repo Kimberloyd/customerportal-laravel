@@ -323,10 +323,6 @@ export function TableHeader<T>({
             </th>
           );
         })}
-        <th
-          aria-hidden
-          className="sticky top-0 z-10 border-border border-b bg-muted"
-        />
       </tr>
     </thead>
     </>

@@ -17,18 +17,20 @@ class DashboardOverview
         $currentOrders = (clone $orders)->whereBetween('submitted_at', [$start, $now]);
         $previousOrders = (clone $orders)->where('submitted_at', '>=', $previousStart)->where('submitted_at', '<', $start);
 
-        $daily = (clone $orders)->whereBetween('submitted_at', [$previousStart, $now])
+        $dailyOrders = (clone $orders)->whereBetween('submitted_at', [$start, $now])
             ->selectRaw('DATE(submitted_at) as day, COUNT(*) as total')
             ->groupByRaw('DATE(submitted_at)')->toBase()->pluck('total', 'day');
+        $dailyDeliveries = (clone $orders)->where('status', PurchaseOrder::STATUS_COMPLETED)
+            ->whereBetween('completed_at', [$start, $now])
+            ->selectRaw('DATE(completed_at) as day, COUNT(*) as total')
+            ->groupByRaw('DATE(completed_at)')->toBase()->pluck('total', 'day');
         $trend = [];
         for ($day = 0; $day < $days; $day++) {
             $date = $start->addDays($day)->toDateString();
-            $previousDate = $previousStart->addDays($day)->toDateString();
             $trend[] = [
                 'date' => $date,
-                'previous_date' => $previousDate,
-                'current' => (int) ($daily[$date] ?? 0),
-                'previous' => (int) ($daily[$previousDate] ?? 0),
+                'current' => (int) ($dailyOrders[$date] ?? 0),
+                'delivered' => (int) ($dailyDeliveries[$date] ?? 0),
             ];
         }
 
@@ -41,7 +43,7 @@ class DashboardOverview
         $attentionCount = (clone $attention)->count();
         $attention->orderByRaw($isCustomer
             ? "CASE WHEN status = 'completed' THEN 0 WHEN status IN ('partial', 'processing') THEN 1 ELSE 2 END"
-            : "CASE WHEN status = 'submitted' THEN 0 WHEN status = 'reviewing' THEN 1 ELSE 2 END")
+            : "CASE WHEN status = 'submitted' THEN 0 ELSE 1 END")
             ->orderBy('submitted_at')->orderBy('id');
 
         return [
@@ -75,7 +77,7 @@ class DashboardOverview
             'fulfillment' => $items->ordered > 0 ? round($items->delivered / $items->ordered * 100, 1) : null,
             'completed' => (int) ($statuses[PurchaseOrder::STATUS_COMPLETED] ?? 0),
             'stages' => [
-                'review' => (int) ($statuses[PurchaseOrder::STATUS_SUBMITTED] ?? 0) + (int) ($statuses[PurchaseOrder::STATUS_REVIEWING] ?? 0),
+                'submitted' => (int) ($statuses[PurchaseOrder::STATUS_SUBMITTED] ?? 0),
                 'fulfillment' => (int) ($statuses[PurchaseOrder::STATUS_PARTIAL] ?? 0) + (int) ($statuses[PurchaseOrder::STATUS_PROCESSING] ?? 0),
                 'completed' => (int) ($statuses[PurchaseOrder::STATUS_COMPLETED] ?? 0),
                 'cancelled' => (int) ($statuses[PurchaseOrder::STATUS_CANCELLED] ?? 0),

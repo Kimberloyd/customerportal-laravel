@@ -2,9 +2,8 @@ import echo from '@/echo';
 import { router, usePage } from '@inertiajs/react';
 import { useEffect } from 'react';
 
-export function usePurchaseOrderRealtime(orderId = null, { only, onStart, onFinish } = {}) {
+export function useDashboardRealtime({ onStart, onFinish } = {}) {
     const userId = usePage().props.auth?.user?.id;
-    const onlyKey = only ? only.join(',') : '';
 
     useEffect(() => {
         if (!echo || !userId) return undefined;
@@ -14,26 +13,13 @@ export function usePurchaseOrderRealtime(orderId = null, { only, onStart, onFini
         const channel = echo.private(channelName);
         let refreshTimer;
 
-        const refresh = (event) => {
-            if (orderId !== null && Number(event.order_id) !== Number(orderId)) return;
-
+        const refresh = () => {
             window.clearTimeout(refreshTimer);
             refreshTimer = window.setTimeout(() => {
                 router.reload({
-                    only:
-                        only
-                            ?? (orderId === null
-                                ? ['orders']
-                                : [
-                                    'order',
-                                    'canManageFulfillment',
-                                    'canComplete',
-                                    'canCancel',
-                                    'canConfirmReceived',
-                                    'canRequestReturn',
-                                    'canManageReturns',
-                                ]),
+                    only: ['dashboard'],
                     preserveScroll: true,
+                    preserveState: true,
                     onStart,
                     onFinish,
                 });
@@ -48,5 +34,5 @@ export function usePurchaseOrderRealtime(orderId = null, { only, onStart, onFini
             echo.leave(channelName);
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [orderId, userId, onlyKey]);
+    }, [userId]);
 }

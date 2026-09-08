@@ -2,9 +2,9 @@
 // beui.dev/components/motion/animated-badge
 
 import {
-  AlertTriangle,
   Check,
   Circle,
+  CircleAlert,
   Info,
   LoaderCircle,
   X,
@@ -67,7 +67,7 @@ const ICONS: Record<AnimatedBadgeStatus, LucideIcon> = {
   neutral: Circle,
   info: Info,
   success: Check,
-  warning: AlertTriangle,
+  warning: CircleAlert,
   danger: X,
   loading: LoaderCircle,
 };

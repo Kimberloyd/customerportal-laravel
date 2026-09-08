@@ -25,13 +25,6 @@ class PurchaseOrder extends Model
     // drifts in the meantime.
     public const STATUS_SUBMITTED = 'submitted';
 
-    // Not part of the Flask original -- set the first time a staff member
-    // (never the customer) opens a submitted order, so the team can see
-    // at a glance which new orders someone has already started looking
-    // at. Purely informational: it carries no other behavior difference
-    // from "submitted" and updateDeliveryStatus() treats it the same way.
-    public const STATUS_REVIEWING = 'reviewing';
-
     public const STATUS_PARTIAL = 'partial';
 
     public const STATUS_PROCESSING = 'processing';
@@ -40,9 +33,15 @@ class PurchaseOrder extends Model
 
     public const STATUS_CANCELLED = 'cancelled';
 
+    // Not part of the ported Flask state machine (see note above) --
+    // added so a return that wipes out an order's delivered units is
+    // visibly distinct from a never-fulfilled order, instead of both
+    // collapsing to STATUS_SUBMITTED.
+    public const STATUS_RETURNED = 'returned';
+
     public const TERMINAL_STATUSES = [self::STATUS_COMPLETED, self::STATUS_CANCELLED];
 
-    public const IN_PROGRESS_STATUSES = [self::STATUS_PARTIAL, self::STATUS_PROCESSING];
+    public const IN_PROGRESS_STATUSES = [self::STATUS_PARTIAL, self::STATUS_PROCESSING, self::STATUS_RETURNED];
 
     protected function casts(): array
     {
@@ -118,21 +117,31 @@ class PurchaseOrder extends Model
 
         if ($totalDelivered <= 0) {
             $this->completed_at = null;
-            // Don't clobber "reviewing" back to "submitted" on an
-            // unrelated edit (e.g. changing quantities/remarks) made
-            // before fulfillment starts -- that would erase the "someone
-            // already looked at this" signal for no real reason.
-            if ($this->status !== self::STATUS_REVIEWING) {
-                $this->status = self::STATUS_SUBMITTED;
-            }
+            // Nothing is delivered any more, so any earlier "customer
+            // confirmed receipt" no longer holds.
+            $this->customer_received_at = null;
+            $this->status = $this->hasProcessedReturn() ? self::STATUS_RETURNED : self::STATUS_SUBMITTED;
         } elseif ($totalDelivered < $totalOrdered) {
             $this->status = self::STATUS_PARTIAL;
             $this->completed_at = null;
         } else {
-            $this->status = self::STATUS_COMPLETED;
-            if ($this->completed_at === null) {
-                $this->completed_at = now();
-            }
+            // Delivery settlement and order completion are separate business
+            // actions. Once every unit is delivered, staff can review the
+            // result and explicitly close the order.
+            $this->status = self::STATUS_PROCESSING;
+            $this->completed_at = null;
         }
+    }
+
+    /**
+     * Whether a return for this order has ever been approved (or fully
+     * received) -- used to tell "nothing delivered yet" apart from
+     * "everything delivered was returned" when totalDelivered hits zero.
+     */
+    private function hasProcessedReturn(): bool
+    {
+        return $this->returns()
+            ->whereIn('status', [ProductReturn::STATUS_APPROVED, ProductReturn::STATUS_RECEIVED])
+            ->exists();
     }
 }

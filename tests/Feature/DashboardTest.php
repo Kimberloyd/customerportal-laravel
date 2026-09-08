@@ -70,6 +70,7 @@ class DashboardTest extends TestCase
         $completed = $this->makeOrder($customer, PurchaseOrder::STATUS_COMPLETED, '2026-09-01 00:00:00', [
             ['quantity' => 5, 'delivered_quantity' => 5, 'line_total' => 50],
         ]);
+        $completed->update(['completed_at' => '2026-09-05 09:00:00']);
         $this->makeOrder($customer, PurchaseOrder::STATUS_CANCELLED, '2026-09-03 00:00:00', [
             ['quantity' => 100, 'delivered_quantity' => 0, 'line_total' => 999],
         ]);
@@ -97,15 +98,16 @@ class DashboardTest extends TestCase
                 ->where('dashboard.previous.fulfillment', 100)
                 ->where('dashboard.trend.0.date', '2026-09-01')
                 ->where('dashboard.trend.0.current', 1)
-                ->where('dashboard.trend.6.previous', 1)
+                ->where('dashboard.trend.4.delivered', 1)
                 ->where('dashboard.trend', fn ($points) => collect($points)->sum('current') === 3)
+                ->where('dashboard.trend', fn ($points) => collect($points)->sum('delivered') === 1)
                 ->where('dashboard.attention_count', 2)
                 ->where('dashboard.attention.0.id', $completed->id)
                 ->where('dashboard.attention.1.id', $partial->id)
                 ->has('dashboard.recent', 3));
     }
 
-    public function test_company_dashboard_includes_all_customers_and_prioritizes_unreviewed_orders(): void
+    public function test_company_dashboard_includes_all_customers_and_prioritizes_submitted_orders(): void
     {
         $this->freezeTime();
         $agent = User::factory()->create(['role' => 'office']);
@@ -113,7 +115,7 @@ class DashboardTest extends TestCase
         $second = $this->makeCustomer('Second Company');
         $this->makeOrder($first, PurchaseOrder::STATUS_PARTIAL, now()->subDays(4));
         $submitted = $this->makeOrder($second, PurchaseOrder::STATUS_SUBMITTED, now());
-        $old = $this->makeOrder($first, PurchaseOrder::STATUS_REVIEWING, now()->subDays(100));
+        $old = $this->makeOrder($first, PurchaseOrder::STATUS_PARTIAL, now()->subDays(100));
         $this->makeOrder($first, PurchaseOrder::STATUS_COMPLETED, now());
 
         $this->actingAsUser($agent)->get('/dashboard')->assertOk()

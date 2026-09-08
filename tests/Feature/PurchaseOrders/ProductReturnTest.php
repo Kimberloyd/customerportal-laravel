@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\PurchaseOrders;
 
-use App\Http\Controllers\ProductReturnController;
 use App\Models\ProductReturn;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderAudit;
@@ -46,7 +45,7 @@ class ProductReturnTest extends TestCase
         ]);
     }
 
-    public function test_customer_cannot_request_a_return_before_confirming_receipt(): void
+    public function test_customer_can_request_a_return_without_confirming_receipt(): void
     {
         $user = User::factory()->create(['role' => 'customer']);
         $customer = $this->makeCustomer('Own Co', $user);
@@ -55,27 +54,47 @@ class ProductReturnTest extends TestCase
         ]);
         $item = $order->items->first();
 
-        $this->actingAsUser($user)->post(route('purchase-orders.returns.store', $order), [
+        $response = $this->actingAsUser($user)->post(route('purchase-orders.returns.store', $order), [
             'reason' => 'The delivered packaging was damaged.',
             'items' => [['purchase_order_item_id' => $item->id, 'quantity' => 1]],
-        ])->assertSessionHas('error', 'Returns can be requested after the completed order has been confirmed as received.');
+        ]);
 
-        $this->assertDatabaseCount('product_returns', 0);
+        $response->assertSessionHas('success', 'Return request sent. Our team will review it.');
+        $this->assertDatabaseCount('product_returns', 1);
     }
 
-    public function test_customer_cannot_request_a_return_after_the_policy_window(): void
+    public function test_customer_can_request_a_return_for_a_partially_delivered_order(): void
+    {
+        $user = User::factory()->create(['role' => 'customer']);
+        $customer = $this->makeCustomer('Own Co', $user);
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_PARTIAL, now(), [
+            ['product_id' => $this->makeProduct()->id, 'quantity' => 5, 'delivered_quantity' => 2],
+        ]);
+        $item = $order->items->first();
+
+        $response = $this->actingAsUser($user)->post(route('purchase-orders.returns.store', $order), [
+            'reason' => 'One of the delivered units arrived damaged.',
+            'items' => [['purchase_order_item_id' => $item->id, 'quantity' => 1]],
+        ]);
+
+        $response->assertSessionHas('success', 'Return request sent. Our team will review it.');
+        $this->assertDatabaseCount('product_returns', 1);
+    }
+
+    public function test_customer_can_request_a_return_regardless_of_how_long_ago_it_was_delivered(): void
     {
         [$user, $order] = $this->receivedOrder();
-        $order->customer_received_at = now()->subDays(ProductReturnController::RETURN_WINDOW_DAYS + 1);
+        $order->customer_received_at = now()->subDays(365);
         $order->save();
         $item = $order->items->first();
 
-        $this->actingAsUser($user)->post(route('purchase-orders.returns.store', $order), [
+        $response = $this->actingAsUser($user)->post(route('purchase-orders.returns.store', $order), [
             'reason' => 'The delivered packaging was damaged.',
             'items' => [['purchase_order_item_id' => $item->id, 'quantity' => 1]],
-        ])->assertSessionHas('error', 'The 7-day return request window for this order has ended. Contact our team for help.');
+        ]);
 
-        $this->assertDatabaseCount('product_returns', 0);
+        $response->assertSessionHas('success', 'Return request sent. Our team will review it.');
+        $this->assertDatabaseCount('product_returns', 1);
     }
 
     public function test_customer_cannot_request_more_than_the_delivered_quantity(): void
@@ -129,6 +148,7 @@ class ProductReturnTest extends TestCase
 
         $this->assertSame(ProductReturn::STATUS_APPROVED, $return->fresh()->status);
         $this->assertSame($staff->id, $return->fresh()->reviewed_by_user_id);
+        $this->assertSame(1, $item->fresh()->delivered_quantity);
 
         $this->actingAsUser($staff)->put(route('purchase-orders.returns.update', $return), [
             'status' => ProductReturn::STATUS_RECEIVED,
@@ -142,6 +162,48 @@ class ProductReturnTest extends TestCase
                 ->where('action', 'Return Received')
                 ->count(),
         );
+    }
+
+    public function test_approving_a_return_reopens_a_completed_order_for_redelivery(): void
+    {
+        [$customerUser, $order] = $this->receivedOrder();
+        $item = $order->items->first();
+        $this->actingAsUser($customerUser)->post(route('purchase-orders.returns.store', $order), [
+            'reason' => 'The delivered packaging was damaged.',
+            'items' => [['purchase_order_item_id' => $item->id, 'quantity' => 2]],
+        ]);
+        $return = ProductReturn::firstOrFail();
+        $staff = User::factory()->create(['role' => 'office']);
+
+        $this->actingAsUser($staff)->put(route('purchase-orders.returns.update', $return), [
+            'status' => ProductReturn::STATUS_APPROVED,
+        ]);
+
+        $freshItem = $item->fresh();
+        $this->assertSame(1, $freshItem->delivered_quantity);
+        $this->assertSame(2, $freshItem->pending_quantity);
+        $this->assertSame(PurchaseOrder::STATUS_PARTIAL, $order->fresh()->status);
+    }
+
+    public function test_returning_every_delivered_unit_marks_the_order_returned_instead_of_submitted(): void
+    {
+        [$customerUser, $order] = $this->receivedOrder();
+        $item = $order->items->first();
+        $this->actingAsUser($customerUser)->post(route('purchase-orders.returns.store', $order), [
+            'reason' => 'The entire delivered batch was damaged.',
+            'items' => [['purchase_order_item_id' => $item->id, 'quantity' => 3]],
+        ]);
+        $return = ProductReturn::firstOrFail();
+        $staff = User::factory()->create(['role' => 'office']);
+
+        $this->actingAsUser($staff)->put(route('purchase-orders.returns.update', $return), [
+            'status' => ProductReturn::STATUS_APPROVED,
+        ]);
+
+        $freshOrder = $order->fresh();
+        $this->assertSame(0, $item->fresh()->delivered_quantity);
+        $this->assertSame(PurchaseOrder::STATUS_RETURNED, $freshOrder->status);
+        $this->assertNull($freshOrder->customer_received_at);
     }
 
     public function test_staff_must_explain_a_rejection_and_customers_cannot_review_returns(): void
@@ -166,7 +228,7 @@ class ProductReturnTest extends TestCase
         $this->assertSame(ProductReturn::STATUS_REQUESTED, $return->fresh()->status);
     }
 
-    public function test_customer_page_exposes_return_policy_and_only_eligible_return_action(): void
+    public function test_customer_page_exposes_only_eligible_return_action(): void
     {
         [$user, $order] = $this->receivedOrder();
 
@@ -174,7 +236,6 @@ class ProductReturnTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->where('canRequestReturn', true)
                 ->where('canManageReturns', false)
-                ->where('returnPolicy.window_days', ProductReturnController::RETURN_WINDOW_DAYS)
                 ->has('order.returns', 0)
                 ->where('order.items.0.returnable_quantity', 3));
     }

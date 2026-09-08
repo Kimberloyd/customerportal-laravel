@@ -80,6 +80,7 @@ docker compose exec app php artisan migrate --force --path=database/migrations/2
 docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_08_000000_replace_employee_role_with_office_and_agent.php
 docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_08_010000_add_soft_deletes_to_purchase_orders.php
 docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_08_020000_create_failed_jobs_table.php
+docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_08_030000_remove_reviewing_order_status.php
 ```
 
 Each migration guards pre-existing tables or columns and Laravel records which targeted changes have already run. The role migration converts every legacy `employee` account to `agent`; assign company-wide operational users to `office` after deployment. The order archival migration adds `deleted_at`, which is required before the updated order model can serve requests.

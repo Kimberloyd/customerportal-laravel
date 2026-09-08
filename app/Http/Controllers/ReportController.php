@@ -177,8 +177,7 @@ class ReportController extends Controller
         if ($statusFilter === 'partial') {
             $query->whereIn('status', PurchaseOrder::IN_PROGRESS_STATUSES);
         } elseif ($statusFilter === PurchaseOrder::STATUS_SUBMITTED) {
-            // "Reviewing" is a flavor of "submitted" -- see buildStatusMix().
-            $query->whereIn('status', [PurchaseOrder::STATUS_SUBMITTED, PurchaseOrder::STATUS_REVIEWING]);
+            $query->where('status', PurchaseOrder::STATUS_SUBMITTED);
         } elseif (in_array($statusFilter, [
             PurchaseOrder::STATUS_COMPLETED, PurchaseOrder::STATUS_CANCELLED,
         ], true)) {
@@ -387,11 +386,7 @@ class ReportController extends Controller
             PurchaseOrder::STATUS_CANCELLED => 'Cancelled',
         ];
         $counts = [
-            // "Reviewing" is a flavor of "submitted" (see the model
-            // constant's docblock) -- bucketed together so it doesn't
-            // silently vanish from the mix once any order reaches it.
-            PurchaseOrder::STATUS_SUBMITTED => (int) ($statusCounts[PurchaseOrder::STATUS_SUBMITTED] ?? 0)
-                + (int) ($statusCounts[PurchaseOrder::STATUS_REVIEWING] ?? 0),
+            PurchaseOrder::STATUS_SUBMITTED => (int) ($statusCounts[PurchaseOrder::STATUS_SUBMITTED] ?? 0),
             'partial' => (int) collect(PurchaseOrder::IN_PROGRESS_STATUSES)->sum(fn ($s) => $statusCounts[$s] ?? 0),
             PurchaseOrder::STATUS_COMPLETED => (int) ($statusCounts[PurchaseOrder::STATUS_COMPLETED] ?? 0),
             PurchaseOrder::STATUS_CANCELLED => (int) ($statusCounts[PurchaseOrder::STATUS_CANCELLED] ?? 0),

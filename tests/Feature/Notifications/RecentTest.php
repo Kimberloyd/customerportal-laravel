@@ -44,7 +44,7 @@ class RecentTest extends TestCase
         $this->assertSame(1, $response->json('count'));
         $this->assertCount(1, $response->json('notifications'));
         $this->assertSame(
-            "Order received. We'll review it shortly.",
+            "Order received. We'll prepare it for fulfillment.",
             $response->json('notifications.0.note'),
         );
     }
@@ -71,8 +71,8 @@ class RecentTest extends TestCase
         $response->assertOk();
         $this->assertSame(2, $response->json('count'));
         $messages = collect($response->json('notifications'))->pluck('note');
-        $this->assertTrue($messages->contains('New order from A Co — ready for review.'));
-        $this->assertTrue($messages->contains('New order from B Co — ready for review.'));
+        $this->assertTrue($messages->contains('New order from A Co — ready for fulfillment.'));
+        $this->assertTrue($messages->contains('New order from B Co — ready for fulfillment.'));
     }
 
     public function test_customer_and_staff_receive_copy_written_for_their_roles(): void
@@ -98,21 +98,22 @@ class RecentTest extends TestCase
             ->getJson(route('notifications.recent'))
             ->json('notifications.0.note');
 
-        $this->assertSame("Order received. We'll review it shortly.", $customerMessage);
-        $this->assertSame('New order from Customer Hospital — ready for review.', $staffMessage);
+        $this->assertSame("Order received. We'll prepare it for fulfillment.", $customerMessage);
+        $this->assertSame('New order from Customer Hospital — ready for fulfillment.', $staffMessage);
         $this->assertNotSame($customerMessage, $staffMessage);
     }
 
     public function test_a_fresh_order_event_shows_up_in_the_feed(): void
     {
         $staff = User::factory()->create(['role' => 'office']);
-        $customer = $this->makeCustomer();
+        $customerUser = User::factory()->create(['role' => 'customer']);
+        $customer = $this->makeCustomer('Acme Co', $customerUser);
         $product = $this->makeProduct();
-        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
-            ['product_id' => $product->id, 'quantity' => 5],
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_PROCESSING, now(), [
+            ['product_id' => $product->id, 'quantity' => 5, 'delivered_quantity' => 5],
         ]);
 
-        $this->actingAsUser($staff)->post("/orders/{$order->id}/complete");
+        $this->actingAsUser($customerUser)->post("/orders/{$order->id}/complete");
 
         $response = $this->actingAsUser($staff)->getJson(route('notifications.recent'));
 

@@ -53,7 +53,7 @@ class OrderNotificationFeed
         }
 
         if (str_starts_with($note, 'Order received')) {
-            return "New order from {$customerName} — ready for review.";
+            return "New order from {$customerName} — ready for fulfillment.";
         }
 
         if ($note === 'All ordered quantities have been delivered.') {

@@ -53,7 +53,7 @@ class ReceiveTest extends TestCase
         $response->assertSessionHas('error', 'Enter a received quantity for at least one product.');
     }
 
-    public function test_status_transitions_submitted_to_partial_to_completed(): void
+    public function test_status_transitions_submitted_to_partial_to_ready_to_complete(): void
     {
         $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
@@ -72,8 +72,8 @@ class ReceiveTest extends TestCase
             "received_{$item->id}" => 6,
         ]);
         $order->refresh();
-        $this->assertSame(PurchaseOrder::STATUS_COMPLETED, $order->status);
-        $this->assertNotNull($order->completed_at);
+        $this->assertSame(PurchaseOrder::STATUS_PROCESSING, $order->status);
+        $this->assertNull($order->completed_at);
     }
 
     public function test_audit_details_lists_only_items_that_received_units(): void

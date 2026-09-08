@@ -3,7 +3,7 @@
 
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { motion, useReducedMotion } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Checkbox } from "@/components/motion/checkbox";
 import { Skeleton } from "@/components/loading-ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -212,7 +212,6 @@ export function Table<T>({
   const activeRowEl = activeRow ? rowRefs.current[activeRow.id] : null;
 
   const [hoveredRowIndex, setHoveredRowIndex] = useState<number | null>(null);
-  // Real columns + checkbox; the trailing spacer adds one more in colSpans.
   const leadColumns = columns.length + (selectable ? 1 : 0);
 
   if (loading) {
@@ -279,8 +278,6 @@ export function Table<T>({
                 <col key={column.key} style={width ? { width } : undefined} />
               );
             })}
-            {/* Empty filler owns the leftover space — no gap, content unpinned. */}
-            <col />
           </colgroup>
 
           <TableHeader
@@ -317,7 +314,7 @@ export function Table<T>({
               loading ? null : (
                 <tr>
                   <td
-                    colSpan={leadColumns + 1}
+                    colSpan={leadColumns}
                     style={
                       emptyStateHeight == null
                         ? undefined
@@ -333,7 +330,7 @@ export function Table<T>({
               <>
                 {paddingTop > 0 ? (
                   <tr aria-hidden style={{ height: paddingTop }}>
-                    <td colSpan={leadColumns + 1} />
+                    <td colSpan={leadColumns} />
                   </tr>
                 ) : null}
                 {virtualItems.map((vItem) => {
@@ -376,34 +373,47 @@ export function Table<T>({
                           </div>
                         </td>
                       ) : null}
-                      {orderedColumns.map((column) => (
-                        <td
-                          key={column.key}
-                          className={cn(
-                            "truncate px-4 text-foreground",
-                            alignText(column.align),
-                          )}
-                        >
-                          {!column.cell && column.editable ? (
-                            <EditableCell
-                              value={String(readCell(entry.row, column) ?? "")}
-                              label={`${column.key} for row ${vItem.index + 1}`}
-                              onChange={(next) =>
-                                onCellEdit?.(entry.id, column.key, next)
-                              }
-                            />
-                          ) : (
-                            readCell(entry.row, column)
-                          )}
-                        </td>
-                      ))}
-                      <td aria-hidden />
+                      {(() => {
+                        const cells: ReactNode[] = [];
+                        let skip = 0;
+                        orderedColumns.forEach((column) => {
+                          if (skip > 0) {
+                            skip -= 1;
+                            return;
+                          }
+                          const span = column.spanRow?.(entry.row) ?? 1;
+                          if (span > 1) skip = span - 1;
+                          cells.push(
+                            <td
+                              key={column.key}
+                              colSpan={span > 1 ? span : undefined}
+                              className={cn(
+                                "truncate px-4 text-foreground",
+                                alignText(column.align),
+                              )}
+                            >
+                              {!column.cell && column.editable ? (
+                                <EditableCell
+                                  value={String(readCell(entry.row, column) ?? "")}
+                                  label={`${column.key} for row ${vItem.index + 1}`}
+                                  onChange={(next) =>
+                                    onCellEdit?.(entry.id, column.key, next)
+                                  }
+                                />
+                              ) : (
+                                readCell(entry.row, column)
+                              )}
+                            </td>,
+                          );
+                        });
+                        return cells;
+                      })()}
                     </tr>
                   );
                 })}
                 {paddingBottom > 0 ? (
                   <tr aria-hidden style={{ height: paddingBottom }}>
-                    <td colSpan={leadColumns + 1} />
+                    <td colSpan={leadColumns} />
                   </tr>
                 ) : null}
               </>

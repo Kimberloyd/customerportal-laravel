@@ -1,41 +1,58 @@
 import { Button } from '@/components/ui/button';
+import { Dropdown } from '@/components/interior/dropdown';
 import { AutoHeightReveal, Modal } from '@/components/interior/modal';
+import { AnimatedBadge } from '@/components/motion/animated-badge';
+import { Input } from '@/components/motion/input';
+import { Table } from '@/components/motion/table';
 import { formatDateTime } from '@/utils/orderDisplay';
 import { router, useForm } from '@inertiajs/react';
+import { Check, Minus, MoreHorizontal, PackageCheck, Plus, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
-const STATUS_COPY = {
-    requested: { label: 'Awaiting review', className: 'bg-amber-50 text-amber-800 ring-amber-200' },
-    approved: { label: 'Approved', className: 'bg-blue-50 text-blue-800 ring-blue-200' },
-    rejected: { label: 'Not approved', className: 'bg-red-50 text-red-800 ring-red-200' },
-    received: { label: 'Received', className: 'bg-green-50 text-green-800 ring-green-200' },
+const RETURN_STATUS_COPY = {
+    requested: { label: 'Awaiting review', status: 'warning' },
+    approved: { label: 'Approved', status: 'info' },
+    rejected: { label: 'Not approved', status: 'danger' },
+    received: { label: 'Received', status: 'success' },
 };
 
-function StatusPill({ status }) {
-    const copy = STATUS_COPY[status] ?? { label: status, className: 'bg-gray-50 text-gray-700 ring-gray-200' };
-
-    return (
-        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${copy.className}`}>
-            {copy.label}
-        </span>
-    );
+function returnStatusBadge(status) {
+    return RETURN_STATUS_COPY[status] ?? { label: status, status: 'neutral' };
 }
 
-function RequestReturnModal({ open, onClose, order, returnPolicy }) {
+const TABLE_ROW_HEIGHT = 48;
+const TABLE_MAX_HEIGHT = 440;
+
+function autoTableHeight(rowCount) {
+    return rowCount === 0
+        ? 160
+        : Math.min(TABLE_MAX_HEIGHT, (rowCount + 1) * TABLE_ROW_HEIGHT);
+}
+
+function RequestReturnModal({ open, onClose, order, presetItemId }) {
     const returnableItems = useMemo(
         () => order.items.filter((item) => item.returnable_quantity > 0),
         [order.items],
     );
-    const { data, setData, post, processing, reset } = useForm({
+    const { data, setData, post, processing, reset, transform } = useForm({
         reason: '',
         items: [],
     });
 
+    transform((formData) => ({
+        ...formData,
+        items: formData.items.filter((line) => Number(line.quantity) > 0),
+    }));
+
     useEffect(() => {
         if (!open) return;
         reset('reason');
-        setData('items', returnableItems.map((item) => ({ purchase_order_item_id: item.id, quantity: 0 })));
-    }, [open, reset, returnableItems, setData]);
+        setData('items', returnableItems.map((item) => ({
+            purchase_order_item_id: item.id,
+            quantity: item.id === presetItemId ? item.returnable_quantity : 0,
+        })));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, presetItemId, reset, returnableItems, setData]);
 
     const updateQuantity = (itemId, raw) => {
         const item = returnableItems.find((candidate) => candidate.id === itemId);
@@ -59,14 +76,29 @@ function RequestReturnModal({ open, onClose, order, returnPolicy }) {
             open={open}
             onClose={onClose}
             title="Request a product return"
-            description={`Select delivered products to return. Requests must be made within ${returnPolicy.window_days} days after receipt.`}
-            maxWidth={620}
+            description="Select delivered products to return."
+            maxWidth={840}
             closeOnBackdrop={!processing}
             closeOnEscape={!processing}
             footer={
                 <>
-                    <Button type="button" variant="tertiary" onClick={onClose} disabled={processing}>Cancel</Button>
-                    <Button type="submit" form="return-request-form" loading={processing}>Send request</Button>
+                    <Button
+                        type="button"
+                        variant="tertiary"
+                        className="h-10 rounded-md px-5 text-sm"
+                        onClick={onClose}
+                        disabled={processing}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        type="submit"
+                        form="return-request-form"
+                        className="h-10 rounded-md px-5 text-sm"
+                        loading={processing}
+                    >
+                        Send request
+                    </Button>
                 </>
             }
         >
@@ -75,23 +107,64 @@ function RequestReturnModal({ open, onClose, order, returnPolicy }) {
                     <div className="overflow-hidden rounded-lg border border-border">
                         {returnableItems.map((item) => {
                             const line = data.items.find((candidate) => candidate.purchase_order_item_id === item.id);
+                            const quantity = Number(line?.quantity) || 0;
+                            const product = [item.display_name, item.generic_name, item.dosage]
+                                .filter(Boolean)
+                                .join(' ');
                             return (
-                                <div key={item.id} className="grid grid-cols-[1fr_96px] items-center gap-4 border-b border-border px-4 py-3 last:border-b-0">
-                                    <div>
-                                        <p className="font-medium text-foreground">{item.display_name}</p>
+                                <div key={item.id} className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-border px-4 py-3 last:border-b-0">
+                                    <div className="min-w-0">
+                                        <p className="truncate font-medium text-foreground" title={product}>{product}</p>
                                         <p className="text-sm text-muted-foreground">Up to {item.returnable_quantity} delivered unit(s) can be returned.</p>
                                     </div>
-                                    <label className="space-y-1 text-sm font-medium text-foreground">
-                                        <span className="sr-only">Return quantity for {item.display_name}</span>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max={item.returnable_quantity}
-                                            value={line?.quantity ?? 0}
-                                            onChange={(event) => updateQuantity(item.id, event.target.value)}
-                                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                        />
-                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <label className="text-sm font-medium text-foreground">
+                                            <span className="sr-only">Return quantity for {product}</span>
+                                            <Input
+                                                type="number"
+                                                min={0}
+                                                max={item.returnable_quantity}
+                                                value={line?.quantity ?? 0}
+                                                onChange={(value) => updateQuantity(item.id, value)}
+                                                leftIcon={
+                                                    <button
+                                                        type="button"
+                                                        disabled={quantity <= 0}
+                                                        onClick={() => updateQuantity(item.id, String(Math.max(0, quantity - 1)))}
+                                                        aria-label={`Decrease return quantity for ${product}`}
+                                                        className="pointer-events-auto grid h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-gray-100 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                                                    >
+                                                        <Minus className="h-3.5 w-3.5" />
+                                                    </button>
+                                                }
+                                                rightIcon={
+                                                    <button
+                                                        type="button"
+                                                        disabled={quantity >= item.returnable_quantity}
+                                                        onClick={() => updateQuantity(item.id, String(Math.min(item.returnable_quantity, quantity + 1)))}
+                                                        aria-label={`Increase return quantity for ${product}`}
+                                                        className="grid h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-gray-100 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                                                    >
+                                                        <Plus className="h-3.5 w-3.5" />
+                                                    </button>
+                                                }
+                                                classNames={{
+                                                    field: 'h-9 w-auto rounded-md',
+                                                    input: 'w-20 min-w-[5rem] !pl-6 !pr-6 text-center [appearance:textfield] [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
+                                                    leftIcon: 'pointer-events-auto left-0.5',
+                                                    rightIcon: 'right-0.5 [&_button]:size-6',
+                                                }}
+                                            />
+                                        </label>
+                                        <button
+                                            type="button"
+                                            disabled={quantity >= item.returnable_quantity}
+                                            onClick={() => updateQuantity(item.id, String(item.returnable_quantity))}
+                                            className="h-9 shrink-0 rounded px-2 text-xs font-medium text-primary hover:bg-primary/10 disabled:pointer-events-none disabled:opacity-40"
+                                        >
+                                            Max
+                                        </button>
+                                    </div>
                                 </div>
                             );
                         })}
@@ -159,8 +232,22 @@ function ReviewReturnModal({ action, onClose }) {
             closeOnEscape={!processing}
             footer={
                 <>
-                    <Button type="button" variant="tertiary" onClick={onClose} disabled={processing}>Cancel</Button>
-                    <Button type="submit" form="review-return-form" variant={isRejecting ? 'destructive' : 'primary'} loading={processing}>
+                    <Button
+                        type="button"
+                        variant="tertiary"
+                        className="h-10 rounded-md px-5 text-sm"
+                        onClick={onClose}
+                        disabled={processing}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        type="submit"
+                        form="review-return-form"
+                        variant={isRejecting ? 'destructive' : 'primary'}
+                        className="h-10 rounded-md px-5 text-sm"
+                        loading={processing}
+                    >
                         {confirmLabel}
                     </Button>
                 </>
@@ -189,71 +276,160 @@ function ReviewReturnModal({ action, onClose }) {
     );
 }
 
-export default function ProductReturnPanel({ order, canRequestReturn, canManageReturns, returnPolicy }) {
+export default function ProductReturnPanel({
+    order,
+    canRequestReturn,
+    canManageReturns,
+    openReturnItemId = null,
+    onOpenReturnItemHandled,
+}) {
     const [requestOpen, setRequestOpen] = useState(false);
+    const [presetItemId, setPresetItemId] = useState(null);
     const [action, setAction] = useState(null);
     const returns = order.returns ?? [];
 
+    useEffect(() => {
+        if (openReturnItemId == null) return;
+        setPresetItemId(openReturnItemId === 'blank' ? null : openReturnItemId);
+        setRequestOpen(true);
+        onOpenReturnItemHandled?.();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [openReturnItemId]);
+    const columns = useMemo(() => [
+        {
+            key: 'items',
+            header: 'Products',
+            cell: (returnRequest) => {
+                const products = returnRequest.items
+                    .map((item) => `${item.display_name} × ${item.quantity}`)
+                    .join(', ');
+
+                return <span title={products}>{products}</span>;
+            },
+        },
+        {
+            key: 'reason',
+            header: 'Reason',
+            cell: (returnRequest) => <span title={returnRequest.reason}>{returnRequest.reason}</span>,
+        },
+        {
+            key: 'status',
+            header: 'Status',
+            width: '150px',
+            cell: (returnRequest) => {
+                const badge = returnStatusBadge(returnRequest.status);
+                return (
+                    <div className="flex justify-start">
+                        <AnimatedBadge
+                            status={badge.status}
+                            size="sm"
+                            pulse={false}
+                            className="border-0 bg-transparent px-0 shadow-none"
+                        >
+                            {badge.label}
+                        </AnimatedBadge>
+                    </div>
+                );
+            },
+        },
+        {
+            key: 'requested_at',
+            header: 'Requested',
+            width: '190px',
+            cell: (returnRequest) => formatDateTime(returnRequest.requested_at),
+        },
+        {
+            key: 'details',
+            header: 'Resolution',
+            width: '240px',
+            cell: (returnRequest) => {
+                const summary = returnRequest.review_note || '—';
+
+                return <span className="text-muted-foreground" title={summary}>{summary}</span>;
+            },
+        },
+        ...(canManageReturns
+            ? [{
+                key: 'actions',
+                header: '',
+                width: '56px',
+                cell: (returnRequest) => {
+                    const items = [];
+
+                    if (returnRequest.status === 'requested') {
+                        items.push({
+                            value: 'approve',
+                            label: 'Approve',
+                            icon: <Check />,
+                            onSelect: () => setAction({ returnRequest, status: 'approved' }),
+                        });
+                        items.push({
+                            value: 'decline',
+                            label: 'Decline',
+                            icon: <X />,
+                            onSelect: () => setAction({ returnRequest, status: 'rejected' }),
+                            destructive: true,
+                        });
+                    } else if (returnRequest.status === 'approved') {
+                        items.push({
+                            value: 'received',
+                            label: 'Record received',
+                            icon: <PackageCheck />,
+                            onSelect: () => setAction({ returnRequest, status: 'received' }),
+                        });
+                    }
+
+                    if (items.length === 0) {
+                        return <span className="text-muted-foreground">—</span>;
+                    }
+
+                    return (
+                        <div className="flex items-center">
+                            <Dropdown
+                                items={items}
+                                value=""
+                                onChange={(action) => items.find((item) => item.value === action)?.onSelect()}
+                                label={`Actions for return request ${returnRequest.id}`}
+                                trigger={<MoreHorizontal />}
+                                align="right"
+                                portal
+                                triggerClassName="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&_svg]:h-5 [&_svg]:w-5"
+                            />
+                        </div>
+                    );
+                },
+            }]
+            : []),
+    ], [canManageReturns]);
+
     return (
-        <section className="rounded-xl border border-border bg-card">
-            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border px-6 py-5">
+        <section>
+            <div className="mb-3 flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <h3 className="type-section-heading text-foreground">Product returns</h3>
                     <p className="mt-1 text-sm text-muted-foreground">
                         {canManageReturns
                             ? 'Review customer return requests and record products once received.'
-                            : `Return requests are available for ${returnPolicy.window_days} days after delivery is confirmed.`}
+                            : 'Return requests are available anytime after a product has been delivered.'}
                     </p>
                 </div>
-                {canRequestReturn && <Button onClick={() => setRequestOpen(true)}>Request return</Button>}
             </div>
 
-            {returns.length === 0 ? (
-                <p className="px-6 py-6 text-sm text-muted-foreground">No return requests for this order.</p>
-            ) : (
-                <div className="divide-y divide-border">
-                    {returns.map((returnRequest) => (
-                        <article key={returnRequest.id} className="space-y-3 px-6 py-5">
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                                <div className="flex items-center gap-3">
-                                    <StatusPill status={returnRequest.status} />
-                                    <p className="text-sm text-muted-foreground">Requested {formatDateTime(returnRequest.requested_at)}</p>
-                                </div>
-                                {canManageReturns && returnRequest.status === 'requested' && (
-                                    <div className="flex gap-2">
-                                        <Button size="compact" variant="tertiary" onClick={() => setAction({ returnRequest, status: 'rejected' })}>Decline</Button>
-                                        <Button size="compact" onClick={() => setAction({ returnRequest, status: 'approved' })}>Approve</Button>
-                                    </div>
-                                )}
-                                {canManageReturns && returnRequest.status === 'approved' && (
-                                    <Button size="compact" onClick={() => setAction({ returnRequest, status: 'received' })}>Record received</Button>
-                                )}
-                            </div>
-                            <p className="text-sm text-foreground"><span className="font-medium">Reason:</span> {returnRequest.reason}</p>
-                            <p className="text-sm text-muted-foreground">
-                                {returnRequest.items.map((item) => `${item.display_name}: ${item.quantity} unit(s)`).join(' · ')}
-                            </p>
-                            {returnRequest.review_note && (
-                                <p className="rounded-md bg-muted px-3 py-2 text-sm text-foreground">
-                                    <span className="font-medium">Staff note:</span> {returnRequest.review_note}
-                                </p>
-                            )}
-                            {canManageReturns && returnRequest.reviewed_at && (
-                                <p className="text-xs text-muted-foreground">Reviewed {formatDateTime(returnRequest.reviewed_at)}{returnRequest.reviewed_by_name ? ` by ${returnRequest.reviewed_by_name}` : ''}</p>
-                            )}
-                            {canManageReturns && returnRequest.received_at && (
-                                <p className="text-xs text-muted-foreground">Received {formatDateTime(returnRequest.received_at)}{returnRequest.received_by_name ? ` by ${returnRequest.received_by_name}` : ''}</p>
-                            )}
-                        </article>
-                    ))}
-                </div>
-            )}
+            <Table
+                data={returns}
+                columns={columns}
+                getRowId={(returnRequest) => String(returnRequest.id)}
+                className="border-gray-200 [&>div]:overflow-hidden"
+                height={autoTableHeight(returns.length)}
+                resizable
+                emptyState="No return requests for this order."
+            />
 
             <RequestReturnModal
                 open={requestOpen}
                 onClose={() => setRequestOpen(false)}
                 order={order}
-                returnPolicy={returnPolicy}
+                presetItemId={presetItemId}
             />
             <ReviewReturnModal action={action} onClose={() => setAction(null)} />
         </section>

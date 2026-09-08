@@ -111,6 +111,8 @@ trait CreatesOrderFixtures
             if ($row['id'] === $productId) {
                 return $item + [
                     'product_name' => $row['name'],
+                    'generic_name' => $row['generic'],
+                    'dosage' => $row['dosage'],
                     'sku' => $row['sku'],
                     'unit' => $row['unit_type'],
                     'description' => $row['description'],

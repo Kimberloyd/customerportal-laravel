@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { AttentionPanel, MetricCard, OrderStages, RecentOrders } from '@/components/dashboard/OverviewPanels';
 import OrderTrend from '@/components/dashboard/OrderTrend';
+import { useDashboardRealtime } from '@/hooks/useDashboardRealtime';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowDownToLine, ArrowRight, CalendarDays, CheckCheck, Clock3, Package, RefreshCw } from 'lucide-react';
 import { MotionConfig, motion, useReducedMotion } from 'motion/react';
@@ -13,6 +14,7 @@ export default function Dashboard({ dashboard, workspace }) {
     const { auth } = usePage().props;
     const reducedMotion = useReducedMotion();
     const [loading, setLoading] = useState(false);
+    useDashboardRealtime({ onStart: () => setLoading(true), onFinish: () => setLoading(false) });
     const customer = workspace.is_customer;
     const { current, previous, period } = dashboard;
     const firstName = auth.user.full_name?.trim().split(/\s+/)[0] || 'there';
@@ -28,7 +30,7 @@ export default function Dashboard({ dashboard, workspace }) {
     });
     const metrics = [
         { label: customer ? 'Orders placed' : 'Orders received', value: number.format(current.orders), previous: number.format(previous.orders), icon: Package, note: 'All orders in this period', href: ordersUrl },
-        { label: 'Orders in progress', value: number.format(current.stages.review + current.stages.fulfillment), previous: number.format(previous.stages.review + previous.stages.fulfillment), icon: Clock3, note: 'Awaiting review or full delivery', href: `${ordersUrl}&status=active` },
+        { label: 'Orders in progress', value: number.format(current.stages.submitted + current.stages.fulfillment), previous: number.format(previous.stages.submitted + previous.stages.fulfillment), icon: Clock3, note: 'Awaiting fulfillment or full delivery', href: `${ordersUrl}&status=active` },
         { label: 'Completed orders', value: number.format(current.completed), previous: number.format(previous.completed), icon: CheckCheck, note: 'From orders placed in this period', href: `${ordersUrl}&status=completed` },
         { label: customer ? 'Your delivery progress' : 'Quantity fulfilled', value: current.fulfillment === null ? '—' : `${number.format(current.fulfillment)}%`, previous: previous.fulfillment === null ? 'No quantities' : `${number.format(previous.fulfillment)}%`, icon: ArrowDownToLine, note: `${number.format(current.delivered_units)} of ${number.format(current.ordered_units)} units delivered`, href: ordersUrl },
     ];
@@ -60,10 +62,10 @@ export default function Dashboard({ dashboard, workspace }) {
                             <motion.div {...enter(0.2)} className="grid grid-cols-1 gap-5 lg:grid-cols-3">
                                 <section aria-labelledby="order-trend-heading" className="min-w-0 rounded-2xl border border-stone-200/80 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.02)] lg:col-span-2 dark:border-white/10 dark:bg-[#1d1e22]">
                                     <div className="flex flex-wrap items-start justify-between gap-3 px-5 pt-5 sm:px-6">
-                                        <div><h2 id="order-trend-heading" className="type-section-heading text-stone-900 dark:text-stone-100">Order activity</h2><p className="mt-1 text-sm text-stone-500 dark:text-stone-400">Daily orders vs. the previous {period} days.</p></div>
+                                        <div><h2 id="order-trend-heading" className="type-section-heading text-stone-900 dark:text-stone-100">Order activity</h2><p className="mt-1 text-sm text-stone-500 dark:text-stone-400">Daily orders placed and completed deliveries.</p></div>
                                         {workspace.can_order && <Link href={ordersUrl} className="inline-flex items-center gap-1.5 rounded text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-indigo-300">View orders <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>}
                                     </div>
-                                    <OrderTrend trend={dashboard.trend} empty={current.orders === 0 && previous.orders === 0} reducedMotion={reducedMotion} />
+                                    <OrderTrend trend={dashboard.trend} empty={dashboard.trend.every((point) => point.current === 0 && point.delivered === 0)} reducedMotion={reducedMotion} />
                                     <OrderStages current={current} previous={previous} ordersUrl={ordersUrl} reducedMotion={reducedMotion} />
                                 </section>
                                 <AttentionPanel orders={dashboard.attention} count={dashboard.attention_count} customer={customer} reducedMotion={reducedMotion} canOrder={workspace.can_order} />

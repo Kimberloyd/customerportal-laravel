@@ -179,6 +179,32 @@ class EditTest extends TestCase
         $this->assertDatabaseHas('purchase_order_items', ['id' => $deliveredItem->id]);
     }
 
+    public function test_modal_cannot_change_the_quantity_of_a_product_with_delivered_units(): void
+    {
+        $staff = User::factory()->create(['role' => 'office']);
+        $customer = $this->makeCustomer();
+        $deliveredProduct = $this->makeProduct('Delivered product', ['id' => 43]);
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_PARTIAL, now(), [
+            ['product_id' => $deliveredProduct->id, 'quantity' => 2, 'delivered_quantity' => 1],
+        ]);
+        $item = $order->items->first();
+
+        $response = $this->actingAsUser($staff)->post("/orders/{$order->id}", [
+            '_method' => 'put',
+            'customer_id' => $customer->id,
+            'remarks' => '',
+            'items' => [
+                ['id' => $item->id, 'product_id' => null, 'quantity' => 5],
+            ],
+        ]);
+
+        $response->assertSessionHas(
+            'error',
+            'Delivered product cannot be edited because 1 unit(s) have already been delivered.',
+        );
+        $this->assertSame(2, $item->fresh()->quantity);
+    }
+
     public function test_modal_rejects_an_item_id_from_another_order(): void
     {
         $staff = User::factory()->create(['role' => 'office']);
@@ -293,7 +319,7 @@ class EditTest extends TestCase
         );
     }
 
-    public function test_quantity_edit_recomputes_status_to_completed(): void
+    public function test_quantity_edit_recomputes_status_to_ready_to_complete(): void
     {
         $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
@@ -309,7 +335,7 @@ class EditTest extends TestCase
             "quantity_{$item->id}" => 5,
         ]);
 
-        $this->assertSame(PurchaseOrder::STATUS_COMPLETED, $order->fresh()->status);
+        $this->assertSame(PurchaseOrder::STATUS_PROCESSING, $order->fresh()->status);
     }
 
     public function test_orphaned_customer_gets_403(): void

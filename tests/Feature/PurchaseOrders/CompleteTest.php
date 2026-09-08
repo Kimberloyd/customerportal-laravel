@@ -16,54 +16,84 @@ class CompleteTest extends TestCase
 
     public function test_blocked_if_already_terminal(): void
     {
-        $staff = User::factory()->create(['role' => 'office']);
-        $customer = $this->makeCustomer();
+        $user = User::factory()->create(['role' => 'customer']);
+        $customer = $this->makeCustomer('Own Co', $user);
         $product = $this->makeProduct();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_CANCELLED, now(), [
             ['product_id' => $product->id, 'quantity' => 3],
         ]);
 
-        $response = $this->actingAsUser($staff)->post("/orders/{$order->id}/complete");
+        $response = $this->actingAsUser($user)->post("/orders/{$order->id}/complete");
 
-        $response->assertSessionHas('error', 'This order is already cancelled and cannot be completed.');
+        $response->assertSessionHas('error', 'This order is already cancelled and cannot be closed.');
         $this->assertSame(PurchaseOrder::STATUS_CANCELLED, $order->fresh()->status);
     }
 
-    public function test_customer_role_gets_403(): void
+    public function test_staff_role_gets_403(): void
+    {
+        $staff = User::factory()->create(['role' => 'office']);
+        $customer = $this->makeCustomer();
+        $product = $this->makeProduct();
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_PROCESSING, now(), [
+            ['product_id' => $product->id, 'quantity' => 3, 'delivered_quantity' => 3],
+        ]);
+
+        $this->actingAsUser($staff)->post("/orders/{$order->id}/complete")->assertStatus(403);
+    }
+
+    public function test_non_owning_customer_gets_403(): void
     {
         $user = User::factory()->create(['role' => 'customer']);
-        $customer = $this->makeCustomer('Own Co', $user);
+        $this->makeCustomer('Own Co', $user);
+        $otherCustomer = $this->makeCustomer('Other Co');
         $product = $this->makeProduct();
-        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
-            ['product_id' => $product->id, 'quantity' => 3],
+        $order = $this->makeOrder($otherCustomer, PurchaseOrder::STATUS_PROCESSING, now(), [
+            ['product_id' => $product->id, 'quantity' => 3, 'delivered_quantity' => 3],
         ]);
 
         $this->actingAsUser($user)->post("/orders/{$order->id}/complete")->assertStatus(403);
     }
 
-    public function test_marks_every_item_fully_delivered_and_writes_audit(): void
+    public function test_unsettled_order_cannot_be_closed(): void
     {
-        $staff = User::factory()->create(['role' => 'office']);
-        $customer = $this->makeCustomer();
-        $productA = $this->makeProduct('A');
-        $productB = $this->makeProduct('B');
+        $user = User::factory()->create(['role' => 'customer']);
+        $customer = $this->makeCustomer('Own Co', $user);
+        $product = $this->makeProduct();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_PARTIAL, now(), [
-            ['product_id' => $productA->id, 'quantity' => 10, 'delivered_quantity' => 3],
-            ['product_id' => $productB->id, 'quantity' => 4, 'delivered_quantity' => 0],
+            ['product_id' => $product->id, 'quantity' => 10, 'delivered_quantity' => 3],
         ]);
 
-        $response = $this->actingAsUser($staff)->post("/orders/{$order->id}/complete");
+        $response = $this->actingAsUser($user)->post("/orders/{$order->id}/complete");
 
-        $response->assertRedirect(route('purchase-orders.index'));
+        $response->assertSessionHas('error', 'Every item must be delivered before closing this order.');
+        $this->assertSame(PurchaseOrder::STATUS_PARTIAL, $order->fresh()->status);
+        $this->assertSame(3, $order->items->first()->fresh()->delivered_quantity);
+        $this->assertDatabaseMissing('purchase_order_audits', [
+            'purchase_order_id' => $order->id,
+            'action' => 'Order Closed',
+        ]);
+    }
+
+    public function test_owning_customer_can_close_a_fully_delivered_order_and_writes_audit(): void
+    {
+        $user = User::factory()->create(['role' => 'customer']);
+        $customer = $this->makeCustomer('Own Co', $user);
+        $product = $this->makeProduct();
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_PROCESSING, now(), [
+            ['product_id' => $product->id, 'quantity' => 10, 'delivered_quantity' => 10],
+        ]);
+
+        $response = $this->actingAsUser($user)->post("/orders/{$order->id}/complete");
+
+        $response->assertRedirect(route('purchase-orders.show', $order));
         $order->refresh();
         $this->assertSame(PurchaseOrder::STATUS_COMPLETED, $order->status);
         $this->assertNotNull($order->completed_at);
-        foreach ($order->items as $item) {
-            $this->assertSame($item->quantity, $item->delivered_quantity);
-        }
+        $this->assertNotNull($order->customer_received_at);
+        $this->assertSame(10, $order->items->first()->delivered_quantity);
 
         $audit = PurchaseOrderAudit::first();
-        $this->assertSame('Order Completed', $audit->action);
-        $this->assertSame('All ordered quantities were marked delivered.', $audit->details);
+        $this->assertSame('Order Closed', $audit->action);
+        $this->assertSame('The customer confirmed delivery and closed the fully delivered order.', $audit->details);
     }
 }

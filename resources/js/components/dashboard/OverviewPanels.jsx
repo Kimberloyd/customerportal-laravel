@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { ArrowRight, Check, CheckCheck, ChevronRight, ClipboardCheck, Clock3, Package, Truck } from 'lucide-react';
+import { ArrowRight, Check, CheckCheck, ChevronRight, ClipboardCheck, Package, Truck } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useId, useState } from 'react';
 
@@ -26,7 +26,7 @@ export function MetricCard({ label, value, previous, icon: Icon, note, href, per
 
 export function OrderStages({ current, previous, ordersUrl, reducedMotion }) {
     const stages = [
-        { key: 'review', label: 'In review', color: 'bg-indigo-500', status: 'submitted' },
+        { key: 'submitted', label: 'Submitted', color: 'bg-indigo-500', status: 'submitted' },
         { key: 'fulfillment', label: 'In fulfillment', color: 'bg-amber-500', status: 'partial' },
         { key: 'completed', label: 'Completed', color: 'bg-emerald-500', status: 'completed' },
         { key: 'cancelled', label: 'Cancelled', color: 'bg-stone-400' },
@@ -52,9 +52,9 @@ export function OrderStages({ current, previous, ordersUrl, reducedMotion }) {
 
 function actionFor(order, customer) {
     if (order.status === 'completed') return { label: 'Confirm receipt', description: 'All items delivered. Confirm they arrived.', icon: ClipboardCheck };
-    if (order.status === 'partial' || order.status === 'processing') return { label: customer ? 'Track delivery' : 'Continue fulfillment', description: `${number.format(order.delivered_units)} of ${number.format(order.ordered_units)} units delivered`, icon: Truck };
-    if (order.status === 'reviewing') return { label: customer ? 'View order' : 'Continue review', description: customer ? 'The team is reviewing your order.' : 'Review started. Check the next steps.', icon: Clock3 };
-    return { label: customer ? 'View order' : 'Review order', description: customer ? 'Submitted and waiting for review.' : 'New order waiting for your review.', icon: Package };
+    if (order.status === 'processing') return { label: customer ? 'View order' : 'Complete order', description: 'All items have been delivered.', icon: ClipboardCheck };
+    if (order.status === 'partial') return { label: customer ? 'Track delivery' : 'Continue fulfillment', description: `${number.format(order.delivered_units)} of ${number.format(order.ordered_units)} units delivered`, icon: Truck };
+    return { label: customer ? 'View order' : 'Fulfill order', description: 'Submitted and waiting for fulfillment.', icon: Package };
 }
 
 export function AttentionPanel({ orders, count, customer, reducedMotion, canOrder }) {
@@ -63,7 +63,7 @@ export function AttentionPanel({ orders, count, customer, reducedMotion, canOrde
     return (
         <section aria-labelledby="attention-heading" className={`${surface} flex flex-col overflow-hidden`}>
             <div className="flex items-start justify-between gap-3 px-5 pt-5">
-                <div><h2 id="attention-heading" className="type-section-heading text-stone-900 dark:text-stone-100">{customer ? 'Your next steps' : 'Work to pick up'}</h2><p className="mt-1 text-sm text-stone-500 dark:text-stone-400">{customer ? 'Updates to follow up on' : 'Review and fulfillment queue'} · All dates</p></div>
+                <div><h2 id="attention-heading" className="type-section-heading text-stone-900 dark:text-stone-100">{customer ? 'Your next steps' : 'Work to pick up'}</h2><p className="mt-1 text-sm text-stone-500 dark:text-stone-400">{customer ? 'Updates to follow up on' : 'Fulfillment queue'} · All dates</p></div>
                 <span className="grid h-6 min-w-6 place-items-center rounded-full bg-destructive px-1.5 text-xs font-semibold text-white tabular-nums">{number.format(count)}</span>
             </div>
             {orders.length ? (
@@ -73,8 +73,9 @@ export function AttentionPanel({ orders, count, customer, reducedMotion, canOrde
                         return (
                             <li key={order.id} className="relative" onMouseEnter={() => setHovered(order.id)} onFocus={() => setHovered(order.id)} onBlur={() => setHovered(null)}>
                                 {hovered === order.id && <motion.div aria-hidden="true" layoutId={reducedMotion ? undefined : highlightId} className="pointer-events-none absolute inset-0 rounded-xl bg-stone-100 dark:bg-white/[0.06]" transition={reducedMotion ? { duration: 0 } : spring} />}
-                                <Link href={route('purchase-orders.show', order.id)} className={`relative flex gap-3 rounded-xl px-3 py-3 ${focus}`}>
-                                    <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-stone-900 dark:text-stone-100" title={order.po_number}>{order.po_number}</p><p className="mt-0.5 truncate text-xs leading-5 text-stone-500 dark:text-stone-400">{customer ? action.description : order.customer_name || 'Customer order'}</p><p className="mt-1 flex items-center gap-1 text-xs font-medium text-primary dark:text-indigo-300">{action.label}<ArrowRight className="h-3 w-3" aria-hidden="true" /></p></div>
+                                <Link href={route('purchase-orders.show', order.id)} className={`relative flex items-center justify-between gap-3 rounded-xl px-3 py-3 ${focus}`}>
+                                    <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-stone-900 dark:text-stone-100" title={order.po_number}>{order.po_number}</p><p className="mt-0.5 truncate text-xs leading-5 text-stone-500 dark:text-stone-400">{customer ? action.description : order.customer_name || 'Customer order'}</p></div>
+                                    <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-medium text-primary dark:text-indigo-300">{action.label}<ArrowRight className="h-3 w-3" aria-hidden="true" /></span>
                                 </Link>
                             </li>
                         );
@@ -91,9 +92,8 @@ export function AttentionPanel({ orders, count, customer, reducedMotion, canOrde
 function OrderStatus({ order }) {
     const statuses = {
         submitted: { label: 'Submitted', icon: Package, style: 'bg-indigo-50 text-indigo-800 dark:bg-indigo-400/10 dark:text-indigo-200' },
-        reviewing: { label: 'In review', icon: Clock3, style: 'bg-indigo-50 text-indigo-800 dark:bg-indigo-400/10 dark:text-indigo-200' },
         partial: { label: 'Partial delivery', icon: Truck, style: 'bg-amber-50 text-amber-800 dark:bg-amber-400/10 dark:text-amber-200' },
-        processing: { label: 'Partial delivery', icon: Truck, style: 'bg-amber-50 text-amber-800 dark:bg-amber-400/10 dark:text-amber-200' },
+        processing: { label: 'Ready to complete', icon: ClipboardCheck, style: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-200' },
         completed: { label: order.received ? 'Received' : 'Completed', icon: Check, style: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-200' },
         cancelled: { label: 'Cancelled', icon: Package, style: 'bg-stone-100 text-stone-600 dark:bg-white/10 dark:text-stone-300' },
     };

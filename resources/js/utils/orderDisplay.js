@@ -2,17 +2,20 @@ export function statusBadge(status) {
     if (status === 'received') {
         return { label: 'Order Received', status: 'success' };
     }
-    if (status === 'partial' || status === 'processing') {
+    if (status === 'partial') {
         return { label: 'Partial', status: 'warning', pulse: true };
+    }
+    if (status === 'processing') {
+        return { label: 'Ready to close', status: 'success' };
     }
     if (status === 'submitted') {
         return { label: 'Submitted', status: 'info' };
     }
-    if (status === 'reviewing') {
-        return { label: 'Reviewing', status: 'loading' };
+    if (status === 'returned') {
+        return { label: 'Needs redelivery', status: 'warning', pulse: true };
     }
     if (status === 'completed') {
-        return { label: 'Completed', status: 'success' };
+        return { label: 'Closed', status: 'success' };
     }
     if (status === 'cancelled') {
         return { label: 'Cancelled', status: 'neutral' };

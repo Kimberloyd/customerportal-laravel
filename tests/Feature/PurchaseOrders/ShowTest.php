@@ -3,7 +3,6 @@
 namespace Tests\Feature\PurchaseOrders;
 
 use App\Models\PurchaseOrder;
-use App\Models\PurchaseOrderAudit;
 use App\Models\User;
 use App\Support\OrderAudit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -20,7 +19,10 @@ class ShowTest extends TestCase
     {
         $user = User::factory()->create(['role' => 'customer']);
         $customer = $this->makeCustomer('Own Co', $user);
-        $product = $this->makeProduct();
+        $product = $this->makeProduct('Brand product', [
+            'generic_name' => 'Generic product',
+            'dosage' => '500mg',
+        ]);
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
             ['product_id' => $product->id, 'quantity' => 2],
         ]);
@@ -33,6 +35,8 @@ class ShowTest extends TestCase
             ->where('order.po_number', $order->po_number)
             ->where('order.customer_id', $customer->id)
             ->where('order.items.0.product_name', $product->product_name)
+            ->where('order.items.0.generic_name', 'Generic product')
+            ->where('order.items.0.dosage', '500mg')
             ->where('editOrderCustomers.0.id', $customer->id)
             ->where('lockedCustomerId', $customer->id)
             ->missing('editOrderProducts')
@@ -148,15 +152,12 @@ class ShowTest extends TestCase
 
         $response->assertInertia(fn ($page) => $page
             ->where('order.status', PurchaseOrder::STATUS_SUBMITTED)
-            ->where('canStartReview', true));
+            ->where('canManageFulfillment', true)
+            ->where('canComplete', false));
         $this->assertSame(PurchaseOrder::STATUS_SUBMITTED, $order->fresh()->status);
-        $this->assertDatabaseMissing('purchase_order_audits', [
-            'purchase_order_id' => $order->id,
-            'action' => 'Order Reviewing',
-        ]);
     }
 
-    public function test_customer_opening_their_own_order_does_not_mark_it_reviewing(): void
+    public function test_customer_opening_their_own_order_does_not_change_its_status(): void
     {
         $user = User::factory()->create(['role' => 'customer']);
         $customer = $this->makeCustomer('Own Co', $user);
@@ -170,27 +171,6 @@ class ShowTest extends TestCase
         $this->assertSame(PurchaseOrder::STATUS_SUBMITTED, $order->fresh()->status);
     }
 
-    public function test_start_review_is_an_explicit_idempotent_action(): void
-    {
-        $staff = User::factory()->create(['role' => 'office']);
-        $customer = $this->makeCustomer();
-        $product = $this->makeProduct();
-        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
-            ['product_id' => $product->id, 'quantity' => 1],
-        ]);
-
-        $this->actingAsUser($staff)->post(route('purchase-orders.start-review', $order));
-        $this->actingAsUser($staff)->post(route('purchase-orders.start-review', $order));
-
-        $this->assertSame(PurchaseOrder::STATUS_REVIEWING, $order->fresh()->status);
-        $this->assertSame(
-            1,
-            PurchaseOrderAudit::where('purchase_order_id', $order->id)
-                ->where('action', 'Order Reviewing')
-                ->count(),
-        );
-    }
-
     public function test_opening_an_order_already_past_submitted_does_not_change_its_status(): void
     {
         $staff = User::factory()->create(['role' => 'office']);
@@ -200,8 +180,9 @@ class ShowTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 5, 'delivered_quantity' => 2],
         ]);
 
-        $this->actingAsUser($staff)->get("/orders/{$order->id}");
+        $response = $this->actingAsUser($staff)->get("/orders/{$order->id}");
 
+        $response->assertInertia(fn ($page) => $page->where('canComplete', false));
         $this->assertSame(PurchaseOrder::STATUS_PARTIAL, $order->fresh()->status);
     }
 }

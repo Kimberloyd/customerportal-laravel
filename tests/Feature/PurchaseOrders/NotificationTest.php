@@ -254,7 +254,7 @@ class NotificationTest extends TestCase
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
-            ['product_id' => $product->id, 'quantity' => 5],
+            ['product_id' => $product->id, 'quantity' => 5, 'delivered_quantity' => 0],
         ]);
         $item = $order->items->first();
 
@@ -271,14 +271,14 @@ class NotificationTest extends TestCase
 
     public function test_completion_notifies_the_customer(): void
     {
-        $staff = User::factory()->create(['role' => 'office']);
-        $customer = $this->makeCustomer();
+        $customerUser = User::factory()->create(['role' => 'customer']);
+        $customer = $this->makeCustomer('Own Co', $customerUser);
         $product = $this->makeProduct();
-        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
-            ['product_id' => $product->id, 'quantity' => 5],
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_PROCESSING, now(), [
+            ['product_id' => $product->id, 'quantity' => 5, 'delivered_quantity' => 5],
         ]);
 
-        $this->actingAsUser($staff)->post("/orders/{$order->id}/complete");
+        $this->actingAsUser($customerUser)->post("/orders/{$order->id}/complete");
 
         $this->assertSame(0, CustomerMessage::count());
 
