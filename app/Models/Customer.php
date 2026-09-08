@@ -27,7 +27,7 @@ class Customer extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function assignedEmployee(): BelongsTo
+    public function assignedAgent(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_employee_id');
     }

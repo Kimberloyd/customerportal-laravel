@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Messages;
 
-use App\Models\CustomerMessage;
 use App\Models\User;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -25,7 +24,7 @@ class MarkAllReadTest extends TestCase
         $customer = $this->makeCustomer();
         $threadA = $this->makeThread($customer, ['sender_type' => 'customer', 'is_read' => false]);
         $threadB = $this->makeThread($customer, ['sender_type' => 'customer', 'is_read' => false]);
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
 
         $this->actingAsUser($staff)
             ->postJson(route('messages.mark-all-read'))

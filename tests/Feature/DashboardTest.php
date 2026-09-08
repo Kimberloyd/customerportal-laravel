@@ -29,13 +29,24 @@ class DashboardTest extends TestCase
             ->assertInertia(fn ($page) => $page->component('Dashboard'));
     }
 
-    public function test_employee_sees_the_dashboard(): void
+    public function test_agent_sees_the_dashboard(): void
     {
-        $employee = User::factory()->create(['role' => 'employee']);
+        $agent = User::factory()->create(['role' => 'office']);
 
-        $this->actingAsUser($employee)->get('/dashboard')
+        $this->actingAsUser($agent)->get('/dashboard')
             ->assertOk()
             ->assertInertia(fn ($page) => $page->component('Dashboard'));
+    }
+
+    public function test_office_sees_the_company_dashboard(): void
+    {
+        $office = User::factory()->create(['role' => 'office']);
+
+        $this->actingAsUser($office)->get('/dashboard')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Dashboard')
+                ->where('workspace.is_customer', false));
     }
 
     public function test_customer_sees_the_dashboard(): void
@@ -97,7 +108,7 @@ class DashboardTest extends TestCase
     public function test_company_dashboard_includes_all_customers_and_prioritizes_unreviewed_orders(): void
     {
         $this->freezeTime();
-        $employee = User::factory()->create(['role' => 'employee']);
+        $agent = User::factory()->create(['role' => 'office']);
         $first = $this->makeCustomer('First Company');
         $second = $this->makeCustomer('Second Company');
         $this->makeOrder($first, PurchaseOrder::STATUS_PARTIAL, now()->subDays(4));
@@ -105,7 +116,7 @@ class DashboardTest extends TestCase
         $old = $this->makeOrder($first, PurchaseOrder::STATUS_REVIEWING, now()->subDays(100));
         $this->makeOrder($first, PurchaseOrder::STATUS_COMPLETED, now());
 
-        $this->actingAsUser($employee)->get('/dashboard')->assertOk()
+        $this->actingAsUser($agent)->get('/dashboard')->assertOk()
             ->assertInertia(fn (Assert $page) => $page->where('workspace.is_customer', false)
                 ->where('dashboard.current.orders', 3)
                 ->where('dashboard.attention_count', 3)

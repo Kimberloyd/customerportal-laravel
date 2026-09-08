@@ -4,7 +4,6 @@ namespace Tests\Feature\PurchaseOrders;
 
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderAudit;
-use App\Models\PurchaseOrderItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\CreatesOrderFixtures;
@@ -12,12 +11,12 @@ use Tests\TestCase;
 
 class EditTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesOrderFixtures;
+    use RefreshDatabase;
 
     public function test_rejects_quantity_below_already_delivered(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_PARTIAL, now(), [
@@ -37,7 +36,7 @@ class EditTest extends TestCase
 
     public function test_rejects_quantity_less_than_one(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
@@ -56,7 +55,7 @@ class EditTest extends TestCase
 
     public function test_no_op_edit_is_rejected(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
@@ -76,7 +75,7 @@ class EditTest extends TestCase
 
     public function test_method_spoofed_modal_submission_updates_the_order(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
@@ -98,7 +97,7 @@ class EditTest extends TestCase
 
     public function test_modal_can_add_a_product_and_reduce_an_undelivered_quantity(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $existingProduct = $this->makeProduct('Existing product', ['id' => 11]);
         $newProduct = $this->makeProduct('New product', ['id' => 22, 'unit_price' => 12.50]);
@@ -129,7 +128,7 @@ class EditTest extends TestCase
 
     public function test_modal_can_remove_an_undelivered_product(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $firstProduct = $this->makeProduct('Keep product', ['id' => 31]);
         $secondProduct = $this->makeProduct('Remove product', ['id' => 32]);
@@ -154,7 +153,7 @@ class EditTest extends TestCase
 
     public function test_modal_cannot_remove_a_product_with_delivered_units(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $deliveredProduct = $this->makeProduct('Delivered product', ['id' => 41]);
         $otherProduct = $this->makeProduct('Other product', ['id' => 42]);
@@ -182,7 +181,7 @@ class EditTest extends TestCase
 
     public function test_modal_rejects_an_item_id_from_another_order(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct('Scoped product');
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
@@ -212,7 +211,7 @@ class EditTest extends TestCase
 
     public function test_completed_unconfirmed_order_cannot_add_products(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $deliveredProduct = $this->makeProduct('Delivered product', ['id' => 51]);
         $newProduct = $this->makeProduct('Added product', ['id' => 52]);
@@ -242,7 +241,7 @@ class EditTest extends TestCase
 
     public function test_completed_order_cannot_be_edited(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $other = $this->makeCustomer('Other Co');
         $product = $this->makeProduct();
@@ -271,7 +270,7 @@ class EditTest extends TestCase
 
     public function test_change_list_and_audit_details_match_exactly(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer('Acme Co');
         $newCustomer = $this->makeCustomer('New Co');
         $product = $this->makeProduct('Widget A');
@@ -296,7 +295,7 @@ class EditTest extends TestCase
 
     public function test_quantity_edit_recomputes_status_to_completed(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_PARTIAL, now(), [

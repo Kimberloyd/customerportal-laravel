@@ -10,8 +10,8 @@ use Tests\TestCase;
 
 class ListTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesOrderFixtures;
+    use RefreshDatabase;
 
     public function test_customer_role_only_sees_their_own_orders(): void
     {
@@ -47,7 +47,7 @@ class ListTest extends TestCase
 
     public function test_search_filters_by_customer_name(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $acme = $this->makeCustomer('Acme Co');
         $globex = $this->makeCustomer('Globex Inc');
         $product = $this->makeProduct();
@@ -71,7 +71,7 @@ class ListTest extends TestCase
 
     public function test_status_filter_active_includes_submitted_and_in_progress_only(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
 
@@ -97,7 +97,7 @@ class ListTest extends TestCase
 
     public function test_month_date_filter_narrows_to_that_month(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
 
@@ -117,7 +117,7 @@ class ListTest extends TestCase
 
     public function test_list_paginates(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
 

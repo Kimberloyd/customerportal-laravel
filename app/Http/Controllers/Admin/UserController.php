@@ -135,8 +135,12 @@ class UserController extends Controller
         DB::transaction(function () use ($user, $values, $changes, $request) {
             $user->save();
 
+            if ($user->role !== User::ROLE_AGENT) {
+                $user->teams()->detach();
+            }
+
             $linkedCustomers = Customer::where('user_id', $user->id)->get();
-            if ($user->role === 'customer' && $values['customer_id']) {
+            if ($user->role === User::ROLE_CUSTOMER && $values['customer_id']) {
                 foreach ($linkedCustomers as $linkedCustomer) {
                     if ($linkedCustomer->id !== $values['customer_id']) {
                         $linkedCustomer->update(['user_id' => null]);
@@ -337,16 +341,16 @@ class UserController extends Controller
         $phone = trim((string) $request->input('phone', ''));
         $password = (string) $request->input('password', '');
         $passwordConfirmation = (string) $request->input('password_confirmation', '');
-        $selectedRole = strtolower(trim((string) $request->input('role', $user?->role ?? 'employee')));
+        $selectedRole = strtolower(trim((string) $request->input('role', $user?->role ?? User::ROLE_AGENT)));
         $selectedCustomerId = $request->input('customer_id') ? (int) $request->input('customer_id') : null;
 
-        // Customer accounts are created only through the employee customer-account
-        // flow, which also assigns the customer to its responsible employee.
+        // Customer accounts are created only through the agent customer-account
+        // flow, which also assigns the customer to its responsible agent.
         // An existing customer account remains editable so an admin can maintain it
         // or move it to a staff role, but no other account can be converted into one.
-        $allowedRoles = ['employee', 'admin'];
-        if ($user?->role === 'customer') {
-            $allowedRoles[] = 'customer';
+        $allowedRoles = [User::ROLE_AGENT, User::ROLE_OFFICE, User::ROLE_ADMIN];
+        if ($user?->role === User::ROLE_CUSTOMER) {
+            $allowedRoles[] = User::ROLE_CUSTOMER;
         }
 
         if ($fullName === '') {
@@ -371,7 +375,7 @@ class UserController extends Controller
             );
         }
 
-        if ($selectedRole === 'customer') {
+        if ($selectedRole === User::ROLE_CUSTOMER) {
             if (! $selectedCustomerId) {
                 throw ValidationException::withMessages(['customer_id' => 'Select a customer to link to this account.']);
             }

@@ -155,7 +155,7 @@ final class AccountDeletionService
     public function export(User $user, Request $httpRequest): array
     {
         $customerIds = Customer::where('user_id', $user->id)->pluck('id');
-        $orders = PurchaseOrder::whereIn('customer_id', $customerIds)
+        $orders = PurchaseOrder::withTrashed()->whereIn('customer_id', $customerIds)
             ->with(['items', 'auditLogs'])
             ->get();
         $productReturns = ProductReturn::query()

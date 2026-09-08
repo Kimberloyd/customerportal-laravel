@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\PurchaseOrder;
+use App\Models\User;
+use App\Support\CustomerAccess;
 use App\Support\CustomerScope;
 use App\Support\DashboardOverview;
 use Illuminate\Http\Request;
@@ -13,7 +15,7 @@ class DashboardController extends Controller
 {
     public function index(Request $request): Response
     {
-        $isCustomer = $request->user()->role === 'customer';
+        $isCustomer = $request->user()->role === User::ROLE_CUSTOMER;
         $customer = CustomerScope::forCurrentUser(required: false);
         $orders = PurchaseOrder::query();
 
@@ -21,7 +23,8 @@ class DashboardController extends Controller
         if ($isCustomer) {
             $customer ? $orders->where('customer_id', $customer->id) : $orders->whereRaw('1 = 0');
         } else {
-            abort_unless(in_array($request->user()->role, ['admin', 'employee'], true), 403);
+            abort_unless(in_array($request->user()->role, User::STAFF_ROLES, true), 403);
+            CustomerAccess::applyToOrders($orders, $request->user());
         }
 
         $period = $request->query('period', '30');

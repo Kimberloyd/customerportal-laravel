@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
     'po_number', 'customer_id', 'po_file', 'status', 'remarks',
@@ -13,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 ])]
 class PurchaseOrder extends Model
 {
+    use SoftDeletes;
+
     public $timestamps = false;
 
     // Matches app/models.py's ORDER_STATUS_* / ORDER_TERMINAL_STATUSES /
@@ -48,6 +51,7 @@ class PurchaseOrder extends Model
             'updated_at' => 'datetime',
             'completed_at' => 'datetime',
             'customer_received_at' => 'datetime',
+            'deleted_at' => 'datetime',
         ];
     }
 

@@ -34,6 +34,7 @@ function autoTableHeight(rowCount) {
 export default function Show({
     order,
     canManageFulfillment,
+    canStartReview,
     canComplete,
     canConfirmReceived,
     canCancel,
@@ -128,6 +129,14 @@ export default function Show({
 
     const confirmReceived = () => {
         setPendingAction('received');
+    };
+
+    const startReview = () => {
+        router.post(route('purchase-orders.start-review', order.id), {}, {
+            preserveScroll: true,
+            onStart: () => setActionProcessing(true),
+            onFinish: () => setActionProcessing(false),
+        });
     };
 
     const confirmPendingAction = () => {
@@ -262,6 +271,11 @@ export default function Show({
                         </h2>
                     </nav>
                     <div className="flex flex-wrap items-center justify-end gap-2">
+                        {canStartReview && (
+                            <Button variant="primary" disabled={actionProcessing} onClick={startReview}>
+                                Start Review
+                            </Button>
+                        )}
                         {canConfirmReceived && (
                             <Button
                                 variant="primary"

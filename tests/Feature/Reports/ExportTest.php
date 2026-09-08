@@ -18,7 +18,7 @@ class ExportTest extends TestCase
 
     public function test_response_has_correct_content_type_and_filename(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
 
         $response = $this->actingAsUser($staff)->get('/reports/orders/export');
 
@@ -32,7 +32,7 @@ class ExportTest extends TestCase
 
     public function test_formula_injection_hardened_columns_stay_text_even_with_leading_equals(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer('=2+2 Evil Co');
         $product = $this->makeProduct();
         $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
@@ -61,7 +61,7 @@ class ExportTest extends TestCase
 
     public function test_export_respects_same_filters_as_the_page(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
         $this->makeOrder($customer, PurchaseOrder::STATUS_COMPLETED, now(), [
@@ -84,7 +84,7 @@ class ExportTest extends TestCase
 
     public function test_export_streams_orders_from_a_bounded_query(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
             ['product_name' => 'Measured Product', 'quantity' => 1],
@@ -106,7 +106,7 @@ class ExportTest extends TestCase
 
     public function test_export_round_trips_xml_special_and_control_characters(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer('A & B <Care>');
         $productName = "Control \x01 Product _x0001_";
         $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [

@@ -9,8 +9,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('customer_messages', function (Blueprint $table) {
-            // Which staff member (admin/employee) a portal/widget conversation
-            // belongs to -- so Administrator and each Employee get their own
+            // Which staff member a portal/widget conversation belongs to -- so
+            // each Admin, Office user, and Agent gets their own
             // thread with a customer instead of one shared inbox. Left null
             // on Facebook-channel threads and on existing rows predating this
             // column, which stay as the shared conversations they already were.

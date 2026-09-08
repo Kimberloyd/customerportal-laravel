@@ -45,12 +45,12 @@ class MessageLogTest extends TestCase
             ->assertJsonPath('entries.0.external_reference', 'sms-123');
     }
 
-    public function test_employee_can_view_an_orders_message_log(): void
+    public function test_agent_can_view_an_orders_message_log(): void
     {
         $order = $this->makeOrder($this->makeCustomer(), PurchaseOrder::STATUS_SUBMITTED, now());
-        $employee = User::factory()->create(['role' => 'employee']);
+        $agent = User::factory()->create(['role' => 'office']);
 
-        $this->actingAsUser($employee)
+        $this->actingAsUser($agent)
             ->getJson(route('purchase-orders.message-log', $order))
             ->assertOk();
     }
@@ -68,13 +68,13 @@ class MessageLogTest extends TestCase
     public function test_order_list_enables_message_log_for_staff(): void
     {
         $admin = User::factory()->admin()->create();
-        $employee = User::factory()->create(['role' => 'employee']);
+        $agent = User::factory()->create(['role' => 'office']);
 
         $this->actingAsUser($admin)
             ->get(route('purchase-orders.index'))
             ->assertInertia(fn ($page) => $page->where('canViewMessageLog', true));
 
-        $this->actingAsUser($employee)
+        $this->actingAsUser($agent)
             ->get(route('purchase-orders.index'))
             ->assertInertia(fn ($page) => $page->where('canViewMessageLog', true));
     }

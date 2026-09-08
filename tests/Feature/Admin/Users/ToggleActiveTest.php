@@ -10,8 +10,8 @@ use Tests\TestCase;
 
 class ToggleActiveTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesOrderFixtures;
+    use RefreshDatabase;
 
     public function test_self_deactivation_blocked(): void
     {
@@ -26,7 +26,7 @@ class ToggleActiveTest extends TestCase
     public function test_deactivation_takes_effect_in_the_database(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $target = User::factory()->create(['role' => 'employee']);
+        $target = User::factory()->create(['role' => 'agent']);
 
         $this->actingAsUser($admin)->post("/admin/users/{$target->id}/toggle-active");
 
@@ -39,7 +39,7 @@ class ToggleActiveTest extends TestCase
         // enforces for is_active (this phase's fix) -- constructs the
         // scenario a deactivation produces directly: Auth::user()
         // resolving to a DB row with is_active=false.
-        $target = User::factory()->create(['role' => 'employee', 'is_active' => false]);
+        $target = User::factory()->create(['role' => 'agent', 'is_active' => false]);
 
         $this->actingAs($target)
             ->withSession(['session_version' => $target->session_version])
@@ -50,7 +50,7 @@ class ToggleActiveTest extends TestCase
     public function test_audit_action_reflects_direction(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $target = User::factory()->create(['role' => 'employee']);
+        $target = User::factory()->create(['role' => 'agent']);
 
         $this->actingAsUser($admin)->post("/admin/users/{$target->id}/toggle-active");
         $this->assertSame('deactivated', AdminAudit::latest('id')->first()->action);
@@ -59,11 +59,11 @@ class ToggleActiveTest extends TestCase
         $this->assertSame('activated', AdminAudit::latest('id')->first()->action);
     }
 
-    public function test_employee_gets_403(): void
+    public function test_agent_gets_403(): void
     {
-        $employee = User::factory()->create(['role' => 'employee']);
-        $target = User::factory()->create(['role' => 'employee']);
+        $agent = User::factory()->create(['role' => 'agent']);
+        $target = User::factory()->create(['role' => 'agent']);
 
-        $this->actingAsUser($employee)->post("/admin/users/{$target->id}/toggle-active")->assertStatus(403);
+        $this->actingAsUser($agent)->post("/admin/users/{$target->id}/toggle-active")->assertStatus(403);
     }
 }

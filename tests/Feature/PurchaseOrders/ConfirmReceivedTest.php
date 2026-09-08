@@ -51,7 +51,7 @@ class ConfirmReceivedTest extends TestCase
 
     public function test_staff_cannot_confirm_receipt_for_a_customer(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_COMPLETED, now());
 

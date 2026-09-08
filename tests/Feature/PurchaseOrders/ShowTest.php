@@ -13,8 +13,8 @@ use Tests\TestCase;
 
 class ShowTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesOrderFixtures;
+    use RefreshDatabase;
 
     public function test_owning_customer_can_view_their_order(): void
     {
@@ -77,7 +77,7 @@ class ShowTest extends TestCase
 
     public function test_staff_can_view_any_order(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
@@ -92,7 +92,7 @@ class ShowTest extends TestCase
 
     public function test_actor_column_hidden_for_customer_viewer_but_present_for_staff(): void
     {
-        $staff = User::factory()->create(['role' => 'employee', 'full_name' => 'Jane Staff']);
+        $staff = User::factory()->create(['role' => 'office', 'full_name' => 'Jane Staff']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
@@ -125,7 +125,7 @@ class ShowTest extends TestCase
 
     public function test_attachment_route_404s_when_no_file(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
@@ -135,9 +135,9 @@ class ShowTest extends TestCase
         $this->actingAsUser($staff)->get("/orders/{$order->id}/attachment")->assertStatus(404);
     }
 
-    public function test_staff_opening_a_submitted_order_marks_it_reviewing(): void
+    public function test_opening_a_submitted_order_is_read_only(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
@@ -146,12 +146,14 @@ class ShowTest extends TestCase
 
         $response = $this->actingAsUser($staff)->get("/orders/{$order->id}");
 
-        $response->assertInertia(fn ($page) => $page->where('order.status', PurchaseOrder::STATUS_REVIEWING));
-        $this->assertSame(PurchaseOrder::STATUS_REVIEWING, $order->fresh()->status);
-        $this->assertSame(
-            'Order Reviewing',
-            PurchaseOrderAudit::where('purchase_order_id', $order->id)->latest('created_at')->first()->action,
-        );
+        $response->assertInertia(fn ($page) => $page
+            ->where('order.status', PurchaseOrder::STATUS_SUBMITTED)
+            ->where('canStartReview', true));
+        $this->assertSame(PurchaseOrder::STATUS_SUBMITTED, $order->fresh()->status);
+        $this->assertDatabaseMissing('purchase_order_audits', [
+            'purchase_order_id' => $order->id,
+            'action' => 'Order Reviewing',
+        ]);
     }
 
     public function test_customer_opening_their_own_order_does_not_mark_it_reviewing(): void
@@ -168,18 +170,19 @@ class ShowTest extends TestCase
         $this->assertSame(PurchaseOrder::STATUS_SUBMITTED, $order->fresh()->status);
     }
 
-    public function test_reopening_an_already_reviewing_order_does_not_duplicate_the_audit_row(): void
+    public function test_start_review_is_an_explicit_idempotent_action(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
-        $this->actingAsUser($staff)->get("/orders/{$order->id}");
-        $this->actingAsUser($staff)->get("/orders/{$order->id}");
+        $this->actingAsUser($staff)->post(route('purchase-orders.start-review', $order));
+        $this->actingAsUser($staff)->post(route('purchase-orders.start-review', $order));
 
+        $this->assertSame(PurchaseOrder::STATUS_REVIEWING, $order->fresh()->status);
         $this->assertSame(
             1,
             PurchaseOrderAudit::where('purchase_order_id', $order->id)
@@ -190,7 +193,7 @@ class ShowTest extends TestCase
 
     public function test_opening_an_order_already_past_submitted_does_not_change_its_status(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_PARTIAL, now(), [

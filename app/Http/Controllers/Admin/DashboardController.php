@@ -128,8 +128,8 @@ class DashboardController extends Controller
     {
         return [
             'teams' => Team::with(['members:id,full_name'])->orderBy('name')->get(),
-            'employees' => User::query()
-                ->where('role', 'employee')
+            'agents' => User::query()
+                ->where('role', User::ROLE_AGENT)
                 ->where('is_active', true)
                 ->whereDoesntHave('teams')
                 ->orderBy('full_name')

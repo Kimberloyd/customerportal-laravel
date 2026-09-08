@@ -11,43 +11,55 @@ class TeamTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_can_create_a_team_with_up_to_three_employees(): void
+    public function test_admin_can_create_a_team_with_up_to_three_agents(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $employees = User::factory()->count(3)->create(['role' => 'employee']);
+        $agents = User::factory()->count(3)->create(['role' => 'agent']);
 
         $this->actingAsUser($admin)->post('/admin/teams', [
-            'name' => 'North Team', 'employee_ids' => $employees->pluck('id')->all(),
+            'name' => 'North Team', 'agent_ids' => $agents->pluck('id')->all(),
         ])->assertRedirect(route('admin.dashboard', ['tab' => 'teams']));
 
         $team = Team::where('name', 'North Team')->firstOrFail();
         $this->assertCount(3, $team->members);
     }
 
-    public function test_team_cannot_have_more_than_three_employees(): void
+    public function test_team_cannot_have_more_than_three_agents(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $employees = User::factory()->count(4)->create(['role' => 'employee']);
+        $agents = User::factory()->count(4)->create(['role' => 'agent']);
 
         $this->actingAsUser($admin)->post('/admin/teams', [
-            'name' => 'Too Large', 'employee_ids' => $employees->pluck('id')->all(),
-        ])->assertSessionHasErrors('employee_ids');
+            'name' => 'Too Large', 'agent_ids' => $agents->pluck('id')->all(),
+        ])->assertSessionHasErrors('agent_ids');
 
         $this->assertDatabaseMissing('teams', ['name' => 'Too Large']);
     }
 
-    public function test_employee_cannot_be_added_to_more_than_one_team(): void
+    public function test_office_accounts_cannot_be_team_members(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $employee = User::factory()->create(['role' => 'employee']);
+        $office = User::factory()->create(['role' => 'office']);
+
+        $this->actingAsUser($admin)->post('/admin/teams', [
+            'name' => 'Office Team', 'agent_ids' => [$office->id],
+        ])->assertSessionHasErrors('agent_ids');
+
+        $this->assertDatabaseMissing('teams', ['name' => 'Office Team']);
+    }
+
+    public function test_agent_cannot_be_added_to_more_than_one_team(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $agent = User::factory()->create(['role' => 'agent']);
         $existingTeam = Team::create(['name' => 'Existing Team']);
-        $existingTeam->members()->attach($employee);
+        $existingTeam->members()->attach($agent);
 
         $this->actingAsUser($admin)->post('/admin/teams', [
             'name' => 'Second Team',
-            'employee_ids' => [$employee->id],
+            'agent_ids' => [$agent->id],
         ])->assertSessionHasErrors([
-            'employee_ids' => $employee->full_name.' already belongs to a team. Choose another employee.',
+            'agent_ids' => $agent->full_name.' already belongs to a team. Choose another agent.',
         ]);
 
         $this->assertDatabaseMissing('teams', ['name' => 'Second Team']);
@@ -57,33 +69,33 @@ class TeamTest extends TestCase
     public function test_admin_can_update_a_team_and_its_members(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $firstEmployee = User::factory()->create(['role' => 'employee']);
-        $secondEmployee = User::factory()->create(['role' => 'employee']);
+        $firstAgent = User::factory()->create(['role' => 'agent']);
+        $secondAgent = User::factory()->create(['role' => 'agent']);
         $team = Team::create(['name' => 'Old Name']);
-        $team->members()->attach($firstEmployee);
+        $team->members()->attach($firstAgent);
 
         $this->actingAsUser($admin)->put(route('admin.teams.update', $team), [
             'name' => 'New Name',
-            'employee_ids' => [$secondEmployee->id],
+            'agent_ids' => [$secondAgent->id],
         ])->assertRedirect(route('admin.dashboard', ['tab' => 'teams']));
 
         $this->assertDatabaseHas('teams', ['id' => $team->id, 'name' => 'New Name']);
-        $this->assertDatabaseMissing('team_members', ['team_id' => $team->id, 'user_id' => $firstEmployee->id]);
-        $this->assertDatabaseHas('team_members', ['team_id' => $team->id, 'user_id' => $secondEmployee->id]);
+        $this->assertDatabaseMissing('team_members', ['team_id' => $team->id, 'user_id' => $firstAgent->id]);
+        $this->assertDatabaseHas('team_members', ['team_id' => $team->id, 'user_id' => $secondAgent->id]);
     }
 
-    public function test_admin_cannot_update_a_team_with_an_employee_from_another_team(): void
+    public function test_admin_cannot_update_a_team_with_an_agent_from_another_team(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $employee = User::factory()->create(['role' => 'employee']);
+        $agent = User::factory()->create(['role' => 'agent']);
         $existingTeam = Team::create(['name' => 'Existing Team']);
-        $existingTeam->members()->attach($employee);
+        $existingTeam->members()->attach($agent);
         $team = Team::create(['name' => 'Other Team']);
 
         $this->actingAsUser($admin)->put(route('admin.teams.update', $team), [
             'name' => 'Changed Team',
-            'employee_ids' => [$employee->id],
-        ])->assertSessionHasErrors('employee_ids');
+            'agent_ids' => [$agent->id],
+        ])->assertSessionHasErrors('agent_ids');
 
         $this->assertDatabaseHas('teams', ['id' => $team->id, 'name' => 'Other Team']);
     }
@@ -91,9 +103,9 @@ class TeamTest extends TestCase
     public function test_admin_can_delete_a_team(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $employee = User::factory()->create(['role' => 'employee']);
+        $agent = User::factory()->create(['role' => 'agent']);
         $team = Team::create(['name' => 'Temporary Team']);
-        $team->members()->attach($employee);
+        $team->members()->attach($agent);
 
         $this->actingAsUser($admin)
             ->delete(route('admin.teams.destroy', $team))
@@ -103,29 +115,29 @@ class TeamTest extends TestCase
         $this->assertDatabaseMissing('team_members', ['team_id' => $team->id]);
     }
 
-    public function test_employee_cannot_update_or_delete_a_team(): void
+    public function test_agent_cannot_update_or_delete_a_team(): void
     {
-        $employee = User::factory()->create(['role' => 'employee']);
+        $agent = User::factory()->create(['role' => 'agent']);
         $team = Team::create(['name' => 'Protected Team']);
 
-        $this->actingAsUser($employee)->put(route('admin.teams.update', $team), [
+        $this->actingAsUser($agent)->put(route('admin.teams.update', $team), [
             'name' => 'Changed Team',
-            'employee_ids' => [$employee->id],
+            'agent_ids' => [$agent->id],
         ])->assertForbidden();
 
-        $this->actingAsUser($employee)
+        $this->actingAsUser($agent)
             ->delete(route('admin.teams.destroy', $team))
             ->assertForbidden();
 
         $this->assertDatabaseHas('teams', ['id' => $team->id, 'name' => 'Protected Team']);
     }
 
-    public function test_employee_cannot_create_a_team(): void
+    public function test_agent_cannot_create_a_team(): void
     {
-        $employee = User::factory()->create(['role' => 'employee']);
+        $agent = User::factory()->create(['role' => 'agent']);
 
-        $this->actingAsUser($employee)->post('/admin/teams', [
-            'name' => 'No Access', 'employee_ids' => [$employee->id],
+        $this->actingAsUser($agent)->post('/admin/teams', [
+            'name' => 'No Access', 'agent_ids' => [$agent->id],
         ])->assertForbidden();
     }
 }

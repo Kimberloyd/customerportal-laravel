@@ -27,6 +27,7 @@ RUN apk add --no-cache \
         libpng \
         libjpeg-turbo \
         freetype \
+        sqlite-libs \
         su-exec \
     && apk add --no-cache --virtual .build-deps \
         $PHPIZE_DEPS \
@@ -36,9 +37,11 @@ RUN apk add --no-cache \
         libpng-dev \
         libjpeg-turbo-dev \
         freetype-dev \
+        sqlite-dev \
     && docker-php-ext-configure gd --with-jpeg --with-freetype \
     && docker-php-ext-install -j"$(nproc)" \
         pdo_mysql \
+        pdo_sqlite \
         mbstring \
         bcmath \
         zip \
@@ -73,6 +76,10 @@ RUN composer install --no-dev --no-scripts --no-plugins --no-interaction --optim
 COPY --chown=app:app . .
 COPY --from=assets --chown=app:app /app/public/build ./public/build
 
+# Test sources are available to the later CI stage but must not ship in the
+# production image.
+RUN rm -rf tests phpunit.xml
+
 RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views \
         storage/app/private/purchase_order_attachments \
         bootstrap/cache \
@@ -96,3 +103,13 @@ EXPOSE 9000
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["php-fpm"]
+
+# CI-only image. Keep PHPUnit and the other development tools out of the
+# production runtime while testing the exact runtime filesystem and extensions.
+FROM runtime AS test
+
+RUN composer install --no-scripts --no-plugins --no-interaction --optimize-autoloader --no-progress \
+    && touch .env \
+    && chown app:app .env
+COPY --chown=app:app phpunit.xml ./phpunit.xml
+COPY --chown=app:app tests ./tests

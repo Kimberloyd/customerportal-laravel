@@ -110,6 +110,8 @@ class MessageThread
                 return null;
             }
             $query->where('customer_id', $customer->id);
+        } elseif ($user->role === User::ROLE_AGENT) {
+            $query->whereIn('customer_id', CustomerAccess::customerIdsFor($user));
         }
 
         return $query;

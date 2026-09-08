@@ -11,7 +11,7 @@ import { Input } from '@/components/motion/input';
 import { statusBadge, formatDateTime } from '@/utils/orderDisplay';
 import { usePurchaseOrderRealtime } from '@/hooks/usePurchaseOrderRealtime';
 import { Deferred, Head, router } from '@inertiajs/react';
-import { ListChecks, MoreHorizontal, Search, SquareArrowOutUpRight, Trash2 } from 'lucide-react';
+import { Archive, ListChecks, MoreHorizontal, Search, SquareArrowOutUpRight } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 // Matches the sm breakpoint used across this app's layouts -- below it the
@@ -195,8 +195,8 @@ export default function Index({
                         ...(canDeleteOrders
                             ? [{
                                 value: 'delete',
-                                label: 'Delete',
-                                icon: <Trash2 />,
+                                label: 'Archive',
+                                icon: <Archive />,
                                 onSelect: () => setOrderPendingDeletion(order),
                                 destructive: true,
                             }]
@@ -324,9 +324,9 @@ export default function Index({
             <ConfirmationDialog
                 open={orderPendingDeletion !== null}
                 onOpenChange={(open) => !open && !isDeletingOrder && setOrderPendingDeletion(null)}
-                title={`Delete purchase order ${orderPendingDeletion?.po_number ?? ''}?`}
-                description="This permanently deletes this order, its line items, message log, and attachment. This cannot be undone."
-                confirmLabel="Delete order"
+                title={`Archive purchase order ${orderPendingDeletion?.po_number ?? ''}?`}
+                description="This removes the order from active views while retaining its items, activity history, messages, returns, and attachment for audit purposes."
+                confirmLabel="Archive order"
                 cancelLabel="Keep order"
                 onConfirm={deleteOrder}
                 confirmationText={orderPendingDeletion?.po_number}

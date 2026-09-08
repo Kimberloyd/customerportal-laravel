@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\PurchaseOrders;
 
+use App\Jobs\SendOrderNotifications;
 use App\Models\CustomerMessage;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderNotification;
@@ -10,6 +11,7 @@ use App\Support\OrderNotifications;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Tests\Concerns\CreatesOrderFixtures;
 use Tests\TestCase;
 
@@ -17,6 +19,19 @@ class NotificationTest extends TestCase
 {
     use CreatesOrderFixtures;
     use RefreshDatabase;
+
+    public function test_outbound_delivery_is_queued_after_an_order_event(): void
+    {
+        Queue::fake();
+        $customer = $this->makeCustomer();
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now());
+
+        OrderNotifications::submitted($order);
+
+        Queue::assertPushedOn('notifications', SendOrderNotifications::class);
+        Queue::assertPushed(SendOrderNotifications::class, fn ($job) => $job->orderId === $order->id
+            && $job->event === 'submitted');
+    }
 
     public function test_customer_created_order_produces_a_portal_notification_without_a_chat_message(): void
     {
@@ -98,7 +113,7 @@ class NotificationTest extends TestCase
             'services.po_notifications.facebook_enabled' => true,
             'services.facebook.page_access_token' => null,
         ]);
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customerUser = User::factory()->create(['role' => 'customer']);
         $customer = $this->makeCustomer('Own Co', $customerUser);
         $product = $this->makeProduct('Widget');
@@ -133,7 +148,7 @@ class NotificationTest extends TestCase
         Http::fake([
             'graph.facebook.com/*' => Http::response([], 200),
         ]);
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customerUser = User::factory()->create(['role' => 'customer']);
         $customer = $this->makeCustomer('Own Co', $customerUser);
         $product = $this->makeProduct('Widget');
@@ -161,7 +176,7 @@ class NotificationTest extends TestCase
 
     public function test_staff_created_order_still_notifies_the_customer(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct('Widget');
 
@@ -184,7 +199,7 @@ class NotificationTest extends TestCase
 
     public function test_order_update_notifies_the_customer(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer('Acme Co');
         $product = $this->makeProduct('Widget');
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
@@ -235,7 +250,7 @@ class NotificationTest extends TestCase
 
     public function test_fulfillment_update_notifies_the_customer(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
@@ -256,7 +271,7 @@ class NotificationTest extends TestCase
 
     public function test_completion_notifies_the_customer(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
@@ -274,7 +289,7 @@ class NotificationTest extends TestCase
 
     public function test_cancellation_notifies_the_customer(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [

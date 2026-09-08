@@ -25,7 +25,7 @@ class CreateTest extends TestCase
 
     public function test_orders_page_only_loads_the_product_catalog_when_the_modal_requests_it(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $this->makeCustomer();
         $this->makeProduct('Deferred Product');
 
@@ -52,7 +52,7 @@ class CreateTest extends TestCase
 
     public function test_create_url_redirects_to_the_orders_modal(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
 
         $this->actingAsUser($staff)
             ->get('/orders/create')
@@ -61,7 +61,7 @@ class CreateTest extends TestCase
 
     public function test_creates_order_with_a_resolved_product_id_line(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct('Amoxicillin 500mg', ['unit_price' => 12.50]);
 
@@ -90,7 +90,7 @@ class CreateTest extends TestCase
 
     public function test_resolves_line_via_unambiguous_product_search(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $this->makeProduct('Paracetamol 500mg', ['sku' => 'PARA-500']);
 
@@ -108,7 +108,7 @@ class CreateTest extends TestCase
 
     public function test_rejects_ambiguous_product_search(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $this->makeProduct('Amoxicillin 500mg Capsule');
         $this->makeProduct('Amoxicillin 250mg Capsule');
@@ -127,7 +127,7 @@ class CreateTest extends TestCase
 
     public function test_rejects_unmatched_product_search(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
 
         $response = $this->actingAsUser($staff)->post('/orders', [
@@ -144,7 +144,7 @@ class CreateTest extends TestCase
 
     public function test_rejects_quantity_less_than_one(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
 
@@ -162,7 +162,7 @@ class CreateTest extends TestCase
 
     public function test_rejects_zero_resolved_lines(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
 
         $response = $this->actingAsUser($staff)->post('/orders', [
@@ -198,7 +198,7 @@ class CreateTest extends TestCase
 
     public function test_snapshots_product_fields_onto_the_item(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct('Original Name', ['sku' => 'ORIG-1']);
 
@@ -218,7 +218,7 @@ class CreateTest extends TestCase
 
     public function test_writes_exactly_one_audit_row_with_order_created_action(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
 
@@ -239,7 +239,7 @@ class CreateTest extends TestCase
 
     public function test_accepts_a_valid_pdf_attachment(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
 
@@ -262,7 +262,7 @@ class CreateTest extends TestCase
 
     public function test_rejects_a_file_whose_content_does_not_match_its_extension(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
 

@@ -220,11 +220,11 @@ class DeleteTest extends TestCase
 
     public function test_a_non_admin_cannot_schedule_or_export_account_data(): void
     {
-        $employee = User::factory()->create();
+        $agent = User::factory()->create();
         $target = User::factory()->create();
 
-        $this->actingAsUser($employee)->delete("/admin/users/{$target->id}")->assertForbidden();
-        $this->actingAsUser($employee)->get("/admin/users/{$target->id}/data-export")->assertForbidden();
+        $this->actingAsUser($agent)->delete("/admin/users/{$target->id}")->assertForbidden();
+        $this->actingAsUser($agent)->get("/admin/users/{$target->id}/data-export")->assertForbidden();
         $this->assertSame(0, DataSubjectRequest::count());
     }
 }

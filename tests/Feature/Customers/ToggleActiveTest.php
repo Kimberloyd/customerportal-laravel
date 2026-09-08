@@ -10,12 +10,12 @@ use Tests\TestCase;
 
 class ToggleActiveTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesOrderFixtures;
+    use RefreshDatabase;
 
     public function test_flips_is_active(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $this->assertTrue($customer->is_active);
 
@@ -36,7 +36,7 @@ class ToggleActiveTest extends TestCase
 
     public function test_audit_action_reflects_direction(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
 
         $this->actingAsUser($staff)->post("/customers/{$customer->id}/toggle-active");

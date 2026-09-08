@@ -2,31 +2,7 @@ name: Supply-chain integrity
 
 on:
   push:
-    paths:
-      - '.github/workflows/supply-chain.yml'
-      - '.github/dependabot.yml'
-      - '.npmrc'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'composer.json'
-      - 'composer.lock'
-      - 'Dockerfile'
-      - 'docker-compose.yml'
-      - 'docker-compose.local.yml'
-      - 'docker/nginx/Dockerfile'
   pull_request:
-    paths:
-      - '.github/workflows/supply-chain.yml'
-      - '.github/dependabot.yml'
-      - '.npmrc'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'composer.json'
-      - 'composer.lock'
-      - 'Dockerfile'
-      - 'docker-compose.yml'
-      - 'docker-compose.local.yml'
-      - 'docker/nginx/Dockerfile'
   schedule:
     - cron: '17 3 * * 1'
   workflow_dispatch:
@@ -93,6 +69,28 @@ jobs:
           --build-arg VITE_REVERB_PORT=8080
           --build-arg VITE_REVERB_SCHEME=http
           --tag customerportal-app:ci .
+
+      - name: Build application test image
+        run: >-
+          docker build --target test
+          --build-arg VITE_REVERB_APP_KEY=ci-public-key
+          --build-arg VITE_REVERB_HOST=localhost
+          --build-arg VITE_REVERB_PORT=8080
+          --build-arg VITE_REVERB_SCHEME=http
+          --tag customerportal-app:test .
+
+      - name: Run application tests against the production runtime
+        run: >-
+          docker run --rm
+          --env APP_ENV=testing
+          --env APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+          --env DB_CONNECTION=sqlite
+          --env DB_DATABASE=:memory:
+          --env CACHE_STORE=array
+          --env SESSION_DRIVER=array
+          --env QUEUE_CONNECTION=sync
+          --env MAIL_MAILER=array
+          customerportal-app:test php artisan test
 
       - name: Verify production proxy build
         run: >-

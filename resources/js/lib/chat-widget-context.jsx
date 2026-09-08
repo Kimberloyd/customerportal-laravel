@@ -5,7 +5,7 @@ const ChatWidgetContext = createContext(null);
 const MAX_OPEN_CHATS = 2;
 
 // A customer's conversation with Administrator is a different thread than
-// their conversation with an Employee, so the two need distinct keys even
+// their conversation with an Agent, so the two need distinct keys even
 // though they share the same customerId. Facebook threads have their own
 // identity entirely (no customerId in the same sense), keyed by thread id.
 function chatKey(target) {

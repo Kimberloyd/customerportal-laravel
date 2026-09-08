@@ -4,6 +4,7 @@ namespace App\Events;
 
 use App\Models\PurchaseOrder;
 use App\Models\User;
+use App\Support\CustomerAccess;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -33,16 +34,19 @@ class PurchaseOrderChanged implements ShouldBroadcast
             $this->previousCustomerId,
         ])));
 
-        $recipientIds = User::query()
-            ->where('is_active', true)
-            ->where(function ($query) use ($customerIds): void {
-                $query->whereIn('role', ['admin', 'employee']);
+        $recipientIds = collect($customerIds)
+            ->flatMap(fn (int $customerId) => CustomerAccess::staffRecipientIdsForCustomer($customerId));
 
-                if ($customerIds !== []) {
-                    $query->orWhereHas('customer', fn ($customer) => $customer->whereIn('id', $customerIds));
-                }
-            })
-            ->pluck('id');
+        if ($customerIds === []) {
+            $recipientIds = collect(CustomerAccess::staffRecipientIdsForCustomer(null));
+        } else {
+            $recipientIds = $recipientIds->merge(User::query()
+                ->where('is_active', true)
+                ->whereHas('customer', fn ($customer) => $customer->whereIn('id', $customerIds))
+                ->pluck('id'));
+        }
+
+        $recipientIds = $recipientIds->unique();
 
         return $recipientIds
             ->map(fn (int $userId) => new PrivateChannel("users.{$userId}"))

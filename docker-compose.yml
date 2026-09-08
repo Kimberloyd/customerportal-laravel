@@ -194,7 +194,7 @@ services:
       <<: [*laravel-base-environment, *database-environment, *redis-environment, *reverb-environment]
       QUEUE_CONNECTION: ${QUEUE_CONNECTION:-redis}
       CACHE_STORE: file
-    command: ["php", "artisan", "queue:work", "--queue=broadcasts", "--sleep=1", "--tries=3", "--timeout=60"]
+    command: ["php", "artisan", "queue:work", "--queue=broadcasts,notifications", "--sleep=1", "--tries=4", "--timeout=60"]
     depends_on:
       app:
         condition: service_healthy

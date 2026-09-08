@@ -6,6 +6,7 @@ use App\Events\CustomerMessageSent;
 use App\Models\Customer;
 use App\Models\CustomerMessage;
 use App\Models\User;
+use App\Support\CustomerAccess;
 use App\Support\CustomerScope;
 use App\Support\FacebookMessenger;
 use App\Support\MessageThread;
@@ -221,7 +222,7 @@ class MessageController extends Controller
 
         if ($userId !== null) {
             abort_unless(
-                User::whereIn('role', ['admin', 'employee'])->whereKey($userId)->exists(),
+                User::whereIn('role', User::STAFF_ROLES)->whereKey($userId)->exists(),
                 422,
             );
 
@@ -266,7 +267,7 @@ class MessageController extends Controller
         $query = trim((string) $request->query('q', ''));
 
         $users = User::query()
-            ->whereIn('role', ['admin', 'employee'])
+            ->whereIn('role', User::STAFF_ROLES)
             ->where('is_active', true)
             ->when($query !== '', fn ($q) => $q->where('full_name', 'like', '%'.$query.'%'))
             ->orderBy('full_name')
@@ -288,14 +289,14 @@ class MessageController extends Controller
             }
 
             $staff = User::query()
-                ->whereIn('role', ['admin', 'employee'])
+                ->whereIn('role', User::STAFF_ROLES)
                 ->where('is_active', true)
                 ->orderByRaw("role = 'admin' desc")
                 ->orderBy('full_name')
                 ->get(['id', 'full_name', 'role']);
 
             // Per staff member, not a blanket flag -- each is a separate
-            // conversation, so an unread message in Employee Jay's thread
+            // conversation, so an unread message in Agent Jay's thread
             // shouldn't light up the Administrator row too.
             $unreadStaffIds = CustomerMessage::where('customer_id', $customer->id)
                 ->where('sender_type', 'company')
@@ -342,6 +343,8 @@ class MessageController extends Controller
                 ->where('is_read', false)])
             ->orderByDesc('updated_at')
             ->limit(50)
+            ->when(Auth::user()->role === User::ROLE_AGENT, fn ($query) => $query
+                ->whereIn('customer_id', CustomerAccess::customerIdsFor(Auth::user())))
             ->get();
 
         return $threads->map(fn (CustomerMessage $thread) => [
@@ -364,6 +367,8 @@ class MessageController extends Controller
                 return $query->whereRaw('1 = 0');
             }
             $query->where('customer_id', $customer->id);
+        } elseif (Auth::user()->role === User::ROLE_AGENT) {
+            $query->whereIn('customer_id', CustomerAccess::customerIdsFor(Auth::user()));
         }
 
         return $query;
@@ -423,7 +428,7 @@ class MessageController extends Controller
 
     /**
      * Which staff member a widget conversation belongs to -- Administrator and
-     * each Employee get their own thread with a customer. For a staff viewer
+     * each Agent gets their own thread with a customer. For a staff viewer
      * that's simply themselves; a customer viewer has to say which staff
      * member's conversation they mean, since they're the one choosing from a
      * list of contacts.
@@ -437,7 +442,7 @@ class MessageController extends Controller
         $staffId = (int) $request->input('staff_id');
         abort_unless($staffId > 0, 422, 'Select who you want to message.');
 
-        $isStaff = User::whereIn('role', ['admin', 'employee'])
+        $isStaff = User::whereIn('role', User::STAFF_ROLES)
             ->where('is_active', true)
             ->whereKey($staffId)
             ->exists();
@@ -472,7 +477,8 @@ class MessageController extends Controller
 
     private function messageRecipients(): array
     {
-        $rows = Customer::query()
+        $customerQuery = CustomerAccess::applyToCustomers(Customer::query(), Auth::user());
+        $rows = $customerQuery
             ->join('users', 'users.id', '=', 'customers.user_id')
             ->where('customers.is_active', true)
             ->where('users.is_active', true)

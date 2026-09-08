@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('full_name', 150);
             $table->string('email', 150)->unique();
             $table->string('password_hash', 255);
-            $table->enum('role', ['admin', 'employee', 'customer'])->default('customer');
+            $table->enum('role', ['admin', 'office', 'agent', 'customer'])->default('customer');
             $table->boolean('is_active')->default(true);
             $table->string('profile_image', 255)->nullable();
             $table->unsignedInteger('session_version')->default(0);

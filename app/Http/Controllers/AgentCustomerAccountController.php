@@ -14,18 +14,18 @@ use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class EmployeeCustomerAccountController extends Controller
+class AgentCustomerAccountController extends Controller
 {
     public function create(): Response
     {
-        $employee = $this->employee();
+        $agent = $this->agent();
 
         return Inertia::render('CustomerAccounts/Create', [
             'customers' => Customer::query()->where('is_active', true)->whereNull('user_id')
-                ->where(fn ($query) => $query->whereNull('assigned_employee_id')->orWhere('assigned_employee_id', $employee->id))
+                ->where(fn ($query) => $query->whereNull('assigned_employee_id')->orWhere('assigned_employee_id', $agent->id))
                 ->orderBy('company_name')->get(['id', 'company_name', 'assigned_employee_id']),
             'assignedCustomers' => Customer::query()
-                ->where('assigned_employee_id', $employee->id)
+                ->where('assigned_employee_id', $agent->id)
                 ->with('user:id,full_name,email,phone,is_active')
                 ->orderBy('company_name')
                 ->get(['id', 'company_name', 'customer_code', 'channel', 'user_id', 'is_active']),
@@ -34,7 +34,7 @@ class EmployeeCustomerAccountController extends Controller
 
     public function store(Request $request)
     {
-        $employee = $this->employee();
+        $agent = $this->agent();
         $values = $request->validate([
             'full_name' => ['required', 'string', 'max:150'],
             'email' => ['required', 'email', 'max:150', Rule::unique('users', 'email')],
@@ -46,7 +46,7 @@ class EmployeeCustomerAccountController extends Controller
             'password.confirmed' => 'Enter the same password again.',
         ]);
 
-        DB::transaction(function () use ($values, $employee, $request) {
+        DB::transaction(function () use ($values, $agent, $request) {
             $customer = Customer::lockForUpdate()->find($values['customer_id']);
             if (! $customer || ! $customer->is_active) {
                 throw ValidationException::withMessages(['customer_id' => 'Choose an active customer from the list.']);
@@ -54,28 +54,29 @@ class EmployeeCustomerAccountController extends Controller
             if ($customer->user_id) {
                 throw ValidationException::withMessages(['customer_id' => 'This customer already has a portal account.']);
             }
-            if ($customer->assigned_employee_id && $customer->assigned_employee_id !== $employee->id) {
-                throw ValidationException::withMessages(['customer_id' => 'This customer is assigned to another employee.']);
+            if ($customer->assigned_employee_id && $customer->assigned_employee_id !== $agent->id) {
+                throw ValidationException::withMessages(['customer_id' => 'This customer is assigned to another agent.']);
             }
 
             $user = User::create([
                 'full_name' => trim($values['full_name']),
                 'email' => strtolower(trim($values['email'])),
                 'phone' => filled($values['phone']) ? trim($values['phone']) : null,
-                'role' => 'customer', 'is_active' => true,
+                'role' => User::ROLE_CUSTOMER, 'is_active' => true,
                 'password_hash' => Hash::make($values['password']), 'session_version' => 0,
             ]);
-            $customer->update(['user_id' => $user->id, 'assigned_employee_id' => $employee->id]);
-            UserAudit::record($user, 'created', "customer account created by employee {$employee->id}", $request);
+            $customer->update(['user_id' => $user->id, 'assigned_employee_id' => $agent->id]);
+            UserAudit::record($user, 'created', "customer account created by agent {$agent->id}", $request);
         });
 
         return redirect()->route('customer-accounts.create')->with('success', 'Customer account created and assigned to you.');
     }
 
-    private function employee(): User
+    private function agent(): User
     {
         $user = Auth::user();
-        abort_unless($user?->role === 'employee', 403);
+        abort_unless($user?->role === User::ROLE_AGENT, 403);
+
         return $user;
     }
 }

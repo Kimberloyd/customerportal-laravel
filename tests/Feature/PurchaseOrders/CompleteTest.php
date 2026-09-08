@@ -11,12 +11,12 @@ use Tests\TestCase;
 
 class CompleteTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesOrderFixtures;
+    use RefreshDatabase;
 
     public function test_blocked_if_already_terminal(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_CANCELLED, now(), [
@@ -43,7 +43,7 @@ class CompleteTest extends TestCase
 
     public function test_marks_every_item_fully_delivered_and_writes_audit(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $productA = $this->makeProduct('A');
         $productB = $this->makeProduct('B');

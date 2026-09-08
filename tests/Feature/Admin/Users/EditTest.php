@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin\Users;
 
 use App\Models\AdminAudit;
+use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -27,13 +28,13 @@ class EditTest extends TestCase
     public function test_blank_password_leaves_hash_unchanged(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $target = User::factory()->create(['role' => 'employee']);
+        $target = User::factory()->create(['role' => 'agent']);
         $originalHash = $target->password_hash;
 
         $this->actingAsUser($admin)->put("/admin/users/{$target->id}", [
             'full_name' => $target->full_name,
             'email' => $target->email,
-            'role' => 'employee',
+            'role' => 'agent',
             'is_active' => '1',
         ]);
 
@@ -43,13 +44,13 @@ class EditTest extends TestCase
     public function test_new_password_bumps_session_version(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $target = User::factory()->create(['role' => 'employee']);
+        $target = User::factory()->create(['role' => 'agent']);
         $originalVersion = $target->session_version;
 
         $this->actingAsUser($admin)->put("/admin/users/{$target->id}", [
             'full_name' => $target->full_name,
             'email' => $target->email,
-            'role' => 'employee',
+            'role' => 'agent',
             'is_active' => '1',
             'password' => 'newpassword12345',
             'password_confirmation' => 'newpassword12345',
@@ -66,7 +67,7 @@ class EditTest extends TestCase
         // -- this just confirms the scenario a password reset produces
         // (a session stamped with the pre-bump version, Auth::user()
         // resolving to the post-bump DB row) is exactly what triggers it.
-        $target = User::factory()->create(['role' => 'employee', 'session_version' => 0]);
+        $target = User::factory()->create(['role' => 'agent', 'session_version' => 0]);
         $target->session_version = 1; // simulates the DB state after an admin's password reset
 
         $this->withSession(['session_version' => 0])
@@ -106,7 +107,7 @@ class EditTest extends TestCase
         $this->actingAsUser($admin)->put("/admin/users/{$admin->id}", [
             'full_name' => $admin->full_name,
             'email' => $admin->email,
-            'role' => 'employee',
+            'role' => 'agent',
             'is_active' => '1',
         ]);
 
@@ -155,7 +156,7 @@ class EditTest extends TestCase
         $this->actingAsUser($admin)->put("/admin/users/{$target->id}", [
             'full_name' => $target->full_name,
             'email' => $target->email,
-            'role' => 'employee',
+            'role' => 'agent',
             'is_active' => '1',
         ]);
 
@@ -169,21 +170,40 @@ class EditTest extends TestCase
             ->assertRedirect(route('login'));
     }
 
-    public function test_admin_cannot_convert_an_employee_into_a_customer_account(): void
+    public function test_changing_an_agent_to_office_removes_team_membership(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $employee = User::factory()->create(['role' => 'employee']);
+        $agent = User::factory()->create(['role' => 'agent']);
+        $team = Team::create(['name' => 'North Team']);
+        $team->members()->attach($agent);
+
+        $this->actingAsUser($admin)->put("/admin/users/{$agent->id}", [
+            'full_name' => $agent->full_name,
+            'email' => $agent->email,
+            'phone' => $agent->phone,
+            'role' => 'office',
+            'is_active' => '1',
+        ])->assertRedirect(route('admin.dashboard', ['tab' => 'accounts']));
+
+        $this->assertSame('office', $agent->fresh()->role);
+        $this->assertDatabaseMissing('team_members', ['team_id' => $team->id, 'user_id' => $agent->id]);
+    }
+
+    public function test_admin_cannot_convert_an_agent_into_a_customer_account(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $agent = User::factory()->create(['role' => 'agent']);
         $customer = $this->makeCustomer('Fresh Co');
 
-        $this->actingAsUser($admin)->put("/admin/users/{$employee->id}", [
-            'full_name' => $employee->full_name,
-            'email' => $employee->email,
+        $this->actingAsUser($admin)->put("/admin/users/{$agent->id}", [
+            'full_name' => $agent->full_name,
+            'email' => $agent->email,
             'role' => 'customer',
             'customer_id' => $customer->id,
             'is_active' => '1',
         ])->assertSessionHasErrors('role');
 
-        $this->assertSame('employee', $employee->fresh()->role);
+        $this->assertSame('agent', $agent->fresh()->role);
         $this->assertNull($customer->fresh()->user_id);
     }
 
@@ -196,23 +216,23 @@ class EditTest extends TestCase
         $this->actingAsUser($admin)->put("/admin/users/{$target->id}", [
             'full_name' => $target->full_name,
             'email' => $target->email,
-            'role' => 'employee',
+            'role' => 'agent',
             'is_active' => '0',
         ]);
 
         $audit = AdminAudit::where('action', 'updated')->first();
-        $this->assertSame('role customer -> employee, deactivated', $audit->details);
+        $this->assertSame('role customer -> agent, deactivated', $audit->details);
     }
 
     public function test_no_op_edit_records_profile_details_updated(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $target = User::factory()->create(['role' => 'employee', 'is_active' => true]);
+        $target = User::factory()->create(['role' => 'agent', 'is_active' => true]);
 
         $this->actingAsUser($admin)->put("/admin/users/{$target->id}", [
             'full_name' => $target->full_name,
             'email' => $target->email,
-            'role' => 'employee',
+            'role' => 'agent',
             'is_active' => '1',
         ]);
 
@@ -220,15 +240,15 @@ class EditTest extends TestCase
         $this->assertSame('profile details updated', $audit->details);
     }
 
-    public function test_employee_cannot_update_an_account(): void
+    public function test_agent_cannot_update_an_account(): void
     {
-        $employee = User::factory()->create(['role' => 'employee']);
-        $target = User::factory()->create(['role' => 'employee']);
+        $agent = User::factory()->create(['role' => 'agent']);
+        $target = User::factory()->create(['role' => 'agent']);
 
-        $this->actingAsUser($employee)->put("/admin/users/{$target->id}", [
+        $this->actingAsUser($agent)->put("/admin/users/{$target->id}", [
             'full_name' => 'Unauthorized change',
             'email' => $target->email,
-            'role' => 'employee',
+            'role' => 'agent',
             'is_active' => '1',
         ])->assertStatus(403);
 
@@ -238,7 +258,7 @@ class EditTest extends TestCase
     public function test_full_page_edit_route_is_removed(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $target = User::factory()->create(['role' => 'employee']);
+        $target = User::factory()->create(['role' => 'agent']);
 
         $this->actingAsUser($admin)
             ->get("/admin/users/{$target->id}/edit")

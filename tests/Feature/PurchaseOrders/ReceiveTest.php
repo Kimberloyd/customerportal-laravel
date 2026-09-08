@@ -11,12 +11,12 @@ use Tests\TestCase;
 
 class ReceiveTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesOrderFixtures;
+    use RefreshDatabase;
 
     public function test_rejects_a_single_item_exceeding_pending_with_no_partial_commit(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $productA = $this->makeProduct('A');
         $productB = $this->makeProduct('B');
@@ -38,7 +38,7 @@ class ReceiveTest extends TestCase
 
     public function test_rejects_all_zero_submission(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
@@ -55,7 +55,7 @@ class ReceiveTest extends TestCase
 
     public function test_status_transitions_submitted_to_partial_to_completed(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
@@ -78,7 +78,7 @@ class ReceiveTest extends TestCase
 
     public function test_audit_details_lists_only_items_that_received_units(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $productA = $this->makeProduct('Widget A');
         $productB = $this->makeProduct('Widget B');

@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
+use App\Support\CustomerAccess;
 use App\Support\CustomerScope;
 use App\Support\OrdersReportExport;
 use App\Support\ReportPeriod;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -40,14 +42,14 @@ class ReportController extends Controller
 
         $statusCounts = PurchaseOrder::where('submitted_at', '>=', $periodStart)
             ->where('submitted_at', '<', $periodEnd)
+            ->whereIn('customer_id', CustomerAccess::customerIdsFor($request->user()))
             ->when($customerId, fn ($q) => $q->where('customer_id', $customerId))
             ->select('status', DB::raw('count(*) as cnt'))
             ->groupBy('status')
             ->pluck('cnt', 'status');
 
-        $customers = $linkedCustomer
-            ? collect([['id' => $linkedCustomer->id, 'company_name' => $linkedCustomer->company_name]])
-            : Customer::where('is_active', true)->orderBy('company_name')->get(['id', 'company_name']);
+        $customers = CustomerAccess::applyToCustomers(Customer::query(), $request->user())
+            ->where('is_active', true)->orderBy('company_name')->get(['id', 'company_name']);
 
         return Inertia::render('Reports/Overview', [
             'filters' => [
@@ -73,9 +75,8 @@ class ReportController extends Controller
         [$ordersQuery, $filters] = $this->filteredOrdersQuery($request);
 
         $linkedCustomer = CustomerScope::forCurrentUser();
-        $customers = $linkedCustomer
-            ? collect([['id' => $linkedCustomer->id, 'company_name' => $linkedCustomer->company_name]])
-            : Customer::orderBy('company_name')->get(['id', 'company_name']);
+        $customers = CustomerAccess::applyToCustomers(Customer::query(), $request->user())
+            ->orderBy('company_name')->get(['id', 'company_name']);
 
         $summary = $this->reportSummary($ordersQuery);
         $paginator = (clone $ordersQuery)
@@ -142,7 +143,10 @@ class ReportController extends Controller
             ?? ($request->query('customer_id') ? (int) $request->query('customer_id') : null);
 
         $query = PurchaseOrder::query();
+        CustomerAccess::applyToOrders($query, $request->user());
         if ($customerId) {
+            abort_unless(CustomerAccess::applyToCustomers(Customer::query(), $request->user())
+                ->whereKey($customerId)->exists(), 404);
             $query->where('customer_id', $customerId);
         }
 
@@ -267,6 +271,7 @@ class ReportController extends Controller
             ->where('submitted_at', '>=', $periodStart)
             ->where('submitted_at', '<', $periodEnd)
             ->where('status', '!=', PurchaseOrder::STATUS_CANCELLED)
+            ->whereIn('customer_id', CustomerAccess::customerIdsFor(Auth::user()))
             ->when($customerId, fn ($q) => $q->where('customer_id', $customerId))
             ->selectRaw('COUNT(*) as total_orders')
             ->selectRaw(
@@ -284,6 +289,7 @@ class ReportController extends Controller
             ->where('purchase_orders.submitted_at', '>=', $periodStart)
             ->where('purchase_orders.submitted_at', '<', $periodEnd)
             ->where('purchase_orders.status', '!=', PurchaseOrder::STATUS_CANCELLED)
+            ->whereIn('purchase_orders.customer_id', CustomerAccess::customerIdsFor(Auth::user()))
             ->when($customerId, fn ($q) => $q->where('purchase_orders.customer_id', $customerId))
             ->selectRaw('COALESCE(SUM(purchase_order_items.quantity), 0) as ordered_units')
             ->selectRaw('COALESCE(SUM(purchase_order_items.delivered_quantity), 0) as delivered_units')
@@ -334,6 +340,7 @@ class ReportController extends Controller
             ->where('purchase_orders.submitted_at', '>=', $periodStart)
             ->where('purchase_orders.submitted_at', '<', $periodEnd)
             ->where('purchase_orders.status', '!=', PurchaseOrder::STATUS_CANCELLED)
+            ->whereIn('purchase_orders.customer_id', CustomerAccess::customerIdsFor(Auth::user()))
             ->when($customerId, fn ($q) => $q->where('purchase_orders.customer_id', $customerId))
             ->selectRaw("{$monthExpression} as month_key")
             ->selectRaw('COALESCE(SUM(purchase_order_items.quantity), 0) as ordered')
@@ -416,6 +423,7 @@ class ReportController extends Controller
             ->where('purchase_orders.submitted_at', '>=', $periodStart)
             ->where('purchase_orders.submitted_at', '<', $periodEnd)
             ->whereNotIn('purchase_orders.status', PurchaseOrder::TERMINAL_STATUSES)
+            ->whereIn('purchase_orders.customer_id', CustomerAccess::customerIdsFor(Auth::user()))
             ->when($customerId, fn ($q) => $q->where('purchase_orders.customer_id', $customerId))
             ->select('purchase_orders.id')
             ->selectRaw($this->ageDaysExpression('purchase_orders.submitted_at').' as age_days', [
@@ -477,6 +485,7 @@ class ReportController extends Controller
             ->where('purchase_orders.submitted_at', '>=', $periodStart)
             ->where('purchase_orders.submitted_at', '<', $periodEnd)
             ->where('purchase_orders.status', '!=', PurchaseOrder::STATUS_CANCELLED)
+            ->whereIn('purchase_orders.customer_id', CustomerAccess::customerIdsFor(Auth::user()))
             ->when($customerId, fn ($q) => $q->where('purchase_orders.customer_id', $customerId))
             ->groupBy('purchase_order_items.product_name')
             ->select('purchase_order_items.product_name as product_name')
@@ -514,6 +523,7 @@ class ReportController extends Controller
             ->leftJoin('purchase_order_items', 'purchase_order_items.purchase_order_id', '=', 'purchase_orders.id')
             ->where('purchase_orders.submitted_at', '>=', $periodStart)
             ->where('purchase_orders.submitted_at', '<', $periodEnd)
+            ->whereIn('purchase_orders.customer_id', CustomerAccess::customerIdsFor(Auth::user()))
             ->when($customerId, fn ($q) => $q->where('purchase_orders.customer_id', $customerId))
             ->groupBy('purchase_orders.customer_id', 'customers.company_name')
             ->select('customers.company_name as name')

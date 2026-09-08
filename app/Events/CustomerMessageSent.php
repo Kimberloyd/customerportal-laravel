@@ -4,6 +4,7 @@ namespace App\Events;
 
 use App\Models\CustomerMessage;
 use App\Models\User;
+use App\Support\CustomerAccess;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -26,16 +27,14 @@ class CustomerMessageSent implements ShouldBroadcast
      */
     public function broadcastOn(): array
     {
-        $recipientIds = User::query()
-            ->where('is_active', true)
-            ->where(function ($query): void {
-                $query->whereIn('role', ['admin', 'employee']);
+        $recipientIds = collect(CustomerAccess::staffRecipientIdsForCustomer($this->customerId));
 
-                if ($this->customerId !== null) {
-                    $query->orWhereHas('customer', fn ($customer) => $customer->whereKey($this->customerId));
-                }
-            })
-            ->pluck('id');
+        if ($this->customerId !== null) {
+            $recipientIds = $recipientIds->merge(User::query()
+                ->where('is_active', true)
+                ->whereHas('customer', fn ($customer) => $customer->whereKey($this->customerId))
+                ->pluck('id'));
+        }
 
         return $recipientIds
             ->map(fn (int $userId) => new PrivateChannel("users.{$userId}"))

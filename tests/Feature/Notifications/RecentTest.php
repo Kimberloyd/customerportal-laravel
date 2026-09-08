@@ -29,7 +29,7 @@ class RecentTest extends TestCase
             'quantity' => [1],
         ]);
 
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $this->actingAsUser($staff)->post('/orders', [
             'po_number' => 'PO-'.uniqid(),
             'customer_id' => $otherCustomer->id,
@@ -44,7 +44,7 @@ class RecentTest extends TestCase
         $this->assertSame(1, $response->json('count'));
         $this->assertCount(1, $response->json('notifications'));
         $this->assertSame(
-            "Order received — we'll review it shortly.",
+            "Order received. We'll review it shortly.",
             $response->json('notifications.0.note'),
         );
     }
@@ -54,7 +54,7 @@ class RecentTest extends TestCase
         $customerA = $this->makeCustomer('A Co');
         $customerB = $this->makeCustomer('B Co');
         $product = $this->makeProduct('Widget');
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
 
         foreach ([$customerA, $customerB] as $customer) {
             $this->actingAsUser($staff)->post('/orders', [
@@ -98,14 +98,14 @@ class RecentTest extends TestCase
             ->getJson(route('notifications.recent'))
             ->json('notifications.0.note');
 
-        $this->assertSame("Order received — we'll review it shortly.", $customerMessage);
+        $this->assertSame("Order received. We'll review it shortly.", $customerMessage);
         $this->assertSame('New order from Customer Hospital — ready for review.', $staffMessage);
         $this->assertNotSame($customerMessage, $staffMessage);
     }
 
     public function test_a_fresh_order_event_shows_up_in_the_feed(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
@@ -131,7 +131,7 @@ class RecentTest extends TestCase
 
     public function test_mark_all_read_zeroes_the_count(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
 
@@ -162,7 +162,7 @@ class RecentTest extends TestCase
 
     public function test_notifications_created_after_marking_read_still_count(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
 
@@ -193,7 +193,7 @@ class RecentTest extends TestCase
     public function test_unread_indicators_match_the_count_at_the_read_cutoff(): void
     {
         $this->freezeTime();
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now());
 

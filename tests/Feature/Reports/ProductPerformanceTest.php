@@ -17,12 +17,12 @@ use Tests\TestCase;
  */
 class ProductPerformanceTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesOrderFixtures;
+    use RefreshDatabase;
 
     public function test_overview_loads_and_aggregates_by_snapshotted_product_name(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
 
         // Same product across two orders -- these must fold into one row.
@@ -58,7 +58,7 @@ class ProductPerformanceTest extends TestCase
 
     public function test_cancelled_orders_are_excluded_from_the_aggregate(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
 
         $this->makeOrder($customer, PurchaseOrder::STATUS_CANCELLED, now()->subDays(2), [
@@ -75,7 +75,7 @@ class ProductPerformanceTest extends TestCase
     {
         // The dead `items.product` eager-load only threw once the query
         // matched at least one order, so an empty result set masked it.
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
 
         $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now()->subDay(), [

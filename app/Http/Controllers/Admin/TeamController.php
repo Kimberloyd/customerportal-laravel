@@ -21,11 +21,11 @@ class TeamController extends Controller
         $values = $this->validatedTeam($request);
 
         DB::transaction(function () use ($values, $request) {
-            $employees = $this->availableEmployees($values['employee_ids']);
+            $agents = $this->availableAgents($values['agent_ids']);
 
             $team = Team::create(['name' => trim($values['name'])]);
-            $team->members()->attach($employees->pluck('id'));
-            $this->recordAudit($request, $team, 'created', 'team created with '.$employees->count().' employee(s)');
+            $team->members()->attach($agents->pluck('id'));
+            $this->recordAudit($request, $team, 'created', 'team created with '.$agents->count().' agent(s)');
         });
 
         return redirect()->route('admin.dashboard', ['tab' => 'teams'])->with('success', 'Team created.');
@@ -37,11 +37,11 @@ class TeamController extends Controller
         $values = $this->validatedTeam($request, $team);
 
         DB::transaction(function () use ($values, $request, $team) {
-            $employees = $this->availableEmployees($values['employee_ids'], $team);
+            $agents = $this->availableAgents($values['agent_ids'], $team);
 
             $team->update(['name' => trim($values['name'])]);
-            $team->members()->sync($employees->pluck('id'));
-            $this->recordAudit($request, $team, 'updated', 'team updated with '.$employees->count().' employee(s)');
+            $team->members()->sync($agents->pluck('id'));
+            $this->recordAudit($request, $team, 'updated', 'team updated with '.$agents->count().' agent(s)');
         });
 
         return redirect()->route('admin.dashboard', ['tab' => 'teams'])->with('success', 'Team updated.');
@@ -61,47 +61,47 @@ class TeamController extends Controller
         return redirect()->route('admin.dashboard', ['tab' => 'teams'])->with('success', 'Team deleted.');
     }
 
-    /** @return array{name: string, employee_ids: array<int, int>} */
+    /** @return array{name: string, agent_ids: array<int, int>} */
     private function validatedTeam(Request $request, ?Team $team = null): array
     {
         return $request->validate([
             'name' => ['required', 'string', 'max:100', Rule::unique('teams', 'name')->ignore($team?->id)],
-            'employee_ids' => ['required', 'array', 'min:1', 'max:3'],
-            'employee_ids.*' => ['required', 'integer', 'distinct'],
+            'agent_ids' => ['required', 'array', 'min:1', 'max:3'],
+            'agent_ids.*' => ['required', 'integer', 'distinct'],
         ], [
-            'employee_ids.max' => 'A team can have up to 3 employees.',
-            'employee_ids.min' => 'Choose at least one employee for the team.',
+            'agent_ids.max' => 'A team can have up to 3 agents.',
+            'agent_ids.min' => 'Choose at least one agent for the team.',
         ]);
     }
 
-    private function availableEmployees(array $employeeIds, ?Team $team = null)
+    private function availableAgents(array $agentIds, ?Team $team = null)
     {
-        $employees = User::query()
-            ->whereIn('id', $employeeIds)
-            ->where('role', 'employee')
+        $agents = User::query()
+            ->whereIn('id', $agentIds)
+            ->where('role', User::ROLE_AGENT)
             ->where('is_active', true)
             ->lockForUpdate()
             ->get();
 
-        if ($employees->count() !== count($employeeIds)) {
-            throw ValidationException::withMessages(['employee_ids' => 'Choose active employee accounts only.']);
+        if ($agents->count() !== count($agentIds)) {
+            throw ValidationException::withMessages(['agent_ids' => 'Choose active agent accounts only.']);
         }
 
         $assignedIds = DB::table('team_members')
-            ->whereIn('user_id', $employees->pluck('id'))
+            ->whereIn('user_id', $agents->pluck('id'))
             ->when($team, fn ($query) => $query->where('team_id', '!=', $team->id))
             ->pluck('user_id');
 
         if ($assignedIds->isNotEmpty()) {
-            $assignedNames = $employees->whereIn('id', $assignedIds)->pluck('full_name')->values();
+            $assignedNames = $agents->whereIn('id', $assignedIds)->pluck('full_name')->values();
             $message = $assignedNames->count() === 1
-                ? $assignedNames->first().' already belongs to a team. Choose another employee.'
-                : $assignedNames->join(', ').' already belong to teams. Choose other employees.';
+                ? $assignedNames->first().' already belongs to a team. Choose another agent.'
+                : $assignedNames->join(', ').' already belong to teams. Choose other agents.';
 
-            throw ValidationException::withMessages(['employee_ids' => $message]);
+            throw ValidationException::withMessages(['agent_ids' => $message]);
         }
 
-        return $employees;
+        return $agents;
     }
 
     private function recordAudit(Request $request, Team $team, string $action, string $details, ?int $teamId = null): void

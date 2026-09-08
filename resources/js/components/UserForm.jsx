@@ -2,7 +2,7 @@ import { Dropdown } from '@/components/interior/dropdown';
 import { Input } from '@/components/motion/input';
 import { ChevronDown } from 'lucide-react';
 
-const ROLE_LABELS = { employee: 'Employee', customer: 'Customer', admin: 'Admin' };
+const ROLE_LABELS = { admin: 'Admin', office: 'Office', agent: 'Agent', customer: 'Customer' };
 const FIELD_CLASS_NAMES = { field: 'h-10 rounded-md', input: 'text-sm' };
 
 export function AccountFields({ data, updateField, errors }) {
@@ -84,7 +84,9 @@ export function SecurityFields({ data, updateField, errors, isEdit, optional = i
 }
 
 export function AccessFields({ data, updateField, errors, allowCustomerRole = false, customers, isSelf, editingUserId, showActiveControl = true }) {
-    const roleOptions = allowCustomerRole ? ['employee', 'admin', 'customer'] : ['employee', 'admin'];
+    const roleOptions = allowCustomerRole
+        ? ['admin', 'office', 'agent', 'customer']
+        : ['admin', 'office', 'agent'];
     const roleItems = roleOptions.map((role) => ({ value: role, label: ROLE_LABELS[role] }));
     const selectedRoleLabel = ROLE_LABELS[data.role] ?? 'Choose an account type';
     const customerItems = customers.map((customer) => {

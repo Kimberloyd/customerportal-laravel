@@ -8,19 +8,19 @@ import { useForm } from '@inertiajs/react';
 import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
-export function TeamsPanel({ teams = [], employees = [] }) {
+export function TeamsPanel({ teams = [], agents = [] }) {
     const [open, setOpen] = useState(false);
     const [editingTeam, setEditingTeam] = useState(null);
     const [teamPendingDeletion, setTeamPendingDeletion] = useState(null);
-    const editor = useForm({ name: '', employee_ids: [] });
+    const editor = useForm({ name: '', agent_ids: [] });
     const deletion = useForm({});
 
-    const selectableEmployees = useMemo(() => {
-        const choices = new Map(employees.map((employee) => [employee.id, employee]));
-        editingTeam?.members.forEach((employee) => choices.set(employee.id, employee));
+    const selectableAgents = useMemo(() => {
+        const choices = new Map(agents.map((agent) => [agent.id, agent]));
+        editingTeam?.members.forEach((agent) => choices.set(agent.id, agent));
 
         return [...choices.values()].sort((left, right) => left.full_name.localeCompare(right.full_name));
-    }, [editingTeam, employees]);
+    }, [editingTeam, agents]);
 
     const openCreate = () => {
         editor.reset();
@@ -32,7 +32,7 @@ export function TeamsPanel({ teams = [], employees = [] }) {
     const openEdit = (team) => {
         editor.setData({
             name: team.name,
-            employee_ids: team.members.map((member) => member.id),
+            agent_ids: team.members.map((member) => member.id),
         });
         editor.clearErrors();
         setEditingTeam(team);
@@ -46,15 +46,15 @@ export function TeamsPanel({ teams = [], employees = [] }) {
         setOpen(false);
     };
 
-    const toggleEmployee = (id) => {
-        const selected = editor.data.employee_ids.includes(id);
-        if (!selected && editor.data.employee_ids.length === 3) return;
+    const toggleAgent = (id) => {
+        const selected = editor.data.agent_ids.includes(id);
+        if (!selected && editor.data.agent_ids.length === 3) return;
 
         editor.setData(
-            'employee_ids',
+            'agent_ids',
             selected
-                ? editor.data.employee_ids.filter((value) => value !== id)
-                : [...editor.data.employee_ids, id],
+                ? editor.data.agent_ids.filter((value) => value !== id)
+                : [...editor.data.agent_ids, id],
         );
     };
 
@@ -83,7 +83,7 @@ export function TeamsPanel({ teams = [], employees = [] }) {
         { key: 'name', header: 'Team', sortable: true },
         {
             key: 'members',
-            header: 'Employees',
+            header: 'Agents',
             cell: (team) => team.members.map((member) => member.full_name).join(', '),
         },
         {
@@ -136,7 +136,7 @@ export function TeamsPanel({ teams = [], employees = [] }) {
                 <div>
                     <h3 className="text-lg font-semibold text-gray-900">Teams</h3>
                     <p className="mt-1 text-sm text-gray-600">
-                        Organize active employees into teams of up to 3 members.
+                        Organize active agents into teams of up to 3 members.
                     </p>
                 </div>
                 <Button type="button" onClick={openCreate}>Add team</Button>
@@ -155,7 +155,7 @@ export function TeamsPanel({ teams = [], employees = [] }) {
                 open={open}
                 onClose={close}
                 title={editingTeam ? 'Edit team' : 'Add team'}
-                description={editingTeam ? 'Update the team name or assigned employees.' : 'Choose up to 3 active employees for this team.'}
+                description={editingTeam ? 'Update the team name or assigned agents.' : 'Choose up to 3 active agents for this team.'}
                 maxWidth={600}
                 closeOnBackdrop={!editor.processing}
                 closeOnEscape={!editor.processing}
@@ -197,28 +197,28 @@ export function TeamsPanel({ teams = [], employees = [] }) {
 
                     <fieldset className="mt-5">
                         <legend className="text-sm font-medium text-gray-700">
-                            Employees ({editor.data.employee_ids.length}/3)
+                            Agents ({editor.data.agent_ids.length}/3)
                         </legend>
                         <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                            {selectableEmployees.map((employee) => (
-                                <div key={employee.id} className="flex items-center gap-2 rounded-md border border-gray-200 p-2 text-sm">
+                            {selectableAgents.map((agent) => (
+                                <div key={agent.id} className="flex items-center gap-2 rounded-md p-2 text-sm">
                                     <Checkbox
-                                        checked={editor.data.employee_ids.includes(employee.id)}
-                                        onCheckedChange={() => toggleEmployee(employee.id)}
-                                        disabled={!editor.data.employee_ids.includes(employee.id) && editor.data.employee_ids.length === 3}
-                                        aria-label={`Select ${employee.full_name}`}
+                                        checked={editor.data.agent_ids.includes(agent.id)}
+                                        onCheckedChange={() => toggleAgent(agent.id)}
+                                        disabled={!editor.data.agent_ids.includes(agent.id) && editor.data.agent_ids.length === 3}
+                                        aria-label={`Select ${agent.full_name}`}
                                     />
-                                    <span>{employee.full_name}</span>
+                                    <span>{agent.full_name}</span>
                                 </div>
                             ))}
-                            {selectableEmployees.length === 0 && (
+                            {selectableAgents.length === 0 && (
                                 <p className="text-sm text-gray-500 sm:col-span-2">
-                                    All active employees already belong to a team.
+                                    All active agents already belong to a team.
                                 </p>
                             )}
                         </div>
                     </fieldset>
-                    {editor.errors.employee_ids && <p className="mt-2 text-sm text-red-600" role="alert">{editor.errors.employee_ids}</p>}
+                    {editor.errors.agent_ids && <p className="mt-2 text-sm text-red-600" role="alert">{editor.errors.agent_ids}</p>}
                 </form>
             </Modal>
 
@@ -226,7 +226,7 @@ export function TeamsPanel({ teams = [], employees = [] }) {
                 open={teamPendingDeletion !== null}
                 onOpenChange={(nextOpen) => !nextOpen && setTeamPendingDeletion(null)}
                 title={`Delete ${teamPendingDeletion?.name ?? 'team'}?`}
-                description="This removes the team. Its employees will become available for another team."
+                description="This removes the team. Its agents will become available for another team."
                 confirmLabel="Delete team"
                 cancelLabel="Keep team"
                 onConfirm={confirmDelete}

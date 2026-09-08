@@ -50,13 +50,14 @@ class RealtimeTest extends TestCase
     public function test_order_event_targets_staff_current_customer_and_previous_customer_only(): void
     {
         $admin = User::factory()->admin()->create();
-        $employee = User::factory()->create();
+        $agent = User::factory()->create();
         $currentCustomerUser = User::factory()->customer()->create();
         $previousCustomerUser = User::factory()->customer()->create();
         User::factory()->customer()->create();
         User::factory()->inactive()->create();
 
         $currentCustomer = $this->makeCustomer('Current Customer', $currentCustomerUser);
+        $currentCustomer->update(['assigned_employee_id' => $agent->id]);
         $previousCustomer = $this->makeCustomer('Previous Customer', $previousCustomerUser);
         $order = $this->makeOrder($currentCustomer, 'submitted', now());
 
@@ -65,7 +66,7 @@ class RealtimeTest extends TestCase
 
         $this->assertSame([
             "private-users.{$admin->id}",
-            "private-users.{$employee->id}",
+            "private-users.{$agent->id}",
             "private-users.{$currentCustomerUser->id}",
             "private-users.{$previousCustomerUser->id}",
         ], collect($channels)->sort()->values()->all());
@@ -78,7 +79,7 @@ class RealtimeTest extends TestCase
     {
         Event::fake([PurchaseOrderChanged::class]);
 
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct('Realtime Product');
 
@@ -98,7 +99,16 @@ class RealtimeTest extends TestCase
 
     private function useReverbBroadcasterForChannelAuth(): void
     {
-        config(['broadcasting.default' => 'reverb']);
+        config([
+            'broadcasting.default' => 'reverb',
+            'broadcasting.connections.reverb.key' => 'test-key',
+            'broadcasting.connections.reverb.secret' => 'test-secret',
+            'broadcasting.connections.reverb.app_id' => 'test-app',
+            'broadcasting.connections.reverb.options.host' => 'localhost',
+            'broadcasting.connections.reverb.options.port' => 8080,
+            'broadcasting.connections.reverb.options.scheme' => 'http',
+            'broadcasting.connections.reverb.options.useTLS' => false,
+        ]);
         Broadcast::purge();
         require base_path('routes/channels.php');
     }

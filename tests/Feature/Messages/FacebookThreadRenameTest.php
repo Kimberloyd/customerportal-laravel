@@ -62,7 +62,7 @@ class FacebookThreadRenameTest extends TestCase
 
     public function test_rename_requires_a_name_within_the_column_limit(): void
     {
-        $staff = User::factory()->create();
+        $staff = User::factory()->create(['role' => User::ROLE_OFFICE]);
         $thread = $this->makeThread(null, [
             'channel' => 'facebook_messenger',
             'external_sender_id' => '93901017',
@@ -81,7 +81,7 @@ class FacebookThreadRenameTest extends TestCase
 
     public function test_portal_conversation_cannot_be_renamed_through_facebook_endpoint(): void
     {
-        $staff = User::factory()->create();
+        $staff = User::factory()->create(['role' => User::ROLE_OFFICE]);
         $thread = $this->makeThread();
 
         $this->actingAsUser($staff)

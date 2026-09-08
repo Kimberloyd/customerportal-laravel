@@ -8,6 +8,8 @@ use App\Models\ProductReturn;
 use App\Models\ProductReturnItem;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
+use App\Models\User;
+use App\Support\CustomerAccess;
 use App\Support\CustomerScope;
 use App\Support\OrderAudit;
 use App\Support\OrderNotifications;
@@ -85,7 +87,9 @@ class ProductReturnController extends Controller
 
     public function update(Request $request, ProductReturn $return): RedirectResponse
     {
-        abort_unless(in_array(Auth::user()->role, ['admin', 'employee'], true), 403);
+        abort_unless(in_array(Auth::user()->role, User::STAFF_ROLES, true), 403);
+        abort_unless(CustomerAccess::applyToOrders(PurchaseOrder::query(), $request->user())
+            ->whereKey($return->purchase_order_id)->exists(), 403);
 
         $nextStatus = trim((string) $request->input('status', ''));
         abort_unless(in_array($nextStatus, [

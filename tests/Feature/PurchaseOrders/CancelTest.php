@@ -11,8 +11,8 @@ use Tests\TestCase;
 
 class CancelTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesOrderFixtures;
+    use RefreshDatabase;
 
     public function test_owning_customer_can_cancel_their_own_order(): void
     {
@@ -31,7 +31,7 @@ class CancelTest extends TestCase
 
     public function test_blocked_once_terminal(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_COMPLETED, now(), [
@@ -46,7 +46,7 @@ class CancelTest extends TestCase
 
     public function test_staff_can_cancel_any_order(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_PARTIAL, now(), [
@@ -60,7 +60,7 @@ class CancelTest extends TestCase
 
     public function test_audit_row_exact_text(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [

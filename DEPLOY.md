@@ -68,27 +68,29 @@ http://<nas-ip>:8090/login
 You should see the login page. Log in with an existing account (same
 credentials as the Flask app — same `users` table).
 
-## Do NOT run `php artisan migrate`
+## Apply reviewed schema changes
 
-**Never run `php artisan migrate` against this database.** The
-business-domain tables (`users`, `customers`, `products`,
-`purchase_orders`, etc.) already exist — created by the Flask app's
-own Alembic migrations — and this Laravel app's migrations describe
-that *same* schema so Eloquent can read/write it directly. Running
-`migrate` would try to `CREATE TABLE users` (etc.) against a table
-that's already there and fail, or worse.
+Do not run an unscoped `php artisan migrate` against the shared Flask database. Its original business tables are owned by the Flask migration history. Before deploying this release, back up the database and run only the reviewed compatibility migrations introduced for these features:
 
-This deployment keeps sessions and cache outside the database and uses the
-Compose `redis` service for queued realtime broadcasts, so
-Laravel never needs its own `sessions`/`cache`/`jobs` tables either —
-there is genuinely no migration this deployment needs to run, ever,
-against the shared database.
+```bash
+docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_02_010000_add_assigned_employee_to_customers_table.php
+docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_02_020000_create_teams_tables.php
+docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_03_000000_create_product_returns_tables.php
+docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_07_000000_make_team_members_user_unique.php
+docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_08_000000_replace_employee_role_with_office_and_agent.php
+docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_08_010000_add_soft_deletes_to_purchase_orders.php
+docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_08_020000_create_failed_jobs_table.php
+```
+
+Each migration guards pre-existing tables or columns and Laravel records which targeted changes have already run. The role migration converts every legacy `employee` account to `agent`; assign company-wide operational users to `office` after deployment. The order archival migration adds `deleted_at`, which is required before the updated order model can serve requests.
+
+Review failed asynchronous deliveries with `docker compose exec app php artisan queue:failed`. Individual channel outcomes also remain visible in each order's message log.
 
 ## Realtime services
 
 `docker compose up -d --build` also starts three private services: `reverb`
 holds WebSocket connections, `broadcast-worker` consumes the dedicated
-`broadcasts` queue, and `redis` stores that queue. Nginx proxies `/app` and
+`broadcasts` and `notifications` queues, and `redis` stores those queues. Nginx proxies `/app` and
 `/apps` to Reverb, so the browser uses the same public origin as the portal.
 
 Before a production build, set unique `REVERB_APP_ID`, `REVERB_APP_KEY`, and

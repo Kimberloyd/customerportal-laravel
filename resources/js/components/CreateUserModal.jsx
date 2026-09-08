@@ -23,7 +23,7 @@ const userFormValues = (user) => ({
     phone: user?.phone ?? '',
     password: '',
     password_confirmation: '',
-    role: user?.role ?? 'employee',
+    role: user?.role ?? 'agent',
     customer_id: user?.linked_customer_id ?? '',
     is_active: user?.is_active ?? true,
 });
@@ -111,7 +111,7 @@ export function UserModal({ open, onOpenChange, user = null, customers = [] }) {
             description={
                 isEdit
                     ? "Update this account's profile and access."
-                    : 'Create an administrator or employee portal account.'
+                    : 'Create an admin, office, or agent portal account.'
             }
             maxWidth={640}
             maxHeight="90vh"

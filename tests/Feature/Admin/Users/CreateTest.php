@@ -3,7 +3,6 @@
 namespace Tests\Feature\Admin\Users;
 
 use App\Models\AdminAudit;
-use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\CreatesOrderFixtures;
@@ -11,20 +10,20 @@ use Tests\TestCase;
 
 class CreateTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesOrderFixtures;
+    use RefreshDatabase;
 
-    public function test_employee_gets_403(): void
+    public function test_agent_gets_403(): void
     {
-        $employee = User::factory()->create(['role' => 'employee']);
+        $agent = User::factory()->create(['role' => 'agent']);
 
-        $this->actingAsUser($employee)->get('/admin/users/create')->assertStatus(403);
-        $this->actingAsUser($employee)->post('/admin/users', [
+        $this->actingAsUser($agent)->get('/admin/users/create')->assertStatus(403);
+        $this->actingAsUser($agent)->post('/admin/users', [
             'full_name' => 'New Guy',
             'email' => 'new@example.com',
             'password' => 'password12345',
             'password_confirmation' => 'password12345',
-            'role' => 'employee',
+            'role' => 'agent',
         ])->assertStatus(403);
     }
 
@@ -35,7 +34,7 @@ class CreateTest extends TestCase
         $response = $this->actingAsUser($admin)->post('/admin/users', [
             'full_name' => 'New Guy',
             'email' => 'new@example.com',
-            'role' => 'employee',
+            'role' => 'agent',
         ]);
 
         $response->assertSessionHasErrors('password');
@@ -51,7 +50,7 @@ class CreateTest extends TestCase
             'email' => 'new@example.com',
             'password' => 'short7',
             'password_confirmation' => 'short7',
-            'role' => 'employee',
+            'role' => 'agent',
         ]);
 
         $response->assertSessionHasErrors('password');
@@ -66,7 +65,7 @@ class CreateTest extends TestCase
             'email' => 'new@example.com',
             'password' => 'password12345',
             'password_confirmation' => 'different12345',
-            'role' => 'employee',
+            'role' => 'agent',
         ]);
 
         $response->assertSessionHasErrors('password_confirmation');
@@ -81,7 +80,7 @@ class CreateTest extends TestCase
             'email' => 'juniper@example.com',
             'password' => 'JuniperGarden2026!',
             'password_confirmation' => 'JuniperGarden2026!',
-            'role' => 'employee',
+            'role' => 'agent',
         ])->assertRedirect(route('admin.dashboard', ['tab' => 'accounts']));
 
         $this->assertDatabaseHas('users', ['email' => 'juniper@example.com']);
@@ -96,7 +95,7 @@ class CreateTest extends TestCase
             'email' => 'taken@example.com',
             'password' => 'password12345',
             'password_confirmation' => 'password12345',
-            'role' => 'employee',
+            'role' => 'agent',
         ]);
 
         $response->assertSessionHasErrors('email');
@@ -117,6 +116,21 @@ class CreateTest extends TestCase
 
         $response->assertRedirect(route('admin.dashboard', ['tab' => 'accounts']));
         $this->assertSame('admin', User::where('email', 'newadmin@example.com')->first()->role);
+    }
+
+    public function test_admin_can_create_an_office_account(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAsUser($admin)->post('/admin/users', [
+            'full_name' => 'Office User',
+            'email' => 'office@example.com',
+            'password' => 'password12345',
+            'password_confirmation' => 'password12345',
+            'role' => 'office',
+        ])->assertRedirect(route('admin.dashboard', ['tab' => 'accounts']));
+
+        $this->assertDatabaseHas('users', ['email' => 'office@example.com', 'role' => 'office']);
     }
 
     public function test_customer_role_is_rejected_from_admin_account_creation(): void
@@ -147,12 +161,12 @@ class CreateTest extends TestCase
             'email' => 'new@example.com',
             'password' => 'password12345',
             'password_confirmation' => 'password12345',
-            'role' => 'employee',
+            'role' => 'agent',
         ]);
 
         $audit = AdminAudit::first();
         $this->assertSame('user', $audit->entity_type);
         $this->assertSame('created', $audit->action);
-        $this->assertSame('email=new@example.com, role=employee', $audit->details);
+        $this->assertSame('email=new@example.com, role=agent', $audit->details);
     }
 }

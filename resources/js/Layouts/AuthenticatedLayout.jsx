@@ -384,7 +384,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                       },
                   ]
                 : []),
-            ...(user.role === 'employee'
+            ...(user.role === 'agent'
                 ? [{ key: 'customer-accounts', href: route('customer-accounts.create'), active: route().current('customer-accounts.*'), label: 'Customers' }]
                 : []),
             {
@@ -744,32 +744,16 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                     </div>
 
                                     <div className="space-y-1">
-                                        <ResponsiveNavLink
-                                            href={route('dashboard')}
-                                            active={route().current('dashboard')}
-                                            onClick={closeMobileNav}
-                                        >
-                                            Dashboard
-                                        </ResponsiveNavLink>
-                                        <ResponsiveNavLink
-                                            href={route('purchase-orders.index')}
-                                            active={route().current('purchase-orders.*')}
-                                            onClick={closeMobileNav}
-                                        >
-                                            Orders
-                                        </ResponsiveNavLink>
-                                        <ResponsiveNavLink href={route('settings.edit')} onClick={closeMobileNav}>
-                                            Settings
-                                        </ResponsiveNavLink>
-                                        {user.role !== 'admin' && (
+                                        {navTabs.map((tab) => (
                                             <ResponsiveNavLink
-                                                href={route('faq')}
-                                                active={route().current('faq')}
+                                                key={tab.key}
+                                                href={tab.href}
+                                                active={tab.active}
                                                 onClick={closeMobileNav}
                                             >
-                                                FAQ
+                                                {tab.label}
                                             </ResponsiveNavLink>
-                                        )}
+                                        ))}
                                     </div>
 
                                     <div className="border-t border-gray-200 pb-1 pt-4">

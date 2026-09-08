@@ -3,9 +3,9 @@
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\TeamController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\AgentCustomerAccountController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\EmployeeCustomerAccountController;
 use App\Http\Controllers\FacebookWebhookController;
 use App\Http\Controllers\FaqController;
 use App\Http\Controllers\MessageController;
@@ -46,6 +46,7 @@ Route::middleware('auth')->prefix('orders')->name('purchase-orders.')->group(fun
     Route::put('/{order}', [PurchaseOrderController::class, 'update'])->name('update');
     Route::delete('/{order}', [PurchaseOrderController::class, 'destroy'])->name('destroy');
     Route::post('/{order}/complete', [PurchaseOrderController::class, 'complete'])->name('complete');
+    Route::post('/{order}/start-review', [PurchaseOrderController::class, 'startReview'])->name('start-review');
     Route::post('/{order}/receive', [PurchaseOrderController::class, 'receive'])->name('receive');
     Route::post('/{order}/confirm-received', [PurchaseOrderController::class, 'confirmReceived'])
         ->name('confirm-received');
@@ -70,8 +71,8 @@ Route::middleware('auth')->prefix('admin/teams')->name('admin.teams.')->group(fu
 });
 
 Route::middleware('auth')->prefix('customer-accounts')->name('customer-accounts.')->group(function () {
-    Route::get('/create', [EmployeeCustomerAccountController::class, 'create'])->name('create');
-    Route::post('/', [EmployeeCustomerAccountController::class, 'store'])->name('store');
+    Route::get('/create', [AgentCustomerAccountController::class, 'create'])->name('create');
+    Route::post('/', [AgentCustomerAccountController::class, 'store'])->name('store');
 });
 
 Route::middleware('auth')->prefix('admin/users')->name('admin.users.')->group(function () {
@@ -118,16 +119,6 @@ Route::middleware('auth')->prefix('settings')->name('settings.')->group(function
     // role gates in this app rather than in a dedicated middleware.
     Route::put('/sms', [SettingsController::class, 'updateSms'])->name('sms.update');
 });
-
-if (app()->environment('local')) {
-    // TEMP DEBUG ROUTE -- for local visual verification only, removed before
-    // this change is committed.
-    Route::get('/__debug-login/{id}', function (int $id, \Illuminate\Http\Request $request) {
-        auth()->loginUsingId($id);
-        $request->session()->put('session_version', $request->user()->session_version);
-        return response('ok');
-    });
-}
 
 Route::middleware('auth')->prefix('reports')->name('reports.')->group(function () {
     Route::get('/overview', [ReportController::class, 'overview'])->name('overview');

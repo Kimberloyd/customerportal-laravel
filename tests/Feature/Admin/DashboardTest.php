@@ -20,11 +20,18 @@ class DashboardTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_employee_gets_403(): void
+    public function test_agent_gets_403(): void
     {
-        $employee = User::factory()->create(['role' => 'employee']);
+        $agent = User::factory()->create(['role' => 'office']);
 
-        $this->actingAsUser($employee)->get('/admin')->assertStatus(403);
+        $this->actingAsUser($agent)->get('/admin')->assertStatus(403);
+    }
+
+    public function test_office_gets_403(): void
+    {
+        $office = User::factory()->create(['role' => 'office']);
+
+        $this->actingAsUser($office)->get('/admin')->assertStatus(403);
     }
 
     public function test_customer_gets_403(): void
@@ -51,22 +58,22 @@ class DashboardTest extends TestCase
             'full_name' => 'Jane Account',
             'email' => 'jane-account@example.com',
             'phone' => '5551234567',
-            'role' => 'employee',
+            'role' => 'agent',
         ]);
         User::factory()->create([
             'full_name' => 'Other Account',
             'email' => 'other-account@example.com',
-            'role' => 'employee',
+            'role' => 'agent',
         ]);
 
         $response = $this->actingAsUser($admin)
-            ->get('/admin?tab=accounts&search=jane&role=employee');
+            ->get('/admin?tab=accounts&search=jane&role=agent');
 
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
             ->where('activeTab', 'accounts')
             ->where('filters.search', 'jane')
-            ->where('filters.role', 'employee')
+            ->where('filters.role', 'agent')
             ->has('accountForm.customers')
             ->missing('users')
             ->loadDeferredProps('accounts', fn ($deferred) => $deferred
@@ -94,10 +101,11 @@ class DashboardTest extends TestCase
     public function test_admin_can_load_the_teams_tab_with_members(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $employee = User::factory()->create(['role' => 'employee']);
-        $availableEmployee = User::factory()->create(['role' => 'employee']);
+        $agent = User::factory()->create(['role' => 'agent']);
+        $availableAgent = User::factory()->create(['role' => 'agent']);
+        User::factory()->create(['role' => 'office']);
         $team = Team::create(['name' => 'North Team']);
-        $team->members()->attach($employee);
+        $team->members()->attach($agent);
 
         $response = $this->actingAsUser($admin)->get('/admin?tab=teams');
 
@@ -107,9 +115,9 @@ class DashboardTest extends TestCase
             ->has('teams', 1)
             ->where('teams.0.name', 'North Team')
             ->missing('teams.0.members.0.email')
-            ->has('employees', 1)
-            ->where('employees.0.id', $availableEmployee->id)
-            ->missing('employees.0.email'));
+            ->has('agents', 1)
+            ->where('agents.0.id', $availableAgent->id)
+            ->missing('agents.0.email'));
     }
 
     public function test_product_search_uses_the_complete_catalog_without_an_upstream_query(): void

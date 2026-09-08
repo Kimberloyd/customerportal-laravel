@@ -2,23 +2,22 @@
 
 namespace Tests\Feature;
 
-use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\CreatesOrderFixtures;
 use Tests\TestCase;
 
-class EmployeeCustomerAccountTest extends TestCase
+class AgentCustomerAccountTest extends TestCase
 {
     use CreatesOrderFixtures;
     use RefreshDatabase;
 
-    public function test_employee_creates_customer_account_and_is_assigned_to_customer(): void
+    public function test_agent_creates_customer_account_and_is_assigned_to_customer(): void
     {
-        $employee = User::factory()->create(['role' => 'employee']);
+        $agent = User::factory()->create(['role' => 'agent']);
         $customer = $this->makeCustomer('North Clinic');
 
-        $this->actingAsUser($employee)->post('/customer-accounts', [
+        $this->actingAsUser($agent)->post('/customer-accounts', [
             'full_name' => 'North Clinic User', 'email' => 'north@example.com', 'phone' => '09171234567',
             'password' => 'password123', 'password_confirmation' => 'password123', 'customer_id' => $customer->id,
         ])->assertRedirect(route('customer-accounts.create'));
@@ -26,17 +25,17 @@ class EmployeeCustomerAccountTest extends TestCase
         $user = User::where('email', 'north@example.com')->firstOrFail();
         $this->assertSame('customer', $user->role);
         $this->assertSame($user->id, $customer->fresh()->user_id);
-        $this->assertSame($employee->id, $customer->fresh()->assigned_employee_id);
+        $this->assertSame($agent->id, $customer->fresh()->assigned_employee_id);
     }
 
-    public function test_employee_cannot_create_account_for_customer_assigned_to_someone_else(): void
+    public function test_agent_cannot_create_account_for_customer_assigned_to_someone_else(): void
     {
-        $employee = User::factory()->create(['role' => 'employee']);
-        $otherEmployee = User::factory()->create(['role' => 'employee']);
+        $agent = User::factory()->create(['role' => 'agent']);
+        $otherAgent = User::factory()->create(['role' => 'agent']);
         $customer = $this->makeCustomer('Reserved Clinic');
-        $customer->update(['assigned_employee_id' => $otherEmployee->id]);
+        $customer->update(['assigned_employee_id' => $otherAgent->id]);
 
-        $this->actingAsUser($employee)->post('/customer-accounts', [
+        $this->actingAsUser($agent)->post('/customer-accounts', [
             'full_name' => 'Reserved User', 'email' => 'reserved@example.com',
             'password' => 'password123', 'password_confirmation' => 'password123', 'customer_id' => $customer->id,
         ])->assertSessionHasErrors('customer_id');
@@ -44,22 +43,22 @@ class EmployeeCustomerAccountTest extends TestCase
         $this->assertDatabaseMissing('users', ['email' => 'reserved@example.com']);
     }
 
-    public function test_employee_can_view_only_their_assigned_customers(): void
+    public function test_agent_can_view_only_their_assigned_customers(): void
     {
-        $employee = User::factory()->create(['role' => 'employee']);
-        $otherEmployee = User::factory()->create(['role' => 'employee']);
+        $agent = User::factory()->create(['role' => 'agent']);
+        $otherAgent = User::factory()->create(['role' => 'agent']);
         $mine = $this->makeCustomer('My Customer');
-        $mine->update(['assigned_employee_id' => $employee->id]);
+        $mine->update(['assigned_employee_id' => $agent->id]);
         $other = $this->makeCustomer('Other Customer');
-        $other->update(['assigned_employee_id' => $otherEmployee->id]);
+        $other->update(['assigned_employee_id' => $otherAgent->id]);
 
-        $this->actingAsUser($employee)->get('/customer-accounts/create')->assertInertia(fn ($page) => $page
+        $this->actingAsUser($agent)->get('/customer-accounts/create')->assertInertia(fn ($page) => $page
             ->where('assignedCustomers.0.company_name', 'My Customer')
             ->missing('assignedCustomers.1')
         );
     }
 
-    public function test_admin_and_customer_cannot_use_employee_customer_account_routes(): void
+    public function test_admin_and_customer_cannot_use_agent_customer_account_routes(): void
     {
         $this->actingAsUser(User::factory()->create(['role' => 'admin']))->get('/customer-accounts/create')->assertForbidden();
         $this->actingAsUser(User::factory()->create(['role' => 'customer']))->post('/customer-accounts', [])->assertForbidden();

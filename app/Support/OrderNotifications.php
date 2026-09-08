@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Jobs\SendOrderNotifications;
 use App\Mail\OrderSubmittedMail;
 use App\Models\AppSetting;
 use App\Models\CustomerMessage;
@@ -17,7 +18,7 @@ use Illuminate\Support\Facades\Mail;
  * or a staff member created it. Each is wrapped separately so one
  * failing never blocks the others, matching Flask exactly.
  *
- * All four are real: createPortalNotification() writes the notification
+ * All four are real: notifyPortal() writes the notification
  * bell record without creating a chat message,
  * sendFacebookSummary() notifies every sales agent who has linked their
  * own Facebook account (see MessageController::widgetFacebookLink -- these
@@ -41,13 +42,73 @@ class OrderNotifications
 
     public static function submitted(PurchaseOrder $order): void
     {
-        try {
-            self::createPortalNotification($order);
-        } catch (\Throwable $e) {
-            Log::error("Failed to create purchase order portal notification for {$order->po_number}.", ['exception' => $e]);
-            self::record($order, 'portal', 'failed', note: $e->getMessage());
-        }
+        self::notifyPortalSafely($order, 'Order received. We\'ll review it shortly.', 'submission');
+        self::queue($order, 'submitted');
+    }
 
+    public static function updated(PurchaseOrder $order, string $summary): void
+    {
+        self::notifyPortalSafely($order, $summary, 'update');
+        self::queue($order, 'updated');
+    }
+
+    public static function fulfillmentUpdated(PurchaseOrder $order, string $summary): void
+    {
+        self::notifyPortalSafely($order, $summary, 'fulfillment update');
+        self::queue($order, 'fulfillment-updated');
+    }
+
+    public static function completed(PurchaseOrder $order): void
+    {
+        self::notifyPortalSafely($order, 'All ordered quantities have been delivered.', 'completion');
+        self::queue($order, 'completed');
+    }
+
+    public static function cancelled(PurchaseOrder $order): void
+    {
+        self::notifyPortalSafely($order, 'Order cancelled. Contact us if this was a mistake.', 'cancellation');
+        self::queue($order, 'cancelled');
+    }
+
+    public static function received(PurchaseOrder $order): void
+    {
+        self::notifyPortalSafely($order, 'Thank you for confirming receipt.', 'receipt confirmation');
+        self::queue($order, 'received');
+    }
+
+    public static function returnRequested(PurchaseOrder $order): void
+    {
+        self::notifyPortalSafely($order, 'Return requested. Staff review is needed.', 'return request');
+    }
+
+    public static function returnUpdated(PurchaseOrder $order, string $status): void
+    {
+        [$note] = self::returnCopy($order, $status);
+        self::notifyPortalSafely($order, $note, 'return update');
+        self::queue($order, 'return-updated', $status);
+    }
+
+    public static function deliver(PurchaseOrder $order, string $event, ?string $context = null): void
+    {
+        match ($event) {
+            'submitted' => self::deliverSubmitted($order),
+            'updated' => self::deliverUpdated($order),
+            'fulfillment-updated' => self::deliverFulfillmentUpdated($order),
+            'completed' => self::deliverCompleted($order),
+            'cancelled' => self::deliverCancelled($order),
+            'received' => self::deliverReceived($order),
+            'return-updated' => self::deliverReturnUpdated($order, (string) $context),
+            default => throw new \InvalidArgumentException("Unsupported order notification event: {$event}"),
+        };
+    }
+
+    private static function queue(PurchaseOrder $order, string $event, ?string $context = null): void
+    {
+        SendOrderNotifications::dispatch($order->id, $event, $context);
+    }
+
+    private static function deliverSubmitted(PurchaseOrder $order): void
+    {
         try {
             self::sendEmail($order);
         } catch (\Throwable $e) {
@@ -70,74 +131,61 @@ class OrderNotifications
         }
     }
 
-    public static function updated(PurchaseOrder $order, string $summary): void
+    private static function deliverUpdated(PurchaseOrder $order): void
     {
-        self::notifyCustomerSafely(
+        self::notifySmsSafely(
             $order,
-            // The bell shows this alone, without the email's "Order was
-            // updated" framing around it -- the change summary itself
-            // (e.g. "Widget A quantity changed from 5 to 8.") already says
-            // specifically what happened, so repeating "Updated" over it
-            // would only restate what the reader is about to read anyway.
-            $summary,
             'update',
             "Order {$order->po_number} was updated. View your portal for the latest details.",
         );
     }
 
-    public static function fulfillmentUpdated(PurchaseOrder $order, string $summary): void
+    private static function deliverFulfillmentUpdated(PurchaseOrder $order): void
     {
-        self::notifyCustomerSafely(
+        self::notifySmsSafely(
             $order,
-            $summary,
             'fulfillment update',
             "Order {$order->po_number} delivery was updated. View your portal for the latest details.",
         );
     }
 
-    public static function completed(PurchaseOrder $order): void
+    private static function deliverCompleted(PurchaseOrder $order): void
     {
-        self::notifyCustomerSafely(
+        self::notifySmsSafely(
             $order,
-            'All ordered quantities have been delivered.',
             'completion',
             "Order {$order->po_number} is complete. All items have been delivered.",
         );
     }
 
-    public static function cancelled(PurchaseOrder $order): void
+    private static function deliverCancelled(PurchaseOrder $order): void
     {
-        self::notifyCustomerSafely(
+        self::notifySmsSafely(
             $order,
-            'Order cancelled. Contact us if this was a mistake.',
             'cancellation',
             "Order {$order->po_number} was cancelled. Contact us if this was a mistake.",
         );
     }
 
-    public static function received(PurchaseOrder $order): void
+    private static function deliverReceived(PurchaseOrder $order): void
     {
-        self::notifyCustomerSafely(
+        self::notifySmsSafely(
             $order,
-            'Thank you for confirming receipt.',
             'receipt confirmation',
             "Order {$order->po_number} has been marked as received. Thank you.",
         );
     }
 
-    public static function returnRequested(PurchaseOrder $order): void
+    private static function deliverReturnUpdated(PurchaseOrder $order, string $status): void
     {
-        try {
-            self::notifyPortal($order, 'Return requested — staff review is needed.');
-        } catch (\Throwable $e) {
-            Log::error("Failed to create return-request notification for {$order->po_number}.", ['exception' => $e]);
-            self::record($order, 'portal', 'failed', note: $e->getMessage());
-        }
+        [, $eventLabel, $smsBody] = self::returnCopy($order, $status);
+
+        self::notifySmsSafely($order, $eventLabel, $smsBody);
     }
 
-    public static function returnUpdated(PurchaseOrder $order, string $status): void
+    private static function returnCopy(PurchaseOrder $order, string $status): array
     {
-        [$note, $eventLabel, $smsBody] = match ($status) {
+        return match ($status) {
             'approved' => [
                 'Your return request was approved. Our team will coordinate the return.',
                 'return approval',
@@ -154,8 +202,6 @@ class OrderNotifications
                 "Returned products for order {$order->po_number} were received by our team.",
             ],
         };
-
-        self::notifyCustomerSafely($order, $note, $eventLabel, $smsBody);
     }
 
     /**
@@ -164,11 +210,10 @@ class OrderNotifications
      * inside submitted(), but never bubbles up and blocks the order
      * action (fulfillment/completion/cancellation) that triggered it.
      */
-    private static function notifyCustomerSafely(
+    private static function notifyPortalSafely(
         PurchaseOrder $order,
         string $bellNote,
         string $eventLabel,
-        string $smsBody,
     ): void {
         try {
             self::notifyPortal($order, $bellNote);
@@ -176,7 +221,10 @@ class OrderNotifications
             Log::error("Failed to create purchase order {$eventLabel} notification for {$order->po_number}.", ['exception' => $e]);
             self::record($order, 'portal', 'failed', note: $e->getMessage());
         }
+    }
 
+    private static function notifySmsSafely(PurchaseOrder $order, string $eventLabel, string $smsBody): void
+    {
         try {
             self::sendSms($order, $smsBody);
         } catch (\Throwable $e) {
@@ -208,14 +256,6 @@ class OrderNotifications
             'note' => $note,
             'created_at' => now(),
         ]);
-    }
-
-    private static function createPortalNotification(PurchaseOrder $order): void
-    {
-        self::notifyPortal(
-            $order,
-            'Order received — we\'ll review it shortly.',
-        );
     }
 
     /**

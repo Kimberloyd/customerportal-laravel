@@ -10,7 +10,7 @@ export default function Create({ customers }) {
         phone: '',
         password: '',
         password_confirmation: '',
-        role: 'employee',
+        role: 'agent',
         customer_id: '',
         is_active: true,
     });

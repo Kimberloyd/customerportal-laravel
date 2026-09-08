@@ -10,7 +10,8 @@ final class AdminUserListing
 {
     public const ROLE_LABELS = [
         'admin' => 'Admin',
-        'employee' => 'Employee',
+        'office' => 'Office',
+        'agent' => 'Agent',
         'customer' => 'Customer',
     ];
 

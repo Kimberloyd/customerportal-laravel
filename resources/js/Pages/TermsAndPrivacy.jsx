@@ -66,7 +66,7 @@ function LegalContent() {
                         <p>
                             After a completed order is confirmed as received, the linked customer may request a return within
                             seven days. The request must identify delivered products and quantities and include a reason. A
-                            Theomeds administrator or employee reviews the request before collection or delivery is arranged.
+                            A Theomeds admin, office user, or agent reviews the request before collection or delivery is arranged.
                         </p>
                         <p>
                             Recording a return in the portal does not automatically issue a refund, credit, replacement, or

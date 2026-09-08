@@ -19,7 +19,7 @@ class CustomerController extends Controller
 {
     public function destroy(Request $request, Customer $customer)
     {
-        abort_if(Auth::user()->role === 'customer', 403);
+        abort_unless(Auth::user()->role === User::ROLE_ADMIN, 403);
 
         if ($customer->user_id) {
             // A soft-deleted account is still recoverable during the retention
@@ -47,7 +47,7 @@ class CustomerController extends Controller
 
     public function toggleActive(Request $request, Customer $customer)
     {
-        abort_if(Auth::user()->role === 'customer', 403);
+        abort_unless(in_array(Auth::user()->role, [User::ROLE_ADMIN, User::ROLE_OFFICE], true), 403);
 
         DB::transaction(function () use ($customer, $request) {
             $customer->is_active = ! $customer->is_active;

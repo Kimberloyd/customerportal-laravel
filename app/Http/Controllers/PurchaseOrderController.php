@@ -7,9 +7,10 @@ use App\Exceptions\UserActionException;
 use App\Models\Customer;
 use App\Models\ProductReturn;
 use App\Models\PurchaseOrder;
-use App\Models\PurchaseOrderAudit;
 use App\Models\PurchaseOrderItem;
 use App\Models\PurchaseOrderNotification;
+use App\Models\User;
+use App\Support\CustomerAccess;
 use App\Support\CustomerScope;
 use App\Support\InventoryApiClient;
 use App\Support\OrderAudit;
@@ -48,9 +49,8 @@ class PurchaseOrderController extends Controller
     {
         $customer = CustomerScope::forCurrentUser();
 
-        $customers = $customer
-            ? [['id' => $customer->id, 'company_name' => $customer->company_name]]
-            : Customer::query()->orderBy('company_name')->get(['id', 'company_name'])->toArray();
+        $customerQuery = CustomerAccess::applyToCustomers(Customer::query(), $request->user());
+        $customers = $customerQuery->orderBy('company_name')->get(['id', 'company_name'])->toArray();
 
         $search = trim((string) $request->query('search', ''));
         $dateFilter = trim((string) $request->query('date_filter', 'all')) ?: 'all';
@@ -89,8 +89,8 @@ class PurchaseOrderController extends Controller
             ),
             'lockedCustomerId' => $customer?->id,
             'openCreateOrder' => $request->boolean('create'),
-            'canViewMessageLog' => in_array(Auth::user()->role, ['admin', 'employee'], true),
-            'canDeleteOrders' => in_array(Auth::user()->role, ['admin', 'employee'], true),
+            'canViewMessageLog' => in_array(Auth::user()->role, User::STAFF_ROLES, true),
+            'canDeleteOrders' => Auth::user()->role === User::ROLE_ADMIN,
         ]);
     }
 
@@ -104,9 +104,7 @@ class PurchaseOrderController extends Controller
         string $statusFilter,
     ) {
         $query = PurchaseOrder::query()->with(['customer', 'items']);
-        if ($customer) {
-            $query->where('customer_id', $customer->id);
-        }
+        CustomerAccess::applyToOrders($query, Auth::user());
 
         if ($search !== '') {
             $pattern = '%'.strtolower($search).'%';
@@ -164,7 +162,8 @@ class PurchaseOrderController extends Controller
 
     public function messageLog(PurchaseOrder $order): JsonResponse
     {
-        abort_unless(in_array(Auth::user()->role, ['admin', 'employee'], true), 403);
+        abort_unless(in_array(Auth::user()->role, User::STAFF_ROLES, true), 403);
+        $this->authorizeOrderAccess($order);
 
         $entries = PurchaseOrderNotification::query()
             ->where('purchase_order_id', $order->id)
@@ -269,7 +268,8 @@ class PurchaseOrderController extends Controller
         }
 
         $customerId = $customer?->id ?? (int) $request->input('customer_id');
-        if (! $customerId || ! Customer::where('id', $customerId)->exists()) {
+        if (! $customerId || ! CustomerAccess::applyToCustomers(Customer::query(), $request->user())
+            ->whereKey($customerId)->exists()) {
             throw ValidationException::withMessages([
                 'customer_id' => 'Select a customer from the list.',
             ]);
@@ -364,9 +364,8 @@ class PurchaseOrderController extends Controller
         $order->load(['customer', 'items']);
 
         $customer = CustomerScope::forCurrentUser();
-        $customers = $customer
-            ? [['id' => $customer->id, 'company_name' => $customer->company_name]]
-            : Customer::query()->orderBy('company_name')->get(['id', 'company_name'])->toArray();
+        $customers = CustomerAccess::applyToCustomers(Customer::query(), Auth::user())
+            ->orderBy('company_name')->get(['id', 'company_name'])->toArray();
 
         $isTerminal = in_array($order->status, PurchaseOrder::TERMINAL_STATUSES, true);
 
@@ -446,7 +445,8 @@ class PurchaseOrderController extends Controller
 
                 if ($canEditItems) {
                     $customerId = $customer?->id ?? (int) $request->input('customer_id');
-                    $newCustomer = Customer::find($customerId);
+                    $newCustomer = CustomerAccess::applyToCustomers(Customer::query(), $request->user())
+                        ->find($customerId);
                     if (! $newCustomer) {
                         throw new UserActionException('Select a customer from the list.');
                     }
@@ -628,7 +628,7 @@ class PurchaseOrderController extends Controller
     public function confirmReceived(Request $request, PurchaseOrder $order): RedirectResponse
     {
         $this->authorizeOrderAccess($order);
-        abort_unless(Auth::user()->role === 'customer', 403);
+        abort_unless(Auth::user()->role === User::ROLE_CUSTOMER, 403);
 
         $confirmed = false;
 
@@ -704,41 +704,29 @@ class PurchaseOrderController extends Controller
         return redirect()->route('purchase-orders.index')->with('success', 'Order cancelled.');
     }
 
-    public function destroy(PurchaseOrder $order): RedirectResponse
+    public function destroy(Request $request, PurchaseOrder $order): RedirectResponse
     {
-        // Deletion is a company-staff action; customer accounts can never remove orders.
-        abort_unless(in_array(Auth::user()->role, ['admin', 'employee'], true), 403);
+        abort_unless(Auth::user()->role === User::ROLE_ADMIN, 403);
 
         $deletedCustomerId = null;
 
-        DB::transaction(function () use ($order, &$deletedCustomerId): void {
+        DB::transaction(function () use ($order, $request, &$deletedCustomerId): void {
             $locked = PurchaseOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
             $deletedCustomerId = $locked->customer_id;
-            $attachment = $locked->po_file;
-
-            PurchaseOrderNotification::where('purchase_order_id', $locked->id)->delete();
-            PurchaseOrderAudit::where('purchase_order_id', $locked->id)->delete();
-            ProductReturn::where('purchase_order_id', $locked->id)->delete();
-            PurchaseOrderItem::where('purchase_order_id', $locked->id)->delete();
+            OrderAudit::record($locked, 'Order Archived', 'Order removed from active order views while its history was retained.', $request);
             $locked->delete();
-
-            DB::afterCommit(fn () => PoAttachment::delete($attachment));
         });
 
-        PurchaseOrderChanged::dispatch($order->id, 'deleted', $deletedCustomerId);
+        PurchaseOrderChanged::dispatch($order->id, 'archived', $deletedCustomerId);
 
-        return redirect()->route('purchase-orders.index')->with('success', 'Order deleted permanently.');
+        return redirect()->route('purchase-orders.index')->with('success', 'Order archived.');
     }
 
     public function show(Request $request, PurchaseOrder $order): Response
     {
         $this->authorizeOrderAccess($order);
 
-        $isCustomerViewer = Auth::user()->role === 'customer';
-
-        if (! $isCustomerViewer && $order->status === PurchaseOrder::STATUS_SUBMITTED) {
-            $this->markReviewing($order, $request);
-        }
+        $isCustomerViewer = Auth::user()->role === User::ROLE_CUSTOMER;
 
         $order->load(['customer', 'items', 'auditLogs.actor']);
 
@@ -751,9 +739,8 @@ class PurchaseOrderController extends Controller
         $isTerminal = in_array($order->status, PurchaseOrder::TERMINAL_STATUSES, true);
         $canEditItems = ! $isTerminal;
         $scopedCustomer = CustomerScope::forCurrentUser();
-        $editOrderCustomers = $scopedCustomer
-            ? [['id' => $scopedCustomer->id, 'company_name' => $scopedCustomer->company_name]]
-            : Customer::query()->orderBy('company_name')->get(['id', 'company_name'])->toArray();
+        $editOrderCustomers = CustomerAccess::applyToCustomers(Customer::query(), $request->user())
+            ->orderBy('company_name')->get(['id', 'company_name'])->toArray();
         $receivedReturnQuantities = $order->returns
             ->where('status', ProductReturn::STATUS_RECEIVED)
             ->flatMap(fn (ProductReturn $return) => $return->items)
@@ -838,6 +825,7 @@ class PurchaseOrderController extends Controller
             ],
             'isCustomerViewer' => $isCustomerViewer,
             'canManageFulfillment' => ! $isCustomerViewer,
+            'canStartReview' => ! $isCustomerViewer && $order->status === PurchaseOrder::STATUS_SUBMITTED,
             'canComplete' => ! $isCustomerViewer && ! $isTerminal,
             'canConfirmReceived' => $isCustomerViewer
                 && $order->status === PurchaseOrder::STATUS_COMPLETED
@@ -877,6 +865,19 @@ class PurchaseOrderController extends Controller
         return Storage::disk('local')->response($path, null, [
             'Cache-Control' => 'private, no-store',
         ]);
+    }
+
+    public function startReview(Request $request, PurchaseOrder $order): RedirectResponse
+    {
+        $this->authorizeOrderAccess($order);
+        abort_if($request->user()->role === User::ROLE_CUSTOMER, 403);
+
+        $transitioned = $this->markReviewing($order, $request);
+
+        return back()->with(
+            $transitioned ? 'success' : 'error',
+            $transitioned ? 'Order review started.' : 'Only submitted orders can be moved to review.',
+        );
     }
 
     private function serializeForList(PurchaseOrder $order): array
@@ -1102,11 +1103,8 @@ class PurchaseOrderController extends Controller
 
     private function authorizeOrderAccess(PurchaseOrder $order): void
     {
-        $customer = CustomerScope::forCurrentUser();
-
-        if ($customer && $order->customer_id !== $customer->id) {
-            abort(403);
-        }
+        abort_unless(CustomerAccess::applyToOrders(PurchaseOrder::query(), Auth::user())
+            ->whereKey($order->id)->exists(), 403);
     }
 
     /**
@@ -1116,7 +1114,7 @@ class PurchaseOrderController extends Controller
      * and one audit row -- and mutates the caller's $order in place so
      * show() renders the new status without a second query.
      */
-    private function markReviewing(PurchaseOrder $order, Request $request): void
+    private function markReviewing(PurchaseOrder $order, Request $request): bool
     {
         $transitioned = DB::transaction(function () use ($order, $request) {
             $locked = PurchaseOrder::whereKey($order->id)
@@ -1142,6 +1140,8 @@ class PurchaseOrderController extends Controller
         if ($transitioned) {
             PurchaseOrderChanged::dispatch($order->id, 'reviewing');
         }
+
+        return $transitioned;
     }
 
     /**

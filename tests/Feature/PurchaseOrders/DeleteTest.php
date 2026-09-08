@@ -19,7 +19,7 @@ class DeleteTest extends TestCase
     use CreatesOrderFixtures;
     use RefreshDatabase;
 
-    public function test_admin_can_permanently_delete_an_order_and_its_related_records(): void
+    public function test_admin_can_archive_an_order_while_retaining_its_history(): void
     {
         Event::fake([PurchaseOrderChanged::class]);
         Storage::fake('local');
@@ -47,33 +47,35 @@ class DeleteTest extends TestCase
         $this->actingAsUser($admin)
             ->delete(route('purchase-orders.destroy', $order))
             ->assertRedirect(route('purchase-orders.index'))
-            ->assertSessionHas('success', 'Order deleted permanently.');
+            ->assertSessionHas('success', 'Order archived.');
 
-        $this->assertDatabaseMissing('purchase_orders', ['id' => $order->id]);
-        $this->assertDatabaseMissing('purchase_order_items', ['purchase_order_id' => $order->id]);
-        $this->assertDatabaseMissing('purchase_order_audits', ['purchase_order_id' => $order->id]);
-        $this->assertDatabaseMissing('purchase_order_notifications', ['purchase_order_id' => $order->id]);
-        Storage::disk('local')->assertMissing(PoAttachment::path('order-attachment.pdf'));
+        $this->assertSoftDeleted('purchase_orders', ['id' => $order->id]);
+        $this->assertDatabaseHas('purchase_order_items', ['purchase_order_id' => $order->id]);
+        $this->assertDatabaseHas('purchase_order_audits', [
+            'purchase_order_id' => $order->id,
+            'action' => 'Order Archived',
+        ]);
+        $this->assertDatabaseHas('purchase_order_notifications', ['purchase_order_id' => $order->id]);
+        Storage::disk('local')->assertExists(PoAttachment::path('order-attachment.pdf'));
         Event::assertDispatched(
             PurchaseOrderChanged::class,
             fn (PurchaseOrderChanged $event) => $event->orderId === $order->id
-                && $event->change === 'deleted'
+                && $event->change === 'archived'
                 && $event->previousCustomerId === $customer->id,
         );
     }
 
-    public function test_employee_can_permanently_delete_an_order(): void
+    public function test_office_cannot_archive_an_order(): void
     {
-        $employee = User::factory()->create(['role' => 'employee']);
+        $agent = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now());
 
-        $this->actingAsUser($employee)
+        $this->actingAsUser($agent)
             ->delete(route('purchase-orders.destroy', $order))
-            ->assertRedirect(route('purchase-orders.index'))
-            ->assertSessionHas('success', 'Order deleted permanently.');
+            ->assertForbidden();
 
-        $this->assertDatabaseMissing('purchase_orders', ['id' => $order->id]);
+        $this->assertDatabaseHas('purchase_orders', ['id' => $order->id, 'deleted_at' => null]);
     }
 
     public function test_customers_cannot_delete_orders(): void

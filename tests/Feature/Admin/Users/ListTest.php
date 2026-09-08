@@ -9,14 +9,14 @@ use Tests\TestCase;
 
 class ListTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesOrderFixtures;
+    use RefreshDatabase;
 
-    public function test_employee_gets_403(): void
+    public function test_agent_gets_403(): void
     {
-        $employee = User::factory()->create(['role' => 'employee']);
+        $agent = User::factory()->create(['role' => 'agent']);
 
-        $this->actingAsUser($employee)->get('/admin/users')->assertStatus(403);
+        $this->actingAsUser($agent)->get('/admin/users')->assertStatus(403);
     }
 
     public function test_customer_gets_403(): void
@@ -40,7 +40,7 @@ class ListTest extends TestCase
     public function test_role_filter_narrows_results(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        User::factory()->create(['role' => 'employee']);
+        User::factory()->create(['role' => 'agent']);
         User::factory()->create(['role' => 'customer']);
 
         $response = $this->actingAsUser($admin)->get('/admin/users?role=customer');

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Deferred, Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
 
-export default function Dashboard({ activeTab, products, customers, users, filters, roleLabels, accountForm, teams, employees }) {
+export default function Dashboard({ activeTab, products, customers, users, filters, roleLabels, accountForm, teams, agents }) {
     const [userModal, setUserModal] = useState({ open: false, user: null });
     const [resettingUser, setResettingUser] = useState(null);
 
@@ -128,7 +128,7 @@ export default function Dashboard({ activeTab, products, customers, users, filte
                             />
                         </Deferred>
                     )}
-                    {activeTab === 'teams' && <TeamsPanel teams={teams} employees={employees} />}
+                    {activeTab === 'teams' && <TeamsPanel teams={teams} agents={agents} />}
                 </div>
             </div>
 

@@ -42,7 +42,7 @@ class OverviewTest extends TestCase
 
     public function test_fulfillment_metrics_match_hand_computed_values(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $this->seedOrders();
 
         $response = $this->actingAsUser($staff)->get('/reports/overview');
@@ -60,7 +60,7 @@ class OverviewTest extends TestCase
 
     public function test_average_completion_uses_completed_at_not_updated_at(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
 
@@ -79,7 +79,7 @@ class OverviewTest extends TestCase
 
     public function test_status_mix_counts_all_statuses_including_cancelled(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $this->seedOrders();
 
         $response = $this->actingAsUser($staff)->get('/reports/overview');
@@ -96,7 +96,7 @@ class OverviewTest extends TestCase
 
     public function test_backlog_aging_buckets_place_orders_correctly(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $this->seedOrders();
 
         $response = $this->actingAsUser($staff)->get('/reports/overview');
@@ -139,7 +139,7 @@ class OverviewTest extends TestCase
 
     public function test_monthly_trend_is_aggregated_by_month(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
         $previousMonth = now()->subMonthNoOverflow()->startOfMonth()->addDay();
@@ -163,7 +163,7 @@ class OverviewTest extends TestCase
 
     public function test_customer_performance_aggregates_orders_and_non_cancelled_units(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $first = $this->makeCustomer('First Co');
         $second = $this->makeCustomer('Second Co');
         $product = $this->makeProduct();
@@ -199,7 +199,7 @@ class OverviewTest extends TestCase
 
     public function test_pending_units_are_never_negative_in_aggregates(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
 
         $this->makeOrder($customer, PurchaseOrder::STATUS_PARTIAL, now()->subDay(), [
@@ -218,7 +218,7 @@ class OverviewTest extends TestCase
 
     public function test_overview_does_not_hydrate_unbounded_order_or_item_rows(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
             ['product_name' => 'Measured Product', 'quantity' => 2],

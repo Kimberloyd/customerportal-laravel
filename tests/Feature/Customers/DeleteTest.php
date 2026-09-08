@@ -17,7 +17,7 @@ class DeleteTest extends TestCase
 
     public function test_blocked_when_linked_user_still_exists(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->admin()->create();
         $customerUser = User::factory()->create(['role' => 'customer']);
         $customer = $this->makeCustomer('Own Co', $customerUser);
 
@@ -29,7 +29,7 @@ class DeleteTest extends TestCase
 
     public function test_dangling_user_link_is_repaired_and_delete_proceeds(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->admin()->create();
         $customerUser = User::factory()->create(['role' => 'customer']);
         $customer = $this->makeCustomer('Own Co', $customerUser);
         $customerUser->forceDelete();
@@ -42,7 +42,7 @@ class DeleteTest extends TestCase
 
     public function test_customer_cannot_be_deleted_while_linked_account_is_in_recovery_window(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->admin()->create();
         $customerUser = User::factory()->create(['role' => 'customer']);
         $customer = $this->makeCustomer('Recoverable Co', $customerUser);
         $customerUser->forceFill([
@@ -61,7 +61,7 @@ class DeleteTest extends TestCase
 
     public function test_blocked_when_orders_exist(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->admin()->create();
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
         $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
@@ -76,7 +76,7 @@ class DeleteTest extends TestCase
 
     public function test_succeeds_for_customer_with_no_history(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->admin()->create();
         $customer = $this->makeCustomer();
 
         $response = $this->actingAsUser($staff)->delete("/customers/{$customer->id}");
@@ -87,7 +87,7 @@ class DeleteTest extends TestCase
 
     public function test_audit_row_survives_customer_deletion(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->admin()->create();
         $customer = $this->makeCustomer('Doomed Co');
 
         $this->actingAsUser($staff)->delete("/customers/{$customer->id}");
@@ -103,5 +103,14 @@ class DeleteTest extends TestCase
         $customer = $this->makeCustomer();
 
         $this->actingAsUser($user)->delete("/customers/{$customer->id}")->assertStatus(403);
+    }
+
+    public function test_office_role_cannot_delete_customer_history(): void
+    {
+        $office = User::factory()->create(['role' => User::ROLE_OFFICE]);
+        $customer = $this->makeCustomer();
+
+        $this->actingAsUser($office)->delete("/customers/{$customer->id}")->assertForbidden();
+        $this->assertNotNull(Customer::find($customer->id));
     }
 }

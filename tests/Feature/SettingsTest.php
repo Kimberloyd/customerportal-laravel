@@ -151,7 +151,7 @@ class SettingsTest extends TestCase
     {
         config(['services.po_notifications.sms_enabled' => true]);
 
-        foreach (['customer', 'employee'] as $role) {
+        foreach (['customer', 'agent'] as $role) {
             $user = User::factory()->create(['role' => $role]);
 
             $this->actingAsUser($user)->put('/settings/sms', ['enabled' => false])->assertForbidden();

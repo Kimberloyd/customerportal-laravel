@@ -6,9 +6,9 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
@@ -26,6 +26,27 @@ class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, SoftDeletes;
+
+    public const ROLE_ADMIN = 'admin';
+
+    public const ROLE_OFFICE = 'office';
+
+    public const ROLE_AGENT = 'agent';
+
+    public const ROLE_CUSTOMER = 'customer';
+
+    public const ROLES = [
+        self::ROLE_ADMIN,
+        self::ROLE_OFFICE,
+        self::ROLE_AGENT,
+        self::ROLE_CUSTOMER,
+    ];
+
+    public const STAFF_ROLES = [
+        self::ROLE_ADMIN,
+        self::ROLE_OFFICE,
+        self::ROLE_AGENT,
+    ];
 
     public $timestamps = false;
 

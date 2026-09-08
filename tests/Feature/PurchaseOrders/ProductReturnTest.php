@@ -103,7 +103,7 @@ class ProductReturnTest extends TestCase
             'items' => [['purchase_order_item_id' => $item->id, 'quantity' => 1]],
         ])->assertForbidden();
 
-        $this->actingAsUser(User::factory()->create(['role' => 'employee']))
+        $this->actingAsUser(User::factory()->create(['role' => 'office']))
             ->post(route('purchase-orders.returns.store', $order), [
                 'reason' => 'The delivered packaging was damaged.',
                 'items' => [['purchase_order_item_id' => $item->id, 'quantity' => 1]],
@@ -120,7 +120,7 @@ class ProductReturnTest extends TestCase
             'items' => [['purchase_order_item_id' => $item->id, 'quantity' => 2]],
         ]);
         $return = ProductReturn::firstOrFail();
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
 
         $this->actingAsUser($staff)->put(route('purchase-orders.returns.update', $return), [
             'status' => ProductReturn::STATUS_APPROVED,
@@ -158,7 +158,7 @@ class ProductReturnTest extends TestCase
             'status' => ProductReturn::STATUS_APPROVED,
         ])->assertForbidden();
 
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $this->actingAsUser($staff)->put(route('purchase-orders.returns.update', $return), [
             'status' => ProductReturn::STATUS_REJECTED,
         ])->assertSessionHas('error', 'Explain why this return request cannot be approved.');

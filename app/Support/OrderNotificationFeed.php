@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\PurchaseOrderNotification;
+use App\Models\User;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -113,6 +114,9 @@ class OrderNotificationFeed
                 return null;
             }
             $query->whereHas('purchaseOrder', fn ($q) => $q->where('customer_id', $customer->id));
+        } elseif ($user->role === User::ROLE_AGENT) {
+            $query->whereHas('purchaseOrder', fn ($q) => $q
+                ->whereIn('customer_id', CustomerAccess::customerIdsFor($user)));
         }
 
         return $query;

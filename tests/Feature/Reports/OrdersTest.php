@@ -10,12 +10,12 @@ use Tests\TestCase;
 
 class OrdersTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesOrderFixtures;
+    use RefreshDatabase;
 
     public function test_month_filter_narrows_to_that_month(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
 
@@ -33,7 +33,7 @@ class OrdersTest extends TestCase
 
     public function test_custom_range_filter(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
 
@@ -51,7 +51,7 @@ class OrdersTest extends TestCase
 
     public function test_status_filter_partial_matches_in_progress_statuses(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
 
@@ -91,7 +91,7 @@ class OrdersTest extends TestCase
 
     public function test_summary_matches_full_filtered_set_not_just_visible_page(): void
     {
-        $staff = User::factory()->create(['role' => 'employee']);
+        $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
 
