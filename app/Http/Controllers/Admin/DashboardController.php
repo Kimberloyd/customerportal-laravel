@@ -127,9 +127,13 @@ class DashboardController extends Controller
     private function listTeams(): array
     {
         return [
-            'teams' => Team::with(['members:id,full_name,email'])->orderBy('name')->get(),
-            'employees' => User::query()->where('role', 'employee')->where('is_active', true)
-                ->orderBy('full_name')->get(['id', 'full_name', 'email']),
+            'teams' => Team::with(['members:id,full_name'])->orderBy('name')->get(),
+            'employees' => User::query()
+                ->where('role', 'employee')
+                ->where('is_active', true)
+                ->whereDoesntHave('teams')
+                ->orderBy('full_name')
+                ->get(['id', 'full_name']),
         ];
     }
 }

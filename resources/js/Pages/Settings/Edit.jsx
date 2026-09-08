@@ -3,6 +3,7 @@ import FlashBanner from '@/components/FlashBanner';
 import { Pagination } from '@/components/interior/pagination';
 import { Input } from '@/components/motion/input';
 import { Table } from '@/components/motion/table';
+import { Tabs, TabsList, TabsTrigger } from '@/components/motion/tabs';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import axios from 'axios';
@@ -45,28 +46,6 @@ function Row({ label, description, children }) {
                 )}
             </div>
             <div className="md:col-span-2 md:max-w-xl">{children}</div>
-        </div>
-    );
-}
-
-function Tabs({ tabs, active, onChange }) {
-    return (
-        <div className="mt-6 flex gap-1 overflow-x-auto border-b border-border">
-            {tabs.map((tab) => (
-                <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => onChange(tab.key)}
-                    aria-current={active === tab.key ? 'page' : undefined}
-                    className={`-mb-px shrink-0 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
-                        active === tab.key
-                            ? 'border-primary text-foreground'
-                            : 'border-transparent text-muted-foreground hover:text-foreground'
-                    }`}
-                >
-                    {tab.label}
-                </button>
-            ))}
         </div>
     );
 }
@@ -363,6 +342,13 @@ export default function Edit({ user, sms, semaphore }) {
 
     return (
         <AuthenticatedLayout
+            header={
+                <div>
+                    <h1 className="text-xl font-semibold leading-tight text-gray-800">
+                        Settings
+                    </h1>
+                </div>
+            }
             banner={smsFlash && (
                 <FlashBanner
                     key={smsFlash.id}
@@ -375,17 +361,20 @@ export default function Edit({ user, sms, semaphore }) {
             <Head title="Settings" />
 
             <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-                <header>
-                    <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-                        Settings
-                    </h1>
-                    <p className="mt-1 text-base text-muted-foreground">
-                        Manage your account settings and preferences.
-                    </p>
-                </header>
-
                 {tabs.length > 1 && (
-                    <Tabs tabs={tabs} active={active} onChange={setActive} />
+                    <Tabs
+                        value={active}
+                        onValueChange={setActive}
+                        variant="underline"
+                    >
+                        <TabsList className="flex w-full flex-wrap justify-start">
+                            {tabs.map((tab) => (
+                                <TabsTrigger key={tab.key} value={tab.key}>
+                                    {tab.label}
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+                    </Tabs>
                 )}
 
                 {active === 'details' && (

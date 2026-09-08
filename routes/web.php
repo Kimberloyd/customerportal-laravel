@@ -65,6 +65,8 @@ Route::get('/admin', [AdminDashboardController::class, 'index'])
 
 Route::middleware('auth')->prefix('admin/teams')->name('admin.teams.')->group(function () {
     Route::post('/', [TeamController::class, 'store'])->name('store');
+    Route::put('/{team}', [TeamController::class, 'update'])->name('update');
+    Route::delete('/{team}', [TeamController::class, 'destroy'])->name('destroy');
 });
 
 Route::middleware('auth')->prefix('customer-accounts')->name('customer-accounts.')->group(function () {

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
@@ -88,6 +89,27 @@ class DashboardTest extends TestCase
             ->where('activeTab', 'customers')
             ->missing('customers')
             ->loadDeferredProps('customers', fn ($deferred) => $deferred->has('customers.data')));
+    }
+
+    public function test_admin_can_load_the_teams_tab_with_members(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $employee = User::factory()->create(['role' => 'employee']);
+        $availableEmployee = User::factory()->create(['role' => 'employee']);
+        $team = Team::create(['name' => 'North Team']);
+        $team->members()->attach($employee);
+
+        $response = $this->actingAsUser($admin)->get('/admin?tab=teams');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->where('activeTab', 'teams')
+            ->has('teams', 1)
+            ->where('teams.0.name', 'North Team')
+            ->missing('teams.0.members.0.email')
+            ->has('employees', 1)
+            ->where('employees.0.id', $availableEmployee->id)
+            ->missing('employees.0.email'));
     }
 
     public function test_product_search_uses_the_complete_catalog_without_an_upstream_query(): void

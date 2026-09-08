@@ -1,54 +1,238 @@
+import ConfirmationDialog from '@/components/ConfirmationDialog';
+import { Dropdown } from '@/components/interior/dropdown';
 import { Modal } from '@/components/interior/modal';
+import { Checkbox } from '@/components/motion/checkbox';
 import { Table } from '@/components/motion/table';
 import { Button } from '@/components/ui/button';
 import { useForm } from '@inertiajs/react';
-import { Plus } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 export function TeamsPanel({ teams = [], employees = [] }) {
     const [open, setOpen] = useState(false);
-    const { data, setData, post, processing, errors, reset, clearErrors } = useForm({ name: '', employee_ids: [] });
+    const [editingTeam, setEditingTeam] = useState(null);
+    const [teamPendingDeletion, setTeamPendingDeletion] = useState(null);
+    const editor = useForm({ name: '', employee_ids: [] });
+    const deletion = useForm({});
+
+    const selectableEmployees = useMemo(() => {
+        const choices = new Map(employees.map((employee) => [employee.id, employee]));
+        editingTeam?.members.forEach((employee) => choices.set(employee.id, employee));
+
+        return [...choices.values()].sort((left, right) => left.full_name.localeCompare(right.full_name));
+    }, [editingTeam, employees]);
+
+    const openCreate = () => {
+        editor.reset();
+        editor.clearErrors();
+        setEditingTeam(null);
+        setOpen(true);
+    };
+
+    const openEdit = (team) => {
+        editor.setData({
+            name: team.name,
+            employee_ids: team.members.map((member) => member.id),
+        });
+        editor.clearErrors();
+        setEditingTeam(team);
+        setOpen(true);
+    };
+
     const close = () => {
-        if (processing) return;
-        reset();
-        clearErrors();
+        editor.reset();
+        editor.clearErrors();
+        setEditingTeam(null);
         setOpen(false);
     };
+
     const toggleEmployee = (id) => {
-        const selected = data.employee_ids.includes(id);
-        if (!selected && data.employee_ids.length === 3) return;
-        setData('employee_ids', selected ? data.employee_ids.filter((value) => value !== id) : [...data.employee_ids, id]);
+        const selected = editor.data.employee_ids.includes(id);
+        if (!selected && editor.data.employee_ids.length === 3) return;
+
+        editor.setData(
+            'employee_ids',
+            selected
+                ? editor.data.employee_ids.filter((value) => value !== id)
+                : [...editor.data.employee_ids, id],
+        );
     };
+
     const submit = (event) => {
         event.preventDefault();
-        post(route('admin.teams.store'), { preserveScroll: true, onSuccess: close });
+        const options = { preserveScroll: true, onSuccess: close };
+
+        if (editingTeam) {
+            editor.put(route('admin.teams.update', editingTeam.id), options);
+            return;
+        }
+
+        editor.post(route('admin.teams.store'), options);
     };
-    const columns = useMemo(() => [
+
+    const confirmDelete = () => {
+        if (!teamPendingDeletion) return;
+
+        deletion.delete(route('admin.teams.destroy', teamPendingDeletion.id), {
+            preserveScroll: true,
+            onSuccess: () => setTeamPendingDeletion(null),
+        });
+    };
+
+    const columns = [
         { key: 'name', header: 'Team', sortable: true },
-        { key: 'members', header: 'Employees', cell: (team) => team.members.map((member) => member.full_name).join(', ') },
-        { key: 'member_count', header: 'Members', cell: (team) => `${team.members.length} of 3` },
-    ], []);
+        {
+            key: 'members',
+            header: 'Employees',
+            cell: (team) => team.members.map((member) => member.full_name).join(', '),
+        },
+        {
+            key: 'member_count',
+            header: 'Members',
+            cell: (team) => `${team.members.length} of 3`,
+        },
+        {
+            key: 'actions',
+            header: '',
+            width: '56px',
+            cell: (team) => {
+                const items = [
+                    {
+                        value: 'edit',
+                        label: 'Edit',
+                        icon: <Pencil />,
+                        onSelect: () => openEdit(team),
+                    },
+                    {
+                        value: 'delete',
+                        label: 'Delete',
+                        icon: <Trash2 />,
+                        onSelect: () => setTeamPendingDeletion(team),
+                        destructive: true,
+                    },
+                ];
 
-    return <div>
-        <div className="mb-6 flex items-start justify-between gap-4"><div><h3 className="text-lg font-semibold text-gray-900">Teams</h3><p className="mt-1 text-sm text-gray-600">Organize active employees into teams of up to 3 members.</p></div><Button type="button" onClick={() => setOpen(true)}><Plus aria-hidden="true" className="mr-2 h-4 w-4" />Add team</Button></div>
-        <Table data={teams} columns={columns} getRowId={(team) => String(team.id)} height={480} emptyState="No teams have been created yet. Add a team to get started." emptyStateHeight={240} />
-
-        <Modal open={open} onClose={close} title="Add team" description="Choose up to 3 active employees for this team." maxWidth={600} closeOnBackdrop={!processing} closeOnEscape={!processing} footer={<><Button type="button" variant="tertiary" onClick={close} disabled={processing}>Cancel</Button><Button type="submit" form="team-form" loading={processing}>Create team</Button></>}>
-            <form id="team-form" onSubmit={submit}>
-                <label className="block text-sm font-medium text-gray-700">Team name
-                    <input value={data.name} onChange={(event) => setData('name', event.target.value)} className="mt-1 h-10 w-full rounded-md border border-gray-300 px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" required autoComplete="off" />
-                </label>
-                {errors.name && <p className="mt-1 text-sm text-red-600" role="alert">{errors.name}</p>}
-                <fieldset className="mt-5"><legend className="text-sm font-medium text-gray-700">Employees ({data.employee_ids.length}/3)</legend>
-                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                        {employees.map((employee) => <label key={employee.id} className="flex items-center gap-2 rounded-md border border-gray-200 p-2 text-sm">
-                            <input type="checkbox" checked={data.employee_ids.includes(employee.id)} onChange={() => toggleEmployee(employee.id)} disabled={!data.employee_ids.includes(employee.id) && data.employee_ids.length === 3} />
-                            <span>{employee.full_name}<span className="block text-xs text-gray-500">{employee.email}</span></span>
-                        </label>)}
+                return (
+                    <div className="flex items-center">
+                        <Dropdown
+                            items={items}
+                            value=""
+                            onChange={(action) => items.find((item) => item.value === action)?.onSelect()}
+                            label={`Actions for ${team.name}`}
+                            trigger={<MoreHorizontal />}
+                            align="right"
+                            portal
+                            triggerClassName="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&_svg]:h-5 [&_svg]:w-5"
+                        />
                     </div>
-                </fieldset>
-                {errors.employee_ids && <p className="mt-2 text-sm text-red-600" role="alert">{errors.employee_ids}</p>}
-            </form>
-        </Modal>
-    </div>;
+                );
+            },
+        },
+    ];
+
+    return (
+        <div>
+            <div className="mb-6 flex items-start justify-between gap-4">
+                <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Teams</h3>
+                    <p className="mt-1 text-sm text-gray-600">
+                        Organize active employees into teams of up to 3 members.
+                    </p>
+                </div>
+                <Button type="button" onClick={openCreate}>Add team</Button>
+            </div>
+
+            <Table
+                data={teams}
+                columns={columns}
+                getRowId={(team) => String(team.id)}
+                height={480}
+                emptyState="No teams have been created yet. Add a team to get started."
+                emptyStateHeight={240}
+            />
+
+            <Modal
+                open={open}
+                onClose={close}
+                title={editingTeam ? 'Edit team' : 'Add team'}
+                description={editingTeam ? 'Update the team name or assigned employees.' : 'Choose up to 3 active employees for this team.'}
+                maxWidth={600}
+                closeOnBackdrop={!editor.processing}
+                closeOnEscape={!editor.processing}
+                footer={
+                    <>
+                        <Button
+                            type="button"
+                            variant="tertiary"
+                            className="h-10 rounded-md px-5 text-sm"
+                            onClick={close}
+                            disabled={editor.processing}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="submit"
+                            form="team-form"
+                            variant="primary"
+                            className="h-10 rounded-md px-5 text-sm"
+                            loading={editor.processing}
+                        >
+                            {editingTeam ? 'Save changes' : 'Create team'}
+                        </Button>
+                    </>
+                }
+            >
+                <form id="team-form" onSubmit={submit}>
+                    <label className="block text-sm font-medium text-gray-700">
+                        Team name
+                        <input
+                            value={editor.data.name}
+                            onChange={(event) => editor.setData('name', event.target.value)}
+                            className="mt-1 h-10 w-full rounded-md border border-gray-300 px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                            required
+                            autoComplete="off"
+                        />
+                    </label>
+                    {editor.errors.name && <p className="mt-1 text-sm text-red-600" role="alert">{editor.errors.name}</p>}
+
+                    <fieldset className="mt-5">
+                        <legend className="text-sm font-medium text-gray-700">
+                            Employees ({editor.data.employee_ids.length}/3)
+                        </legend>
+                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                            {selectableEmployees.map((employee) => (
+                                <div key={employee.id} className="flex items-center gap-2 rounded-md border border-gray-200 p-2 text-sm">
+                                    <Checkbox
+                                        checked={editor.data.employee_ids.includes(employee.id)}
+                                        onCheckedChange={() => toggleEmployee(employee.id)}
+                                        disabled={!editor.data.employee_ids.includes(employee.id) && editor.data.employee_ids.length === 3}
+                                        aria-label={`Select ${employee.full_name}`}
+                                    />
+                                    <span>{employee.full_name}</span>
+                                </div>
+                            ))}
+                            {selectableEmployees.length === 0 && (
+                                <p className="text-sm text-gray-500 sm:col-span-2">
+                                    All active employees already belong to a team.
+                                </p>
+                            )}
+                        </div>
+                    </fieldset>
+                    {editor.errors.employee_ids && <p className="mt-2 text-sm text-red-600" role="alert">{editor.errors.employee_ids}</p>}
+                </form>
+            </Modal>
+
+            <ConfirmationDialog
+                open={teamPendingDeletion !== null}
+                onOpenChange={(nextOpen) => !nextOpen && setTeamPendingDeletion(null)}
+                title={`Delete ${teamPendingDeletion?.name ?? 'team'}?`}
+                description="This removes the team. Its employees will become available for another team."
+                confirmLabel="Delete team"
+                cancelLabel="Keep team"
+                onConfirm={confirmDelete}
+                destructive
+                processing={deletion.processing}
+            />
+        </div>
+    );
 }
