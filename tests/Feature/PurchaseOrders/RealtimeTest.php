@@ -47,10 +47,11 @@ class RealtimeTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_order_event_targets_staff_current_customer_and_previous_customer_only(): void
+    public function test_order_event_targets_all_staff_and_affected_customer_accounts(): void
     {
         $admin = User::factory()->admin()->create();
         $agent = User::factory()->create();
+        $otherAgent = User::factory()->create();
         $currentCustomerUser = User::factory()->customer()->create();
         $previousCustomerUser = User::factory()->customer()->create();
         User::factory()->customer()->create();
@@ -67,6 +68,7 @@ class RealtimeTest extends TestCase
         $this->assertSame([
             "private-users.{$admin->id}",
             "private-users.{$agent->id}",
+            "private-users.{$otherAgent->id}",
             "private-users.{$currentCustomerUser->id}",
             "private-users.{$previousCustomerUser->id}",
         ], collect($channels)->sort()->values()->all());
