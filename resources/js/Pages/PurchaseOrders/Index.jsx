@@ -3,15 +3,18 @@ import ConfirmationDialog from '@/components/ConfirmationDialog';
 import CreateOrderModal from '@/components/CreateOrderModal';
 import OrderMessageLogModal from '@/components/OrderMessageLogModal';
 import { Dropdown } from '@/components/interior/dropdown';
+import { AutoHeightReveal, Modal } from '@/components/interior/modal';
 import { Pagination } from '@/components/interior/pagination';
 import { AnimatedBadge } from '@/components/motion/animated-badge';
 import { Table } from '@/components/motion/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/motion/input';
+import { RangeCalendar } from '@/components/ui/range-calendar';
 import { statusBadge, formatDateTime } from '@/utils/orderDisplay';
 import { usePurchaseOrderRealtime } from '@/hooks/usePurchaseOrderRealtime';
 import { Deferred, Head, router } from '@inertiajs/react';
-import { Archive, ListChecks, MoreHorizontal, Search, SquareArrowOutUpRight } from 'lucide-react';
+import { parseDate } from '@internationalized/date';
+import { Archive, Check, Funnel, ListChecks, MoreHorizontal, Search, SquareArrowOutUpRight } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 // Matches the sm breakpoint used across this app's layouts -- below it the
@@ -31,6 +34,15 @@ function useIsCompactViewport() {
 
     return isCompact;
 }
+
+const STATUS_FILTER_OPTIONS = [
+    { value: 'all', label: 'All orders' },
+    { value: 'active', label: 'Active' },
+    { value: 'submitted', label: 'Submitted' },
+    { value: 'partial', label: 'Partially delivered' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'cancelled', label: 'Cancelled' },
+];
 
 const PAGE_SIZE = 10;
 const TABLE_ROW_HEIGHT = 48;
@@ -52,6 +64,25 @@ export default function Index({
 
     const isCompactViewport = useIsCompactViewport();
     const [search, setSearch] = useState(filters.search);
+    const [status, setStatus] = useState(filters.status ?? 'all');
+    const [customerId, setCustomerId] = useState(filters.customer_id ? String(filters.customer_id) : '');
+    const [startDate, setStartDate] = useState(filters.start_date ?? '');
+    const [endDate, setEndDate] = useState(filters.end_date ?? '');
+    const [filterModalOpen, setFilterModalOpen] = useState(false);
+    const hasActiveFilters = status !== 'all' || !!customerId || !!startDate || !!endDate;
+    const showCustomerFilter = !lockedCustomerId && createOrderCustomers.length > 1;
+
+    const customerFilterItems = useMemo(
+        () => [
+            { value: '', label: 'All customers' },
+            ...createOrderCustomers.map((customer) => ({
+                value: String(customer.id),
+                label: customer.company_name,
+            })),
+        ],
+        [createOrderCustomers],
+    );
+    const selectedCustomerFilter = customerFilterItems.find((item) => item.value === customerId);
     const [createOrderOpen, setCreateOrderOpen] = useState(openCreateOrder);
     const [productsLoading, setProductsLoading] = useState(false);
     const [productsError, setProductsError] = useState(false);
@@ -103,9 +134,16 @@ export default function Index({
             route('purchase-orders.index'),
             {
                 search,
+                date_filter: filters.date_filter,
+                month: filters.month,
+                start_date: filters.start_date ?? '',
+                end_date: filters.end_date ?? '',
+                status: filters.status ?? 'all',
+                customer_id: filters.customer_id ?? '',
                 ...overrides,
             },
             {
+                only: ['orders', 'filters'],
                 preserveState: true,
                 preserveScroll: true,
                 onStart: () => setTableLoading(true),
@@ -246,7 +284,7 @@ export default function Index({
             <Head title="Orders" />
 
             <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-                <div className="flex justify-center bg-white">
+                <div className="flex items-center justify-center gap-2 bg-white">
                     <Input
                         type="text"
                         value={search}
@@ -260,6 +298,20 @@ export default function Index({
                             input: 'text-sm',
                         }}
                     />
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setStatus(filters.status ?? 'all');
+                            setCustomerId(filters.customer_id ? String(filters.customer_id) : '');
+                            setStartDate(filters.start_date ?? '');
+                            setEndDate(filters.end_date ?? '');
+                            setFilterModalOpen(true);
+                        }}
+                        aria-label="Advanced filters"
+                        className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-white text-[#868593] shadow-none outline-none transition-colors hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                        <Funnel aria-hidden="true" className="h-[18px] w-[18px]" />
+                    </button>
                 </div>
 
                 <Deferred
@@ -303,6 +355,148 @@ export default function Index({
                     </>
                 </Deferred>
             </div>
+
+            {(() => {
+                const filterFooter = (
+                    <>
+                        <Button
+                            type="button"
+                            variant="tertiary"
+                            className="h-10 rounded-md px-5 text-sm"
+                            disabled={!hasActiveFilters}
+                            onClick={() => {
+                                setStatus('all');
+                                setCustomerId('');
+                                setStartDate('');
+                                setEndDate('');
+                            }}
+                        >
+                            Reset all filters
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="primary"
+                            className="h-10 rounded-md px-5 text-sm"
+                            onClick={() => {
+                                applyFilters({
+                                    status,
+                                    customer_id: customerId,
+                                    date_filter: startDate && endDate ? 'custom' : 'all',
+                                    start_date: startDate,
+                                    end_date: endDate,
+                                    page: 1,
+                                });
+                                setFilterModalOpen(false);
+                            }}
+                        >
+                            Apply filters
+                        </Button>
+                    </>
+                );
+
+                const filterBody = (
+                <div className="space-y-6 py-2">
+                    {showCustomerFilter && (
+                        <Dropdown
+                            items={customerFilterItems}
+                            value={customerId}
+                            onChange={setCustomerId}
+                            label="Search customer"
+                            placeholder="Search customer"
+                            emptyLabel="No customers found"
+                            className="block w-full"
+                            triggerClassName="flex h-11 w-full items-center gap-2 rounded-lg border border-border bg-white px-4 text-left text-sm text-foreground outline-none transition-colors hover:border-muted-foreground/40 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20"
+                            trigger={(
+                                <>
+                                    <Search aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                    <span className="truncate text-foreground">
+                                        {customerId ? selectedCustomerFilter?.label : 'Search customer'}
+                                    </span>
+                                </>
+                            )}
+                            matchTriggerWidth
+                            portal
+                        />
+                    )}
+
+                    <div className="space-y-6">
+                        <section>
+                            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                                Status
+                            </h3>
+                            <div className="flex flex-wrap gap-2.5">
+                                {STATUS_FILTER_OPTIONS.map((option) => (
+                                    <button
+                                        key={option.value}
+                                        type="button"
+                                        onClick={() => setStatus(option.value)}
+                                        className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm transition-colors ${
+                                            status === option.value
+                                                ? 'border-primary bg-primary text-primary-foreground'
+                                                : 'border-border text-foreground hover:bg-muted'
+                                        }`}
+                                    >
+                                        {status === option.value && <Check className="h-4 w-4" />}
+                                        {option.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </section>
+
+                        <section>
+                            <div className="mb-3 flex items-center justify-between">
+                                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Date range
+                                </h3>
+                                {(startDate || endDate) && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setStartDate('');
+                                            setEndDate('');
+                                        }}
+                                        className="text-sm font-medium text-primary hover:underline"
+                                    >
+                                        Clear
+                                    </button>
+                                )}
+                            </div>
+                            <div className="w-full rounded-xl bg-white">
+                                <RangeCalendar
+                                    aria-label="Order date range"
+                                    value={
+                                        startDate && endDate
+                                            ? { start: parseDate(startDate), end: parseDate(endDate) }
+                                            : null
+                                    }
+                                    onChange={(range) => {
+                                        const start = range.start.toString();
+                                        const end = range.end.toString();
+                                        setStartDate(start);
+                                        setEndDate(end);
+                                    }}
+                                />
+                            </div>
+                        </section>
+                    </div>
+                </div>
+                );
+
+                return (
+                    <Modal
+                        open={filterModalOpen}
+                        onClose={() => setFilterModalOpen(false)}
+                        title="Advanced filters"
+                        maxWidth={800}
+                        maxHeight="min(85vh, 720px)"
+                        footer={filterFooter}
+                    >
+                        <AutoHeightReveal>
+                        {filterBody}
+                        </AutoHeightReveal>
+                    </Modal>
+                );
+            })()}
 
             <CreateOrderModal
                 open={createOrderOpen}

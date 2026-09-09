@@ -23,6 +23,7 @@
     "@fancy": "https://fancycomponents.dev/r/{name}.json",
     "@react-bits": "https://reactbits.dev/r/{name}.json",
     "@loading-ui": "https://loading-ui.com/r/{name}.json",
-    "@spectrumui": "https://ui.spectrumhq.in/r/{name}.json"
+    "@spectrumui": "https://ui.spectrumhq.in/r/{name}.json",
+    "@intentui": "https://intentui.com/r/{name}"
   }
 }

@@ -58,17 +58,18 @@ class PurchaseOrderController extends Controller
         $startDate = trim((string) $request->query('start_date', ''));
         $endDate = trim((string) $request->query('end_date', ''));
         $statusFilter = trim((string) $request->query('status', 'all')) ?: 'all';
+        $customerId = $customer?->id ?? ($request->query('customer_id') ? (int) $request->query('customer_id') : null);
 
         return Inertia::render('PurchaseOrders/Index', [
             'orders' => Inertia::defer(
                 fn () => $this->listOrders(
-                    $customer,
                     $search,
                     $dateFilter,
                     $month,
                     $startDate,
                     $endDate,
                     $statusFilter,
+                    $customerId,
                 ),
                 'orders',
             ),
@@ -79,6 +80,7 @@ class PurchaseOrderController extends Controller
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'status' => $statusFilter,
+                'customer_id' => $customerId,
             ],
             'createOrderCustomers' => $customers,
             'createOrderProducts' => Inertia::optional(
@@ -95,16 +97,17 @@ class PurchaseOrderController extends Controller
     }
 
     private function listOrders(
-        ?Customer $customer,
         string $search,
         string $dateFilter,
         string $month,
         string $startDate,
         string $endDate,
         string $statusFilter,
+        ?int $customerId,
     ) {
         $query = PurchaseOrder::query()->with(['customer', 'items']);
         CustomerAccess::applyToOrders($query, Auth::user());
+        $query->when($customerId, fn ($q) => $q->where('customer_id', $customerId));
 
         if ($search !== '') {
             $pattern = '%'.strtolower($search).'%';
@@ -145,6 +148,8 @@ class PurchaseOrderController extends Controller
         } elseif ($statusFilter === PurchaseOrder::STATUS_SUBMITTED) {
             $query->where('status', PurchaseOrder::STATUS_SUBMITTED);
         } elseif ($statusFilter === PurchaseOrder::STATUS_COMPLETED) {
+            $query->where('status', $statusFilter);
+        } elseif ($statusFilter === PurchaseOrder::STATUS_CANCELLED) {
             $query->where('status', $statusFilter);
         } else {
             $statusFilter = 'all';
