@@ -189,11 +189,16 @@ class EditTest extends TestCase
         $this->assertDatabaseMissing('team_members', ['team_id' => $team->id, 'user_id' => $agent->id]);
     }
 
-    public function test_admin_cannot_convert_an_agent_into_a_customer_account(): void
+    public function test_admin_can_convert_an_agent_into_a_linked_customer_account(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
         $agent = User::factory()->create(['role' => 'agent']);
         $customer = $this->makeCustomer('Fresh Co');
+        $assignedCustomer = $this->makeCustomer('Previously Assigned Co');
+        $assignedCustomer->update(['assigned_employee_id' => $agent->id]);
+        $team = Team::create(['name' => 'North Team']);
+        $team->members()->attach($agent);
+        $originalSessionVersion = $agent->session_version;
 
         $this->actingAsUser($admin)->put("/admin/users/{$agent->id}", [
             'full_name' => $agent->full_name,
@@ -201,10 +206,13 @@ class EditTest extends TestCase
             'role' => 'customer',
             'customer_id' => $customer->id,
             'is_active' => '1',
-        ])->assertSessionHasErrors('role');
+        ])->assertRedirect(route('admin.dashboard', ['tab' => 'accounts']));
 
-        $this->assertSame('agent', $agent->fresh()->role);
-        $this->assertNull($customer->fresh()->user_id);
+        $this->assertSame('customer', $agent->fresh()->role);
+        $this->assertSame($originalSessionVersion + 1, $agent->fresh()->session_version);
+        $this->assertSame($agent->id, $customer->fresh()->user_id);
+        $this->assertNull($assignedCustomer->fresh()->assigned_employee_id);
+        $this->assertDatabaseMissing('team_members', ['team_id' => $team->id, 'user_id' => $agent->id]);
     }
 
     public function test_change_list_audit_details_for_existing_customer_role_and_status(): void

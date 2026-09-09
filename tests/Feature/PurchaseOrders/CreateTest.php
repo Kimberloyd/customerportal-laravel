@@ -59,6 +59,21 @@ class CreateTest extends TestCase
             ->assertRedirect(route('purchase-orders.index', ['create' => 1]));
     }
 
+    public function test_customer_orders_page_locks_creation_to_the_linked_customer(): void
+    {
+        $user = User::factory()->create(['role' => 'customer']);
+        $customer = $this->makeCustomer('Own Co', $user);
+        $this->makeCustomer('Other Co');
+
+        $this->actingAsUser($user)->get('/orders')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('PurchaseOrders/Index')
+                ->where('lockedCustomerId', $customer->id)
+                ->has('createOrderCustomers', 1)
+                ->where('createOrderCustomers.0.id', $customer->id));
+    }
+
     public function test_creates_order_with_a_resolved_product_id_line(): void
     {
         $staff = User::factory()->create(['role' => 'office']);

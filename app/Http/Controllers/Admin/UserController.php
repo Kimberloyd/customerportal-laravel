@@ -132,11 +132,16 @@ class UserController extends Controller
             $changes[] = $user->is_active ? 'activated' : 'deactivated';
         }
 
-        DB::transaction(function () use ($user, $values, $changes, $request) {
+        DB::transaction(function () use ($user, $values, $changes, $request, $previousRole) {
             $user->save();
 
             if ($user->role !== User::ROLE_AGENT) {
                 $user->teams()->detach();
+
+                if ($previousRole === User::ROLE_AGENT) {
+                    Customer::where('assigned_employee_id', $user->id)
+                        ->update(['assigned_employee_id' => null]);
+                }
             }
 
             $linkedCustomers = Customer::where('user_id', $user->id)->get();
@@ -344,12 +349,11 @@ class UserController extends Controller
         $selectedRole = strtolower(trim((string) $request->input('role', $user?->role ?? User::ROLE_AGENT)));
         $selectedCustomerId = $request->input('customer_id') ? (int) $request->input('customer_id') : null;
 
-        // Customer accounts are created only through the agent customer-account
-        // flow, which also assigns the customer to its responsible agent.
-        // An existing customer account remains editable so an admin can maintain it
-        // or move it to a staff role, but no other account can be converted into one.
+        // New customer accounts still go through the agent customer-account flow,
+        // which assigns the customer to its responsible agent. During an edit, an
+        // admin may convert an existing account and must choose its customer link.
         $allowedRoles = [User::ROLE_AGENT, User::ROLE_OFFICE, User::ROLE_ADMIN];
-        if ($user?->role === User::ROLE_CUSTOMER) {
+        if ($user !== null) {
             $allowedRoles[] = User::ROLE_CUSTOMER;
         }
 

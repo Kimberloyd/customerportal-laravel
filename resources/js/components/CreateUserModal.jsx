@@ -166,7 +166,7 @@ export function UserModal({ open, onOpenChange, user = null, customers = [] }) {
                             data={data}
                             updateField={updateField}
                             errors={errors}
-                            allowCustomerRole={user?.role === 'customer'}
+                            allowCustomerRole={isEdit}
                             customers={customers}
                             isSelf={Boolean(user?.is_self)}
                             editingUserId={user?.id}
