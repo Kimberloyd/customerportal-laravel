@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'purchase_order_id', 'customer_id', 'requested_by_user_id', 'status',
-    'reason', 'review_note', 'requested_at', 'reviewed_at',
+    'reason', 'attachment_files', 'review_note', 'requested_at', 'reviewed_at',
     'reviewed_by_user_id', 'received_at', 'received_by_user_id',
 ])]
 class ProductReturn extends Model
@@ -29,6 +29,7 @@ class ProductReturn extends Model
     protected function casts(): array
     {
         return [
+            'attachment_files' => 'array',
             'requested_at' => 'datetime',
             'reviewed_at' => 'datetime',
             'received_at' => 'datetime',

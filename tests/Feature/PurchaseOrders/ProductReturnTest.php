@@ -7,6 +7,8 @@ use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderAudit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\CreatesOrderFixtures;
 use Tests\TestCase;
 
@@ -43,6 +45,81 @@ class ProductReturnTest extends TestCase
             'action' => 'Return Requested',
             'actor_user_id' => $user->id,
         ]);
+    }
+
+    public function test_customer_can_attach_up_to_five_private_images_to_a_return_request(): void
+    {
+        Storage::fake('local');
+        [$user, $order] = $this->receivedOrder();
+        $item = $order->items->first();
+        $images = collect(range(1, 5))
+            ->map(fn (int $number) => $this->returnImage("damage-{$number}.png"))
+            ->all();
+
+        $this->actingAsUser($user)->post(route('purchase-orders.returns.store', $order), [
+            'reason' => 'The delivered packaging was visibly damaged.',
+            'return_images' => $images,
+            'items' => [['purchase_order_item_id' => $item->id, 'quantity' => 1]],
+        ])->assertRedirect(route('purchase-orders.show', $order));
+
+        $return = ProductReturn::firstOrFail();
+        $this->assertCount(5, $return->attachment_files);
+        foreach ($return->attachment_files as $storedName) {
+            Storage::disk('local')->assertExists('product_return_attachments/'.$storedName);
+        }
+
+        $attachmentResponse = $this->actingAsUser($user)
+            ->get(route('purchase-orders.returns.attachment', [$order, $return, 0]))
+            ->assertOk()
+            ->assertHeader('X-Content-Type-Options', 'nosniff');
+        $cacheControl = (string) $attachmentResponse->headers->get('Cache-Control');
+        $this->assertStringContainsString('private', $cacheControl);
+        $this->assertStringContainsString('no-store', $cacheControl);
+
+        $this->actingAsUser($user)
+            ->get(route('purchase-orders.show', $order))
+            ->assertInertia(fn ($page) => $page
+                ->has('order.returns.0.attachment_urls', 5)
+                ->where('order.returns.0.attachment_urls.0', route('purchase-orders.returns.attachment', [$order, $return, 0])));
+
+        $otherUser = User::factory()->create(['role' => 'customer']);
+        $this->makeCustomer('Other Co', $otherUser);
+        $this->actingAsUser($otherUser)
+            ->get(route('purchase-orders.returns.attachment', [$order, $return, 0]))
+            ->assertForbidden();
+    }
+
+    public function test_return_request_rejects_more_than_five_images(): void
+    {
+        [$user, $order] = $this->receivedOrder();
+        $item = $order->items->first();
+        $images = collect(range(1, 6))
+            ->map(fn (int $number) => $this->returnImage("damage-{$number}.png"))
+            ->all();
+
+        $this->actingAsUser($user)->post(route('purchase-orders.returns.store', $order), [
+            'reason' => 'The delivered packaging was visibly damaged.',
+            'return_images' => $images,
+            'items' => [['purchase_order_item_id' => $item->id, 'quantity' => 1]],
+        ])->assertSessionHasErrors('return_images');
+
+        $this->assertDatabaseCount('product_returns', 0);
+    }
+
+    public function test_return_attachment_rejects_content_that_is_not_an_image(): void
+    {
+        Storage::fake('local');
+        [$user, $order] = $this->receivedOrder();
+        $item = $order->items->first();
+
+        $this->actingAsUser($user)->post(route('purchase-orders.returns.store', $order), [
+            'reason' => 'The delivered packaging was visibly damaged.',
+            'return_images' => [UploadedFile::fake()->createWithContent('damage.jpg', 'not an image')],
+            'items' => [['purchase_order_item_id' => $item->id, 'quantity' => 1]],
+        ])->assertSessionHasErrors('return_images.0');
+
+        $this->assertDatabaseCount('product_returns', 0);
+        Storage::disk('local')->assertDirectoryEmpty('product_return_attachments');
     }
 
     public function test_customer_can_request_a_return_without_confirming_receipt(): void
@@ -105,7 +182,23 @@ class ProductReturnTest extends TestCase
         $this->actingAsUser($user)->post(route('purchase-orders.returns.store', $order), [
             'reason' => 'The delivered packaging was damaged.',
             'items' => [['purchase_order_item_id' => $item->id, 'quantity' => 99]],
-        ])->assertSessionHas('error', "{$item->display_name} can only be returned up to the {$item->delivered_quantity} unit(s) delivered.");
+        ])->assertSessionHasErrors([
+            'return_request' => "{$item->display_name} can only be returned up to the {$item->delivered_quantity} unit(s) delivered.",
+        ])->assertSessionMissing('error');
+
+        $this->assertDatabaseCount('product_returns', 0);
+    }
+
+    public function test_return_request_selection_error_is_returned_to_the_modal_instead_of_the_flash_banner(): void
+    {
+        [$user, $order] = $this->receivedOrder();
+
+        $this->actingAsUser($user)->post(route('purchase-orders.returns.store', $order), [
+            'reason' => 'The delivered packaging was damaged.',
+            'items' => [],
+        ])->assertSessionHasErrors([
+            'return_request' => 'Select at least one delivered product to return.',
+        ])->assertSessionMissing('error');
 
         $this->assertDatabaseCount('product_returns', 0);
     }
@@ -240,6 +333,22 @@ class ProductReturnTest extends TestCase
                 ->where('order.items.0.returnable_quantity', 3));
     }
 
+    public function test_return_table_exposes_the_generic_name_and_variant_for_each_product(): void
+    {
+        [$user, $order] = $this->receivedOrder();
+        $item = $order->items->first();
+        $this->actingAsUser($user)->post(route('purchase-orders.returns.store', $order), [
+            'reason' => 'The delivered packaging was damaged.',
+            'items' => [['purchase_order_item_id' => $item->id, 'quantity' => 1]],
+        ]);
+
+        $this->actingAsUser($user)->get(route('purchase-orders.show', $order))
+            ->assertInertia(fn ($page) => $page
+                ->where('order.returns.0.items.0.display_name', $item->display_name)
+                ->where('order.returns.0.items.0.generic_name', $item->generic_name)
+                ->where('order.returns.0.items.0.dosage', $item->dosage));
+    }
+
     /** @return array{0: User, 1: PurchaseOrder} */
     private function receivedOrder(): array
     {
@@ -252,5 +361,13 @@ class ProductReturnTest extends TestCase
         $order->save();
 
         return [$user, $order->fresh('items')];
+    }
+
+    private function returnImage(string $name): UploadedFile
+    {
+        return UploadedFile::fake()->createWithContent(
+            $name,
+            base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='),
+        );
     }
 }

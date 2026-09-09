@@ -107,6 +107,21 @@ class DashboardTest extends TestCase
                 ->has('dashboard.recent', 3));
     }
 
+    public function test_customer_next_steps_includes_an_order_that_is_ready_to_close(): void
+    {
+        $user = User::factory()->create(['role' => 'customer']);
+        $customer = $this->makeCustomer('Own Company', $user);
+        $readyToClose = $this->makeOrder($customer, PurchaseOrder::STATUS_PROCESSING, now(), [
+            ['quantity' => 3, 'delivered_quantity' => 3],
+        ]);
+
+        $this->actingAsUser($user)->get('/dashboard')->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('dashboard.attention_count', 1)
+                ->where('dashboard.attention.0.id', $readyToClose->id)
+                ->where('dashboard.attention.0.status', PurchaseOrder::STATUS_PROCESSING));
+    }
+
     public function test_company_dashboard_includes_all_customers_and_prioritizes_submitted_orders(): void
     {
         $this->freezeTime();

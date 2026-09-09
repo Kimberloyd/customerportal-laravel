@@ -52,7 +52,7 @@ export function OrderStages({ current, previous, ordersUrl, reducedMotion }) {
 
 function actionFor(order, customer) {
     if (order.status === 'completed') return { label: 'Confirm receipt', description: 'All items delivered. Confirm they arrived.', icon: ClipboardCheck };
-    if (order.status === 'processing') return { label: customer ? 'View order' : 'Complete order', description: 'All items have been delivered.', icon: ClipboardCheck };
+    if (order.status === 'processing') return { label: customer ? 'Close order' : 'Complete order', description: customer ? 'All items delivered. Ready to close.' : 'All items have been delivered.', icon: ClipboardCheck };
     if (order.status === 'partial') return { label: customer ? 'Track delivery' : 'Continue fulfillment', description: `${number.format(order.delivered_units)} of ${number.format(order.ordered_units)} units delivered`, icon: Truck };
     return { label: customer ? 'View order' : 'Fulfill order', description: 'Submitted and waiting for fulfillment.', icon: Package };
 }

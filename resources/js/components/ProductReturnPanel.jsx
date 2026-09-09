@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { AttachmentUpload, ImagePreviewDialog } from '@/components/motion/attachment-upload';
 import { Dropdown } from '@/components/interior/dropdown';
 import { AutoHeightReveal, Modal } from '@/components/interior/modal';
 import { AnimatedBadge } from '@/components/motion/animated-badge';
@@ -6,8 +7,9 @@ import { Input } from '@/components/motion/input';
 import { Table } from '@/components/motion/table';
 import { formatDateTime } from '@/utils/orderDisplay';
 import { router, useForm } from '@inertiajs/react';
-import { Check, Minus, MoreHorizontal, PackageCheck, Plus, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { Check, ImageIcon, Minus, MoreHorizontal, PackageCheck, Plus, X } from 'lucide-react';
+import { useReducedMotion } from 'motion/react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const RETURN_STATUS_COPY = {
     requested: { label: 'Awaiting review', status: 'warning' },
@@ -30,14 +32,20 @@ function autoTableHeight(rowCount) {
 }
 
 function RequestReturnModal({ open, onClose, order, presetItemId }) {
+    const wasOpenRef = useRef(false);
     const returnableItems = useMemo(
         () => order.items.filter((item) => item.returnable_quantity > 0),
         [order.items],
     );
-    const { data, setData, post, processing, reset, transform } = useForm({
+    const [attachmentItems, setAttachmentItems] = useState([]);
+    const [attachmentError, setAttachmentError] = useState('');
+    const { data, setData, post, processing, errors, clearErrors, transform } = useForm({
         reason: '',
         items: [],
+        return_images: [],
     });
+    const serverAttachmentError = errors.return_images
+        ?? Object.entries(errors).find(([key]) => key.startsWith('return_images.'))?.[1];
 
     transform((formData) => ({
         ...formData,
@@ -45,18 +53,31 @@ function RequestReturnModal({ open, onClose, order, presetItemId }) {
     }));
 
     useEffect(() => {
-        if (!open) return;
-        reset('reason');
-        setData('items', returnableItems.map((item) => ({
-            purchase_order_item_id: item.id,
-            quantity: item.id === presetItemId ? item.returnable_quantity : 0,
-        })));
+        if (!open) {
+            wasOpenRef.current = false;
+            return;
+        }
+        if (wasOpenRef.current) return;
+        wasOpenRef.current = true;
+
+        setData({
+            reason: '',
+            items: returnableItems.map((item) => ({
+                purchase_order_item_id: item.id,
+                quantity: item.id === presetItemId ? item.returnable_quantity : 0,
+            })),
+            return_images: [],
+        });
+        setAttachmentItems([]);
+        setAttachmentError('');
+        clearErrors();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [open, presetItemId, reset, returnableItems, setData]);
+    }, [open, presetItemId, returnableItems]);
 
     const updateQuantity = (itemId, raw) => {
         const item = returnableItems.find((candidate) => candidate.id === itemId);
         const quantity = raw === '' ? 0 : Math.max(0, Math.min(item.returnable_quantity, Number(raw)));
+        clearErrors('return_request');
         setData('items', data.items.map((line) => (
             line.purchase_order_item_id === itemId ? { ...line, quantity } : line
         )));
@@ -104,6 +125,14 @@ function RequestReturnModal({ open, onClose, order, presetItemId }) {
         >
             <AutoHeightReveal>
                 <form id="return-request-form" onSubmit={submit} className="space-y-5 px-2 pt-2">
+                    {errors.return_request && (
+                        <div
+                            role="alert"
+                            className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+                        >
+                            {errors.return_request}
+                        </div>
+                    )}
                     <div className="overflow-hidden rounded-lg border border-border">
                         {returnableItems.map((item) => {
                             const line = data.items.find((candidate) => candidate.purchase_order_item_id === item.id);
@@ -173,7 +202,10 @@ function RequestReturnModal({ open, onClose, order, presetItemId }) {
                         <span>Reason for return</span>
                         <textarea
                             value={data.reason}
-                            onChange={(event) => setData('reason', event.target.value)}
+                            onChange={(event) => {
+                                setData('reason', event.target.value);
+                                clearErrors('return_request');
+                            }}
                             minLength={10}
                             maxLength={1000}
                             required
@@ -183,6 +215,53 @@ function RequestReturnModal({ open, onClose, order, presetItemId }) {
                         />
                         <span className="block text-xs font-normal text-muted-foreground">Minimum 10 characters. Do not include patient information.</span>
                     </label>
+                    <div>
+                        <label className="mb-2 block text-sm font-medium text-foreground">
+                            Image attachments <span className="font-normal text-muted-foreground">(optional)</span>
+                        </label>
+                        <AttachmentUpload
+                            value={attachmentItems}
+                            onValueChange={(items) => {
+                                const files = items.map((item) => item.file).filter(Boolean);
+                                const allowed = files.every((file) => ['image/jpeg', 'image/png', 'image/webp'].includes(file.type));
+
+                                if (!allowed) {
+                                    setAttachmentItems([]);
+                                    setData('return_images', []);
+                                    setAttachmentError('Choose JPG, PNG, or WebP images.');
+                                    return;
+                                }
+
+                                setAttachmentItems(items);
+                                setData('return_images', files);
+                                setAttachmentError('');
+                                clearErrors(
+                                    'return_images',
+                                    ...Object.keys(errors).filter((key) => key.startsWith('return_images.')),
+                                );
+                            }}
+                            onFilesRejected={(files, reason) => {
+                                if (reason === 'too-large') {
+                                    setAttachmentError('Each image must be smaller than 5 MB.');
+                                } else if (reason === 'max-files') {
+                                    setAttachmentError('Add no more than 5 images.');
+                                }
+                            }}
+                            accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                            multiple
+                            maxFiles={5}
+                            maxFileSize={5 * 1024 * 1024}
+                            title="Add photos"
+                            description="Up to 5 JPG, PNG, or WebP images — 5 MB each"
+                            attachmentsLabel="Return images"
+                            classNames={{ dropzone: 'min-h-36' }}
+                        />
+                        {(serverAttachmentError || attachmentError) && (
+                            <p role="alert" className="mt-2 text-sm text-destructive">
+                                {serverAttachmentError ?? attachmentError}
+                            </p>
+                        )}
+                    </div>
                 </form>
             </AutoHeightReveal>
         </Modal>
@@ -286,6 +365,8 @@ export default function ProductReturnPanel({
     const [requestOpen, setRequestOpen] = useState(false);
     const [presetItemId, setPresetItemId] = useState(null);
     const [action, setAction] = useState(null);
+    const [previewItem, setPreviewItem] = useState(null);
+    const reduceMotion = useReducedMotion();
     const returns = order.returns ?? [];
 
     useEffect(() => {
@@ -301,7 +382,13 @@ export default function ProductReturnPanel({
             header: 'Products',
             cell: (returnRequest) => {
                 const products = returnRequest.items
-                    .map((item) => `${item.display_name} × ${item.quantity}`)
+                    .map((item) => {
+                        const product = [item.display_name, item.generic_name, item.dosage]
+                            .filter(Boolean)
+                            .join(' ');
+
+                        return `${product} × ${item.quantity}`;
+                    })
                     .join(', ');
 
                 return <span title={products}>{products}</span>;
@@ -311,6 +398,39 @@ export default function ProductReturnPanel({
             key: 'reason',
             header: 'Reason',
             cell: (returnRequest) => <span title={returnRequest.reason}>{returnRequest.reason}</span>,
+        },
+        {
+            key: 'attachments',
+            header: 'Attachment',
+            width: '160px',
+            cell: (returnRequest) => {
+                const attachments = returnRequest.attachment_urls ?? [];
+
+                if (attachments.length === 0) {
+                    return <span className="text-muted-foreground">—</span>;
+                }
+
+                return (
+                    <div className="space-y-1">
+                        {attachments.map((url, index) => (
+                            <button
+                                type="button"
+                                key={url}
+                                onClick={() => setPreviewItem({
+                                    id: `return-image-${returnRequest.id}-${index}`,
+                                    name: `Return image ${index + 1}`,
+                                    kind: 'image',
+                                    href: url,
+                                })}
+                                className="flex w-fit items-center gap-1 text-sm font-medium text-primary hover:underline"
+                            >
+                                <ImageIcon className="h-4 w-4" />
+                                Image {index + 1}
+                            </button>
+                        ))}
+                    </div>
+                );
+            },
         },
         {
             key: 'status',
@@ -432,6 +552,11 @@ export default function ProductReturnPanel({
                 presetItemId={presetItemId}
             />
             <ReviewReturnModal action={action} onClose={() => setAction(null)} />
+            <ImagePreviewDialog
+                item={previewItem}
+                onClose={() => setPreviewItem(null)}
+                reduce={Boolean(reduceMotion)}
+            />
         </section>
     );
 }

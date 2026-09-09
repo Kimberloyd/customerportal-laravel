@@ -804,6 +804,11 @@ class PurchaseOrderController extends Controller
                         'id' => $return->id,
                         'status' => $return->status,
                         'reason' => $return->reason,
+                        'attachment_urls' => collect($return->attachment_files ?? [])
+                            ->keys()
+                            ->map(fn (int $index) => route('purchase-orders.returns.attachment', [$order, $return, $index]))
+                            ->values()
+                            ->all(),
                         'review_note' => $return->review_note,
                         'requested_at' => $return->requested_at?->toIso8601String(),
                         'reviewed_at' => $return->reviewed_at?->toIso8601String(),
@@ -813,6 +818,8 @@ class PurchaseOrderController extends Controller
                         'items' => $return->items->map(fn ($item) => [
                             'purchase_order_item_id' => $item->purchase_order_item_id,
                             'display_name' => $item->purchaseOrderItem?->display_name ?? 'Product',
+                            'generic_name' => $item->purchaseOrderItem?->generic_name,
+                            'dosage' => $item->purchaseOrderItem?->dosage,
                             'quantity' => $item->quantity,
                         ]),
                     ]),

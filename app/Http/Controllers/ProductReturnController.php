@@ -13,10 +13,15 @@ use App\Support\CustomerAccess;
 use App\Support\CustomerScope;
 use App\Support\OrderAudit;
 use App\Support\OrderNotifications;
+use App\Support\ProductReturnAttachment;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 class ProductReturnController extends Controller
 {
@@ -25,8 +30,32 @@ class ProductReturnController extends Controller
         $customer = CustomerScope::forCurrentUser();
         abort_unless($customer && $order->customer_id === $customer->id, 403);
 
+        $request->validate([
+            'return_images' => ['nullable', 'array', 'max:5'],
+            'return_images.*' => ['file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120', 'dimensions:max_width=8000,max_height=8000'],
+        ], [
+            'return_images.max' => 'Add no more than 5 images.',
+            'return_images.*.image' => 'Choose valid image files.',
+            'return_images.*.mimes' => 'Choose JPG, PNG, or WebP images.',
+            'return_images.*.max' => 'Each image must be smaller than 5 MB.',
+            'return_images.*.dimensions' => 'Each image must be no larger than 8,000 by 8,000 pixels.',
+        ]);
+
+        $storedAttachments = [];
         try {
-            DB::transaction(function () use ($request, $order, $customer): void {
+            foreach ($request->file('return_images', []) as $attachment) {
+                $storedAttachments[] = ProductReturnAttachment::save($attachment);
+            }
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
+            ProductReturnAttachment::deleteMany($storedAttachments);
+
+            throw ValidationException::withMessages([
+                'return_images' => $e->getMessage(),
+            ]);
+        }
+
+        try {
+            DB::transaction(function () use ($request, $order, $customer, $storedAttachments): void {
                 $lockedOrder = PurchaseOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
                 $lockedOrder->load('items');
 
@@ -52,6 +81,7 @@ class ProductReturnController extends Controller
                     'requested_by_user_id' => Auth::id(),
                     'status' => ProductReturn::STATUS_REQUESTED,
                     'reason' => $reason,
+                    'attachment_files' => $storedAttachments !== [] ? $storedAttachments : null,
                     'requested_at' => now(),
                 ]);
 
@@ -71,7 +101,15 @@ class ProductReturnController extends Controller
                 );
             });
         } catch (UserActionException $e) {
-            return back()->with('error', $e->getMessage());
+            ProductReturnAttachment::deleteMany($storedAttachments);
+
+            throw ValidationException::withMessages([
+                'return_request' => $e->getMessage(),
+            ]);
+        } catch (Throwable $e) {
+            ProductReturnAttachment::deleteMany($storedAttachments);
+
+            throw $e;
         }
 
         OrderNotifications::returnRequested($order);
@@ -79,6 +117,24 @@ class ProductReturnController extends Controller
 
         return redirect()->route('purchase-orders.show', $order)
             ->with('success', 'Return request sent. Our team will review it.');
+    }
+
+    public function attachment(PurchaseOrder $order, ProductReturn $return, int $attachment): StreamedResponse
+    {
+        abort_unless($return->purchase_order_id === $order->id, 404);
+        abort_unless(CustomerAccess::applyToOrders(PurchaseOrder::query(), request()->user())
+            ->whereKey($order->id)->exists(), 403);
+        $storedName = ($return->attachment_files ?? [])[$attachment] ?? null;
+        abort_unless(ProductReturnAttachment::isSafeStoredName($storedName), 404);
+
+        $path = ProductReturnAttachment::path($storedName);
+        abort_unless(Storage::disk('local')->exists($path), 404);
+
+        return Storage::disk('local')->response($path, null, [
+            'Cache-Control' => 'private, no-store',
+            'Content-Disposition' => 'inline',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     public function update(Request $request, ProductReturn $return): RedirectResponse

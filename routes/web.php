@@ -51,6 +51,9 @@ Route::middleware('auth')->prefix('orders')->name('purchase-orders.')->group(fun
         ->name('confirm-received');
     Route::post('/{order}/cancel', [PurchaseOrderController::class, 'cancel'])->name('cancel');
     Route::post('/{order}/returns', [ProductReturnController::class, 'store'])->name('returns.store');
+    Route::get('/{order}/returns/{return}/attachments/{attachment}', [ProductReturnController::class, 'attachment'])
+        ->whereNumber('attachment')
+        ->name('returns.attachment');
     Route::put('/returns/{return}', [ProductReturnController::class, 'update'])->name('returns.update');
 });
 

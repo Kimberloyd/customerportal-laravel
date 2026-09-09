@@ -354,7 +354,7 @@ function ImageThumbnail({
   );
 }
 
-function ImagePreviewDialog({
+export function ImagePreviewDialog({
   item,
   layoutId,
   onClose,
@@ -379,16 +379,21 @@ function ImagePreviewDialog({
     closeRef.current?.focus();
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        onClose();
+        return;
+      }
       if (event.key === "Tab") {
         event.preventDefault();
         closeRef.current?.focus();
       }
     };
-    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown, true);
 
     return () => {
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keydown", handleKeyDown, true);
       document.body.style.overflow = previousOverflow;
       previousFocus?.focus();
     };
@@ -399,7 +404,7 @@ function ImagePreviewDialog({
   const src = item ? imageSource(item) : undefined;
   const content =
     item && src ? (
-      <div className="pointer-events-none fixed inset-0 z-[10000]">
+      <div data-modal-portal className="pointer-events-none fixed inset-0 z-[10000]">
         <motion.button
           type="button"
           aria-label="Close image preview"
