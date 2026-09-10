@@ -95,7 +95,7 @@ export default function Index({
     const deleteOrder = useCallback(() => {
         if (!orderPendingDeletion) return;
 
-        router.delete(route('purchase-orders.destroy', orderPendingDeletion.id), {
+        router.delete(route('purchase-orders.destroy', orderPendingDeletion.public_id), {
             preserveScroll: true,
             onStart: () => setIsDeletingOrder(true),
             onFinish: () => {
@@ -168,7 +168,7 @@ export default function Index({
     }, [search]);
 
     const goToOrder = useCallback(
-        (order) => router.visit(route('purchase-orders.show', order.id)),
+        (order) => router.visit(route('purchase-orders.show', order.public_id)),
         [],
     );
 

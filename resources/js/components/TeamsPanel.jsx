@@ -63,7 +63,7 @@ export function TeamsPanel({ teams = [], agents = [] }) {
         const options = { preserveScroll: true, onSuccess: close };
 
         if (editingTeam) {
-            editor.put(route('admin.teams.update', editingTeam.id), options);
+            editor.put(route('admin.teams.update', editingTeam.public_id), options);
             return;
         }
 
@@ -73,7 +73,7 @@ export function TeamsPanel({ teams = [], agents = [] }) {
     const confirmDelete = () => {
         if (!teamPendingDeletion) return;
 
-        deletion.delete(route('admin.teams.destroy', teamPendingDeletion.id), {
+        deletion.delete(route('admin.teams.destroy', teamPendingDeletion.public_id), {
             preserveScroll: true,
             onSuccess: () => setTeamPendingDeletion(null),
         });

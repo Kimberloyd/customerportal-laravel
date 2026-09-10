@@ -105,7 +105,7 @@ export default function OrderMessageLogModal({ order, open, onClose }) {
         setError(false);
 
         try {
-            const response = await axios.get(route('purchase-orders.message-log', order.id));
+            const response = await axios.get(route('purchase-orders.message-log', order.public_id));
             setEntries(response.data.entries ?? []);
         } catch {
             setEntries([]);

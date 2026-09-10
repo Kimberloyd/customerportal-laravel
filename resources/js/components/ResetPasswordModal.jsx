@@ -26,7 +26,7 @@ export function ResetPasswordModal({ open, onOpenChange, user }) {
 
     const submit = () => {
         if (processing || !user) return;
-        post(route('admin.users.reset-password', user.id), {
+        post(route('admin.users.reset-password', user.public_id), {
             preserveScroll: true,
             onSuccess: resetAndClose,
         });

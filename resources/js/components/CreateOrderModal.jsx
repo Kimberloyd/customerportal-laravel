@@ -625,7 +625,7 @@ export default function CreateOrderModal({
         });
 
         const endpoint = isEditing
-            ? route('purchase-orders.update', initialOrder.id)
+            ? route('purchase-orders.update', initialOrder.public_id)
             : route('purchase-orders.store');
 
         post(endpoint, {

@@ -33,7 +33,7 @@ class TeamController extends Controller
 
     public function update(Request $request, Team $team)
     {
-        $this->requireAdmin();
+        $this->authorize('manage', $team);
         $values = $this->validatedTeam($request, $team);
 
         DB::transaction(function () use ($values, $request, $team) {
@@ -49,7 +49,7 @@ class TeamController extends Controller
 
     public function destroy(Request $request, Team $team)
     {
-        $this->requireAdmin();
+        $this->authorize('manage', $team);
 
         DB::transaction(function () use ($request, $team) {
             $teamId = $team->id;

@@ -61,7 +61,7 @@ export function AccountsPanel({ users = { data: [], last_page: 1, current_page: 
             return;
         }
 
-        router.post(route('admin.users.toggle-active', user.id));
+        router.post(route('admin.users.toggle-active', user.public_id));
     };
 
     const restoreUser = (user) => {
@@ -74,16 +74,16 @@ export function AccountsPanel({ users = { data: [], last_page: 1, current_page: 
         const { type, user } = pendingAction;
         const options = { onFinish: () => setPendingAction(null) };
         if (type === 'delete') {
-            router.delete(route('admin.users.destroy', user.id), options);
+            router.delete(route('admin.users.destroy', user.public_id), options);
             return;
         }
 
         if (type === 'restore') {
-            router.post(route('admin.users.restore', user.id), {}, options);
+            router.post(route('admin.users.restore', user.public_id), {}, options);
             return;
         }
 
-        router.post(route('admin.users.toggle-active', user.id), {}, options);
+            router.post(route('admin.users.toggle-active', user.public_id), {}, options);
     };
 
     const columns = useMemo(
@@ -134,14 +134,14 @@ export function AccountsPanel({ users = { data: [], last_page: 1, current_page: 
                             value: 'export',
                             label: 'Download data',
                             icon: <Download />,
-                            onSelect: () => window.location.assign(route('admin.users.data-export', user.id)),
+                            onSelect: () => window.location.assign(route('admin.users.data-export', user.public_id)),
                         },
                     ] : [
                         {
                             value: 'export',
                             label: 'Download data',
                             icon: <Download />,
-                            onSelect: () => window.location.assign(route('admin.users.data-export', user.id)),
+                            onSelect: () => window.location.assign(route('admin.users.data-export', user.public_id)),
                         },
                         {
                             value: 'edit',

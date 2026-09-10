@@ -28,8 +28,8 @@ class ProductReturnController extends Controller
 {
     public function store(Request $request, PurchaseOrder $order): RedirectResponse
     {
+        $this->authorize('create', [ProductReturn::class, $order]);
         $customer = CustomerScope::forCurrentUser();
-        abort_unless($customer && $order->customer_id === $customer->id, 403);
 
         $request->validate([
             'return_images' => ['nullable', 'array', 'max:5'],
@@ -124,8 +124,7 @@ class ProductReturnController extends Controller
     public function attachment(PurchaseOrder $order, ProductReturn $return, int $attachment): StreamedResponse
     {
         abort_unless($return->purchase_order_id === $order->id, 404);
-        abort_unless(CustomerAccess::applyToOrders(PurchaseOrder::query(), request()->user())
-            ->whereKey($order->id)->exists(), 403);
+        $this->authorize('viewAttachment', $return);
         $storedName = ($return->attachment_files ?? [])[$attachment] ?? null;
         abort_unless(ProductReturnAttachment::isSafeStoredName($storedName), 404);
 
@@ -141,9 +140,7 @@ class ProductReturnController extends Controller
 
     public function update(Request $request, ProductReturn $return): RedirectResponse
     {
-        abort_unless(in_array(Auth::user()->role, User::STAFF_ROLES, true), 403);
-        abort_unless(CustomerAccess::applyToOrders(PurchaseOrder::query(), $request->user())
-            ->whereKey($return->purchase_order_id)->exists(), 403);
+        $this->authorize('update', $return);
 
         $nextStatus = trim((string) $request->input('status', ''));
         abort_unless(in_array($nextStatus, [

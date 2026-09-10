@@ -73,7 +73,7 @@ export function AttentionPanel({ orders, count, customer, reducedMotion, canOrde
                         return (
                             <li key={order.id} className="relative" onMouseEnter={() => setHovered(order.id)} onFocus={() => setHovered(order.id)} onBlur={() => setHovered(null)}>
                                 {hovered === order.id && <motion.div aria-hidden="true" layoutId={reducedMotion ? undefined : highlightId} className="pointer-events-none absolute inset-0 rounded-xl bg-stone-100 dark:bg-white/[0.06]" transition={reducedMotion ? { duration: 0 } : spring} />}
-                                <Link href={route('purchase-orders.show', order.id)} className={`relative flex items-center justify-between gap-3 rounded-xl px-3 py-3 ${focus}`}>
+                                <Link href={route('purchase-orders.show', order.public_id)} className={`relative flex items-center justify-between gap-3 rounded-xl px-3 py-3 ${focus}`}>
                                     <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-stone-900 dark:text-stone-100" title={order.po_number}>{order.po_number}</p><p className="mt-0.5 truncate text-xs leading-5 text-stone-500 dark:text-stone-400">{customer ? action.description : order.customer_name || 'Customer order'}</p></div>
                                     <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-medium text-primary dark:text-indigo-300">{action.label}<ArrowRight className="h-3 w-3" aria-hidden="true" /></span>
                                 </Link>
@@ -112,7 +112,7 @@ export function RecentOrders({ orders, customer, ordersUrl, canOrder, reducedMot
                         <tbody className="divide-y divide-stone-100 dark:divide-white/5">{orders.map((order) => {
                             const progress = order.ordered_units ? Math.min(100, order.delivered_units / order.ordered_units * 100) : 0;
                             return <tr key={order.id} className="transition-colors hover:bg-stone-50 dark:hover:bg-white/[0.03]">
-                                <td className="max-w-56 px-5 py-4 sm:px-6"><Link className={`block truncate rounded font-medium text-primary hover:underline ${focus} dark:text-indigo-300`} href={route('purchase-orders.show', order.id)} title={order.po_number}>{order.po_number}</Link></td>
+                                <td className="max-w-56 px-5 py-4 sm:px-6"><Link className={`block truncate rounded font-medium text-primary hover:underline ${focus} dark:text-indigo-300`} href={route('purchase-orders.show', order.public_id)} title={order.po_number}>{order.po_number}</Link></td>
                                 {!customer && <td className="max-w-56 truncate px-4 py-4 text-stone-600 dark:text-stone-300" title={order.customer_name}>{order.customer_name || '—'}</td>}
                                 <td className="px-4 py-4"><OrderStatus order={order} /></td>
                                 <td className="px-4 py-4"><div className="flex items-center gap-3"><div aria-hidden="true" className="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-stone-100 dark:bg-white/10"><motion.div initial={false} animate={{ width: `${progress}%` }} transition={{ duration: reducedMotion ? 0 : 0.45 }} className={`h-full rounded-full ${progress === 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`} /></div><span className="whitespace-nowrap text-xs text-stone-500 tabular-nums dark:text-stone-400">{number.format(order.delivered_units)} / {number.format(order.ordered_units)} units</span></div></td>

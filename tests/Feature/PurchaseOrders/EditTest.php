@@ -24,7 +24,7 @@ class EditTest extends TestCase
         ]);
         $item = $order->items->first();
 
-        $response = $this->actingAsUser($staff)->put("/orders/{$order->id}", [
+        $response = $this->actingAsUser($staff)->put("/orders/{$order->public_id}", [
             'customer_id' => $customer->id,
             'remarks' => '',
             "quantity_{$item->id}" => 3,
@@ -44,7 +44,7 @@ class EditTest extends TestCase
         ]);
         $item = $order->items->first();
 
-        $this->actingAsUser($staff)->put("/orders/{$order->id}", [
+        $this->actingAsUser($staff)->put("/orders/{$order->public_id}", [
             'customer_id' => $customer->id,
             'remarks' => '',
             "quantity_{$item->id}" => 0,
@@ -63,7 +63,7 @@ class EditTest extends TestCase
         ]);
         $item = $order->items->first();
 
-        $response = $this->actingAsUser($staff)->put("/orders/{$order->id}", [
+        $response = $this->actingAsUser($staff)->put("/orders/{$order->public_id}", [
             'customer_id' => $customer->id,
             'remarks' => $order->remarks ?? '',
             "quantity_{$item->id}" => 5,
@@ -83,7 +83,7 @@ class EditTest extends TestCase
         ]);
         $item = $order->items->first();
 
-        $response = $this->actingAsUser($staff)->post("/orders/{$order->id}", [
+        $response = $this->actingAsUser($staff)->post("/orders/{$order->public_id}", [
             '_method' => 'put',
             'customer_id' => $customer->id,
             'remarks' => 'Updated from modal',
@@ -106,7 +106,7 @@ class EditTest extends TestCase
         ]);
         $item = $order->items->first();
 
-        $response = $this->actingAsUser($staff)->post("/orders/{$order->id}", [
+        $response = $this->actingAsUser($staff)->post("/orders/{$order->public_id}", [
             '_method' => 'put',
             'customer_id' => $customer->id,
             'remarks' => '',
@@ -138,7 +138,7 @@ class EditTest extends TestCase
         ]);
         [$keptItem, $removedItem] = $order->items->values()->all();
 
-        $this->actingAsUser($staff)->post("/orders/{$order->id}", [
+        $this->actingAsUser($staff)->post("/orders/{$order->public_id}", [
             '_method' => 'put',
             'customer_id' => $customer->id,
             'remarks' => '',
@@ -163,7 +163,7 @@ class EditTest extends TestCase
         ]);
         [$deliveredItem, $otherItem] = $order->items->values()->all();
 
-        $response = $this->actingAsUser($staff)->post("/orders/{$order->id}", [
+        $response = $this->actingAsUser($staff)->post("/orders/{$order->public_id}", [
             '_method' => 'put',
             'customer_id' => $customer->id,
             'remarks' => '',
@@ -189,7 +189,7 @@ class EditTest extends TestCase
         ]);
         $item = $order->items->first();
 
-        $response = $this->actingAsUser($staff)->post("/orders/{$order->id}", [
+        $response = $this->actingAsUser($staff)->post("/orders/{$order->public_id}", [
             '_method' => 'put',
             'customer_id' => $customer->id,
             'remarks' => '',
@@ -218,7 +218,7 @@ class EditTest extends TestCase
         ]);
         $otherItem = $otherOrder->items->first();
 
-        $response = $this->actingAsUser($staff)->post("/orders/{$order->id}", [
+        $response = $this->actingAsUser($staff)->post("/orders/{$order->public_id}", [
             '_method' => 'put',
             'customer_id' => $customer->id,
             'remarks' => '',
@@ -248,7 +248,7 @@ class EditTest extends TestCase
         $order->save();
         $item = $order->items->first();
 
-        $response = $this->actingAsUser($staff)->post("/orders/{$order->id}", [
+        $response = $this->actingAsUser($staff)->post("/orders/{$order->public_id}", [
             '_method' => 'put',
             'customer_id' => $customer->id,
             'remarks' => '',
@@ -277,11 +277,11 @@ class EditTest extends TestCase
         $item = $order->items->first();
 
         $this->actingAsUser($staff)
-            ->get("/orders/{$order->id}/edit")
+            ->get("/orders/{$order->public_id}/edit")
             ->assertRedirect(route('purchase-orders.show', $order))
             ->assertSessionHas('error', 'This completed order can no longer be edited.');
 
-        $response = $this->actingAsUser($staff)->put("/orders/{$order->id}", [
+        $response = $this->actingAsUser($staff)->put("/orders/{$order->public_id}", [
             'customer_id' => $other->id,
             'remarks' => 'Closing note',
             "quantity_{$item->id}" => 99,
@@ -305,7 +305,7 @@ class EditTest extends TestCase
         ]);
         $item = $order->items->first();
 
-        $this->actingAsUser($staff)->put("/orders/{$order->id}", [
+        $this->actingAsUser($staff)->put("/orders/{$order->public_id}", [
             'customer_id' => $newCustomer->id,
             'remarks' => 'Updated remarks',
             "quantity_{$item->id}" => 8,
@@ -329,7 +329,7 @@ class EditTest extends TestCase
         ]);
         $item = $order->items->first();
 
-        $this->actingAsUser($staff)->put("/orders/{$order->id}", [
+        $this->actingAsUser($staff)->put("/orders/{$order->public_id}", [
             'customer_id' => $customer->id,
             'remarks' => '',
             "quantity_{$item->id}" => 5,
@@ -347,6 +347,6 @@ class EditTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
-        $this->actingAsUser($user)->get("/orders/{$order->id}/edit")->assertStatus(403);
+        $this->actingAsUser($user)->get("/orders/{$order->public_id}/edit")->assertStatus(403);
     }
 }

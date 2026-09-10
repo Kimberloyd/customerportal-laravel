@@ -59,7 +59,7 @@ class MessageController extends Controller
 
         if (! $thread) {
             return response()->json([
-                'customer' => ['id' => $customer->id, 'company_name' => $customer->company_name],
+                'customer' => ['id' => $customer->id, 'public_id' => $customer->public_id, 'company_name' => $customer->company_name],
                 'thread' => null,
                 'messages' => [],
                 'unread_message_ids' => [],
@@ -80,7 +80,7 @@ class MessageController extends Controller
         MessageThread::markReceivedMessagesRead($messages, $senderType);
 
         return response()->json([
-            'customer' => ['id' => $customer->id, 'company_name' => $customer->company_name],
+            'customer' => ['id' => $customer->id, 'public_id' => $customer->public_id, 'company_name' => $customer->company_name],
             'thread' => $this->widgetThreadPayload($thread),
             'messages' => $this->widgetMessagesPayload($messages),
             'unread_message_ids' => $unreadMessageIds,
@@ -350,6 +350,7 @@ class MessageController extends Controller
         return $threads->map(fn (CustomerMessage $thread) => [
             'channel' => 'facebook',
             'thread_id' => $thread->id,
+            'thread_public_id' => $thread->public_id,
             'name' => $thread->conversationName(),
             'has_unread' => ($thread->sender_type === $senderType && ! $thread->is_read)
                 || (bool) $thread->has_unread_replies,
@@ -376,17 +377,7 @@ class MessageController extends Controller
 
     private function authorizeWidgetAccess(Customer $customer): void
     {
-        if (Auth::user()->role === 'customer') {
-            $own = CustomerScope::forCurrentUser(required: false);
-            abort_unless($own && $own->id === $customer->id, 403);
-
-            return;
-        }
-
-        $isRecipient = collect($this->messageRecipients())
-            ->contains(fn ($recipient) => $recipient['customer']['id'] === $customer->id);
-
-        abort_unless($isRecipient, 404);
+        $this->authorize('usePortalThread', [CustomerMessage::class, $customer]);
     }
 
     private function latestPortalThreadFor(Customer $customer, ?int $assignedUserId): ?CustomerMessage
@@ -455,6 +446,7 @@ class MessageController extends Controller
     {
         return [
             'id' => $thread->id,
+            'public_id' => $thread->public_id,
             'name' => $thread->conversationName(),
             'subject' => $thread->subject,
             'status' => $thread->status,
@@ -485,7 +477,7 @@ class MessageController extends Controller
             ->where('users.role', 'customer')
             ->orderBy('users.full_name')
             ->orderBy('customers.company_name')
-            ->get(['customers.id as customer_id', 'customers.company_name', 'users.full_name']);
+            ->get(['customers.id as customer_id', 'customers.public_id as customer_public_id', 'customers.company_name', 'users.full_name']);
 
         // Scoped to the viewing staff member's own thread with each customer --
         // conversations are per staff member now, so another staff member's
@@ -500,7 +492,7 @@ class MessageController extends Controller
 
         return $rows
             ->map(fn ($row) => [
-                'customer' => ['id' => $row->customer_id, 'company_name' => $row->company_name],
+                'customer' => ['id' => $row->customer_id, 'public_id' => $row->customer_public_id, 'company_name' => $row->company_name],
                 'user_full_name' => $row->full_name,
                 'has_unread' => $unreadCustomerIds->has($row->customer_id),
             ])

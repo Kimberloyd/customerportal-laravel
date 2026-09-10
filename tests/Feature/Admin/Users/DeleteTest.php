@@ -24,7 +24,7 @@ class DeleteTest extends TestCase
         $admin = User::factory()->admin()->create();
 
         $response = $this->actingAsUser($admin)
-            ->delete("/admin/users/{$admin->id}");
+            ->delete("/admin/users/{$admin->public_id}");
 
         $response->assertRedirect();
         $response->assertSessionHas('error', 'You cannot delete your current account.');
@@ -47,7 +47,7 @@ class DeleteTest extends TestCase
             'email' => $target->email, 'token' => 'secret-token', 'created_at' => now(),
         ]);
 
-        $response = $this->actingAsUser($admin)->delete("/admin/users/{$target->id}");
+        $response = $this->actingAsUser($admin)->delete("/admin/users/{$target->public_id}");
 
         $response->assertRedirect(route('admin.dashboard', ['tab' => 'accounts']));
         $this->assertNull(User::find($target->id));
@@ -69,7 +69,7 @@ class DeleteTest extends TestCase
         $target = User::factory()->customer()->create();
         $customer = $this->makeCustomer('Own Co', $target);
 
-        $this->actingAsUser($admin)->delete("/admin/users/{$target->id}");
+        $this->actingAsUser($admin)->delete("/admin/users/{$target->public_id}");
         $this->assertSame($target->id, $customer->fresh()->user_id);
 
         User::withTrashed()->findOrFail($target->id)->forceFill(['purge_after' => now()->subMinute()])->save();
@@ -85,10 +85,10 @@ class DeleteTest extends TestCase
         $admin = User::factory()->admin()->create();
         $target = User::factory()->create();
 
-        $this->actingAsUser($admin)->delete("/admin/users/{$target->id}");
+        $this->actingAsUser($admin)->delete("/admin/users/{$target->public_id}");
 
         $this->actingAsUser($admin)
-            ->post("/admin/users/{$target->id}/restore")
+            ->post("/admin/users/{$target->public_id}/restore")
             ->assertSessionHas('success', "{$target->full_name}'s account was restored.");
 
         $restored = User::findOrFail($target->id);
@@ -108,7 +108,7 @@ class DeleteTest extends TestCase
             'successful' => false, 'created_at' => now(),
         ]);
 
-        $this->actingAsUser($admin)->delete("/admin/users/{$target->id}");
+        $this->actingAsUser($admin)->delete("/admin/users/{$target->public_id}");
         User::withTrashed()->findOrFail($target->id)->forceFill(['purge_after' => now()->subMinute()])->save();
         $this->artisan('accounts:purge-deleted')->assertSuccessful();
 
@@ -141,7 +141,7 @@ class DeleteTest extends TestCase
             'requested_at' => now(),
         ]);
 
-        $this->actingAsUser($admin)->delete("/admin/users/{$target->id}");
+        $this->actingAsUser($admin)->delete("/admin/users/{$target->public_id}");
         User::withTrashed()->findOrFail($target->id)->forceFill(['purge_after' => now()->subMinute()])->save();
         $this->artisan('accounts:purge-deleted')->assertSuccessful();
 
@@ -159,7 +159,7 @@ class DeleteTest extends TestCase
         $customer = $this->makeCustomer('Report Customer', $target);
         $conversation = $this->makeThread($customer, ['body' => 'Include this message.']);
 
-        $response = $this->actingAsUser($admin)->get("/admin/users/{$target->id}/data-export");
+        $response = $this->actingAsUser($admin)->get("/admin/users/{$target->public_id}/data-export");
 
         $response->assertOk();
         $response->assertHeader('content-type', 'application/json');
@@ -180,7 +180,7 @@ class DeleteTest extends TestCase
         $customer = $this->makeCustomer('Retained Customer', $target);
 
         $this->actingAsUser($admin)
-            ->delete("/admin/users/{$target->id}/erase-now", [
+            ->delete("/admin/users/{$target->public_id}/erase-now", [
                 'confirmation' => $target->full_name,
             ])
             ->assertSessionHas('success');
@@ -204,7 +204,7 @@ class DeleteTest extends TestCase
         Schema::drop('password_reset_tokens');
 
         $this->actingAsUser($admin)
-            ->delete("/admin/users/{$target->id}/erase-now", [
+            ->delete("/admin/users/{$target->public_id}/erase-now", [
                 'confirmation' => $target->full_name,
             ])
             ->assertSessionHas('success');
@@ -223,8 +223,8 @@ class DeleteTest extends TestCase
         $agent = User::factory()->create();
         $target = User::factory()->create();
 
-        $this->actingAsUser($agent)->delete("/admin/users/{$target->id}")->assertForbidden();
-        $this->actingAsUser($agent)->get("/admin/users/{$target->id}/data-export")->assertForbidden();
+        $this->actingAsUser($agent)->delete("/admin/users/{$target->public_id}")->assertForbidden();
+        $this->actingAsUser($agent)->get("/admin/users/{$target->public_id}/data-export")->assertForbidden();
         $this->assertSame(0, DataSubjectRequest::count());
     }
 }

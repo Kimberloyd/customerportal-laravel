@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasPublicId;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,6 +15,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 ])]
 class ProductReturn extends Model
 {
+    use HasPublicId;
+
     public const STATUS_REQUESTED = 'requested';
 
     public const STATUS_APPROVED = 'approved';

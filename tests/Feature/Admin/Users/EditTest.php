@@ -31,7 +31,7 @@ class EditTest extends TestCase
         $target = User::factory()->create(['role' => 'agent']);
         $originalHash = $target->password_hash;
 
-        $this->actingAsUser($admin)->put("/admin/users/{$target->id}", [
+        $this->actingAsUser($admin)->put("/admin/users/{$target->public_id}", [
             'full_name' => $target->full_name,
             'email' => $target->email,
             'role' => 'agent',
@@ -47,7 +47,7 @@ class EditTest extends TestCase
         $target = User::factory()->create(['role' => 'agent']);
         $originalVersion = $target->session_version;
 
-        $this->actingAsUser($admin)->put("/admin/users/{$target->id}", [
+        $this->actingAsUser($admin)->put("/admin/users/{$target->public_id}", [
             'full_name' => $target->full_name,
             'email' => $target->email,
             'role' => 'agent',
@@ -81,7 +81,7 @@ class EditTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
 
         $this->actingAsUser($admin);
-        $this->put("/admin/users/{$admin->id}", [
+        $this->put("/admin/users/{$admin->public_id}", [
             'full_name' => $admin->full_name,
             'email' => $admin->email,
             'role' => 'admin',
@@ -104,7 +104,7 @@ class EditTest extends TestCase
     {
         $admin = User::factory()->create(['role' => 'admin']);
 
-        $this->actingAsUser($admin)->put("/admin/users/{$admin->id}", [
+        $this->actingAsUser($admin)->put("/admin/users/{$admin->public_id}", [
             'full_name' => $admin->full_name,
             'email' => $admin->email,
             'role' => 'agent',
@@ -118,7 +118,7 @@ class EditTest extends TestCase
     {
         $admin = User::factory()->create(['role' => 'admin']);
 
-        $this->actingAsUser($admin)->put("/admin/users/{$admin->id}", [
+        $this->actingAsUser($admin)->put("/admin/users/{$admin->public_id}", [
             'full_name' => $admin->full_name,
             'email' => $admin->email,
             'role' => 'admin',
@@ -134,7 +134,7 @@ class EditTest extends TestCase
         $oldCustomer = $this->makeCustomer('Old Co', $target);
         $newCustomer = $this->makeCustomer('New Co');
 
-        $this->actingAsUser($admin)->put("/admin/users/{$target->id}", [
+        $this->actingAsUser($admin)->put("/admin/users/{$target->public_id}", [
             'full_name' => $target->full_name,
             'email' => $target->email,
             'role' => 'customer',
@@ -153,7 +153,7 @@ class EditTest extends TestCase
         $customer = $this->makeCustomer('Own Co', $target);
         $originalSessionVersion = $target->session_version;
 
-        $this->actingAsUser($admin)->put("/admin/users/{$target->id}", [
+        $this->actingAsUser($admin)->put("/admin/users/{$target->public_id}", [
             'full_name' => $target->full_name,
             'email' => $target->email,
             'role' => 'agent',
@@ -177,7 +177,7 @@ class EditTest extends TestCase
         $team = Team::create(['name' => 'North Team']);
         $team->members()->attach($agent);
 
-        $this->actingAsUser($admin)->put("/admin/users/{$agent->id}", [
+        $this->actingAsUser($admin)->put("/admin/users/{$agent->public_id}", [
             'full_name' => $agent->full_name,
             'email' => $agent->email,
             'phone' => $agent->phone,
@@ -200,7 +200,7 @@ class EditTest extends TestCase
         $team->members()->attach($agent);
         $originalSessionVersion = $agent->session_version;
 
-        $this->actingAsUser($admin)->put("/admin/users/{$agent->id}", [
+        $this->actingAsUser($admin)->put("/admin/users/{$agent->public_id}", [
             'full_name' => $agent->full_name,
             'email' => $agent->email,
             'role' => 'customer',
@@ -221,7 +221,7 @@ class EditTest extends TestCase
         $target = User::factory()->create(['role' => 'customer', 'is_active' => true]);
         $this->makeCustomer('Own Co', $target);
 
-        $this->actingAsUser($admin)->put("/admin/users/{$target->id}", [
+        $this->actingAsUser($admin)->put("/admin/users/{$target->public_id}", [
             'full_name' => $target->full_name,
             'email' => $target->email,
             'role' => 'agent',
@@ -232,12 +232,29 @@ class EditTest extends TestCase
         $this->assertSame('role customer -> agent, deactivated', $audit->details);
     }
 
+    public function test_status_only_deactivation_revokes_existing_sessions(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $target = User::factory()->create(['role' => 'agent', 'is_active' => true, 'session_version' => 7]);
+
+        $this->actingAsUser($admin)->put("/admin/users/{$target->public_id}", [
+            'full_name' => $target->full_name,
+            'email' => $target->email,
+            'role' => 'agent',
+            'is_active' => '0',
+        ])->assertRedirect(route('admin.dashboard', ['tab' => 'accounts']));
+
+        $target->refresh();
+        $this->assertFalse($target->is_active);
+        $this->assertSame(8, $target->session_version);
+    }
+
     public function test_no_op_edit_records_profile_details_updated(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
         $target = User::factory()->create(['role' => 'agent', 'is_active' => true]);
 
-        $this->actingAsUser($admin)->put("/admin/users/{$target->id}", [
+        $this->actingAsUser($admin)->put("/admin/users/{$target->public_id}", [
             'full_name' => $target->full_name,
             'email' => $target->email,
             'role' => 'agent',
@@ -253,7 +270,7 @@ class EditTest extends TestCase
         $agent = User::factory()->create(['role' => 'agent']);
         $target = User::factory()->create(['role' => 'agent']);
 
-        $this->actingAsUser($agent)->put("/admin/users/{$target->id}", [
+        $this->actingAsUser($agent)->put("/admin/users/{$target->public_id}", [
             'full_name' => 'Unauthorized change',
             'email' => $target->email,
             'role' => 'agent',
@@ -269,7 +286,7 @@ class EditTest extends TestCase
         $target = User::factory()->create(['role' => 'agent']);
 
         $this->actingAsUser($admin)
-            ->get("/admin/users/{$target->id}/edit")
+            ->get("/admin/users/{$target->public_id}/edit")
             ->assertNotFound();
     }
 }

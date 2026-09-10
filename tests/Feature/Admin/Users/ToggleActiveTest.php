@@ -17,7 +17,7 @@ class ToggleActiveTest extends TestCase
     {
         $admin = User::factory()->create(['role' => 'admin']);
 
-        $response = $this->actingAsUser($admin)->post("/admin/users/{$admin->id}/toggle-active");
+        $response = $this->actingAsUser($admin)->post("/admin/users/{$admin->public_id}/toggle-active");
 
         $response->assertSessionHas('error', 'You cannot deactivate your current account.');
         $this->assertTrue($admin->fresh()->is_active);
@@ -28,9 +28,27 @@ class ToggleActiveTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
         $target = User::factory()->create(['role' => 'agent']);
 
-        $this->actingAsUser($admin)->post("/admin/users/{$target->id}/toggle-active");
+        $this->actingAsUser($admin)->post("/admin/users/{$target->public_id}/toggle-active");
 
         $this->assertFalse($target->fresh()->is_active);
+    }
+
+    public function test_deactivation_revokes_existing_sessions_without_bumping_again_on_reactivation(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $target = User::factory()->create(['role' => 'agent', 'session_version' => 4]);
+
+        $this->actingAsUser($admin)->post("/admin/users/{$target->public_id}/toggle-active");
+        $this->assertSame(5, $target->fresh()->session_version);
+
+        $this->actingAsUser($admin)->post("/admin/users/{$target->public_id}/toggle-active");
+        $this->assertSame(5, $target->fresh()->session_version);
+
+        $this->actingAs($target->fresh())
+            ->withSession(['session_version' => 4])
+            ->get('/dashboard')
+            ->assertRedirect(route('login'));
+        $this->assertGuest();
     }
 
     public function test_deactivated_users_next_request_is_rejected(): void
@@ -52,10 +70,10 @@ class ToggleActiveTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
         $target = User::factory()->create(['role' => 'agent']);
 
-        $this->actingAsUser($admin)->post("/admin/users/{$target->id}/toggle-active");
+        $this->actingAsUser($admin)->post("/admin/users/{$target->public_id}/toggle-active");
         $this->assertSame('deactivated', AdminAudit::latest('id')->first()->action);
 
-        $this->actingAsUser($admin)->post("/admin/users/{$target->id}/toggle-active");
+        $this->actingAsUser($admin)->post("/admin/users/{$target->public_id}/toggle-active");
         $this->assertSame('activated', AdminAudit::latest('id')->first()->action);
     }
 
@@ -64,6 +82,6 @@ class ToggleActiveTest extends TestCase
         $agent = User::factory()->create(['role' => 'agent']);
         $target = User::factory()->create(['role' => 'agent']);
 
-        $this->actingAsUser($agent)->post("/admin/users/{$target->id}/toggle-active")->assertStatus(403);
+        $this->actingAsUser($agent)->post("/admin/users/{$target->public_id}/toggle-active")->assertStatus(403);
     }
 }

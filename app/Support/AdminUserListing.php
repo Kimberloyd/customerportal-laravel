@@ -74,7 +74,7 @@ final class AdminUserListing
 
         $users = $usersQuery
             ->select([
-                'id', 'full_name', 'email', 'phone', 'role', 'is_active',
+                'id', 'public_id', 'full_name', 'email', 'phone', 'role', 'is_active',
                 'deleted_at', 'deactivated_at', 'purge_after',
             ])
             ->orderBy('full_name')
@@ -88,6 +88,7 @@ final class AdminUserListing
 
         $users->through(fn (User $user) => [
             'id' => $user->id,
+            'public_id' => $user->public_id,
             'full_name' => $user->full_name,
             'email' => $user->email,
             'phone' => $user->phone,

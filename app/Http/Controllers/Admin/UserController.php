@@ -83,7 +83,7 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
-        $this->requireAdmin();
+        $this->authorize('manage', $user);
 
         $values = $this->validateUserForm($request, $user);
 
@@ -91,6 +91,7 @@ class UserController extends Controller
         $previousActive = $user->is_active;
         $changes = [];
         $isSelf = $user->id === Auth::id();
+        $invalidateExistingSessions = false;
 
         $user->full_name = $values['full_name'];
         $user->email = $values['email'];
@@ -108,28 +109,30 @@ class UserController extends Controller
 
         if ($values['password']) {
             $user->password_hash = Hash::make($values['password']);
-            // Invalidate any other active session for this account -- a
-            // changed password should immediately sign out other devices,
-            // not just leave them logged in on the old credential.
-            $user->session_version = ($user->session_version ?? 0) + 1;
-            if ($isSelf) {
-                // Editing your own password shouldn't also sign out the
-                // tab you're doing it from -- only other devices/sessions.
-                $request->session()->put('session_version', $user->session_version);
-            }
+            $invalidateExistingSessions = true;
             $changes[] = 'password reset';
         }
         if ($user->role !== $previousRole) {
             // A role change can add or remove customer-scoped data access.
             // End the target's existing sessions so their next request
             // reloads authorization from the updated account record.
-            if (! $values['password']) {
-                $user->session_version = ($user->session_version ?? 0) + 1;
-            }
+            $invalidateExistingSessions = true;
             $changes[] = "role {$previousRole} -> {$user->role}";
         }
         if ($user->is_active !== $previousActive) {
+            if ($previousActive && ! $user->is_active) {
+                $invalidateExistingSessions = true;
+            }
             $changes[] = $user->is_active ? 'activated' : 'deactivated';
+        }
+
+        if ($invalidateExistingSessions) {
+            $user->session_version = ($user->session_version ?? 0) + 1;
+            if ($isSelf) {
+                // Keep the current administrator signed in after changing
+                // their own password while rejecting every older session.
+                $request->session()->put('session_version', $user->session_version);
+            }
         }
 
         DB::transaction(function () use ($user, $values, $changes, $request, $previousRole) {
@@ -167,7 +170,7 @@ class UserController extends Controller
 
     public function resetPassword(Request $request, User $user)
     {
-        $this->requireAdmin();
+        $this->authorize('manage', $user);
 
         $password = (string) $request->input('password', '');
         $passwordConfirmation = (string) $request->input('password_confirmation', '');
@@ -195,14 +198,18 @@ class UserController extends Controller
 
     public function toggleActive(Request $request, User $user)
     {
-        $this->requireAdmin();
+        $this->authorize('manage', $user);
 
         if ($user->id === Auth::id()) {
             return back()->with('error', 'You cannot deactivate your current account.');
         }
 
         DB::transaction(function () use ($user, $request) {
+            $wasActive = $user->is_active;
             $user->is_active = ! $user->is_active;
+            if ($wasActive) {
+                $user->session_version = ($user->session_version ?? 0) + 1;
+            }
             $user->save();
             $state = $user->is_active ? 'activated' : 'deactivated';
             UserAudit::record($user, $state, "email={$user->email}", $request);
@@ -213,7 +220,7 @@ class UserController extends Controller
 
     public function destroy(Request $request, User $user)
     {
-        $this->requireAdmin();
+        $this->authorize('manage', $user);
 
         if ($user->id === Auth::id()) {
             return back()->with('error', 'You cannot delete your current account.');
@@ -233,21 +240,24 @@ class UserController extends Controller
             ->with('success', 'Account access was removed. Permanent deletion is scheduled in '.config('account-deletion.retention_days').' days.');
     }
 
-    public function restore(Request $request, int $user)
+    public function restore(Request $request, string $user)
     {
         $this->requireAdmin();
 
-        $restored = $this->accountDeletion->restore($user, $request);
+        $account = User::withTrashed()->where('public_id', $user)->firstOrFail();
+        $this->authorize('manage', $account);
+        $restored = $this->accountDeletion->restore($account->id, $request);
 
         return redirect()->route('admin.dashboard', ['tab' => 'accounts'])
             ->with('success', "{$restored->full_name}'s account was restored.");
     }
 
-    public function exportData(Request $request, int $user)
+    public function exportData(Request $request, string $user)
     {
         $this->requireAdmin();
 
-        $account = User::withTrashed()->findOrFail($user);
+        $account = User::withTrashed()->where('public_id', $user)->firstOrFail();
+        $this->authorize('manage', $account);
         $report = $this->accountDeletion->export($account, $request);
         $filename = 'account-data-'.$account->id.'-'.now()->format('Y-m-d').'.json';
 
@@ -258,11 +268,12 @@ class UserController extends Controller
         );
     }
 
-    public function eraseNow(Request $request, int $user)
+    public function eraseNow(Request $request, string $user)
     {
         $this->requireAdmin();
 
-        $account = User::withTrashed()->findOrFail($user);
+        $account = User::withTrashed()->where('public_id', $user)->firstOrFail();
+        $this->authorize('manage', $account);
 
         if ($account->id === Auth::id()) {
             return back()->with('error', 'You cannot erase your current account.');

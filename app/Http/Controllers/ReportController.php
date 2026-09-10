@@ -99,7 +99,7 @@ class ReportController extends Controller
         [$ordersQuery, $filters] = $this->filteredOrdersQuery($request);
         $summary = $this->reportSummary($ordersQuery);
         $orders = (clone $ordersQuery)
-            ->select(['id', 'po_number', 'customer_id', 'status', 'remarks', 'submitted_at'])
+            ->select(['id', 'public_id', 'po_number', 'customer_id', 'status', 'remarks', 'submitted_at'])
             ->with([
                 'customer:id,company_name',
                 'items:id,purchase_order_id,quantity,delivered_quantity,product_name',
@@ -115,6 +115,7 @@ class ReportController extends Controller
     {
         return [
             'id' => $order->id,
+            'public_id' => $order->public_id,
             'po_number' => $order->po_number,
             'submitted_at' => $order->submitted_at?->toIso8601String(),
             'customer_name' => $order->customer?->company_name,

@@ -167,8 +167,7 @@ class PurchaseOrderController extends Controller
 
     public function messageLog(PurchaseOrder $order): JsonResponse
     {
-        abort_unless(in_array(Auth::user()->role, User::STAFF_ROLES, true), 403);
-        $this->authorizeOrderAccess($order);
+        $this->authorize('viewMessageLog', $order);
 
         $entries = PurchaseOrderNotification::query()
             ->with('recipientUser:id,full_name')
@@ -193,6 +192,7 @@ class PurchaseOrderController extends Controller
         return response()->json([
             'order' => [
                 'id' => $order->id,
+                'public_id' => $order->public_id,
                 'po_number' => $order->po_number,
             ],
             'entries' => $entries,
@@ -364,7 +364,7 @@ class PurchaseOrderController extends Controller
 
     public function edit(PurchaseOrder $order): Response|RedirectResponse
     {
-        $this->authorizeOrderAccess($order);
+        $this->authorize('update', $order);
 
         if (in_array($order->status, PurchaseOrder::TERMINAL_STATUSES, true)) {
             return redirect()->route('purchase-orders.show', $order)
@@ -401,7 +401,7 @@ class PurchaseOrderController extends Controller
 
     public function update(Request $request, PurchaseOrder $order)
     {
-        $this->authorizeOrderAccess($order);
+        $this->authorize('update', $order);
 
         $previousCustomerId = $order->customer_id;
         $submittedItems = $request->has('items') ? $request->input('items') : null;
@@ -536,13 +536,12 @@ class PurchaseOrderController extends Controller
 
         PurchaseOrderChanged::dispatch($order->id, 'updated', $previousCustomerId);
 
-        return redirect()->route('purchase-orders.show', $order->id)->with('success', 'Order updated.');
+        return redirect()->route('purchase-orders.show', $order)->with('success', 'Order updated.');
     }
 
     public function complete(Request $request, PurchaseOrder $order)
     {
-        $this->authorizeOrderAccess($order);
-        abort_unless(Auth::user()->role === 'customer', 403);
+        $this->authorize('complete', $order);
 
         try {
             DB::transaction(function () use ($request, $order) {
@@ -568,20 +567,19 @@ class PurchaseOrderController extends Controller
                 app(OrderFollowUpManager::class)->syncOrder($locked);
             });
         } catch (UserActionException $e) {
-            return redirect()->route('purchase-orders.show', $order->id)->with('error', $e->getMessage());
+            return redirect()->route('purchase-orders.show', $order)->with('error', $e->getMessage());
         }
 
         OrderNotifications::completed($order);
 
         PurchaseOrderChanged::dispatch($order->id, 'completed');
 
-        return redirect()->route('purchase-orders.show', $order->id)->with('success', 'Order closed.');
+        return redirect()->route('purchase-orders.show', $order)->with('success', 'Order closed.');
     }
 
     public function receive(Request $request, PurchaseOrder $order)
     {
-        $this->authorizeOrderAccess($order);
-        abort_if(Auth::user()->role === 'customer', 403);
+        $this->authorize('receive', $order);
 
         $deliverySummary = null;
 
@@ -630,7 +628,7 @@ class PurchaseOrderController extends Controller
                 app(OrderFollowUpManager::class)->syncOrder($locked, now());
             });
         } catch (UserActionException $e) {
-            return redirect()->route('purchase-orders.show', $order->id)->with('error', $e->getMessage());
+            return redirect()->route('purchase-orders.show', $order)->with('error', $e->getMessage());
         }
 
         if ($deliverySummary) {
@@ -639,13 +637,12 @@ class PurchaseOrderController extends Controller
 
         PurchaseOrderChanged::dispatch($order->id, 'fulfillment-updated');
 
-        return redirect()->route('purchase-orders.show', $order->id)->with('success', 'Delivery quantities updated.');
+        return redirect()->route('purchase-orders.show', $order)->with('success', 'Delivery quantities updated.');
     }
 
     public function confirmReceived(Request $request, PurchaseOrder $order): RedirectResponse
     {
-        $this->authorizeOrderAccess($order);
-        abort_unless(Auth::user()->role === User::ROLE_CUSTOMER, 403);
+        $this->authorize('confirmReceived', $order);
 
         $confirmed = false;
 
@@ -677,11 +674,11 @@ class PurchaseOrderController extends Controller
                 $confirmed = true;
             });
         } catch (UserActionException $e) {
-            return redirect()->route('purchase-orders.show', $order->id)->with('error', $e->getMessage());
+            return redirect()->route('purchase-orders.show', $order)->with('error', $e->getMessage());
         }
 
         if (! $confirmed) {
-            return redirect()->route('purchase-orders.show', $order->id)
+            return redirect()->route('purchase-orders.show', $order)
                 ->with('success', 'This order was already marked as received.');
         }
 
@@ -689,13 +686,13 @@ class PurchaseOrderController extends Controller
 
         PurchaseOrderChanged::dispatch($order->id, 'customer-received');
 
-        return redirect()->route('purchase-orders.show', $order->id)
+        return redirect()->route('purchase-orders.show', $order)
             ->with('success', 'Order received. Thank you for confirming delivery.');
     }
 
     public function cancel(Request $request, PurchaseOrder $order)
     {
-        $this->authorizeOrderAccess($order);
+        $this->authorize('cancel', $order);
 
         try {
             DB::transaction(function () use ($request, $order) {
@@ -712,7 +709,7 @@ class PurchaseOrderController extends Controller
                 app(OrderFollowUpManager::class)->syncOrder($locked);
             });
         } catch (UserActionException $e) {
-            return redirect()->route('purchase-orders.show', $order->id)->with('error', $e->getMessage());
+            return redirect()->route('purchase-orders.show', $order)->with('error', $e->getMessage());
         }
 
         OrderNotifications::cancelled($order);
@@ -724,7 +721,7 @@ class PurchaseOrderController extends Controller
 
     public function destroy(Request $request, PurchaseOrder $order): RedirectResponse
     {
-        abort_unless(Auth::user()->role === User::ROLE_ADMIN, 403);
+        $this->authorize('delete', $order);
 
         $deletedCustomerId = null;
 
@@ -743,7 +740,7 @@ class PurchaseOrderController extends Controller
 
     public function show(Request $request, PurchaseOrder $order): Response
     {
-        $this->authorizeOrderAccess($order);
+        $this->authorize('view', $order);
 
         $isCustomerViewer = Auth::user()->role === User::ROLE_CUSTOMER;
 
@@ -771,6 +768,7 @@ class PurchaseOrderController extends Controller
         return Inertia::render('PurchaseOrders/Show', [
             'order' => [
                 'id' => $order->id,
+                'public_id' => $order->public_id,
                 'po_number' => $order->po_number,
                 'customer_id' => $order->customer_id,
                 'submitted_at' => $order->submitted_at?->toIso8601String(),
@@ -818,6 +816,7 @@ class PurchaseOrderController extends Controller
                     ->values()
                     ->map(fn (ProductReturn $return) => [
                         'id' => $return->id,
+                        'public_id' => $return->public_id,
                         'status' => $return->status,
                         'reason' => $return->reason,
                         'attachment_urls' => collect($return->attachment_files ?? [])
@@ -881,7 +880,7 @@ class PurchaseOrderController extends Controller
 
     public function attachment(PurchaseOrder $order): StreamedResponse
     {
-        $this->authorizeOrderAccess($order);
+        $this->authorize('view', $order);
 
         abort_if(! $order->po_file, 404);
 
@@ -900,6 +899,7 @@ class PurchaseOrderController extends Controller
 
         return [
             'id' => $order->id,
+            'public_id' => $order->public_id,
             'po_number' => $order->po_number,
             'submitted_at' => $order->submitted_at?->toIso8601String(),
             'customer_name' => $order->customer?->company_name,
@@ -1114,11 +1114,6 @@ class PurchaseOrderController extends Controller
         ));
     }
 
-    private function authorizeOrderAccess(PurchaseOrder $order): void
-    {
-        abort_unless(CustomerAccess::applyToOrders(PurchaseOrder::query(), Auth::user())
-            ->whereKey($order->id)->exists(), 403);
-    }
 
     /**
      * @return Collection<int, object>

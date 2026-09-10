@@ -91,6 +91,7 @@ class DashboardOverview
             ->withSum('items as delivered_units', 'delivered_quantity')->limit(4)->get()
             ->map(fn (PurchaseOrder $order) => [
                 'id' => $order->id,
+                'public_id' => $order->public_id,
                 'po_number' => $order->po_number,
                 'customer_name' => $order->customer?->company_name,
                 'status' => $order->status,

@@ -332,7 +332,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                     label: String(recipient.name).toLocaleUpperCase(),
                     hint: 'FACEBOOK',
                     channel: 'facebook',
-                    threadId: recipient.thread_id,
+                    threadId: recipient.thread_public_id,
                     hasUnread: Boolean(recipient.has_unread),
                     icon: unreadIcon,
                 };
@@ -349,7 +349,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                         ? String(recipient.contact_role).toLocaleUpperCase()
                         : String(recipient.customer.company_name).toLocaleUpperCase(),
                 channel: 'portal',
-                customerId: String(recipient.customer.id),
+                customerId: String(recipient.customer.public_id),
                 staffUserId: recipient.contact_id != null ? recipient.contact_id : undefined,
                 hasUnread: Boolean(recipient.has_unread),
                 icon: unreadIcon,
@@ -875,7 +875,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                                     <Link
                                                         href={
                                                             notification.order_id
-                                                                ? route('purchase-orders.show', notification.order_id)
+                                                                ? route('purchase-orders.show', notification.order_public_id)
                                                                 : '#'
                                                         }
                                                         onClick={() => {

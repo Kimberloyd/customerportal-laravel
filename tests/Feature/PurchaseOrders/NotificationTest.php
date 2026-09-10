@@ -207,7 +207,7 @@ class NotificationTest extends TestCase
         ]);
         $item = $order->items->first();
 
-        $this->actingAsUser($staff)->put("/orders/{$order->id}", [
+        $this->actingAsUser($staff)->put("/orders/{$order->public_id}", [
             'customer_id' => $customer->id,
             'remarks' => '',
             "quantity_{$item->id}" => 8,
@@ -258,7 +258,7 @@ class NotificationTest extends TestCase
         ]);
         $item = $order->items->first();
 
-        $this->actingAsUser($staff)->post("/orders/{$order->id}/receive", [
+        $this->actingAsUser($staff)->post("/orders/{$order->public_id}/receive", [
             "received_{$item->id}" => 2,
         ]);
 
@@ -278,7 +278,7 @@ class NotificationTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 5, 'delivered_quantity' => 5],
         ]);
 
-        $this->actingAsUser($customerUser)->post("/orders/{$order->id}/complete");
+        $this->actingAsUser($customerUser)->post("/orders/{$order->public_id}/complete");
 
         $this->assertSame(0, CustomerMessage::count());
 
@@ -296,7 +296,7 @@ class NotificationTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 5],
         ]);
 
-        $this->actingAsUser($staff)->post("/orders/{$order->id}/cancel");
+        $this->actingAsUser($staff)->post("/orders/{$order->public_id}/cancel");
 
         $this->assertSame(0, CustomerMessage::count());
 

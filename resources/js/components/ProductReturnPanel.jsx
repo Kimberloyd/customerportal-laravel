@@ -85,7 +85,7 @@ function RequestReturnModal({ open, onClose, order, presetItemId }) {
 
     const submit = (event) => {
         event.preventDefault();
-        post(route('purchase-orders.returns.store', order.id), {
+        post(route('purchase-orders.returns.store', order.public_id), {
             onSuccess: (page) => {
                 if (!page.props.flash?.error) onClose();
             },
@@ -288,7 +288,7 @@ function ReviewReturnModal({ action, onClose }) {
 
     const submit = (event) => {
         event.preventDefault();
-        router.put(route('purchase-orders.returns.update', action.returnRequest.id), {
+        router.put(route('purchase-orders.returns.update', action.returnRequest.public_id), {
             status: action.status,
             review_note: note,
         }, {

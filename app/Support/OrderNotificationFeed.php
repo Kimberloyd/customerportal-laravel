@@ -23,7 +23,7 @@ class OrderNotificationFeed
     {
         return self::scopedQuery()
             ?->with([
-                'purchaseOrder:id,po_number,customer_id',
+                'purchaseOrder:id,public_id,po_number,customer_id',
                 'purchaseOrder.customer:id,company_name',
             ])
             ->latest('created_at')

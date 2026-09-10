@@ -30,7 +30,7 @@ export default function Edit({ order, customers, lockedCustomerId }) {
             formData.append(`quantity_${item.id}`, data.quantities[item.id]);
         });
 
-        put(route('purchase-orders.update', order.id), {
+        put(route('purchase-orders.update', order.public_id), {
             data: formData,
             forceFormData: true,
         });

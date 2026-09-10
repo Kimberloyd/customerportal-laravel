@@ -23,7 +23,7 @@ class CompleteTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 3],
         ]);
 
-        $response = $this->actingAsUser($user)->post("/orders/{$order->id}/complete");
+        $response = $this->actingAsUser($user)->post("/orders/{$order->public_id}/complete");
 
         $response->assertSessionHas('error', 'This order is already cancelled and cannot be closed.');
         $this->assertSame(PurchaseOrder::STATUS_CANCELLED, $order->fresh()->status);
@@ -38,7 +38,7 @@ class CompleteTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 3, 'delivered_quantity' => 3],
         ]);
 
-        $this->actingAsUser($staff)->post("/orders/{$order->id}/complete")->assertStatus(403);
+        $this->actingAsUser($staff)->post("/orders/{$order->public_id}/complete")->assertStatus(403);
     }
 
     public function test_non_owning_customer_gets_403(): void
@@ -51,7 +51,7 @@ class CompleteTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 3, 'delivered_quantity' => 3],
         ]);
 
-        $this->actingAsUser($user)->post("/orders/{$order->id}/complete")->assertStatus(403);
+        $this->actingAsUser($user)->post("/orders/{$order->public_id}/complete")->assertStatus(403);
     }
 
     public function test_unsettled_order_cannot_be_closed(): void
@@ -63,7 +63,7 @@ class CompleteTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 10, 'delivered_quantity' => 3],
         ]);
 
-        $response = $this->actingAsUser($user)->post("/orders/{$order->id}/complete");
+        $response = $this->actingAsUser($user)->post("/orders/{$order->public_id}/complete");
 
         $response->assertSessionHas('error', 'Every item must be delivered before closing this order.');
         $this->assertSame(PurchaseOrder::STATUS_PARTIAL, $order->fresh()->status);
@@ -83,7 +83,7 @@ class CompleteTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 10, 'delivered_quantity' => 10],
         ]);
 
-        $response = $this->actingAsUser($user)->post("/orders/{$order->id}/complete");
+        $response = $this->actingAsUser($user)->post("/orders/{$order->public_id}/complete");
 
         $response->assertRedirect(route('purchase-orders.show', $order));
         $order->refresh();

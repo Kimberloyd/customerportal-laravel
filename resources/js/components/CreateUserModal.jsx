@@ -76,7 +76,7 @@ export function UserModal({ open, onOpenChange, user = null, customers = [] }) {
             is_active: values.is_active ? '1' : '0',
         }));
         const submitRoute = isEdit
-            ? route('admin.users.update', user.id)
+            ? route('admin.users.update', user.public_id)
             : route('admin.users.store');
 
         const options = {

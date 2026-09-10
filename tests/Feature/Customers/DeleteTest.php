@@ -21,7 +21,7 @@ class DeleteTest extends TestCase
         $customerUser = User::factory()->create(['role' => 'customer']);
         $customer = $this->makeCustomer('Own Co', $customerUser);
 
-        $response = $this->actingAsUser($staff)->delete("/customers/{$customer->id}");
+        $response = $this->actingAsUser($staff)->delete("/customers/{$customer->public_id}");
 
         $response->assertSessionHas('error', 'This customer is linked to an account. Delete the linked account first, then try again.');
         $this->assertNotNull(Customer::find($customer->id));
@@ -34,7 +34,7 @@ class DeleteTest extends TestCase
         $customer = $this->makeCustomer('Own Co', $customerUser);
         $customerUser->forceDelete();
 
-        $response = $this->actingAsUser($staff)->delete("/customers/{$customer->id}");
+        $response = $this->actingAsUser($staff)->delete("/customers/{$customer->public_id}");
 
         $response->assertRedirect(route('admin.dashboard', ['tab' => 'customers']));
         $this->assertNull(Customer::find($customer->id));
@@ -52,7 +52,7 @@ class DeleteTest extends TestCase
         ])->save();
         $customerUser->delete();
 
-        $response = $this->actingAsUser($staff)->delete("/customers/{$customer->id}");
+        $response = $this->actingAsUser($staff)->delete("/customers/{$customer->public_id}");
 
         $response->assertSessionHas('error', 'This customer is linked to an account. Delete the linked account first, then try again.');
         $this->assertNotNull(Customer::find($customer->id));
@@ -68,7 +68,7 @@ class DeleteTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
-        $response = $this->actingAsUser($staff)->delete("/customers/{$customer->id}");
+        $response = $this->actingAsUser($staff)->delete("/customers/{$customer->public_id}");
 
         $response->assertSessionHas('error', 'This customer has orders or messages and cannot be deleted. Deactivate the customer instead.');
         $this->assertNotNull(Customer::find($customer->id));
@@ -79,7 +79,7 @@ class DeleteTest extends TestCase
         $staff = User::factory()->admin()->create();
         $customer = $this->makeCustomer();
 
-        $response = $this->actingAsUser($staff)->delete("/customers/{$customer->id}");
+        $response = $this->actingAsUser($staff)->delete("/customers/{$customer->public_id}");
 
         $response->assertRedirect(route('admin.dashboard', ['tab' => 'customers']));
         $this->assertNull(Customer::find($customer->id));
@@ -90,7 +90,7 @@ class DeleteTest extends TestCase
         $staff = User::factory()->admin()->create();
         $customer = $this->makeCustomer('Doomed Co');
 
-        $this->actingAsUser($staff)->delete("/customers/{$customer->id}");
+        $this->actingAsUser($staff)->delete("/customers/{$customer->public_id}");
 
         $audit = AdminAudit::where('entity_type', 'customer')->where('action', 'deleted')->first();
         $this->assertNotNull($audit);
@@ -102,7 +102,7 @@ class DeleteTest extends TestCase
         $user = User::factory()->create(['role' => 'customer']);
         $customer = $this->makeCustomer();
 
-        $this->actingAsUser($user)->delete("/customers/{$customer->id}")->assertStatus(403);
+        $this->actingAsUser($user)->delete("/customers/{$customer->public_id}")->assertStatus(403);
     }
 
     public function test_office_role_cannot_delete_customer_history(): void
@@ -110,7 +110,7 @@ class DeleteTest extends TestCase
         $office = User::factory()->create(['role' => User::ROLE_OFFICE]);
         $customer = $this->makeCustomer();
 
-        $this->actingAsUser($office)->delete("/customers/{$customer->id}")->assertForbidden();
+        $this->actingAsUser($office)->delete("/customers/{$customer->public_id}")->assertForbidden();
         $this->assertNotNull(Customer::find($customer->id));
     }
 }

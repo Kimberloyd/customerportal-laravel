@@ -19,10 +19,10 @@ class ToggleActiveTest extends TestCase
         $customer = $this->makeCustomer();
         $this->assertTrue($customer->is_active);
 
-        $this->actingAsUser($staff)->post("/customers/{$customer->id}/toggle-active");
+        $this->actingAsUser($staff)->post("/customers/{$customer->public_id}/toggle-active");
         $this->assertFalse($customer->fresh()->is_active);
 
-        $this->actingAsUser($staff)->post("/customers/{$customer->id}/toggle-active");
+        $this->actingAsUser($staff)->post("/customers/{$customer->public_id}/toggle-active");
         $this->assertTrue($customer->fresh()->is_active);
     }
 
@@ -31,7 +31,7 @@ class ToggleActiveTest extends TestCase
         $user = User::factory()->create(['role' => 'customer']);
         $customer = $this->makeCustomer();
 
-        $this->actingAsUser($user)->post("/customers/{$customer->id}/toggle-active")->assertStatus(403);
+        $this->actingAsUser($user)->post("/customers/{$customer->public_id}/toggle-active")->assertStatus(403);
     }
 
     public function test_audit_action_reflects_direction(): void
@@ -39,10 +39,10 @@ class ToggleActiveTest extends TestCase
         $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
 
-        $this->actingAsUser($staff)->post("/customers/{$customer->id}/toggle-active");
+        $this->actingAsUser($staff)->post("/customers/{$customer->public_id}/toggle-active");
         $this->assertSame('deactivated', AdminAudit::latest('id')->first()->action);
 
-        $this->actingAsUser($staff)->post("/customers/{$customer->id}/toggle-active");
+        $this->actingAsUser($staff)->post("/customers/{$customer->public_id}/toggle-active");
         $this->assertSame('reactivated', AdminAudit::latest('id')->first()->action);
     }
 }

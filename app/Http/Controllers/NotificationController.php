@@ -15,6 +15,7 @@ class NotificationController extends Controller
             'created_at' => $notification->created_at?->toIso8601String(),
             'is_unread' => $notification->created_at !== null && $notification->created_at > $since,
             'order_id' => $notification->purchaseOrder?->id,
+            'order_public_id' => $notification->purchaseOrder?->public_id,
             'po_number' => $notification->purchaseOrder?->po_number,
         ]);
 

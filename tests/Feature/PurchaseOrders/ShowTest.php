@@ -15,6 +15,19 @@ class ShowTest extends TestCase
     use CreatesOrderFixtures;
     use RefreshDatabase;
 
+    public function test_numeric_database_id_is_not_accepted_as_a_public_order_identifier(): void
+    {
+        $staff = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $customer = $this->makeCustomer('Protected Co');
+        $product = $this->makeProduct('Protected Product');
+        $order = $this->makeOrder($customer, [
+            ['product_id' => $product->id, 'quantity' => 1],
+        ]);
+
+        $this->actingAsUser($staff)->get("/orders/{$order->id}")->assertNotFound();
+        $this->actingAsUser($staff)->get("/orders/{$order->public_id}")->assertOk();
+    }
+
     public function test_owning_customer_can_view_their_order(): void
     {
         $user = User::factory()->create(['role' => 'customer']);
@@ -27,7 +40,7 @@ class ShowTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 2],
         ]);
 
-        $response = $this->actingAsUser($user)->get("/orders/{$order->id}");
+        $response = $this->actingAsUser($user)->get("/orders/{$order->public_id}");
 
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
@@ -53,7 +66,7 @@ class ShowTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 2],
         ]);
 
-        $response = $this->actingAsUser($user)->get("/orders/{$order->id}", [
+        $response = $this->actingAsUser($user)->get("/orders/{$order->public_id}", [
             'X-Inertia' => 'true',
             'X-Inertia-Version' => hash_file('xxh128', public_path('build/manifest.json')),
             'X-Inertia-Partial-Component' => 'PurchaseOrders/Show',
@@ -76,7 +89,7 @@ class ShowTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
-        $this->actingAsUser($user)->get("/orders/{$order->id}")->assertStatus(403);
+        $this->actingAsUser($user)->get("/orders/{$order->public_id}")->assertStatus(403);
     }
 
     public function test_staff_can_view_any_order(): void
@@ -88,7 +101,7 @@ class ShowTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
-        $response = $this->actingAsUser($staff)->get("/orders/{$order->id}");
+        $response = $this->actingAsUser($staff)->get("/orders/{$order->public_id}");
 
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page->where('isCustomerViewer', false));
@@ -105,12 +118,12 @@ class ShowTest extends TestCase
         $this->actingAsUser($staff);
         OrderAudit::record($order, 'Order Created', 'Created with 1 product line(s).', Request::create('/'));
 
-        $staffResponse = $this->actingAsUser($staff)->get("/orders/{$order->id}");
+        $staffResponse = $this->actingAsUser($staff)->get("/orders/{$order->public_id}");
         $staffResponse->assertInertia(fn ($page) => $page->where('order.audit_logs.0.actor_name', 'Jane Staff'));
 
         $customerUser = User::factory()->create(['role' => 'customer']);
         $customer->update(['user_id' => $customerUser->id]);
-        $customerResponse = $this->actingAsUser($customerUser)->get("/orders/{$order->id}");
+        $customerResponse = $this->actingAsUser($customerUser)->get("/orders/{$order->public_id}");
         $customerResponse->assertInertia(fn ($page) => $page->where('order.audit_logs.0.actor_name', null));
     }
 
@@ -124,7 +137,7 @@ class ShowTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
-        $this->actingAsUser($user)->get("/orders/{$order->id}/attachment")->assertStatus(403);
+        $this->actingAsUser($user)->get("/orders/{$order->public_id}/attachment")->assertStatus(403);
     }
 
     public function test_attachment_route_404s_when_no_file(): void
@@ -136,7 +149,7 @@ class ShowTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
-        $this->actingAsUser($staff)->get("/orders/{$order->id}/attachment")->assertStatus(404);
+        $this->actingAsUser($staff)->get("/orders/{$order->public_id}/attachment")->assertStatus(404);
     }
 
     public function test_opening_a_submitted_order_is_read_only(): void
@@ -148,7 +161,7 @@ class ShowTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
-        $response = $this->actingAsUser($staff)->get("/orders/{$order->id}");
+        $response = $this->actingAsUser($staff)->get("/orders/{$order->public_id}");
 
         $response->assertInertia(fn ($page) => $page
             ->where('order.status', PurchaseOrder::STATUS_SUBMITTED)
@@ -166,7 +179,7 @@ class ShowTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
-        $this->actingAsUser($user)->get("/orders/{$order->id}");
+        $this->actingAsUser($user)->get("/orders/{$order->public_id}");
 
         $this->assertSame(PurchaseOrder::STATUS_SUBMITTED, $order->fresh()->status);
     }
@@ -180,7 +193,7 @@ class ShowTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 5, 'delivered_quantity' => 2],
         ]);
 
-        $response = $this->actingAsUser($staff)->get("/orders/{$order->id}");
+        $response = $this->actingAsUser($staff)->get("/orders/{$order->public_id}");
 
         $response->assertInertia(fn ($page) => $page->where('canComplete', false));
         $this->assertSame(PurchaseOrder::STATUS_PARTIAL, $order->fresh()->status);

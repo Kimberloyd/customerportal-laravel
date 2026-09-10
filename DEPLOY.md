@@ -208,6 +208,39 @@ Semaphore variables. Recreate `app`, `scheduler`, and `broadcast-worker` after
 changing these values. To stop sending immediately, pause automatic reminders
 in Settings; queued jobs check the switch again when they execute.
 
+## Server-side sessions
+
+Production sessions are stored in Redis database 2 so an ordinary logout
+revokes the current session on the server. Queue data uses Redis database 0 and
+cache data uses database 1. Set these values in production `.env`:
+
+```dotenv
+SESSION_DRIVER=redis
+SESSION_CONNECTION=sessions
+REDIS_SESSION_DB=2
+SESSION_LIFETIME=120
+SESSION_SECURE_COOKIE=true
+SESSION_HTTP_ONLY=true
+SESSION_SAME_SITE=lax
+SESSION_PARTITIONED_COOKIE=false
+```
+
+Switching from cookie sessions signs out every user once. Validate the Compose
+configuration, recreate every PHP service, clear cached configuration, and
+confirm the resolved session settings:
+
+```bash
+sudo docker compose config --quiet
+sudo docker compose up -d --force-recreate app scheduler broadcast-worker reverb
+sudo docker compose exec app php artisan optimize:clear
+sudo docker compose exec app php artisan config:show session
+sudo docker compose exec app php artisan config:show database.redis.sessions
+sudo docker compose ps app scheduler broadcast-worker reverb redis proxy
+```
+
+The application intentionally fails authentication closed if Redis is
+unavailable; do not fall back to client-stored cookie sessions.
+
 ## If something's wrong
 
 - **`app` container unhealthy / can't reach `db`**: almost always the

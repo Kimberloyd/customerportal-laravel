@@ -113,7 +113,7 @@ class RecentTest extends TestCase
             ['product_id' => $product->id, 'quantity' => 5, 'delivered_quantity' => 5],
         ]);
 
-        $this->actingAsUser($customerUser)->post("/orders/{$order->id}/complete");
+        $this->actingAsUser($customerUser)->post("/orders/{$order->public_id}/complete");
 
         $response = $this->actingAsUser($staff)->getJson(route('notifications.recent'));
 

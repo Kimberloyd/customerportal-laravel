@@ -55,7 +55,7 @@ export default function Show({
     const [returnItemId, setReturnItemId] = useState(null);
     const [editProductsLoading, setEditProductsLoading] = useState(false);
     const [editProductsError, setEditProductsError] = useState(false);
-    const attachmentUrl = order.has_attachment ? route('purchase-orders.attachment', order.id) : null;
+    const attachmentUrl = order.has_attachment ? route('purchase-orders.attachment', order.public_id) : null;
     const attachmentKind = order.attachment_kind;
     const attachmentPreviewable = attachmentKind === 'image' || attachmentKind === 'pdf';
     const followUpLabels = {
@@ -126,7 +126,7 @@ export default function Show({
             };
         });
 
-        post(route('purchase-orders.receive', order.id), {
+        post(route('purchase-orders.receive', order.public_id), {
             forceFormData: true,
             onFinish: () => setPendingAction(null),
         });
@@ -153,7 +153,7 @@ export default function Show({
 
         if (!routeName) return;
 
-        router.post(route(routeName, order.id), {}, {
+        router.post(route(routeName, order.public_id), {}, {
             onStart: () => setActionProcessing(true),
             onFinish: () => {
                 setActionProcessing(false);
