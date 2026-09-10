@@ -96,7 +96,12 @@ docker compose exec app php artisan migrate --force --path=database/migrations/2
 docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_08_030000_remove_reviewing_order_status.php
 docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_09_000000_add_attachment_to_product_returns_table.php
 docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_10_000000_add_two_factor_authentication_to_users_table.php
+docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_10_030000_add_public_ids_to_route_resources.php
+docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_10_040000_add_status_submitted_at_index_to_purchase_orders.php
 ```
+
+Migrations already applied in a prior deploy are skipped automatically, so it's
+safe to re-run the whole list above rather than track which ones are new.
 
 Laravel records which targeted changes have already run. The role migration converts every legacy `employee` account to `agent`; assign company-wide operational users to `office` after deployment. The order archival migration adds `deleted_at`, which is required before the updated order model can serve requests. The two-factor migration adds nullable encrypted-authentication fields and does not change existing sign-ins until an account completes enrollment from Settings > Security.
 
