@@ -257,7 +257,9 @@ services:
     image: customerportal-laravel-app:latest
     environment:
       <<: [*laravel-base-environment, *database-environment, *redis-environment]
-      CACHE_STORE: file
+      # Scheduler mutexes must be shared and atomic for withoutOverlapping()
+      # and onOneServer(); its local file cache is isolated to this container.
+      CACHE_STORE: redis
       QUEUE_CONNECTION: ${QUEUE_CONNECTION:-redis}
       FILESYSTEM_DISK: ${FILESYSTEM_DISK:-local}
       ACCOUNT_DELETION_RETENTION_DAYS: ${ACCOUNT_DELETION_RETENTION_DAYS:-30}

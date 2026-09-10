@@ -8,14 +8,13 @@ set -e
 # Re-chown here, as root, before dropping to the unprivileged `app`
 # user to actually run the command.
 for dir in \
-    storage/framework/cache \
+    storage/framework/cache/data \
     storage/framework/sessions \
     storage/framework/views \
     bootstrap/cache
 do
-    if [ -d "$dir" ]; then
-        chown app:app "$dir"
-    fi
+    mkdir -p "$dir"
+    chown app:app "$dir"
 done
 
 # The local Compose stack mounts a persistent vendor volume that may have
