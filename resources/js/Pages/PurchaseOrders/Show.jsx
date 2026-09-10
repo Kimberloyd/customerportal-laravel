@@ -27,7 +27,7 @@ function autoTableHeight(rowCount) {
         return 160;
     }
 
-    // No max-height cap: the trailing row can hold the Cancel/Edit/Settle
+    // No max-height cap: the trailing row can hold the Cancel/Edit/Deliver
     // actions, and capping height pushed that row into the table's own
     // internal scroll area, making it silently unreachable.
     return (rowCount + 1) * TABLE_ROW_HEIGHT;
@@ -58,6 +58,19 @@ export default function Show({
     const attachmentUrl = order.has_attachment ? route('purchase-orders.attachment', order.id) : null;
     const attachmentKind = order.attachment_kind;
     const attachmentPreviewable = attachmentKind === 'image' || attachmentKind === 'pdf';
+    const followUpLabels = {
+        awaiting_fulfillment: 'Waiting for first delivery',
+        stalled_partial: 'Partial delivery follow-up',
+        awaiting_customer_close: 'Waiting for customer closure',
+        return_review: 'Return waiting for review',
+        return_receipt: 'Approved return still open',
+    };
+    const followUpColumns = useMemo(() => [
+        { key: 'kind', header: 'Follow-up', cell: (followUp) => followUpLabels[followUp.kind] ?? followUp.kind },
+        { key: 'level', header: 'Next step', cell: (followUp) => <span className="capitalize">{followUp.status === 'escalated' ? 'Escalated' : followUp.level}</span> },
+        { key: 'next_due_at', header: 'Due', cell: (followUp) => followUp.next_due_at ? formatDateTime(followUp.next_due_at) : '—' },
+        { key: 'last_dispatched_at', header: 'Last sent', cell: (followUp) => followUp.last_dispatched_at ? formatDateTime(followUp.last_dispatched_at) : '—' },
+    ], []);
 
     const loadEditOrderProducts = useCallback(() => {
         router.reload({
@@ -241,7 +254,7 @@ export default function Show({
                                     className="rounded-md"
                                     disabled={processing}
                                 >
-                                    Settle
+                                    Deliver
                                 </Button>
                             )}
                             {canComplete && (
@@ -520,6 +533,22 @@ export default function Show({
                     openReturnItemId={returnItemId}
                     onOpenReturnItemHandled={() => setReturnItemId(null)}
                 />
+
+                {order.follow_ups?.length > 0 && (
+                    <div>
+                        <div className="mb-3">
+                            <h3 className="text-lg font-semibold text-gray-900">Automatic follow-up</h3>
+                            <p className="text-sm text-gray-500">Current reminder and escalation timing for this order.</p>
+                        </div>
+                        <Table
+                            data={order.follow_ups}
+                            columns={followUpColumns}
+                            getRowId={(followUp) => String(followUp.id)}
+                            className="border-gray-200 [&>div]:overflow-hidden"
+                            height={order.follow_ups.length * TABLE_ROW_HEIGHT + 60}
+                        />
+                    </div>
+                )}
 
                 <div>
                     <div className="mb-3">

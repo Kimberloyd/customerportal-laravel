@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\TwoFactorAuthenticationController;
 use Illuminate\Support\Facades\Route;
 
 // Matches app/auth/auth_routes.py: this is an admin-provisioned B2B
@@ -12,6 +13,12 @@ Route::middleware('guest')->group(function () {
         ->name('login');
 
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
+
+    Route::get('two-factor-challenge', [TwoFactorAuthenticationController::class, 'challenge'])
+        ->name('two-factor.login');
+    Route::post('two-factor-challenge', [TwoFactorAuthenticationController::class, 'verifyChallenge'])
+        ->middleware('throttle:two-factor')
+        ->name('two-factor.verify');
 });
 
 Route::middleware('auth')->group(function () {

@@ -137,7 +137,23 @@ services:
                 condition: service_healthy
             redis:
                 condition: service_healthy
-        command: ['php', 'artisan', 'queue:work', '--queue=broadcasts', '--sleep=1', '--tries=3', '--timeout=60']
+        command: ['php', 'artisan', 'queue:work', '--queue=monitoring,broadcasts,notifications', '--sleep=1', '--tries=3', '--timeout=60']
+        restart: unless-stopped
+
+    scheduler:
+        image: customerportal-laravel-app:latest
+        working_dir: /app
+        environment:
+            APP_ENV: local
+        volumes:
+            - .:/app
+            - customerportal_local_vendor:/app/vendor
+        depends_on:
+            app:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        command: ['php', 'artisan', 'schedule:work']
         restart: unless-stopped
 
     vite:

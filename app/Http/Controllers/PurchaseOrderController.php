@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use App\Events\PurchaseOrderChanged;
 use App\Exceptions\UserActionException;
 use App\Models\Customer;
+use App\Models\OrderFollowUp;
 use App\Models\ProductReturn;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\PurchaseOrderNotification;
 use App\Models\User;
+use App\Services\OrderFollowUpManager;
 use App\Support\CustomerAccess;
 use App\Support\CustomerScope;
 use App\Support\InventoryApiClient;
@@ -169,6 +171,7 @@ class PurchaseOrderController extends Controller
         $this->authorizeOrderAccess($order);
 
         $entries = PurchaseOrderNotification::query()
+            ->with('recipientUser:id,full_name')
             ->where('purchase_order_id', $order->id)
             ->whereIn('channel', ['portal', 'sms', 'facebook'])
             ->latest('created_at')
@@ -178,7 +181,10 @@ class PurchaseOrderController extends Controller
                 'id' => $entry->id,
                 'channel' => $entry->channel,
                 'status' => $entry->status,
+                'event_key' => $entry->event_key,
+                'level' => $entry->level,
                 'recipient' => $entry->recipient,
+                'recipient_name' => $entry->recipientUser?->full_name,
                 'external_reference' => $entry->external_reference,
                 'note' => $entry->note,
                 'created_at' => $entry->created_at?->toIso8601String(),
@@ -338,6 +344,7 @@ class PurchaseOrderController extends Controller
                 }
 
                 OrderAudit::record($order, 'Order Created', 'Created with '.count($lineItems).' product line(s).', $request);
+                app(OrderFollowUpManager::class)->syncOrder($order);
 
                 return $order;
             });
@@ -558,6 +565,7 @@ class PurchaseOrderController extends Controller
                 $locked->save();
 
                 OrderAudit::record($locked, 'Order Closed', 'The customer confirmed delivery and closed the fully delivered order.', $request);
+                app(OrderFollowUpManager::class)->syncOrder($locked);
             });
         } catch (UserActionException $e) {
             return redirect()->route('purchase-orders.show', $order->id)->with('error', $e->getMessage());
@@ -619,6 +627,7 @@ class PurchaseOrderController extends Controller
 
                 $deliverySummary = implode(' ', $deliveryChanges);
                 OrderAudit::record($locked, 'Fulfillment Updated', $deliverySummary, $request);
+                app(OrderFollowUpManager::class)->syncOrder($locked, now());
             });
         } catch (UserActionException $e) {
             return redirect()->route('purchase-orders.show', $order->id)->with('error', $e->getMessage());
@@ -700,6 +709,7 @@ class PurchaseOrderController extends Controller
                 $locked->save();
 
                 OrderAudit::record($locked, 'Order Cancelled', 'Order status changed to Cancelled.', $request);
+                app(OrderFollowUpManager::class)->syncOrder($locked);
             });
         } catch (UserActionException $e) {
             return redirect()->route('purchase-orders.show', $order->id)->with('error', $e->getMessage());
@@ -723,6 +733,7 @@ class PurchaseOrderController extends Controller
             $deletedCustomerId = $locked->customer_id;
             OrderAudit::record($locked, 'Order Archived', 'Order removed from active order views while its history was retained.', $request);
             $locked->delete();
+            app(OrderFollowUpManager::class)->syncOrder($locked);
         });
 
         PurchaseOrderChanged::dispatch($order->id, 'archived', $deletedCustomerId);
@@ -736,7 +747,7 @@ class PurchaseOrderController extends Controller
 
         $isCustomerViewer = Auth::user()->role === User::ROLE_CUSTOMER;
 
-        $order->load(['customer', 'items', 'auditLogs.actor']);
+        $order->load(['customer', 'items', 'auditLogs.actor', 'followUps']);
 
         $order->load([
             'returns.items.purchaseOrderItem',
@@ -827,6 +838,19 @@ class PurchaseOrderController extends Controller
                             'dosage' => $item->purchaseOrderItem?->dosage,
                             'quantity' => $item->quantity,
                         ]),
+                    ]),
+                'follow_ups' => $isCustomerViewer ? [] : $order->followUps
+                    ->where('status', '!=', OrderFollowUp::STATUS_RESOLVED)
+                    ->sortByDesc('created_at')
+                    ->values()
+                    ->map(fn ($followUp) => [
+                        'id' => $followUp->id,
+                        'kind' => $followUp->kind,
+                        'level' => $followUp->level,
+                        'status' => $followUp->status,
+                        'next_due_at' => $followUp->next_due_at?->toIso8601String(),
+                        'last_dispatched_at' => $followUp->last_dispatched_at?->toIso8601String(),
+                        'resolved_at' => $followUp->resolved_at?->toIso8601String(),
                     ]),
             ],
             'isCustomerViewer' => $isCustomerViewer,

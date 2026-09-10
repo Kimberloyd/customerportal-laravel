@@ -68,6 +68,19 @@ http://<nas-ip>:8090/login
 You should see the login page. Log in with an existing account (same
 credentials as the Flask app — same `users` table).
 
+## Verify security headers
+
+Production starts with `CSP_REPORT_ONLY=true`. This reports Content Security
+Policy violations in the browser console without blocking legitimate portal
+behavior. After checking login, order creation, attachments, reports, messages,
+and live notifications, set `CSP_REPORT_ONLY=false` and rebuild the app to
+enforce the policy.
+
+Keep `TRUSTED_HOSTS` limited to the exact public hostname. `TRUSTED_PROXIES=*`
+is valid only while PHP-FPM remains private behind the Compose nginx service.
+If port 9000 is ever published or another proxy is introduced, replace the
+wildcard with the exact proxy IP or CIDR before deployment.
+
 ## Apply reviewed schema changes
 
 Do not run an unscoped `php artisan migrate` against the shared Flask database. Its original business tables are owned by the Flask migration history. Before deploying this release, back up the database and run only the reviewed compatibility migrations introduced for these features:
@@ -82,9 +95,10 @@ docker compose exec app php artisan migrate --force --path=database/migrations/2
 docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_08_020000_create_failed_jobs_table.php
 docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_08_030000_remove_reviewing_order_status.php
 docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_09_000000_add_attachment_to_product_returns_table.php
+docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_10_000000_add_two_factor_authentication_to_users_table.php
 ```
 
-Each migration guards pre-existing tables or columns and Laravel records which targeted changes have already run. The role migration converts every legacy `employee` account to `agent`; assign company-wide operational users to `office` after deployment. The order archival migration adds `deleted_at`, which is required before the updated order model can serve requests.
+Laravel records which targeted changes have already run. The role migration converts every legacy `employee` account to `agent`; assign company-wide operational users to `office` after deployment. The order archival migration adds `deleted_at`, which is required before the updated order model can serve requests. The two-factor migration adds nullable encrypted-authentication fields and does not change existing sign-ins until an account completes enrollment from Settings > Security.
 
 Review failed asynchronous deliveries with `docker compose exec app php artisan queue:failed`. Individual channel outcomes also remain visible in each order's message log.
 
@@ -108,11 +122,91 @@ change, run:
 docker compose exec app php artisan reverb:restart
 ```
 
-Then confirm all persistent processes are healthy:
+Then confirm all persistent processes are running:
 
 ```
-docker compose ps app reverb broadcast-worker redis proxy
+docker compose ps app reverb broadcast-worker scheduler redis proxy
 ```
+
+After the scheduler has been running for up to two minutes, verify the deeper
+readiness probe. It checks MySQL, Redis, the scheduler heartbeat, and a heartbeat
+that has passed through the real queue worker:
+
+```bash
+curl --fail --silent --show-error https://customerportal.theomeds.com/health/ready
+```
+
+An HTTP 503 response names the unavailable check without exposing credentials.
+Use the returned `request_id` to correlate the request with `docker compose logs`.
+
+## Backups and restore drills
+
+The customer portal shares MySQL with the Flask application and stores private
+order/return uploads in the `laravel_storage` volume. Back up both together. Find
+the existing MySQL container name with `docker ps`, then run:
+
+```bash
+chmod +x scripts/backup-production.sh
+DB_CONTAINER=customerportal-db-1 ./scripts/backup-production.sh
+```
+
+Override `BACKUP_ROOT` if the NAS backup destination differs from
+`/volume1/docker/backups/customerportal-laravel`. The script writes UTC-dated,
+owner-only archives, validates gzip/tar integrity before accepting them, and
+writes a SHA-256 manifest. It deliberately excludes `.env` and other secrets.
+Copy the completed archives to a second device or protected offsite target; a
+backup stored only on the same NAS does not protect against NAS loss.
+
+Verify an archive set before a restore drill:
+
+```bash
+cd /volume1/docker/backups/customerportal-laravel
+sha256sum --check 20260910T000000Z-SHA256SUMS
+gzip -t 20260910T000000Z-database.sql.gz
+tar -tzf 20260910T000000Z-private-uploads.tar.gz >/dev/null
+```
+
+Perform database restore drills into a disposable MySQL database, never directly
+over the shared production database. Import the decompressed SQL, start an
+isolated app against that database, restore the private upload archive into an
+empty volume, and confirm login, order history, and a private attachment. Record
+the date and duration of each drill. Run the backup daily and a restore drill at
+least quarterly.
+
+## Automatic reminders and escalation
+
+Reminder delivery is disabled by default. Apply only the two reviewed additive
+migrations below; do not run an unrestricted `php artisan migrate` against the
+shared Flask database.
+
+```bash
+sudo docker compose exec app php artisan migrate --path=database/migrations/2026_09_10_010000_create_order_follow_ups_table.php --force
+sudo docker compose exec app php artisan migrate --path=database/migrations/2026_09_10_020000_add_follow_up_fields_to_purchase_order_notifications.php --force
+```
+
+Inspect existing open work without writing reminder state:
+
+```bash
+sudo docker compose exec app php artisan orders:reconcile-follow-ups --dry-run
+```
+
+After reviewing the counts, create the state with a 24-hour rollout grace
+period. This prevents a deployment from immediately notifying every old order.
+
+```bash
+sudo docker compose exec app php artisan orders:reconcile-follow-ups --grace-hours=24
+sudo docker compose exec app php artisan schedule:list
+```
+
+In **Settings -> Notifications -> Reminders and escalation**, first
+enable portal reminders while customer reminder texts remain paused. Verify one
+test order for each applicable workflow. Enable customer reminder texts only
+after confirming the Semaphore sender name and credit balance.
+
+The production worker must consume the `notifications` queue and receive the
+Semaphore variables. Recreate `app`, `scheduler`, and `broadcast-worker` after
+changing these values. To stop sending immediately, pause automatic reminders
+in Settings; queued jobs check the switch again when they execute.
 
 ## If something's wrong
 

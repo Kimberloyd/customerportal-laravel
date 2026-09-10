@@ -60,12 +60,18 @@ function toTimelineEntry(entry) {
                     </div>
                 </div>
 
-                {(entry.recipient || entry.external_reference) && (
+                {(entry.recipient || entry.recipient_name || entry.external_reference || entry.level) && (
                     <dl className="mt-2 grid gap-2 text-xs sm:grid-cols-2">
-                        {entry.recipient ? (
+                        {entry.recipient_name || entry.recipient ? (
                             <div>
                                 <dt className="text-muted-foreground">Recipient</dt>
-                                <dd className="break-all font-medium text-foreground">{entry.recipient}</dd>
+                                <dd className="break-all font-medium text-foreground">{entry.recipient_name ?? entry.recipient}</dd>
+                            </div>
+                        ) : null}
+                        {entry.level ? (
+                            <div>
+                                <dt className="text-muted-foreground">Follow-up</dt>
+                                <dd className="capitalize font-medium text-foreground">{entry.level}</dd>
                             </div>
                         ) : null}
                         {entry.external_reference ? (

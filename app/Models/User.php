@@ -21,7 +21,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
     'password_hash', 'session_version', 'notifications_read_at', 'deactivated_at',
     'purge_after', 'deletion_reason',
 ])]
-#[Hidden(['password_hash'])]
+#[Hidden(['password_hash', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -55,6 +55,9 @@ class User extends Authenticatable
         return [
             'is_active' => 'boolean',
             'session_version' => 'integer',
+            'two_factor_secret' => 'encrypted',
+            'two_factor_recovery_codes' => 'encrypted:array',
+            'two_factor_confirmed_at' => 'datetime',
             'created_at' => 'datetime',
             'notifications_read_at' => 'datetime',
             'deactivated_at' => 'datetime',
@@ -76,6 +79,11 @@ class User extends Authenticatable
     public function getAuthPasswordName(): string
     {
         return 'password_hash';
+    }
+
+    public function hasTwoFactorAuthentication(): bool
+    {
+        return $this->two_factor_confirmed_at !== null && filled($this->two_factor_secret);
     }
 
     /**

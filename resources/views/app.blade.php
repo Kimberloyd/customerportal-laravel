@@ -13,7 +13,7 @@
         <link href="https://fonts.bunny.net/css?family=playfair-display:500i,600i&display=swap" rel="stylesheet" />
 
         <!-- Scripts -->
-        @routes
+        @routes(nonce: Vite::cspNonce())
         @viteReactRefresh
         @vite(['resources/js/app.jsx', "resources/js/Pages/{$page['component']}.jsx"])
         @inertiaHead

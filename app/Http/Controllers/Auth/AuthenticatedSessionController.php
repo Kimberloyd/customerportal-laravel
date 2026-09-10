@@ -26,11 +26,23 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
 
+        $user = $request->user();
+        if ($user->hasTwoFactorAuthentication()) {
+            $request->session()->put([
+                'two_factor_login.user_id' => $user->id,
+                'two_factor_login.remember' => $request->boolean('remember'),
+            ]);
+            Auth::guard('web')->logout();
+            $request->session()->regenerate();
+
+            return redirect()->route('two-factor.login');
+        }
+
         // Matches Flask's "sign out all devices": every session carries
         // the version it was issued under, and SessionVersion middleware
         // rejects the session on any later mismatch (password change, or
         // an explicit sign-out-all-devices action).
-        $request->session()->put('session_version', $request->user()->session_version);
+        $request->session()->put('session_version', $user->session_version);
 
         return redirect()->intended(route('dashboard', absolute: false));
     }

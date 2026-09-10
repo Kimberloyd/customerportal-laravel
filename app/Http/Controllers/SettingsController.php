@@ -6,6 +6,7 @@ use App\Models\AdminAudit;
 use App\Models\AppSetting;
 use App\Support\AdminUserListing;
 use App\Support\OrderNotifications;
+use App\Support\ReminderSettings;
 use App\Support\SemaphoreSms;
 use App\Support\UserAudit;
 use Illuminate\Http\JsonResponse;
@@ -40,6 +41,12 @@ class SettingsController extends Controller
                 'email' => $user->email,
                 'role_label' => AdminUserListing::ROLE_LABELS[$user->role] ?? $user->role,
             ],
+            'two_factor' => [
+                'enabled' => $user->hasTwoFactorAuthentication(),
+                'confirmed_at' => $user->two_factor_confirmed_at?->toIso8601String(),
+                'setup_secret' => $request->session()->get('two_factor_setup_secret'),
+                'recovery_codes' => $request->session()->get('two_factor_recovery_codes'),
+            ],
             // Only admins get the integration panel, so only they get its state.
             'sms' => $user->role === 'admin'
                 ? [
@@ -47,6 +54,7 @@ class SettingsController extends Controller
                     'configured' => SemaphoreSms::isConfigured(),
                 ]
                 : null,
+            'reminders' => $user->role === 'admin' ? ReminderSettings::settingsPayload() : null,
             // Round trips to Semaphore, so they stay off the critical path --
             // the settings form renders immediately and the panel fills in.
             // Each is independently nullable: one endpoint being down still
@@ -106,6 +114,60 @@ class SettingsController extends Controller
         }
 
         return back();
+    }
+
+    public function updateReminders(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        abort_unless($user->role === 'admin', 403);
+
+        $validated = $request->validate([
+            'enabled' => ['required', 'boolean'],
+            'customer_sms_enabled' => ['required', 'boolean'],
+            'quiet_hours_start' => ['required', 'integer', 'between:0,23'],
+            'quiet_hours_end' => ['required', 'integer', 'between:0,23'],
+            'thresholds' => ['required', 'array'],
+            'thresholds.awaiting_fulfillment.reminder' => ['required', 'integer', 'between:1,720'],
+            'thresholds.awaiting_fulfillment.escalation' => ['required', 'integer', 'gt:thresholds.awaiting_fulfillment.reminder', 'max:720'],
+            'thresholds.stalled_partial.reminder' => ['required', 'integer', 'between:1,720'],
+            'thresholds.stalled_partial.escalation' => ['required', 'integer', 'gt:thresholds.stalled_partial.reminder', 'max:720'],
+            'thresholds.awaiting_customer_close.reminder' => ['required', 'integer', 'between:1,720'],
+            'thresholds.awaiting_customer_close.repeat' => ['required', 'integer', 'gt:thresholds.awaiting_customer_close.reminder', 'max:720'],
+            'thresholds.awaiting_customer_close.escalation' => ['required', 'integer', 'gt:thresholds.awaiting_customer_close.repeat', 'max:720'],
+            'thresholds.return_review.reminder' => ['required', 'integer', 'between:1,720'],
+            'thresholds.return_review.escalation' => ['required', 'integer', 'gt:thresholds.return_review.reminder', 'max:720'],
+            'thresholds.return_receipt.reminder' => ['required', 'integer', 'between:1,720'],
+            'thresholds.return_receipt.escalation' => ['required', 'integer', 'gt:thresholds.return_receipt.reminder', 'max:720'],
+        ], [
+            '*.gt' => 'Each escalation must happen after its earlier reminder.',
+            '*.between' => 'Enter a whole number from 1 to 720 hours.',
+        ]);
+
+        DB::transaction(function () use ($validated, $request, $user): void {
+            AppSetting::putBoolean(ReminderSettings::ENABLED_KEY, $validated['enabled']);
+            AppSetting::putBoolean(ReminderSettings::SMS_ENABLED_KEY, $validated['customer_sms_enabled']);
+            AppSetting::putInteger(ReminderSettings::QUIET_START_KEY, $validated['quiet_hours_start']);
+            AppSetting::putInteger(ReminderSettings::QUIET_END_KEY, $validated['quiet_hours_end']);
+            foreach ($validated['thresholds'] as $kind => $levels) {
+                foreach ($levels as $level => $hours) {
+                    AppSetting::putInteger("order_reminders.thresholds.{$kind}.{$level}", $hours);
+                }
+            }
+
+            AdminAudit::create([
+                'entity_type' => 'app_setting',
+                'entity_id' => 0,
+                'action' => 'order_reminders_updated',
+                'details' => $validated['enabled'] ? 'Automatic order reminders enabled and configured' : 'Automatic order reminders paused and configured',
+                'actor_user_id' => $user->id,
+                'actor_role' => $user->role,
+                'ip_address' => $request->ip(),
+                'request_id' => (string) Str::uuid(),
+                'created_at' => now(),
+            ]);
+        });
+
+        return response()->json(ReminderSettings::settingsPayload());
     }
 
     public function update(Request $request): RedirectResponse

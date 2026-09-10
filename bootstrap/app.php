@@ -1,8 +1,13 @@
 <?php
 
+use App\Http\Middleware\AddSecurityHeaders;
+use App\Http\Middleware\AssignRequestId;
+use App\Http\Middleware\EnsureSessionVersionMatches;
+use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -23,12 +28,24 @@ return Application::configure(basePath: dirname(__DIR__))
         // lose the session: nginx isn't reachable from anywhere but
         // this app's own containers, so trusting it unconditionally
         // here is safe.
-        $middleware->trustProxies(at: '*');
+        $middleware->trustHosts(
+            at: fn (): array => array_map(
+                static fn (string $host): string => '^'.preg_quote($host, '/').'$',
+                config('security.trusted_hosts'),
+            ),
+            subdomains: false,
+        );
+        $trustedProxies = trim((string) env('TRUSTED_PROXIES', '*'));
+        $middleware->trustProxies(at: $trustedProxies === '*'
+            ? '*'
+            : array_values(array_filter(array_map('trim', explode(',', $trustedProxies)))));
 
         $middleware->web(append: [
-            \App\Http\Middleware\HandleInertiaRequests::class,
-            \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
-            \App\Http\Middleware\EnsureSessionVersionMatches::class,
+            AssignRequestId::class,
+            AddSecurityHeaders::class,
+            HandleInertiaRequests::class,
+            AddLinkHeadersForPreloadedAssets::class,
+            EnsureSessionVersionMatches::class,
         ]);
 
         // The Facebook Messenger webhook is Meta's server calling us
@@ -46,4 +63,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+        $exceptions->respond(function ($response) {
+            if (app()->bound('request') && ($requestId = request()->attributes->get('request_id'))) {
+                $response->headers->set('X-Request-ID', $requestId);
+            }
+
+            return $response;
+        });
     })->create();

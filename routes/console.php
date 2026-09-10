@@ -1,6 +1,8 @@
 <?php
 
+use App\Jobs\RecordQueueHeartbeat;
 use App\Services\AccountDeletionService;
+use App\Services\ReliabilityHealth;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -17,3 +19,14 @@ Artisan::command('accounts:purge-deleted', function () {
 })->purpose('Permanently erase accounts whose retention period has ended');
 
 Schedule::command('accounts:purge-deleted')->dailyAt('02:00')->withoutOverlapping();
+
+Schedule::call(function () {
+    app(ReliabilityHealth::class)->recordSchedulerHeartbeat();
+    RecordQueueHeartbeat::dispatch()->onQueue('monitoring');
+})->everyMinute()->name('reliability-heartbeats')->withoutOverlapping();
+
+Schedule::command('orders:dispatch-follow-ups')
+    ->everyFiveMinutes()
+    ->name('order-follow-ups')
+    ->withoutOverlapping()
+    ->onOneServer();

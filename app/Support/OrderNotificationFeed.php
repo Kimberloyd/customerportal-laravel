@@ -106,7 +106,10 @@ class OrderNotificationFeed
 
         $query = PurchaseOrderNotification::query()
             ->where('channel', 'portal')
-            ->where('status', 'sent');
+            ->where('status', 'sent')
+            ->where(fn ($query) => $query
+                ->whereNull('recipient_user_id')
+                ->orWhere('recipient_user_id', $user->id));
 
         if ($user->role === 'customer') {
             $customer = CustomerScope::forCurrentUser(required: false);

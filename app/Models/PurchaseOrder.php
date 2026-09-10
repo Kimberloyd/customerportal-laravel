@@ -74,6 +74,11 @@ class PurchaseOrder extends Model
         return $this->hasMany(ProductReturn::class);
     }
 
+    public function followUps(): HasMany
+    {
+        return $this->hasMany(OrderFollowUp::class);
+    }
+
     public function getTotalAttribute(): string
     {
         return (string) $this->items->sum(fn ($item) => $item->line_total ?? 0);

@@ -7,6 +7,18 @@ x-laravel-base-environment: &laravel-base-environment
   APP_KEY: ${APP_KEY:?APP_KEY is required}
   APP_DEBUG: "false"
   APP_URL: ${APP_URL:-https://customerportal.theomeds.com}
+  TRUSTED_HOSTS: ${TRUSTED_HOSTS:-customerportal.theomeds.com}
+  TRUSTED_PROXIES: ${TRUSTED_PROXIES:-*}
+  CSP_REPORT_ONLY: ${CSP_REPORT_ONLY:-true}
+  SECURITY_HSTS: ${SECURITY_HSTS:-true}
+  RELIABILITY_HEARTBEAT_MAX_AGE_SECONDS: ${RELIABILITY_HEARTBEAT_MAX_AGE_SECONDS:-180}
+  RELIABILITY_CHECK_REDIS: ${RELIABILITY_CHECK_REDIS:-true}
+  ORDER_REMINDERS_ENABLED: ${ORDER_REMINDERS_ENABLED:-false}
+  ORDER_REMINDERS_TIMEZONE: ${ORDER_REMINDERS_TIMEZONE:-Asia/Manila}
+  ORDER_REMINDERS_QUIET_HOURS_START: ${ORDER_REMINDERS_QUIET_HOURS_START:-20}
+  ORDER_REMINDERS_QUIET_HOURS_END: ${ORDER_REMINDERS_QUIET_HOURS_END:-8}
+  ORDER_REMINDERS_CUSTOMER_SMS_ENABLED: ${ORDER_REMINDERS_CUSTOMER_SMS_ENABLED:-false}
+  ORDER_REMINDERS_ROLLOUT_GRACE_HOURS: ${ORDER_REMINDERS_ROLLOUT_GRACE_HOURS:-24}
   APP_LOCALE: ${APP_LOCALE:-en}
   APP_FALLBACK_LOCALE: ${APP_FALLBACK_LOCALE:-en}
   APP_MAINTENANCE_DRIVER: ${APP_MAINTENANCE_DRIVER:-file}
@@ -194,7 +206,10 @@ services:
       <<: [*laravel-base-environment, *database-environment, *redis-environment, *reverb-environment]
       QUEUE_CONNECTION: ${QUEUE_CONNECTION:-redis}
       CACHE_STORE: file
-    command: ["php", "artisan", "queue:work", "--queue=broadcasts,notifications", "--sleep=1", "--tries=4", "--timeout=60"]
+      PO_NOTIFICATIONS_SMS_ENABLED: ${PO_NOTIFICATIONS_SMS_ENABLED:-false}
+      SEMAPHORE_API_KEY: ${SEMAPHORE_API_KEY:-}
+      SEMAPHORE_SENDER_NAME: ${SEMAPHORE_SENDER_NAME:-}
+    command: ["php", "artisan", "queue:work", "--queue=monitoring,broadcasts,notifications", "--sleep=1", "--tries=4", "--timeout=60"]
     depends_on:
       app:
         condition: service_healthy
@@ -241,8 +256,9 @@ services:
   scheduler:
     image: customerportal-laravel-app:latest
     environment:
-      <<: [*laravel-base-environment, *database-environment]
+      <<: [*laravel-base-environment, *database-environment, *redis-environment]
       CACHE_STORE: file
+      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-redis}
       FILESYSTEM_DISK: ${FILESYSTEM_DISK:-local}
       ACCOUNT_DELETION_RETENTION_DAYS: ${ACCOUNT_DELETION_RETENTION_DAYS:-30}
       DATA_ERASURE_DEADLINE_DAYS: ${DATA_ERASURE_DEADLINE_DAYS:-30}
@@ -270,7 +286,8 @@ services:
       - no-new-privileges:true
     mem_limit: 128m
     networks:
-      - flask
+      default:
+      flask:
 
   proxy:
     build:

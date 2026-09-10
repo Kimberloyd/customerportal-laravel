@@ -9,6 +9,7 @@ use App\Models\ProductReturnItem;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\User;
+use App\Services\OrderFollowUpManager;
 use App\Support\CustomerAccess;
 use App\Support\CustomerScope;
 use App\Support\OrderAudit;
@@ -99,6 +100,7 @@ class ProductReturnController extends Controller
                     'A customer requested a return for '.$this->itemSummary($items).'.',
                     $request,
                 );
+                app(OrderFollowUpManager::class)->syncReturn($return);
             });
         } catch (UserActionException $e) {
             ProductReturnAttachment::deleteMany($storedAttachments);
@@ -236,6 +238,10 @@ class ProductReturnController extends Controller
                 $order->save();
                 $lockedReturn->save();
                 OrderAudit::record($order, $action, $details, $request);
+                if ($notify === 'approved') {
+                    app(OrderFollowUpManager::class)->syncOrder($order, now());
+                }
+                app(OrderFollowUpManager::class)->syncReturn($lockedReturn);
             });
         } catch (UserActionException $e) {
             return back()->with('error', $e->getMessage());

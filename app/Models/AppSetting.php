@@ -60,4 +60,32 @@ class AppSetting extends Model
             ['value' => $value ? '1' : '0'],
         );
     }
+
+    public static function string(string $key): ?string
+    {
+        if (! Schema::hasTable('app_settings')) {
+            return null;
+        }
+
+        return static::query()->whereKey($key)->value('value');
+    }
+
+    public static function putString(string $key, string $value): void
+    {
+        static::query()->updateOrCreate(['key' => $key], ['value' => $value]);
+    }
+
+    public static function integer(string $key, int $default): int
+    {
+        $value = static::string($key);
+
+        return $value !== null && filter_var($value, FILTER_VALIDATE_INT) !== false
+            ? (int) $value
+            : $default;
+    }
+
+    public static function putInteger(string $key, int $value): void
+    {
+        static::putString($key, (string) $value);
+    }
 }
