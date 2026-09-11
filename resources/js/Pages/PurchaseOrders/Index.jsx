@@ -10,35 +10,18 @@ import { Table } from '@/components/motion/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/motion/input';
 import { RangeCalendar } from '@/components/ui/range-calendar';
-import { statusBadge, formatDateTime } from '@/utils/orderDisplay';
+import { statusBadge } from '@/utils/orderDisplay';
 import { usePurchaseOrderRealtime } from '@/hooks/usePurchaseOrderRealtime';
 import { Deferred, Head, router } from '@inertiajs/react';
 import { parseDate } from '@internationalized/date';
+import { useContainerBreakpoint } from '@/lib/hooks/use-container-breakpoint';
 import { Archive, Check, Funnel, ListChecks, MoreHorizontal, Search, SquareArrowOutUpRight } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-
-// Matches the sm breakpoint used across this app's layouts -- below it the
-// orders table drops down to just PO Number, Date, and actions so rows fit
-// without horizontal scrolling.
-function useIsCompactViewport() {
-    const [isCompact, setIsCompact] = useState(false);
-
-    useEffect(() => {
-        if (typeof window === 'undefined') return undefined;
-        const query = window.matchMedia('(max-width: 639px)');
-        const update = () => setIsCompact(query.matches);
-        update();
-        query.addEventListener('change', update);
-        return () => query.removeEventListener('change', update);
-    }, []);
-
-    return isCompact;
-}
 
 const STATUS_FILTER_OPTIONS = [
     { value: 'all', label: 'All orders' },
     { value: 'active', label: 'Active' },
-    { value: 'submitted', label: 'Submitted' },
+    { value: 'pending', label: 'Pending' },
     { value: 'partial', label: 'Partially delivered' },
     { value: 'completed', label: 'Completed' },
     { value: 'cancelled', label: 'Cancelled' },
@@ -62,7 +45,12 @@ export default function Index({
 }) {
     usePurchaseOrderRealtime();
 
-    const isCompactViewport = useIsCompactViewport();
+    // The table owns its own breakpoint (a container query on its own
+    // wrapper) rather than reacting to the page's viewport -- so it still
+    // drops to PO Number, Date, and actions correctly if this page is ever
+    // embedded somewhere narrower than the full viewport.
+    const containerRef = useRef(null);
+    const isCompactViewport = useContainerBreakpoint(containerRef, 639);
     const [search, setSearch] = useState(filters.search);
     const [status, setStatus] = useState(filters.status ?? 'all');
     const [customerId, setCustomerId] = useState(filters.customer_id ? String(filters.customer_id) : '');
@@ -174,6 +162,7 @@ export default function Index({
 
     const columns = useMemo(
         () => [
+            // Priority 1 -- identity, always shown: which order is this.
             {
                 key: 'po_number',
                 header: 'PO Number',
@@ -182,6 +171,10 @@ export default function Index({
                     <span className="font-medium text-gray-900">{order.po_number}</span>
                 ),
             },
+            // Priority 2 -- state, dropped under the table's own container
+            // breakpoint so the row fits without horizontal scroll; still
+            // reachable there via the "..." menu below (see the informational
+            // items prepended to `items` in the actions column).
             ...(isCompactViewport ? [] : [
                 { key: 'customer_name', header: 'Customer', sortable: true },
                 {
@@ -195,6 +188,7 @@ export default function Index({
                                     status={badge.status}
                                     size="sm"
                                     pulse={false}
+                                    icon={badge.icon ? <badge.icon className="h-3.5 w-3.5" /> : undefined}
                                     className="border-0 bg-transparent px-0 shadow-none"
                                 >
                                     {badge.label}
@@ -204,18 +198,30 @@ export default function Index({
                     },
                 },
             ]),
+            // Priority 1 -- identity, always shown: when this order was placed.
             {
                 key: 'submitted_at',
                 header: 'Date',
                 sortable: true,
-                cell: (order) => formatDateTime(order.submitted_at),
+                cell: (order) => order.submitted_at
+                    ? new Date(order.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    : '—',
             },
             {
                 key: 'actions',
                 header: '',
                 width: '56px',
                 cell: (order) => {
+                    // Customer and status were dropped from their own columns
+                    // above at this width -- surface them here (disabled,
+                    // display-only rows) so they're still reachable in place,
+                    // instead of forcing a full navigation to the order page
+                    // just to see them.
                     const items = [
+                        ...(isCompactViewport ? [
+                            { value: 'customer', label: 'Customer', hint: order.customer_name || '—', disabled: true },
+                            { value: 'status', label: 'Status', hint: statusBadge(order.display_status ?? order.status).label, disabled: true },
+                        ] : []),
                         {
                             value: 'view',
                             label: 'Open',
@@ -251,6 +257,7 @@ export default function Index({
                                     item?.onSelect();
                                 }}
                                 label={`Actions for ${order.po_number}`}
+                                menuTitle={isCompactViewport ? order.po_number : undefined}
                                 trigger={<MoreHorizontal />}
                                 align="right"
                                 portal
@@ -283,7 +290,7 @@ export default function Index({
         >
             <Head title="Orders" />
 
-            <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+            <div ref={containerRef} className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-center gap-2 bg-white">
                     <Input
                         type="text"

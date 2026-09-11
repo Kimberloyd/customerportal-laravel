@@ -237,7 +237,7 @@ export function Accordion({
   return (
     <div
       onPointerLeave={() => setHoveredId(null)}
-      className={`divide-y divide-stone-200 overflow-hidden rounded-[11px] border border-stone-200 bg-white dark:divide-white/10 dark:border-white/[0.16] dark:bg-[#1D1D1A] ${className}`}
+      className={`divide-y divide-stone-200 overflow-hidden rounded-xl border border-stone-200 bg-white dark:divide-white/10 dark:border-white/[0.16] dark:bg-[#1D1D1A] ${className}`}
     >
       {items.map((item) => (
         <AccordionRow

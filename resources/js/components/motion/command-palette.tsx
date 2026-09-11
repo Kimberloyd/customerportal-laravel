@@ -97,6 +97,7 @@ export function CommandPalette({
   }, []);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -109,9 +110,33 @@ export function CommandPalette({
         setOpen(!open);
         return;
       }
-      if (e.key === "Escape" && open) {
+      if (!open) return;
+      if (e.key === "Escape") {
         e.preventDefault();
         setOpen(false);
+        return;
+      }
+      // The rest of the page isn't marked inert while the palette is open,
+      // so Tab could otherwise walk out into it -- trap it inside instead.
+      if (e.key === "Tab") {
+        const container = panelRef.current;
+        if (!container) return;
+        const focusable = container.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (!container.contains(document.activeElement)) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
     window.addEventListener("keydown", onKey);
@@ -133,8 +158,12 @@ export function CommandPalette({
    */
   useEffect(() => {
     if (!open) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
     const frame = requestAnimationFrame(() => inputRef.current?.focus());
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(frame);
+      previouslyFocused?.focus?.();
+    };
   }, [open]);
 
   useEffect(() => {
@@ -228,6 +257,7 @@ export function CommandPalette({
       />
       <div className="pointer-events-none absolute inset-0 flex items-start justify-center p-4 pt-[18vh]">
         <motion.div
+          ref={panelRef}
           role="dialog"
           aria-modal="true"
           aria-label="Command palette"

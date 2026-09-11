@@ -14,10 +14,11 @@ import { Link, router, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import {
     Bell,
+    ChartPie,
     CheckCheck,
-    LayoutDashboard,
     LogOut,
     MessageCircle,
+    MessageCircleQuestionMark,
     MonitorX,
     Package,
     Plus,
@@ -80,7 +81,16 @@ export default function AuthenticatedLayout({ header, banner, children }) {
     const notificationsTriggerRef = useRef(null);
     const notificationsPanelRef = useRef(null);
 
-    const closeNotifications = useCallback(() => setNotificationsOpen(false), []);
+    const closeNotifications = useCallback(() => {
+        setNotificationsOpen(false);
+        // Only steal focus back to the bell if it was actually inside the
+        // panel (e.g. Escape while a notification link was focused) -- an
+        // outside click that closes the panel already moved focus somewhere
+        // the user chose, and shouldn't be yanked away from it.
+        if (notificationsPanelRef.current?.contains(document.activeElement)) {
+            notificationsTriggerRef.current?.querySelector('button')?.focus();
+        }
+    }, []);
     const highlightNotification = (event) => {
         const item = event.currentTarget;
         setNotificationHighlight({ y: item.offsetTop, height: item.offsetHeight, opacity: 1 });
@@ -417,7 +427,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                 label: 'Dashboard',
                 group: 'Navigate',
                 keywords: ['home', 'overview'],
-                icon: LayoutDashboard,
+                icon: ChartPie,
                 onSelect: navigate('dashboard'),
             },
             {
@@ -433,7 +443,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                 label: 'Frequently Asked Questions',
                 group: 'Navigate',
                 keywords: ['help', 'faq', 'support', 'questions'],
-                icon: MessageCircle,
+                icon: MessageCircleQuestionMark,
                 onSelect: navigate('faq'),
             },
             ...(user.role === 'admin'
@@ -469,6 +479,12 @@ export default function AuthenticatedLayout({ header, banner, children }) {
 
     return (
         <div className="min-h-screen bg-white">
+            <a
+                href="#main-content"
+                className="sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:left-2 focus-visible:top-2 focus-visible:z-50 focus-visible:rounded-md focus-visible:bg-primary focus-visible:px-4 focus-visible:py-2 focus-visible:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+            >
+                Skip to main content
+            </a>
             <nav className="sticky top-0 z-40 border-b border-gray-100 bg-white">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="relative flex h-16 justify-between">
@@ -490,7 +506,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                             (previousState) => !previousState,
                                         )
                                     }
-                                    className="inline-flex items-center justify-center rounded-md bg-transparent p-2 text-gray-400 transition duration-150 ease-in-out hover:text-gray-500 focus:text-gray-500 focus:outline-none"
+                                    className="inline-flex items-center justify-center rounded-md bg-transparent p-2 text-gray-400 transition duration-150 ease-in-out hover:text-gray-500 focus:outline-none focus-visible:text-gray-500 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 >
                                     <svg
                                         className="h-6 w-6"
@@ -817,7 +833,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                     width: NOTIFICATIONS_PANEL_WIDTH,
                                     transformOrigin: 'top right',
                                 }}
-                                className="z-[60] overflow-hidden rounded-[11px] border border-stone-200 bg-white shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)] dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:shadow-[0_2px_12px_rgba(0,0,0,0.6)]"
+                                className="z-[60] overflow-hidden rounded-xl border border-stone-200 bg-white shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)] dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:shadow-[0_2px_12px_rgba(0,0,0,0.6)]"
                             >
                                 <div className="flex items-center justify-between gap-4 border-b border-stone-200 px-4 py-3 dark:border-white/[0.16]">
                                     <h2 className="text-[15px] font-semibold text-stone-900 dark:text-stone-100">Notifications</h2>
@@ -936,7 +952,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                 </header>
             )}
 
-            <main className="bg-white">{children}</main>
+            <main id="main-content" tabIndex={-1} className="bg-white focus:outline-none">{children}</main>
 
             <FooterSimple
                 companyName="Theomeds Marketing Inc."

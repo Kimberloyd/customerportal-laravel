@@ -117,7 +117,6 @@ export function UserModal({ open, onOpenChange, user = null, customers = [] }) {
             maxHeight="90vh"
             closeOnBackdrop={!processing}
             closeOnEscape={!processing}
-            className="[&>div:first-child]:px-6 [&>div:first-child]:pb-5 [&>div:first-child]:pt-6 [&>div:first-child_h2]:!text-lg [&>div:first-child_p]:!mt-3 [&>div:first-child_p]:!text-sm [&>div:last-child]:px-6 [&>div:last-child]:py-5"
             footer={
                 <>
                     <Button

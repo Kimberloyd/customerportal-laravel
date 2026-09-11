@@ -78,7 +78,7 @@ export default function Edit({ order, customers, lockedCustomerId }) {
             <Head title={`Edit ${order.po_number}`} />
 
             <div className="mx-auto max-w-4xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-                <form onSubmit={submit} className="space-y-6 rounded-lg bg-white p-6 shadow-sm">
+                <form onSubmit={submit} className="space-y-6 rounded-lg border border-gray-200 bg-white p-6">
                     {order.is_terminal && (
                         <div className="rounded-md bg-amber-50 p-3 text-sm text-amber-800">
                             This order is {order.status} — only remarks can be changed.

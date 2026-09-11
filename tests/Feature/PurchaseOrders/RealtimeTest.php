@@ -60,7 +60,7 @@ class RealtimeTest extends TestCase
         $currentCustomer = $this->makeCustomer('Current Customer', $currentCustomerUser);
         $currentCustomer->update(['assigned_employee_id' => $agent->id]);
         $previousCustomer = $this->makeCustomer('Previous Customer', $previousCustomerUser);
-        $order = $this->makeOrder($currentCustomer, 'submitted', now());
+        $order = $this->makeOrder($currentCustomer, 'pending', now());
 
         $event = new PurchaseOrderChanged($order->id, 'updated', $previousCustomer->id);
         $channels = collect($event->broadcastOn())->map->name->sort()->values()->all();

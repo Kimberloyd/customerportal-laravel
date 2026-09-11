@@ -235,6 +235,15 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
             key={chat.key}
             role="dialog"
             aria-label={`Conversation with ${chat.name}`}
+            onKeyDown={(event) => {
+                // Every other overlay in this app closes on Escape -- this
+                // one didn't. Guarded so Escape inside the nested rename
+                // dialog (its own Modal, with its own Escape handling)
+                // doesn't also close this panel underneath it.
+                if (event.key !== 'Escape') return;
+                if (event.target.closest('[role="dialog"]') !== event.currentTarget) return;
+                onClose();
+            }}
             initial={reduce ? { opacity: 0 } : { opacity: 0, y: 24, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={reduce ? { opacity: 0 } : { opacity: 0, y: 24, scale: 0.96 }}
@@ -289,7 +298,7 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
                                         label="Link to sales agent"
                                         portal
                                         className="min-w-0"
-                                        triggerClassName="block max-w-full truncate bg-transparent p-0 text-left text-xs font-medium text-primary outline-none hover:underline disabled:opacity-50"
+                                        triggerClassName="block max-w-full truncate rounded bg-transparent p-0 text-left text-xs font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
                                         trigger={
                                             <span className="truncate">
                                                 {linkedAgent
@@ -363,7 +372,6 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
                     onClose={() => !renaming && setRenameOpen(false)}
                     title="Rename conversation"
                     maxWidth={560}
-                    className="[&>div:first-child]:px-6 [&>div:first-child]:pb-5 [&>div:first-child]:pt-6 [&>div:first-child_h2]:!text-lg [&>div:last-child]:mt-auto [&>div:last-child]:px-6 [&>div:last-child]:py-5"
                     closeOnBackdrop={!renaming}
                     closeOnEscape={!renaming}
                     footer={
@@ -558,7 +566,7 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
                                 }
                             }}
                             placeholder="Write a message"
-                            className="block max-h-40 min-h-20 w-full resize-none rounded-lg border-stone-200 py-2 pl-3 pr-12 text-sm outline-none focus:border-stone-400 focus:ring-0 dark:border-white/[0.16] dark:bg-transparent dark:text-stone-100"
+                            className="block max-h-40 min-h-20 w-full resize-none rounded-lg border-stone-200 py-2 pl-3 pr-12 text-sm outline-none focus:ring-0 focus-visible:border-stone-400 dark:border-white/[0.16] dark:bg-transparent dark:text-stone-100"
                         />
                         <Button
                             type="submit"

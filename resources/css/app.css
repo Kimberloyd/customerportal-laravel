@@ -107,6 +107,17 @@
         --overlay: 0 0 0;
         --selected: #D4D4D4;
         --destructive-light: #FEF2F2;
+
+        /* Mirrors Tailwind's own default radius scale (rounded-md/lg/xl/2xl)
+         * so components/ui/dropdown.tsx and popover.tsx -- which compute a
+         * nested radius via calc(var(--radius-lg) - ...) -- resolve to a
+         * real value instead of an undefined custom property. Prefer the
+         * `rounded-*` utility classes directly in new code; these exist for
+         * the calc() cases that need the raw number. */
+        --radius-sm: 0.375rem;
+        --radius-md: 0.5rem;
+        --radius-lg: 0.75rem;
+        --radius-xl: 1rem;
     }
 }
 

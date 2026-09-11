@@ -12,11 +12,11 @@ const RANGE_OPTIONS = [
     { value: 'custom', label: 'Custom Range' },
 ];
 
-function Tile({ label, value }) {
+function Tile({ label, value, featured = false }) {
     return (
-        <div className="rounded-lg bg-white p-4 shadow-sm">
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
             <p className="type-label text-muted-foreground">{label}</p>
-            <p className="mt-1 text-2xl font-semibold text-foreground">{value}</p>
+            <p className={`mt-1 font-semibold text-foreground ${featured ? 'text-3xl' : 'text-2xl'}`}>{value}</p>
         </div>
     );
 }
@@ -58,10 +58,10 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
         () => [
             { key: 'generic_name', header: 'Generic Name' },
             { key: 'product_name', header: 'Brand Name' },
-            { key: 'ordered', header: 'Ordered' },
-            { key: 'delivered', header: 'Delivered' },
-            { key: 'backlog', header: 'Backlog' },
-            { key: 'rate', header: 'Fulfillment %', cell: (p) => `${p.rate}%` },
+            { key: 'ordered', header: 'Ordered', align: 'right' },
+            { key: 'delivered', header: 'Delivered', align: 'right' },
+            { key: 'backlog', header: 'Backlog', align: 'right' },
+            { key: 'rate', header: 'Fulfillment %', align: 'right', cell: (p) => `${p.rate}%` },
         ],
         [],
     );
@@ -74,11 +74,11 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
     const customerPerformanceColumns = useMemo(
         () => [
             { key: 'name', header: 'Customer' },
-            { key: 'orders', header: 'Orders' },
-            { key: 'ordered', header: 'Ordered' },
-            { key: 'delivered', header: 'Delivered' },
-            { key: 'backlog', header: 'Backlog' },
-            { key: 'completion_rate', header: 'Completion %', cell: (c) => `${c.completion_rate}%` },
+            { key: 'orders', header: 'Orders', align: 'right' },
+            { key: 'ordered', header: 'Ordered', align: 'right' },
+            { key: 'delivered', header: 'Delivered', align: 'right' },
+            { key: 'backlog', header: 'Backlog', align: 'right' },
+            { key: 'completion_rate', header: 'Completion %', align: 'right', cell: (c) => `${c.completion_rate}%` },
         ],
         [],
     );
@@ -114,7 +114,7 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                 </nav>
 
                 <div className="space-y-6 lg:col-span-10">
-                <form onSubmit={applyFilters} className="flex flex-wrap items-end gap-3 rounded-lg bg-white p-4 shadow-sm">
+                <form onSubmit={applyFilters} className="flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white p-4">
                     <label className="flex flex-col text-sm text-muted-foreground">
                         Period
                         <select value={range} onChange={(e) => setRange(e.target.value)} className="mt-1 rounded-md border-gray-300 text-sm">
@@ -145,14 +145,16 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                     </Button>
                 </form>
 
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                    <Tile label="Unit Fulfillment" value={`${metrics.fulfillment_rate}%`} />
-                    <Tile label="Order Completion" value={`${metrics.completion_rate}%`} />
-                    <Tile label="Backlog Units" value={metrics.backlog_units} />
-                    <Tile label="Avg Completion Time" value={`${metrics.average_completion_days}d`} />
+                <div className="space-y-4">
+                    <Tile label="Order Completion" value={`${metrics.completion_rate}%`} featured />
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <Tile label="Unit Fulfillment" value={`${metrics.fulfillment_rate}%`} />
+                        <Tile label="Backlog Units" value={metrics.backlog_units} />
+                        <Tile label="Avg Completion Time" value={`${metrics.average_completion_days}d`} />
+                    </div>
                 </div>
 
-                <section className="rounded-lg bg-white p-4 shadow-sm">
+                <section className="rounded-lg border border-gray-200 bg-white p-4">
                     <h3 className="type-section-heading mb-3 text-foreground">Ordered vs Delivered</h3>
                     <div className="flex items-end gap-3 overflow-x-auto pb-1">
                         {monthlyTrend.map((month) => (
@@ -168,7 +170,7 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                 </section>
 
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    <section className="rounded-lg bg-white p-4 shadow-sm">
+                    <section className="rounded-lg border border-gray-200 bg-white p-4">
                         <h3 className="type-section-heading mb-3 text-foreground">Order Status Mix</h3>
                         <div className="space-y-2">
                             {statusMix.map((row) => (
@@ -183,7 +185,7 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                         </div>
                     </section>
 
-                    <section className="rounded-lg bg-white p-4 shadow-sm">
+                    <section className="rounded-lg border border-gray-200 bg-white p-4">
                         <h3 className="type-section-heading mb-3 text-foreground">Backlog Aging</h3>
                         <div className="space-y-2">
                             {agingRows.map((row) => (
@@ -199,7 +201,7 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                     </section>
                 </div>
 
-                <section className="rounded-lg bg-white p-4 shadow-sm">
+                <section className="rounded-lg border border-gray-200 bg-white p-4">
                     <h3 className="type-section-heading text-foreground">Product Fulfillment Gaps</h3>
                 </section>
                 <Table
@@ -213,7 +215,7 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
 
                 {!isCustomerView && (
                     <>
-                        <section className="rounded-lg bg-white p-4 shadow-sm">
+                        <section className="rounded-lg border border-gray-200 bg-white p-4">
                             <h3 className="type-section-heading text-foreground">Customer Performance</h3>
                         </section>
                         <Table

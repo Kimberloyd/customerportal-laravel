@@ -98,7 +98,17 @@ docker compose exec app php artisan migrate --force --path=database/migrations/2
 docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_10_000000_add_two_factor_authentication_to_users_table.php
 docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_10_030000_add_public_ids_to_route_resources.php
 docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_10_040000_add_status_submitted_at_index_to_purchase_orders.php
+docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_11_000000_rename_submitted_status_to_pending.php
 ```
+
+Unlike the others above, `2026_09_11_000000_rename_submitted_status_to_pending` is not purely
+additive -- it rewrites the live `status` column value `'submitted'` to `'pending'` on every
+existing row and swaps the CHECK constraint accordingly. `app/Models/PurchaseOrder.php`'s
+`STATUS_SUBMITTED` constant previously mirrored the Flask app's `app/models.py` as the shared
+source of truth for this value; that mirroring is intentionally broken by this migration. If the
+Flask app still reads or writes `purchase_orders.status` anywhere, it will start writing/comparing
+against `'submitted'` while this app expects `'pending'` -- back up the database before running
+this one, and confirm Flask no longer touches this table (or has been updated to match) first.
 
 Migrations already applied in a prior deploy are skipped automatically, so it's
 safe to re-run the whole list above rather than track which ones are new.

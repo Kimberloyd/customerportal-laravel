@@ -381,7 +381,7 @@ class ReportController extends Controller
     {
         $total = $statusCounts->sum();
         $labels = [
-            PurchaseOrder::STATUS_SUBMITTED => 'Submitted',
+            PurchaseOrder::STATUS_SUBMITTED => 'Pending',
             'partial' => 'Partial',
             PurchaseOrder::STATUS_COMPLETED => 'Completed',
             PurchaseOrder::STATUS_CANCELLED => 'Cancelled',

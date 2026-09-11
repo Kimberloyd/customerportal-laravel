@@ -100,8 +100,22 @@ export function BottomSheet({
   // iOS Safari — boundary scrolls inside the sheet chain to the page, which
   // scrolls underneath and ends up somewhere else on close. position:fixed
   // is the lock that actually holds; restore the scroll position after.
+  //
+  // This effect also traps Tab/Shift+Tab inside the sheet and restores focus
+  // to whatever opened it on close, matching the interior Modal component --
+  // a keyboard user must not be able to Tab out into the page hiding behind
+  // the scrim.
   useEffect(() => {
     if (!open) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const focusFrame = requestAnimationFrame(() => {
+      const container = sheetRef.current;
+      if (!container) return;
+      const focusable = container.querySelector<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      (focusable ?? container).focus();
+    });
     const body = document.body;
     const root = document.documentElement;
     const scrollX = window.scrollX;
@@ -142,13 +156,38 @@ export function BottomSheet({
       if (event.key === "Escape") {
         event.preventDefault();
         onOpenChangeRef.current(false);
-      } else if ([" ", "PageUp", "PageDown", "Home", "End", "ArrowUp", "ArrowDown"].includes(event.key) && !isInsideOverlay(event.target)) {
+        return;
+      }
+      if (event.key === "Tab") {
+        const container = sheetRef.current;
+        if (!container) return;
+        const focusable = container.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        } else if (!container.contains(document.activeElement)) {
+          event.preventDefault();
+          first.focus();
+        }
+        return;
+      }
+      if ([" ", "PageUp", "PageDown", "Home", "End", "ArrowUp", "ArrowDown"].includes(event.key) && !isInsideOverlay(event.target)) {
         event.preventDefault();
       }
     };
     window.addEventListener("keydown", onKey);
 
     return () => {
+      cancelAnimationFrame(focusFrame);
+      previouslyFocused?.focus?.();
       window.removeEventListener("keydown", onKey);
       document.removeEventListener("wheel", preventOutsideScroll, true);
       document.removeEventListener("touchmove", preventOutsideScroll, true);
@@ -262,6 +301,7 @@ export function BottomSheet({
                 "border border-border bg-background shadow-xl",
                 className,
               )}
+              tabIndex={-1}
               role="dialog"
               aria-modal="true"
               aria-labelledby={title ? titleId : undefined}

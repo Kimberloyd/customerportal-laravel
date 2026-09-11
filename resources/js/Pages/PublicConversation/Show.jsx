@@ -36,7 +36,7 @@ export default function Show({ token, thread, messages }) {
                     </div>
                 )}
 
-                <div className="space-y-3 rounded-lg bg-white p-4 shadow-sm">
+                <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
                     {messages.length === 0 && (
                         <p className="text-sm text-gray-500">No messages yet. Replies will appear here.</p>
                     )}
@@ -58,7 +58,7 @@ export default function Show({ token, thread, messages }) {
                 </div>
 
                 {canReply ? (
-                    <form onSubmit={submit} className="space-y-2 rounded-lg bg-white p-4 shadow-sm">
+                    <form onSubmit={submit} className="space-y-2 rounded-lg border border-gray-200 bg-white p-4">
                         <textarea
                             required
                             rows={3}

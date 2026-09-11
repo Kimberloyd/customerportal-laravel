@@ -1,11 +1,29 @@
 import { Dropdown } from '@/components/interior/dropdown';
 import { Input } from '@/components/motion/input';
+import { useFieldValidation } from '@/hooks/useFieldValidation';
 import { ChevronDown } from 'lucide-react';
 
 const ROLE_LABELS = { admin: 'Admin', office: 'Office', agent: 'Agent', customer: 'Customer' };
 const FIELD_CLASS_NAMES = { field: 'h-10 rounded-md', input: 'text-sm' };
 
+const EMAIL_FORMAT = /\S+@\S+\.\S+/;
+
+const accountRules = {
+    full_name: (value) => ((value ?? '').trim() ? null : 'Enter a full name.'),
+    email: (value) => {
+        const trimmed = (value ?? '').trim();
+        if (!trimmed) return 'Enter an email address.';
+        return EMAIL_FORMAT.test(trimmed) ? null : 'Enter a valid email address.';
+    },
+};
+
 export function AccountFields({ data, updateField, errors }) {
+    const validation = useFieldValidation(accountRules);
+    const onFieldChange = (field, value) => {
+        updateField(field, value);
+        validation.onChange(field, value, data);
+    };
+
     return (
         <>
             <div>
@@ -15,8 +33,10 @@ export function AccountFields({ data, updateField, errors }) {
                     required
                     autoComplete="off"
                     value={data.full_name}
-                    onChange={(value) => updateField('full_name', value)}
-                    error={errors.full_name}
+                    onChange={(value) => onFieldChange('full_name', value)}
+                    onBlur={() => validation.onBlur('full_name', data.full_name, data)}
+                    error={errors.full_name || validation.clientErrors.full_name}
+                    success={validation.validFields.full_name && !errors.full_name}
                     classNames={FIELD_CLASS_NAMES}
                 />
             </div>
@@ -28,8 +48,10 @@ export function AccountFields({ data, updateField, errors }) {
                     required
                     autoComplete="off"
                     value={data.email}
-                    onChange={(value) => updateField('email', value)}
-                    error={errors.email}
+                    onChange={(value) => onFieldChange('email', value)}
+                    onBlur={() => validation.onBlur('email', data.email, data)}
+                    error={errors.email || validation.clientErrors.email}
+                    success={validation.validFields.email && !errors.email}
                     classNames={FIELD_CLASS_NAMES}
                 />
             </div>
@@ -50,6 +72,30 @@ export function AccountFields({ data, updateField, errors }) {
 }
 
 export function SecurityFields({ data, updateField, errors, isEdit, optional = isEdit }) {
+    const securityRules = {
+        password: (value) => {
+            const trimmed = value ?? '';
+            if (!trimmed) return optional ? null : 'Enter a password for this account.';
+            return trimmed.length >= 8 ? null : 'Use at least 8 characters.';
+        },
+        password_confirmation: (value, fieldData) => {
+            const password = fieldData?.password ?? '';
+            const confirmation = value ?? '';
+            if (!password && !confirmation) return optional ? null : 'Enter the same password again.';
+            return confirmation === password ? null : 'Enter the same password again.';
+        },
+    };
+    const validation = useFieldValidation(securityRules);
+    const onFieldChange = (field, value) => {
+        updateField(field, value);
+        const nextData = { ...data, [field]: value };
+        validation.onChange(field, value, nextData);
+        // Confirmation depends on password -- if it already showed a
+        // mismatch, re-check it live as password changes too, not just
+        // when the user types back into the confirmation field itself.
+        if (field === 'password') validation.onChange('password_confirmation', data.password_confirmation, nextData);
+    };
+
     return (
         <>
             <div>
@@ -61,8 +107,10 @@ export function SecurityFields({ data, updateField, errors, isEdit, optional = i
                     type="password"
                     autoComplete="new-password"
                     value={data.password}
-                    onChange={(value) => updateField('password', value)}
-                    error={errors.password}
+                    onChange={(value) => onFieldChange('password', value)}
+                    onBlur={() => validation.onBlur('password', data.password, data)}
+                    error={errors.password || validation.clientErrors.password}
+                    success={validation.validFields.password && !errors.password && Boolean(data.password)}
                     classNames={FIELD_CLASS_NAMES}
                 />
                 <p className="mt-1 text-sm text-muted-foreground">At least 8 characters.</p>
@@ -74,8 +122,10 @@ export function SecurityFields({ data, updateField, errors, isEdit, optional = i
                     type="password"
                     autoComplete="new-password"
                     value={data.password_confirmation}
-                    onChange={(value) => updateField('password_confirmation', value)}
-                    error={errors.password_confirmation}
+                    onChange={(value) => onFieldChange('password_confirmation', value)}
+                    onBlur={() => validation.onBlur('password_confirmation', data.password_confirmation, data)}
+                    success={validation.validFields.password_confirmation && !errors.password_confirmation && Boolean(data.password_confirmation)}
+                    error={errors.password_confirmation || validation.clientErrors.password_confirmation}
                     classNames={FIELD_CLASS_NAMES}
                 />
             </div>

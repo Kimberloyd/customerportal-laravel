@@ -471,7 +471,7 @@ export function Dropdown({
         aria-describedby={ariaDescribedBy}
         className={
           triggerClassName ??
-          "flex h-9 select-none items-center gap-2 whitespace-nowrap rounded-[9px] border border-stone-200 bg-white px-3 text-sm font-medium text-foreground shadow-none outline-none transition-colors duration-150 hover:border-stone-300 focus-visible:border-stone-400 disabled:opacity-50 dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:text-stone-200 dark:hover:border-white/20 dark:focus-visible:border-white/30"
+          "flex h-9 select-none items-center gap-2 whitespace-nowrap rounded-lg border border-stone-200 bg-white px-3 text-sm font-medium text-foreground shadow-none outline-none transition-colors duration-150 hover:border-stone-300 focus-visible:border-stone-400 disabled:opacity-50 dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:text-stone-200 dark:hover:border-white/20 dark:focus-visible:border-white/30"
         }
       >
         {trigger ?? (
@@ -525,7 +525,7 @@ export function Dropdown({
               ...(!portal && matchTriggerWidth ? { width: "100%" } : {}),
               ...(!portal && !matchTriggerWidth && menuWidth != null ? { width: menuWidth } : {}),
             }}
-            className={`${portal ? "fixed z-[60]" : `absolute top-[calc(100%+6px)] z-50 ${align === "right" ? "right-0" : "left-0"}`} min-w-[224px] whitespace-nowrap rounded-[11px] border border-stone-200 bg-white p-[5px] shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)] dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:shadow-[0_2px_12px_rgba(0,0,0,0.6)]`}
+            className={`${portal ? "fixed z-[60]" : `absolute top-[calc(100%+6px)] z-50 ${align === "right" ? "right-0" : "left-0"}`} min-w-[224px] whitespace-nowrap rounded-xl border border-stone-200 bg-white p-[5px] shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)] dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:shadow-[0_2px_12px_rgba(0,0,0,0.6)]`}
           >
             {menuTitle != null ? (
               <div className="-mx-[5px] mb-1 border-b border-stone-200 px-[15px] pb-2 pt-1 text-left text-xl font-semibold text-stone-900 dark:border-white/[0.16] dark:text-stone-100">

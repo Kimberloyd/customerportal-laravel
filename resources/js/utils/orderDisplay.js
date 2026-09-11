@@ -1,15 +1,17 @@
+import { CircleDashed, CircleDotDashed } from 'lucide-react';
+
 export function statusBadge(status) {
     if (status === 'received') {
         return { label: 'Order Received', status: 'success' };
     }
     if (status === 'partial') {
-        return { label: 'Partial', status: 'warning', pulse: true };
+        return { label: 'Partial', status: 'warning', pulse: true, icon: CircleDotDashed };
     }
     if (status === 'processing') {
         return { label: 'Ready to close', status: 'success' };
     }
-    if (status === 'submitted') {
-        return { label: 'Submitted', status: 'info' };
+    if (status === 'pending') {
+        return { label: 'Pending', status: 'info', icon: CircleDashed };
     }
     if (status === 'returned') {
         return { label: 'Needs redelivery', status: 'warning', pulse: true };

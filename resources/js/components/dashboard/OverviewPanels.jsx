@@ -1,32 +1,111 @@
+import { AnimatedBadge } from '@/components/motion/animated-badge';
+import { statusBadge } from '@/utils/orderDisplay';
 import { Link } from '@inertiajs/react';
-import { ArrowRight, Check, CheckCheck, ChevronRight, ClipboardCheck, Package, Truck } from 'lucide-react';
+import { ArrowRight, CheckCheck, ClipboardCheck, Package, Truck } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useId, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { Area, AreaChart, ResponsiveContainer } from 'recharts';
 
 const number = new Intl.NumberFormat('en-PH');
-const surface = 'rounded-2xl border border-stone-200/80 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.02)] dark:border-white/10 dark:bg-[#1d1e22]';
+const surface = 'rounded-2xl border border-stone-200/80 bg-white dark:border-white/10 dark:bg-[#1d1e22]';
 const focus = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2';
 const spring = { type: 'spring', stiffness: 700, damping: 46, mass: 0.5 };
 
-export function MetricCard({ label, value, previous, icon: Icon, note, href, period, featured }) {
+/**
+ * Percent change vs. the previous period, for count-style metrics (orders,
+ * completed orders). Null when there's no meaningful baseline to compare
+ * against (previous period had zero and still has zero).
+ */
+export function percentDelta(current, previous) {
+    if (current == null || previous == null) return null;
+    if (previous === 0) return current === 0 ? null : { text: '+New' };
+    const pct = (current - previous) / previous * 100;
+    return { text: `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%` };
+}
+
+/**
+ * Percentage-point change vs. the previous period, for metrics that are
+ * already a percentage (e.g. fulfillment rate) -- a relative "%" delta on
+ * a percentage is misleading, so this reports the raw point difference.
+ */
+export function pointsDelta(current, previous) {
+    if (current == null || previous == null) return null;
+    const diff = current - previous;
+    return { text: `${diff >= 0 ? '+' : ''}${diff.toFixed(1)} pt` };
+}
+
+export function PrimaryMetricCard({ label, value, delta, href, period, trend }) {
     const Card = href ? Link : 'div';
+    const sparkline = (trend ?? []).map((point) => ({ value: point.current }));
     return (
-        <Card href={href || undefined} className={`${surface} ${focus} group relative flex h-full flex-col overflow-hidden p-4 transition-shadow ${href ? 'hover:shadow-md' : ''} sm:p-5`}>
-            <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-medium text-stone-600 dark:text-stone-300">{label}</p>
-                <Icon aria-hidden="true" className="h-4 w-4 text-stone-400" />
+        <Card href={href || undefined} className={`${surface} ${focus} group relative flex h-full flex-col overflow-hidden p-5 transition-colors ${href ? 'hover:bg-stone-50 dark:hover:bg-white/[0.03]' : ''} sm:p-6`}>
+            <p className="text-sm font-medium text-stone-600 dark:text-stone-300">{label}</p>
+            <div className="flex flex-1 items-center justify-between gap-4">
+                <div className="min-w-0">
+                    <p className="break-words text-5xl font-semibold leading-tight tracking-tight text-stone-900 tabular-nums sm:text-6xl dark:text-stone-100">{value}</p>
+                    {delta && <p className="mt-2 text-xs font-medium text-stone-500 dark:text-stone-400">{delta.text} vs previous {period} days</p>}
+                </div>
+                {sparkline.length > 1 && (
+                    <div className="h-24 w-52 shrink-0 sm:h-28 sm:w-64" aria-hidden="true">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={sparkline} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
+                                <defs><linearGradient id="primary-metric-sparkline" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10b981" stopOpacity={0.25} /><stop offset="100%" stopColor="#10b981" stopOpacity={0} /></linearGradient></defs>
+                                <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2} fill="url(#primary-metric-sparkline)" isAnimationActive={false} />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                )}
             </div>
-            <p className="mt-4 break-words text-2xl font-semibold leading-tight tracking-tight text-stone-900 tabular-nums sm:text-3xl dark:text-stone-100">{value}</p>
-            <p className="mt-2 text-xs leading-5 text-stone-500 dark:text-stone-400"><span className="font-medium text-stone-700 tabular-nums dark:text-stone-300">{previous}</span> in previous {period} days</p>
-            <div className="flex-1" />
-            <div className="mt-4 flex items-center justify-between gap-2 border-t border-stone-100 pt-3 dark:border-white/10"><p className="text-xs leading-4 text-stone-500 dark:text-stone-400">{note}</p><ChevronRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-stone-400 group-hover:text-primary" /></div>
         </Card>
+    );
+}
+
+export function SecondaryMetricsCard({ metrics, reducedMotion }) {
+    const [hoveredIndex, setHoveredIndex] = useState(null);
+    const rowRefs = useRef([]);
+    const [highlightRect, setHighlightRect] = useState(null);
+
+    useLayoutEffect(() => {
+        if (hoveredIndex == null) { setHighlightRect(null); return; }
+        const node = rowRefs.current[hoveredIndex];
+        if (!node) return;
+        setHighlightRect({ top: node.offsetTop, height: node.offsetHeight });
+    }, [hoveredIndex]);
+
+    return (
+        <div className={`${surface} relative flex h-full flex-col overflow-hidden`} onMouseLeave={() => setHoveredIndex(null)}>
+            {highlightRect && (
+                <motion.div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-0 z-0 bg-stone-50 dark:bg-white/[0.03]"
+                    initial={false}
+                    animate={{ top: highlightRect.top, height: highlightRect.height, opacity: 1 }}
+                    transition={reducedMotion ? { duration: 0 } : spring}
+                />
+            )}
+            <div className="flex flex-1 flex-col divide-y divide-stone-100 dark:divide-white/10">
+            {metrics.map((metric, index) => {
+                const Row = metric.href ? Link : 'div';
+                return (
+                    <div key={metric.label} ref={(el) => { rowRefs.current[index] = el; }} onMouseEnter={() => metric.href && setHoveredIndex(index)} onFocus={() => metric.href && setHoveredIndex(index)} onBlur={() => setHoveredIndex(null)}>
+                        <Row href={metric.href || undefined} className={`${focus} relative z-10 flex flex-1 items-center justify-between gap-3 p-4`}>
+                            <div className="min-w-0">
+                                <p className="truncate text-xs font-medium text-stone-500 dark:text-stone-400">{metric.label}</p>
+                                <p className="mt-1 text-xl font-semibold tracking-tight text-stone-900 tabular-nums dark:text-stone-100 sm:text-2xl">{metric.value}</p>
+                            </div>
+                            {metric.delta && <span className="shrink-0 text-xs font-medium text-stone-500 dark:text-stone-400">{metric.delta.text}</span>}
+                        </Row>
+                    </div>
+                );
+            })}
+            </div>
+        </div>
     );
 }
 
 export function OrderStages({ current, previous, ordersUrl, reducedMotion }) {
     const stages = [
-        { key: 'submitted', label: 'Submitted', color: 'bg-indigo-500', status: 'submitted' },
+        { key: 'pending', label: 'Pending', color: 'bg-indigo-500', status: 'pending' },
         { key: 'fulfillment', label: 'In fulfillment', color: 'bg-amber-500', status: 'partial' },
         { key: 'completed', label: 'Completed', color: 'bg-emerald-500', status: 'completed' },
         { key: 'cancelled', label: 'Cancelled', color: 'bg-stone-400' },
@@ -54,74 +133,62 @@ function actionFor(order, customer) {
     if (order.status === 'completed') return { label: 'Confirm receipt', description: 'All items delivered. Confirm they arrived.', icon: ClipboardCheck };
     if (order.status === 'processing') return { label: customer ? 'Close order' : 'Complete order', description: customer ? 'All items delivered. Ready to close.' : 'All items have been delivered.', icon: ClipboardCheck };
     if (order.status === 'partial') return { label: customer ? 'Track delivery' : 'Continue fulfillment', description: `${number.format(order.delivered_units)} of ${number.format(order.ordered_units)} units delivered`, icon: Truck };
-    return { label: customer ? 'View order' : 'Fulfill order', description: 'Submitted and waiting for fulfillment.', icon: Package };
+    return { label: customer ? 'View order' : 'Fulfill order', description: 'Pending and waiting for fulfillment.', icon: Package };
 }
 
 export function AttentionPanel({ orders, count, customer, reducedMotion, canOrder }) {
-    const [hovered, setHovered] = useState(null);
-    const highlightId = useId();
+    const [hoveredIndex, setHoveredIndex] = useState(null);
+    const rowRefs = useRef([]);
+    const [highlightRect, setHighlightRect] = useState(null);
+
+    useLayoutEffect(() => {
+        if (hoveredIndex == null) { setHighlightRect(null); return; }
+        const node = rowRefs.current[hoveredIndex];
+        if (!node) return;
+        setHighlightRect({ top: node.offsetTop, height: node.offsetHeight });
+    }, [hoveredIndex]);
+
     return (
         <section aria-labelledby="attention-heading" className={`${surface} flex flex-col overflow-hidden`}>
-            <div className="flex items-start justify-between gap-3 px-5 pt-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 px-5 py-5 dark:border-white/10 sm:px-6">
                 <div><h2 id="attention-heading" className="type-section-heading text-stone-900 dark:text-stone-100">{customer ? 'Your next steps' : 'Work to pick up'}</h2><p className="mt-1 text-sm text-stone-500 dark:text-stone-400">{customer ? 'Updates to follow up on' : 'Fulfillment queue'} · All dates</p></div>
                 <span className="grid h-6 min-w-6 place-items-center rounded-full bg-destructive px-1.5 text-xs font-semibold text-white tabular-nums">{number.format(count)}</span>
             </div>
             {orders.length ? (
-                <ul className="my-3 flex-1 px-2" onMouseLeave={() => setHovered(null)}>
-                    {orders.map((order) => {
-                        const action = actionFor(order, customer);
-                        return (
-                            <li key={order.id} className="relative" onMouseEnter={() => setHovered(order.id)} onFocus={() => setHovered(order.id)} onBlur={() => setHovered(null)}>
-                                {hovered === order.id && <motion.div aria-hidden="true" layoutId={reducedMotion ? undefined : highlightId} className="pointer-events-none absolute inset-0 rounded-xl bg-stone-100 dark:bg-white/[0.06]" transition={reducedMotion ? { duration: 0 } : spring} />}
-                                <Link href={route('purchase-orders.show', order.public_id)} className={`relative flex items-center justify-between gap-3 rounded-xl px-3 py-3 ${focus}`}>
-                                    <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-stone-900 dark:text-stone-100" title={order.po_number}>{order.po_number}</p><p className="mt-0.5 truncate text-xs leading-5 text-stone-500 dark:text-stone-400">{customer ? action.description : order.customer_name || 'Customer order'}</p></div>
-                                    <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-medium text-primary dark:text-indigo-300">{action.label}<ArrowRight className="h-3 w-3" aria-hidden="true" /></span>
-                                </Link>
-                            </li>
-                        );
-                    })}
-                </ul>
+                <div className="relative flex-1" onMouseLeave={() => setHoveredIndex(null)}>
+                    {highlightRect && (
+                        <motion.div
+                            aria-hidden="true"
+                            className="pointer-events-none absolute inset-x-0 z-0 bg-stone-50 dark:bg-white/[0.03]"
+                            initial={false}
+                            animate={{ top: highlightRect.top, height: highlightRect.height, opacity: 1 }}
+                            transition={reducedMotion ? { duration: 0 } : spring}
+                        />
+                    )}
+                    <ul className="divide-y divide-stone-100 dark:divide-white/5">
+                        {orders.map((order, index) => {
+                            const action = actionFor(order, customer);
+                            const badge = statusBadge(order.received ? 'received' : order.status);
+                            return (
+                                <li key={order.id} ref={(el) => { rowRefs.current[index] = el; }} onMouseEnter={() => setHoveredIndex(index)} onFocus={() => setHoveredIndex(index)} onBlur={() => setHoveredIndex(null)}>
+                                    <Link href={route('purchase-orders.show', order.public_id)} className={`relative z-10 flex items-center gap-3 px-5 py-3 ${focus} sm:px-6`}>
+                                        {customer ? (
+                                            <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-stone-900 dark:text-stone-100" title={order.po_number}>{order.po_number}</p><p className="mt-0.5 truncate text-xs leading-5 text-stone-500 dark:text-stone-400">{action.description}</p></div>
+                                        ) : (
+                                            <p className="min-w-0 flex-1 truncate text-sm font-medium text-stone-900 dark:text-stone-100" title={`${order.customer_name || 'Customer order'} - ${order.po_number}`}>{order.customer_name || 'Customer order'} - {order.po_number}</p>
+                                        )}
+                                        <AnimatedBadge status={badge.status} size="sm" pulse={false} icon={badge.icon ? <badge.icon className="h-3.5 w-3.5" /> : undefined} className="shrink-0 border-0 bg-transparent px-0 shadow-none">{badge.label}</AnimatedBadge>
+                                    </Link>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </div>
             ) : (
                 <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 text-center"><span className="mb-4 grid h-12 w-12 place-items-center rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"><CheckCheck className="h-6 w-6" aria-hidden="true" /></span><p className="text-sm font-medium text-stone-800 dark:text-stone-100">{canOrder ? 'Nothing waiting on you' : 'Your workspace is almost ready'}</p><p className="mt-2 max-w-xs text-sm leading-6 text-stone-500 dark:text-stone-400">{canOrder ? 'Orders that need a next step will appear here.' : 'Your orders will appear once your customer profile is linked.'}</p></div>
             )}
-            {canOrder && <Link href={route('purchase-orders.index')} className={`flex items-center justify-between border-t border-stone-100 px-5 py-4 text-sm font-medium text-primary transition-colors hover:bg-stone-50 ${focus} dark:border-white/10 dark:text-indigo-300 dark:hover:bg-white/5`}>Open all orders <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>}
+            {canOrder && <div className="flex justify-end border-t border-stone-100/70 px-5 py-4 dark:border-white/[0.07]"><Link href={route('purchase-orders.index')} className={`inline-flex items-center gap-2 rounded text-sm font-medium text-primary hover:underline ${focus} dark:text-indigo-300`}>Open all orders <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link></div>}
         </section>
     );
 }
 
-function OrderStatus({ order }) {
-    const statuses = {
-        submitted: { label: 'Submitted', icon: Package, style: 'bg-indigo-50 text-indigo-800 dark:bg-indigo-400/10 dark:text-indigo-200' },
-        partial: { label: 'Partial delivery', icon: Truck, style: 'bg-amber-50 text-amber-800 dark:bg-amber-400/10 dark:text-amber-200' },
-        processing: { label: 'Ready to complete', icon: ClipboardCheck, style: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-200' },
-        completed: { label: order.received ? 'Received' : 'Completed', icon: Check, style: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-200' },
-        cancelled: { label: 'Cancelled', icon: Package, style: 'bg-stone-100 text-stone-600 dark:bg-white/10 dark:text-stone-300' },
-    };
-    const status = statuses[order.status] || { label: order.status, icon: Package, style: 'bg-stone-100 text-stone-600' };
-    return <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${status.style}`}><status.icon className="h-3 w-3" aria-hidden="true" />{status.label}</span>;
-}
-
-export function RecentOrders({ orders, customer, ordersUrl, canOrder, reducedMotion }) {
-    return (
-        <section aria-labelledby="recent-orders-heading" className={`${surface} overflow-hidden`}>
-            <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-5 sm:px-6"><div><h2 id="recent-orders-heading" className="type-section-heading text-stone-900 dark:text-stone-100">{customer ? 'Your latest orders' : 'Latest orders'}</h2><p className="mt-1 text-sm text-stone-500 dark:text-stone-400">Most recent orders in the selected period.</p></div>{canOrder && <Link href={ordersUrl} className={`inline-flex items-center gap-2 rounded text-sm font-medium text-primary hover:underline ${focus} dark:text-indigo-300`}>View all <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>}</div>
-            {orders.length ? (
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                        <thead className="border-y border-stone-100 bg-stone-50/70 text-xs font-medium text-stone-500 dark:border-white/10 dark:bg-white/[0.02] dark:text-stone-400"><tr><th scope="col" className="px-5 py-3 font-medium sm:px-6">Purchase order</th>{!customer && <th scope="col" className="px-4 py-3 font-medium">Customer</th>}<th scope="col" className="px-4 py-3 font-medium">Status</th><th scope="col" className="min-w-40 px-4 py-3 font-medium">Delivery progress</th><th scope="col" className="px-5 py-3 font-medium">Placed</th></tr></thead>
-                        <tbody className="divide-y divide-stone-100 dark:divide-white/5">{orders.map((order) => {
-                            const progress = order.ordered_units ? Math.min(100, order.delivered_units / order.ordered_units * 100) : 0;
-                            return <tr key={order.id} className="transition-colors hover:bg-stone-50 dark:hover:bg-white/[0.03]">
-                                <td className="max-w-56 px-5 py-4 sm:px-6"><Link className={`block truncate rounded font-medium text-primary hover:underline ${focus} dark:text-indigo-300`} href={route('purchase-orders.show', order.public_id)} title={order.po_number}>{order.po_number}</Link></td>
-                                {!customer && <td className="max-w-56 truncate px-4 py-4 text-stone-600 dark:text-stone-300" title={order.customer_name}>{order.customer_name || '—'}</td>}
-                                <td className="px-4 py-4"><OrderStatus order={order} /></td>
-                                <td className="px-4 py-4"><div className="flex items-center gap-3"><div aria-hidden="true" className="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-stone-100 dark:bg-white/10"><motion.div initial={false} animate={{ width: `${progress}%` }} transition={{ duration: reducedMotion ? 0 : 0.45 }} className={`h-full rounded-full ${progress === 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`} /></div><span className="whitespace-nowrap text-xs text-stone-500 tabular-nums dark:text-stone-400">{number.format(order.delivered_units)} / {number.format(order.ordered_units)} units</span></div></td>
-                                <td className="whitespace-nowrap px-5 py-4 text-xs text-stone-500 dark:text-stone-400">{order.submitted_at ? new Date(order.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '—'}</td>
-                            </tr>;
-                        })}</tbody>
-                    </table>
-                </div>
-            ) : <div className="border-t border-stone-100 px-6 py-9 text-center dark:border-white/10"><Package aria-hidden="true" className="mx-auto mb-3 h-7 w-7 text-stone-400" /><p className="text-sm font-medium text-stone-700 dark:text-stone-200">No orders in this period</p><p className="mt-1 text-sm text-stone-500 dark:text-stone-400">{canOrder ? 'Choose a longer date range or create a new order to get started.' : 'Your order history will appear here after your account is linked.'}</p></div>}
-        </section>
-    );
-}

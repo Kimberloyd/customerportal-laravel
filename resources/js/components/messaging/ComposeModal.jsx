@@ -115,7 +115,7 @@ export default function ComposeModal({ open, onClose, accounts }) {
                                 }
                             }}
                             placeholder="Write a message"
-                            className="block max-h-40 min-h-20 w-full resize-none rounded-lg border-stone-200 py-2 pl-3 pr-12 text-sm text-stone-900 outline-none focus:border-stone-400 focus:ring-0 dark:border-white/[0.16] dark:bg-transparent dark:text-stone-100"
+                            className="block max-h-40 min-h-20 w-full resize-none rounded-lg border-stone-200 py-2 pl-3 pr-12 text-sm text-stone-900 outline-none focus:ring-0 focus-visible:border-stone-400 dark:border-white/[0.16] dark:bg-transparent dark:text-stone-100"
                         />
                         <Button
                             type="submit"

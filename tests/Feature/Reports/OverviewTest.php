@@ -87,7 +87,7 @@ class OverviewTest extends TestCase
         $response->assertInertia(function ($page) {
             $statusMix = $page->toArray()['props']['statusMix'];
             $byKey = collect($statusMix)->keyBy('key');
-            $this->assertSame(1, $byKey['submitted']['count']);
+            $this->assertSame(1, $byKey['pending']['count']);
             $this->assertSame(1, $byKey['partial']['count']);
             $this->assertSame(1, $byKey['completed']['count']);
             $this->assertSame(1, $byKey['cancelled']['count']);

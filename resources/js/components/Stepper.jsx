@@ -217,7 +217,23 @@ function StepIndicator({ step, label, currentStep, onClickStep, disableStepIndic
 
   return (
     <div className="step-indicator-column">
-      <motion.div onClick={handleClick} className="step-indicator" style={disableStepIndicators ? { pointerEvents: 'none', opacity: 0.5 } : {}} animate={status} initial={false}>
+      <motion.div
+        onClick={handleClick}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            handleClick();
+          }
+        }}
+        role="button"
+        tabIndex={disableStepIndicators ? -1 : 0}
+        aria-label={`${label ?? `Step ${step}`} (${status})`}
+        aria-current={status === 'active' ? 'step' : undefined}
+        className="step-indicator"
+        style={disableStepIndicators ? { pointerEvents: 'none', opacity: 0.5 } : {}}
+        animate={status}
+        initial={false}
+      >
         <motion.div
           variants={{
             inactive: { scale: 1, backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' },

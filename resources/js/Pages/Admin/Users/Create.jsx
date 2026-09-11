@@ -31,7 +31,7 @@ export default function Create({ customers }) {
             <Head title="Create Account" />
 
             <div className="mx-auto max-w-2xl space-y-4 px-4 py-8 sm:px-6 lg:px-8">
-                <form onSubmit={submit} className="space-y-4 rounded-lg bg-white p-6 shadow-sm">
+                <form onSubmit={submit} className="space-y-4 rounded-lg border border-gray-200 bg-white p-6">
                     <UserForm
                         data={data}
                         setData={setData}

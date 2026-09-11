@@ -25,7 +25,7 @@ export default function Login({ status }) {
 
             <div className="mb-8">
                 <h2 className="text-3xl font-semibold tracking-tight text-gray-950">
-                    Welcome back
+                    Sign in to your account
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-gray-600">
                     Enter your account details to continue.

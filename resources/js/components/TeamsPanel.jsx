@@ -4,9 +4,14 @@ import { Modal } from '@/components/interior/modal';
 import { Checkbox } from '@/components/motion/checkbox';
 import { Table } from '@/components/motion/table';
 import { Button } from '@/components/ui/button';
+import { useFieldValidation } from '@/hooks/useFieldValidation';
 import { useForm } from '@inertiajs/react';
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Check, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+
+const teamRules = {
+    name: (value) => ((value ?? '').trim() ? null : 'Enter a team name.'),
+};
 
 export function TeamsPanel({ teams = [], agents = [] }) {
     const [open, setOpen] = useState(false);
@@ -14,6 +19,7 @@ export function TeamsPanel({ teams = [], agents = [] }) {
     const [teamPendingDeletion, setTeamPendingDeletion] = useState(null);
     const editor = useForm({ name: '', agent_ids: [] });
     const deletion = useForm({});
+    const validation = useFieldValidation(teamRules);
 
     const selectableAgents = useMemo(() => {
         const choices = new Map(agents.map((agent) => [agent.id, agent]));
@@ -25,6 +31,7 @@ export function TeamsPanel({ teams = [], agents = [] }) {
     const openCreate = () => {
         editor.reset();
         editor.clearErrors();
+        validation.reset();
         setEditingTeam(null);
         setOpen(true);
     };
@@ -35,6 +42,7 @@ export function TeamsPanel({ teams = [], agents = [] }) {
             agent_ids: team.members.map((member) => member.id),
         });
         editor.clearErrors();
+        validation.reset();
         setEditingTeam(team);
         setOpen(true);
     };
@@ -42,6 +50,7 @@ export function TeamsPanel({ teams = [], agents = [] }) {
     const close = () => {
         editor.reset();
         editor.clearErrors();
+        validation.reset();
         setEditingTeam(null);
         setOpen(false);
     };
@@ -185,15 +194,31 @@ export function TeamsPanel({ teams = [], agents = [] }) {
                 <form id="team-form" onSubmit={submit}>
                     <label className="block text-sm font-medium text-gray-700">
                         Team name
-                        <input
-                            value={editor.data.name}
-                            onChange={(event) => editor.setData('name', event.target.value)}
-                            className="mt-1 h-10 w-full rounded-md border border-gray-300 px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                            required
-                            autoComplete="off"
-                        />
+                        <div className="relative">
+                            <input
+                                value={editor.data.name}
+                                onChange={(event) => {
+                                    editor.setData('name', event.target.value);
+                                    editor.clearErrors('name');
+                                    validation.onChange('name', event.target.value, editor.data);
+                                }}
+                                onBlur={() => validation.onBlur('name', editor.data.name, editor.data)}
+                                className={`mt-1 h-10 w-full rounded-md border px-3 text-sm outline-none focus-visible:ring-2 ${
+                                    editor.errors.name || validation.clientErrors.name
+                                        ? 'border-red-300 focus-visible:border-red-400 focus-visible:ring-red-200'
+                                        : 'border-gray-300 focus-visible:border-primary focus-visible:ring-primary/20'
+                                }`}
+                                required
+                                autoComplete="off"
+                            />
+                            {validation.validFields.name && !editor.errors.name && (
+                                <Check aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-600" />
+                            )}
+                        </div>
                     </label>
-                    {editor.errors.name && <p className="mt-1 text-sm text-red-600" role="alert">{editor.errors.name}</p>}
+                    {(editor.errors.name || validation.clientErrors.name) && (
+                        <p className="mt-1 text-sm text-red-600" role="alert">{editor.errors.name || validation.clientErrors.name}</p>
+                    )}
 
                     <fieldset className="mt-5">
                         <legend className="text-sm font-medium text-gray-700">

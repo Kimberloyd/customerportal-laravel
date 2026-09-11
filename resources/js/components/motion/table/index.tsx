@@ -390,6 +390,7 @@ export function Table<T>({
                               className={cn(
                                 "truncate px-4 text-foreground",
                                 alignText(column.align),
+                                column.align === "right" && "tabular-nums",
                               )}
                             >
                               {!column.cell && column.editable ? (

@@ -1,183 +1,28 @@
 import ConfirmationDialog from '@/components/ConfirmationDialog';
 import Stepper, { Step } from '@/components/Stepper';
+import { SuggestionMenu, suggestFieldKeyDown, useSuggestField } from '@/components/SuggestField';
 import { Modal } from '@/components/interior/modal';
 import { AttachmentUpload } from '@/components/motion/attachment-upload';
 import { BottomSheet } from '@/components/motion/bottom-sheet';
 import { Input } from '@/components/motion/input';
 import { Table } from '@/components/motion/table';
 import { Button } from '@/components/ui/button';
+import { useContainerBreakpoint } from '@/lib/hooks/use-container-breakpoint';
 import { useForm } from '@inertiajs/react';
 import { Minus, Plus, Search, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 
 // Matches the sm breakpoint used across this app's layouts (AuthenticatedLayout
 // switches its own nav at the same width) -- below it the modal becomes a
 // bottom sheet instead, which suits a one-handed mobile flow better than a
-// centered dialog.
+// centered dialog. This one genuinely tracks the viewport rather than a
+// nested wrapper -- there's no pre-existing element to observe before the
+// modal/sheet choice is made -- so it's scoped to `document.body`, which is
+// always mounted; routing it through the same container-query hook still
+// dedupes the mechanism previously copy-pasted from PurchaseOrders/Index.jsx.
 function useIsCompactViewport() {
-    const [isCompact, setIsCompact] = useState(false);
-
-    useEffect(() => {
-        if (typeof window === 'undefined') return undefined;
-        const query = window.matchMedia('(max-width: 639px)');
-        const update = () => setIsCompact(query.matches);
-        update();
-        query.addEventListener('change', update);
-        return () => query.removeEventListener('change', update);
-    }, []);
-
-    return isCompact;
-}
-
-// Shared by the Customer and Products search fields: owns the query text,
-// open/active state, and the outside-click/reposition plumbing needed to
-// float a suggestion list off a search input inside a scrollable modal.
-// Selection semantics differ per field, so that stays with the caller.
-function useSuggestField() {
-    const [query, setQuery] = useState('');
-    const [open, setOpen] = useState(false);
-    const [activeIndex, setActiveIndex] = useState(0);
-    const [position, setPosition] = useState(null);
-    const fieldRef = useRef(null);
-    const menuRef = useRef(null);
-    const visible = open && query.trim() !== '';
-
-    // Portaled to <body> (like Dropdown's `portal` mode) so the list can
-    // extend past the modal's own scrollable, overflow-hidden body instead
-    // of being clipped by it.
-    useEffect(() => {
-        if (!visible) {
-            setPosition(null);
-            return undefined;
-        }
-
-        const reposition = () => {
-            const rect = fieldRef.current?.getBoundingClientRect();
-            if (!rect) return;
-            const margin = 6;
-            const preferredHeight = 256;
-            const viewportTop = window.visualViewport?.offsetTop ?? 0;
-            const viewportBottom = viewportTop + (window.visualViewport?.height ?? window.innerHeight);
-            const spaceBelow = viewportBottom - rect.bottom - margin;
-            const spaceAbove = rect.top - viewportTop - margin;
-            // Flip above the field when there isn't enough room below but there
-            // is more room above -- keeps the list from being squeezed to a
-            // sliver (or clipped) near the bottom of a short viewport, e.g.
-            // inside the mobile bottom sheet.
-            const placeAbove = spaceBelow < Math.min(preferredHeight, 160) && spaceAbove > spaceBelow;
-            const maxHeight = Math.max(0, Math.min(preferredHeight, placeAbove ? spaceAbove : spaceBelow));
-            setPosition({
-                left: rect.left,
-                width: rect.width,
-                maxHeight,
-                ...(placeAbove
-                    ? { bottom: window.innerHeight - rect.top + margin }
-                    : { top: rect.bottom + margin }),
-            });
-        };
-
-        reposition();
-        const dismiss = () => setOpen(false);
-        // Capture-phase scroll listeners see scroll events from any
-        // descendant, including the menu scrolling itself -- ignore those so
-        // scrolling through the results doesn't close the list.
-        const dismissUnlessMenuScroll = (event) => {
-            if (menuRef.current?.contains(event.target)) return;
-            dismiss();
-        };
-        window.addEventListener('resize', dismiss);
-        window.addEventListener('scroll', dismissUnlessMenuScroll, true);
-        window.visualViewport?.addEventListener('resize', reposition);
-        window.visualViewport?.addEventListener('scroll', reposition);
-        return () => {
-            window.removeEventListener('resize', dismiss);
-            window.removeEventListener('scroll', dismissUnlessMenuScroll, true);
-            window.visualViewport?.removeEventListener('resize', reposition);
-            window.visualViewport?.removeEventListener('scroll', reposition);
-        };
-    }, [visible]);
-
-    useEffect(() => {
-        if (!open) return undefined;
-        const onPointerDown = (event) => {
-            if (
-                !fieldRef.current?.contains(event.target)
-                && !menuRef.current?.contains(event.target)
-            ) {
-                setOpen(false);
-            }
-        };
-        document.addEventListener('pointerdown', onPointerDown, true);
-        return () => document.removeEventListener('pointerdown', onPointerDown, true);
-    }, [open]);
-
-    return { query, setQuery, open, setOpen, activeIndex, setActiveIndex, position, visible, fieldRef, menuRef };
-}
-
-function suggestFieldKeyDown(field, matches, onSelect) {
-    return (event) => {
-        if (!field.open || matches.length === 0) return;
-        if (event.key === 'ArrowDown') {
-            event.preventDefault();
-            field.setActiveIndex((index) => Math.min(matches.length - 1, index + 1));
-        } else if (event.key === 'ArrowUp') {
-            event.preventDefault();
-            field.setActiveIndex((index) => Math.max(0, index - 1));
-        } else if (event.key === 'Enter') {
-            event.preventDefault();
-            const item = matches[field.activeIndex];
-            if (item) onSelect(item);
-        } else if (event.key === 'Escape') {
-            field.setOpen(false);
-        }
-    };
-}
-
-function SuggestionMenu({ menuRef, position, items, activeIndex, onHover, onSelect, emptyMessage }) {
-    return createPortal(
-        <div
-            ref={menuRef}
-            data-modal-portal=""
-            style={{
-                position: 'fixed',
-                top: position.top,
-                bottom: position.bottom,
-                left: position.left,
-                width: position.width,
-                maxHeight: position.maxHeight,
-            }}
-            className="z-[60] overflow-y-auto rounded-[11px] border border-stone-200 bg-white p-[5px]"
-        >
-            {items.length === 0 ? (
-                <div className="px-2.5 py-2 text-sm text-muted-foreground">{emptyMessage}</div>
-            ) : (
-                items.map((item, index) => (
-                    <button
-                        key={item.id}
-                        type="button"
-                        onMouseDown={(event) => event.preventDefault()}
-                        onMouseEnter={() => onHover(index)}
-                        onClick={() => onSelect(item)}
-                        className={`flex w-full items-center gap-2 rounded-[7px] px-2.5 py-1.5 text-left text-sm ${
-                            index === activeIndex
-                                ? 'bg-stone-100 text-stone-900'
-                                : 'text-stone-700'
-                        }`}
-                    >
-                        <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                        {item.badge}
-                        {item.hint ? (
-                            <span className="shrink-0 font-mono text-[10.5px] text-stone-500">
-                                {item.hint}
-                            </span>
-                        ) : null}
-                    </button>
-                ))
-            )}
-        </div>,
-        document.body,
-    );
+    const bodyRef = useRef(typeof document !== 'undefined' ? document.body : null);
+    return useContainerBreakpoint(bodyRef, 639);
 }
 
 function isSameProduct(line, product) {
@@ -208,8 +53,11 @@ export default function CreateOrderModal({
     const canEditItems = !isEditing || Boolean(initialOrder?.can_edit_items);
     const editDetailsLocked = isEditing && !canEditItems;
     // A locked customer (portal accounts scoped to one customer) skips the
-    // Customer step entirely instead of showing it pre-filled and disabled.
-    const stepLabels = lockedCustomerId
+    // Customer step entirely instead of showing it pre-filled and disabled --
+    // and editing an existing order does too, since the customer an order
+    // was placed under isn't something fulfillment should be able to change.
+    const skipCustomerStep = Boolean(lockedCustomerId) || isEditing;
+    const stepLabels = skipCustomerStep
         ? ['Products', 'Order details', 'Review']
         : ['Customer', 'Products', 'Order details', 'Review'];
     const totalSteps = stepLabels.length;
@@ -545,7 +393,7 @@ export default function CreateOrderModal({
     );
 
     const validateCustomer = () => {
-        if (!lockedCustomerId && data.customer_id === '') {
+        if (!skipCustomerStep && data.customer_id === '') {
             setClientErrors((current) => ({ ...current, customer_id: 'Select a customer.' }));
             return false;
         }
@@ -582,9 +430,9 @@ export default function CreateOrderModal({
     };
 
     // Each step validates itself on the way forward; the Review step (and,
-    // when locked, the skipped Customer step) has nothing to check here.
+    // when skipped, the Customer step) has nothing to check here.
     const stepValidators = {
-        ...(lockedCustomerId ? {} : { 1: validateCustomer }),
+        ...(skipCustomerStep ? {} : { 1: validateCustomer }),
         [productsStepIndex]: validateProducts,
         [detailsStepIndex]: validateDetails,
     };
@@ -637,7 +485,7 @@ export default function CreateOrderModal({
             },
             onError: (serverErrors) => {
                 let targetStep = detailsStepIndex;
-                if (!lockedCustomerId && serverErrors.customer_id) targetStep = 1;
+                if (!skipCustomerStep && serverErrors.customer_id) targetStep = 1;
                 else if (Object.keys(serverErrors).some((key) => key.startsWith('items'))) targetStep = productsStepIndex;
                 setCurrentStep(targetStep);
                 setStepperKey((key) => key + 1);
@@ -698,7 +546,7 @@ export default function CreateOrderModal({
                 hideDefaultFooter
                 stepContainerClassName="sticky top-0 z-10 bg-white pt-4 dark:bg-[#1D1D1A]"
             >
-                {!lockedCustomerId && (
+                {!skipCustomerStep && (
                 <Step>
                     <div className="space-y-2 pt-2">
                         <label className="block text-sm font-medium text-gray-700">Customer</label>
@@ -720,7 +568,7 @@ export default function CreateOrderModal({
                                 leftIcon={<Search className="h-4 w-4" />}
                                 error={Boolean(errors.customer_id || clientErrors.customer_id)}
                                 classNames={{
-                                    field: 'h-9 rounded-[11px] bg-transparent shadow-none',
+                                    field: 'h-9 rounded-md bg-transparent shadow-none',
                                     input: 'text-sm',
                                 }}
                             />
@@ -773,7 +621,7 @@ export default function CreateOrderModal({
                                     placeholder="Search products"
                                     leftIcon={<Search className="h-4 w-4" />}
                                     classNames={{
-                                        field: 'h-9 rounded-[11px] bg-transparent shadow-none',
+                                        field: 'h-9 rounded-md bg-transparent shadow-none',
                                         input: 'text-sm',
                                     }}
                                 />
@@ -877,7 +725,7 @@ export default function CreateOrderModal({
                                         type="checkbox"
                                         checked={data.remove_attachment}
                                         onChange={(event) => setData('remove_attachment', event.target.checked)}
-                                        className="rounded border-gray-300 text-primary focus:ring-primary"
+                                        className="rounded border-gray-300 text-primary focus:ring-0 focus-visible:ring-2 focus-visible:ring-primary"
                                     />
                                     Remove existing attachment
                                 </label>
@@ -920,7 +768,7 @@ export default function CreateOrderModal({
                                 value={data.remarks}
                                 onChange={(event) => setData('remarks', event.target.value)}
                                 rows={3}
-                                className="block w-full rounded-md border-border text-sm outline-none focus:border-foreground/40 focus:ring-2 focus:ring-ring/40"
+                                className="block w-full rounded-md border-border text-sm outline-none focus-visible:border-foreground/40 focus-visible:ring-2 focus-visible:ring-ring/40"
                             />
                         </div>
                     </div>
@@ -1000,7 +848,7 @@ export default function CreateOrderModal({
                     }}
                     title={modalTitle}
                     description={modalDescription}
-                    snapPoints={['auto']}
+                    snapPoints={[0.92]}
                     defaultSnap={0}
                     footer={footerButtons}
                 >
@@ -1016,7 +864,6 @@ export default function CreateOrderModal({
                     maxHeight="92vh"
                     closeOnBackdrop={!processing}
                     closeOnEscape={!processing}
-                    className="[&>div:first-child]:px-6 [&>div:first-child]:pb-5 [&>div:first-child]:pt-6 [&>div:first-child_h2]:!text-lg [&>div:first-child_p]:!mt-3 [&>div:first-child_p]:!text-sm [&>div:last-child]:px-6 [&>div:last-child]:py-5"
                     footer={footerButtons}
                 >
                     {stepper}

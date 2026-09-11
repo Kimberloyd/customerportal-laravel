@@ -6,10 +6,19 @@ import { AnimatedBadge } from '@/components/motion/animated-badge';
 import { Input } from '@/components/motion/input';
 import { Table } from '@/components/motion/table';
 import { formatDateTime } from '@/utils/orderDisplay';
+import { useFieldValidation } from '@/hooks/useFieldValidation';
 import { router, useForm } from '@inertiajs/react';
 import { Check, ImageIcon, Minus, MoreHorizontal, PackageCheck, Plus, X } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+
+const reasonRules = {
+    reason: (value) => {
+        const trimmed = (value ?? '').trim();
+        if (!trimmed) return 'Describe the reason for the return.';
+        return trimmed.length >= 10 ? null : 'Describe the reason for the return in at least 10 characters.';
+    },
+};
 
 const RETURN_STATUS_COPY = {
     requested: { label: 'Awaiting review', status: 'warning' },
@@ -39,6 +48,7 @@ function RequestReturnModal({ open, onClose, order, presetItemId }) {
     );
     const [attachmentItems, setAttachmentItems] = useState([]);
     const [attachmentError, setAttachmentError] = useState('');
+    const validation = useFieldValidation(reasonRules);
     const { data, setData, post, processing, errors, clearErrors, transform } = useForm({
         reason: '',
         items: [],
@@ -71,6 +81,7 @@ function RequestReturnModal({ open, onClose, order, presetItemId }) {
         setAttachmentItems([]);
         setAttachmentError('');
         clearErrors();
+        validation.reset();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, presetItemId, returnableItems]);
 
@@ -205,15 +216,29 @@ function RequestReturnModal({ open, onClose, order, presetItemId }) {
                             onChange={(event) => {
                                 setData('reason', event.target.value);
                                 clearErrors('return_request');
+                                validation.onChange('reason', event.target.value, data);
                             }}
+                            onBlur={() => validation.onBlur('reason', data.reason, data)}
                             minLength={10}
                             maxLength={1000}
                             required
                             rows={4}
                             placeholder="Describe the issue with the delivered products."
-                            className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className={`w-full resize-y rounded-md border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 ${
+                                validation.clientErrors.reason
+                                    ? 'border-destructive focus-visible:ring-destructive/25'
+                                    : 'border-input focus-visible:ring-ring'
+                            }`}
                         />
-                        <span className="block text-xs font-normal text-muted-foreground">Minimum 10 characters. Do not include patient information.</span>
+                        {validation.clientErrors.reason ? (
+                            <span className="block text-xs font-normal text-destructive" role="alert">{validation.clientErrors.reason}</span>
+                        ) : validation.validFields.reason ? (
+                            <span className="flex items-center gap-1 text-xs font-normal text-emerald-600">
+                                <Check aria-hidden="true" className="h-3.5 w-3.5" /> Looks good.
+                            </span>
+                        ) : (
+                            <span className="block text-xs font-normal text-muted-foreground">Minimum 10 characters. Do not include patient information.</span>
+                        )}
                     </label>
                     <div>
                         <label className="mb-2 block text-sm font-medium text-foreground">

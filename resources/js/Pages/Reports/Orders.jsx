@@ -9,7 +9,7 @@ import { useMemo, useState } from 'react';
 
 const STATUS_OPTIONS = [
     { value: 'all', label: 'All Statuses' },
-    { value: 'submitted', label: 'Submitted' },
+    { value: 'pending', label: 'Pending' },
     { value: 'partial', label: 'Partial' },
     { value: 'completed', label: 'Completed' },
     { value: 'cancelled', label: 'Cancelled' },
@@ -57,12 +57,12 @@ export default function Orders({ orders, filters, customers, summary }) {
                     </Link>
                 ),
             },
-            { key: 'submitted_at', header: 'Date', cell: (order) => formatDateTime(order.submitted_at) },
+            { key: 'submitted_at', header: 'Date', cell: (order) => `Submitted ${formatDateTime(order.submitted_at)}` },
             { key: 'customer_name', header: 'Customer' },
             { key: 'products', header: 'Products' },
-            { key: 'ordered_units', header: 'Ordered' },
-            { key: 'delivered_units', header: 'Delivered' },
-            { key: 'balance_units', header: 'Balance' },
+            { key: 'ordered_units', header: 'Ordered', align: 'right' },
+            { key: 'delivered_units', header: 'Delivered', align: 'right' },
+            { key: 'balance_units', header: 'Balance', align: 'right' },
             {
                 key: 'status',
                 header: 'Status',
@@ -74,6 +74,7 @@ export default function Orders({ orders, filters, customers, summary }) {
                                 status={badge.status}
                                 size="sm"
                                 pulse={false}
+                                icon={badge.icon ? <badge.icon className="h-3.5 w-3.5" /> : undefined}
                                 className="border-0 bg-transparent px-0 shadow-none"
                             >
                                 {badge.label}
@@ -131,7 +132,7 @@ export default function Orders({ orders, filters, customers, summary }) {
                 </nav>
 
                 <div className="space-y-6 lg:col-span-10">
-                <form onSubmit={applyFilters} className="no-print flex flex-wrap items-end gap-3 rounded-lg bg-white p-4 shadow-sm">
+                <form onSubmit={applyFilters} className="no-print flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white p-4">
                     <label className="flex flex-col text-sm text-muted-foreground">
                         Date filter
                         <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="mt-1 rounded-md border-gray-300 text-sm">
@@ -173,22 +174,24 @@ export default function Orders({ orders, filters, customers, summary }) {
                     </Button>
                 </form>
 
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                    <div className="rounded-lg bg-white p-4 shadow-sm">
+                <div className="space-y-4">
+                    <div className="rounded-lg border border-gray-200 bg-white p-4">
                         <p className="type-label text-muted-foreground">Total Orders</p>
-                        <p className="mt-1 text-2xl font-semibold text-foreground">{summary.orders}</p>
+                        <p className="mt-1 text-3xl font-semibold text-foreground">{summary.orders}</p>
                     </div>
-                    <div className="rounded-lg bg-white p-4 shadow-sm">
-                        <p className="type-label text-muted-foreground">Ordered Units</p>
-                        <p className="mt-1 text-2xl font-semibold text-foreground">{summary.ordered_units}</p>
-                    </div>
-                    <div className="rounded-lg bg-white p-4 shadow-sm">
-                        <p className="type-label text-muted-foreground">Delivered Units</p>
-                        <p className="mt-1 text-2xl font-semibold text-foreground">{summary.delivered_units}</p>
-                    </div>
-                    <div className="rounded-lg bg-white p-4 shadow-sm">
-                        <p className="type-label text-muted-foreground">Balance Units</p>
-                        <p className="mt-1 text-2xl font-semibold text-foreground">{summary.balance_units}</p>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <div className="rounded-lg border border-gray-200 bg-white p-4">
+                            <p className="type-label text-muted-foreground">Ordered Units</p>
+                            <p className="mt-1 text-2xl font-semibold text-foreground">{summary.ordered_units}</p>
+                        </div>
+                        <div className="rounded-lg border border-gray-200 bg-white p-4">
+                            <p className="type-label text-muted-foreground">Delivered Units</p>
+                            <p className="mt-1 text-2xl font-semibold text-foreground">{summary.delivered_units}</p>
+                        </div>
+                        <div className="rounded-lg border border-gray-200 bg-white p-4">
+                            <p className="type-label text-muted-foreground">Balance Units</p>
+                            <p className="mt-1 text-2xl font-semibold text-foreground">{summary.balance_units}</p>
+                        </div>
                     </div>
                 </div>
 

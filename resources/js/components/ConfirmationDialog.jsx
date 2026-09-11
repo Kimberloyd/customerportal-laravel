@@ -30,7 +30,6 @@ export default function ConfirmationDialog({
             onClose={() => onOpenChange(false)}
             title={title}
             maxWidth={560}
-            className="[&>div:first-child]:px-6 [&>div:first-child]:pb-5 [&>div:first-child]:pt-6 [&>div:first-child_h2]:!text-lg [&>div:last-child]:mt-auto [&>div:last-child]:px-6 [&>div:last-child]:py-5"
             closeOnBackdrop={!processing}
             closeOnEscape={!processing}
             children={

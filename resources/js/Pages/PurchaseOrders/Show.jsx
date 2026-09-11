@@ -68,8 +68,8 @@ export default function Show({
     const followUpColumns = useMemo(() => [
         { key: 'kind', header: 'Follow-up', cell: (followUp) => followUpLabels[followUp.kind] ?? followUp.kind },
         { key: 'level', header: 'Next step', cell: (followUp) => <span className="capitalize">{followUp.status === 'escalated' ? 'Escalated' : followUp.level}</span> },
-        { key: 'next_due_at', header: 'Due', cell: (followUp) => followUp.next_due_at ? formatDateTime(followUp.next_due_at) : '—' },
-        { key: 'last_dispatched_at', header: 'Last sent', cell: (followUp) => followUp.last_dispatched_at ? formatDateTime(followUp.last_dispatched_at) : '—' },
+        { key: 'next_due_at', header: 'Due', cell: (followUp) => followUp.next_due_at ? `Due ${formatDateTime(followUp.next_due_at)}` : '—' },
+        { key: 'last_dispatched_at', header: 'Last sent', cell: (followUp) => followUp.last_dispatched_at ? `Sent ${formatDateTime(followUp.last_dispatched_at)}` : '—' },
     ], []);
 
     const loadEditOrderProducts = useCallback(() => {
@@ -204,11 +204,13 @@ export default function Show({
             {
                 key: 'quantity',
                 header: 'Ordered',
+                align: 'right',
                 cell: (item) => (item.__isTotal ? null : item.quantity),
             },
             {
                 key: 'delivered_quantity',
                 header: 'Delivered',
+                align: 'right',
                 spanRow: (item) => (item.__isTotal ? (showDeliverColumn ? 3 : 2) : undefined),
                 cell: (item) =>
                     item.__isTotal ? (
@@ -276,6 +278,7 @@ export default function Show({
             {
                 key: 'pending_quantity',
                 header: 'Balance',
+                align: 'right',
                 cell: (item) => (item.__isTotal ? null : item.pending_quantity),
             },
             ...(showDeliverColumn
@@ -472,6 +475,7 @@ export default function Show({
                                 status={currentStatus.status}
                                 size="md"
                                 pulse={false}
+                                icon={currentStatus.icon ? <currentStatus.icon className="h-4 w-4" /> : undefined}
                                 className="border-0 bg-transparent px-0 text-2xl font-semibold shadow-none [&_svg]:!h-6 [&_svg]:!w-6"
                             >
                                 {currentStatus.label}

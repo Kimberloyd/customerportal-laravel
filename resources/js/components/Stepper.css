@@ -112,6 +112,12 @@
   position: relative;
   cursor: pointer;
   outline: none;
+  border-radius: 9999px;
+}
+
+.step-indicator:focus-visible {
+  outline: 2px solid var(--ring, #6b97ff);
+  outline-offset: 2px;
 }
 
 .step-indicator-inner {
