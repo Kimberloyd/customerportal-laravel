@@ -27,7 +27,7 @@ class PurchaseOrder extends Model
 
     public const STATUS_PARTIAL = 'partial';
 
-    public const STATUS_PROCESSING = 'processing';
+    public const STATUS_PROCESSED = 'processed';
 
     public const STATUS_COMPLETED = 'completed';
 
@@ -41,7 +41,7 @@ class PurchaseOrder extends Model
 
     public const TERMINAL_STATUSES = [self::STATUS_COMPLETED, self::STATUS_CANCELLED];
 
-    public const IN_PROGRESS_STATUSES = [self::STATUS_PARTIAL, self::STATUS_PROCESSING, self::STATUS_RETURNED];
+    public const IN_PROGRESS_STATUSES = [self::STATUS_PARTIAL, self::STATUS_PROCESSED, self::STATUS_RETURNED];
 
     protected function casts(): array
     {
@@ -133,7 +133,7 @@ class PurchaseOrder extends Model
             // Delivery settlement and order completion are separate business
             // actions. Once every unit is delivered, staff can review the
             // result and explicitly close the order.
-            $this->status = self::STATUS_PROCESSING;
+            $this->status = self::STATUS_PROCESSED;
             $this->completed_at = null;
         }
     }

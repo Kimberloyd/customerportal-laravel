@@ -58,7 +58,7 @@ class OrdersTest extends TestCase
         $this->makeOrder($customer, PurchaseOrder::STATUS_PARTIAL, now(), [
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
-        $this->makeOrder($customer, PurchaseOrder::STATUS_PROCESSING, now(), [
+        $this->makeOrder($customer, PurchaseOrder::STATUS_PROCESSED, now(), [
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
         $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [

@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   Calendar as CalendarPrimitive,
   CalendarCell,
@@ -62,14 +62,14 @@ const CalendarHeader = ({ className, ...props }: React.ComponentProps<'header'>)
         className="flex size-8 items-center justify-center rounded-full text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40 **:[svg]:size-4"
         slot="previous"
       >
-        <ChevronLeftIcon />
+        <ChevronLeft />
       </Button>
       <Heading className="text-base font-semibold text-foreground" />
       <Button
         className="flex size-8 items-center justify-center rounded-full text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40 **:[svg]:size-4"
         slot="next"
       >
-        <ChevronRightIcon />
+        <ChevronRight />
       </Button>
     </header>
   )

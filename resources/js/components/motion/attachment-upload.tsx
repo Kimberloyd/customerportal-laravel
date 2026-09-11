@@ -74,6 +74,10 @@ export interface AttachmentUploadProps {
   onFilesRejected?: (files: File[], reason: AttachmentRejectReason) => void;
   onRemove?: (item: AttachmentUploadItem) => void;
   onRetry?: (item: AttachmentUploadItem) => void;
+  /** 0-100 real upload progress, applied to every item with status "uploading" -- these forms upload as one request, not per-file. */
+  uploadProgress?: number;
+  /** Seconds remaining, shown next to the percentage when known (e.g. from an Axios progress event's `estimated`). */
+  uploadEstimatedSeconds?: number;
   playingId?: string;
   onAudioToggle?: (item: AttachmentUploadItem) => void;
   accept?: string;
@@ -97,8 +101,11 @@ const MODAL_EASE = [0.23, 1, 0.32, 1] as const;
 const MODAL_LEAVE = [0.4, 0, 1, 1] as const;
 const MODAL_SURFACE = { type: "spring", stiffness: 420, damping: 36, mass: 0.9 } as const;
 const DEFAULT_MAX_FILE_SIZE = 500 * 1024 * 1024;
-const UPLOAD_PROGRESS_MS = 900;
-const UPLOAD_COMPLETE_HOLD_MS = 1000;
+// Purely cosmetic: how long a just-added row is considered "recently arrived"
+// for the staggered slide-in animation below. Real upload state (uploading /
+// complete / failed) comes entirely from the consumer-driven `item.status` --
+// this window never implies anything about network progress.
+const ARRIVAL_STAGGER_WINDOW_MS = 700;
 const REMOVE_PENDING_MS = 420;
 
 const WAVEFORM_BARS = [
@@ -479,6 +486,8 @@ function AttachmentRow({
   failed,
   removing,
   arrivalIndex,
+  uploadProgressPercent,
+  uploadEstimatedSeconds,
   imageLayoutId,
   onAudioToggle,
   onImagePreview,
@@ -494,6 +503,8 @@ function AttachmentRow({
   failed: boolean;
   removing: boolean;
   arrivalIndex: number;
+  uploadProgressPercent?: number;
+  uploadEstimatedSeconds?: number;
   imageLayoutId?: string;
   onAudioToggle?: (item: AttachmentUploadItem) => void;
   onImagePreview: (item: AttachmentUploadItem) => void;
@@ -530,20 +541,34 @@ function AttachmentRow({
         }
       : ITEM_TRANSITION;
   const showUploadProgress = uploading || uploadComplete;
+  // Real percentage from the consumer's actual network request -- not a
+  // fixed-duration animation. Framer Motion interpolates scaleX smoothly as
+  // this prop updates across re-renders while the upload is in flight.
+  const progressFraction = uploadComplete
+    ? 1
+    : Math.max(0, Math.min(1, (uploadProgressPercent ?? 0) / 100));
   const uploadProgress = (
     <motion.span
       role="progressbar"
+      aria-valuenow={uploadComplete ? 100 : uploadProgressPercent}
+      aria-valuemin={0}
+      aria-valuemax={100}
       aria-label={`Uploading ${item.name}`}
       className="pointer-events-none absolute inset-0 -z-10 origin-left bg-emerald-400/25 dark:bg-emerald-500/20"
       initial={{ opacity: 1, scaleX: 0 }}
-      animate={{ opacity: 1, scaleX: 1 }}
+      animate={{ opacity: 1, scaleX: progressFraction }}
       exit={reduce ? undefined : { opacity: 0 }}
-      transition={{
-        duration: reduce ? 0.1 : UPLOAD_PROGRESS_MS / 1000,
-        ease: EASE_OUT,
-      }}
+      transition={{ duration: reduce ? 0.1 : 0.25, ease: EASE_OUT }}
     />
   );
+  const uploadStatusText = uploading
+    ? [
+        typeof uploadProgressPercent === 'number' ? `${Math.round(uploadProgressPercent)}%` : 'Uploading',
+        typeof uploadEstimatedSeconds === 'number' && uploadEstimatedSeconds > 0
+          ? `${Math.round(uploadEstimatedSeconds)}s left`
+          : null,
+      ].filter(Boolean).join(' · ')
+    : null;
 
   return (
     <motion.li
@@ -658,6 +683,10 @@ function AttachmentRow({
                 <span className="block truncate text-[11px] text-destructive">
                   {item.error ?? "Upload failed"}
                 </span>
+              ) : uploadStatusText ? (
+                <span className="block truncate text-[11px] tabular-nums text-muted-foreground">
+                  {uploadStatusText}
+                </span>
               ) : null}
             </span>
             <span className="shrink-0 text-xs text-muted-foreground">
@@ -713,6 +742,8 @@ export function AttachmentUpload({
   onFilesRejected,
   onRemove,
   onRetry,
+  uploadProgress,
+  uploadEstimatedSeconds,
   playingId,
   onAudioToggle,
   accept,
@@ -737,10 +768,10 @@ export function AttachmentUpload({
   const [dragging, setDragging] = useState(false);
   const [previewItem, setPreviewItem] =
     useState<AttachmentUploadItem | null>(null);
-  const [uploadingIds, setUploadingIds] = useState<Set<string>>(
-    () => new Set(),
-  );
-  const [uploadCompleteIds, setUploadCompleteIds] = useState<Set<string>>(
+  // Cosmetic only -- which rows just arrived, purely to stagger their
+  // slide-in animation. Real upload/failure state lives on `item.status`,
+  // set by the consumer from its actual network request.
+  const [recentlyAddedIds, setRecentlyAddedIds] = useState<Set<string>>(
     () => new Set(),
   );
   const [removingIds, setRemovingIds] = useState<Set<string>>(
@@ -825,26 +856,16 @@ export function AttachmentUpload({
       if (added.length === 0) return;
       setItems([...items, ...added]);
       const addedIds = added.map((item) => item.id);
-      setUploadingIds((current) => new Set([...current, ...addedIds]));
+      setRecentlyAddedIds((current) => new Set([...current, ...addedIds]));
       scheduleLifecycle(
         () => {
-          setUploadingIds((current) => {
+          setRecentlyAddedIds((current) => {
             const next = new Set(current);
             for (const id of addedIds) next.delete(id);
             return next;
           });
-          setUploadCompleteIds(
-            (current) => new Set([...current, ...addedIds]),
-          );
-          scheduleLifecycle(() => {
-            setUploadCompleteIds((current) => {
-              const next = new Set(current);
-              for (const id of addedIds) next.delete(id);
-              return next;
-            });
-          }, UPLOAD_COMPLETE_HOLD_MS);
         },
-        reduce ? 140 : UPLOAD_PROGRESS_MS,
+        reduce ? 140 : ARRIVAL_STAGGER_WINDOW_MS,
       );
       onFilesAdded?.(added, accepted);
     },
@@ -875,12 +896,7 @@ export function AttachmentUpload({
       setPreviewItem((current) =>
         current?.id === item.id ? null : current,
       );
-      setUploadingIds((current) => {
-        const next = new Set(current);
-        next.delete(item.id);
-        return next;
-      });
-      setUploadCompleteIds((current) => {
+      setRecentlyAddedIds((current) => {
         const next = new Set(current);
         next.delete(item.id);
         return next;
@@ -931,7 +947,7 @@ export function AttachmentUpload({
     }
   }, [items, previewItem]);
 
-  const uploadOrder = Array.from(uploadingIds);
+  const arrivalOrder = Array.from(recentlyAddedIds);
   const previewLayoutId = previewItem
     ? `attachment-image-${previewItem.id}`
     : undefined;
@@ -1039,23 +1055,19 @@ export function AttachmentUpload({
 
           {items.length > 0 ? (
             <ul className={cn("space-y-2", classNames?.list)}>
-              <AnimatePresence initial={uploadOrder.length > 0}>
+              <AnimatePresence initial={arrivalOrder.length > 0}>
                 {items.map((item) => (
                   <AttachmentRow
                     key={item.id}
                     item={item}
                     playing={playingId === item.id}
-                    uploading={
-                      uploadingIds.has(item.id) ||
-                      item.status === "uploading"
-                    }
-                    uploadComplete={
-                      uploadCompleteIds.has(item.id) ||
-                      item.status === "complete"
-                    }
+                    uploading={item.status === "uploading"}
+                    uploadComplete={item.status === "complete"}
                     failed={item.status === "failed"}
                     removing={removingIds.has(item.id)}
-                    arrivalIndex={uploadOrder.indexOf(item.id)}
+                    arrivalIndex={arrivalOrder.indexOf(item.id)}
+                    uploadProgressPercent={item.status === "uploading" ? uploadProgress : undefined}
+                    uploadEstimatedSeconds={item.status === "uploading" ? uploadEstimatedSeconds : undefined}
                     imageLayoutId={
                       reduce ? undefined : `attachment-image-${item.id}`
                     }

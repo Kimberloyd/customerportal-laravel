@@ -36,9 +36,9 @@ function SectionHeading({ title, description }) {
  * the right, divided from the row above by a hairline. Collapses to a single
  * stacked column below md.
  */
-function Row({ label, description, children }) {
+function Row({ label, description, children, first = false }) {
     return (
-        <div className="grid gap-3 border-t border-border py-5 md:grid-cols-3 md:gap-8">
+        <div className={`-mx-5 grid gap-3 px-5 py-5 sm:-mx-6 sm:px-6 md:grid-cols-3 md:gap-8 ${first ? '' : 'border-t border-border'}`}>
             <div>
                 <p className="text-sm font-medium text-foreground">{label}</p>
                 {description && (
@@ -183,7 +183,7 @@ function SemaphoreUsage({ semaphore }) {
 
             {/* Full width rather than inside a Row -- four columns do not fit
                 the Row grid's max-w-xl content column. */}
-            <div className="border-t border-border py-5">
+            <div className="-mx-5 border-t border-border px-5 py-5 sm:-mx-6 sm:px-6">
                 <p className="text-sm font-medium text-foreground">Recent messages</p>
                 <p className="mt-1 text-sm text-muted-foreground">
                     The latest texts sent through this account.
@@ -266,24 +266,25 @@ function ReminderSettings({ reminders, smsConfigured, onSaved }) {
     };
 
     return (
-        <div className="mt-8 rounded-xl border border-border bg-card p-5 sm:p-6">
+        <div className="mt-8">
             <SectionHeading title="Reminders and escalation" description="Follow up automatically when an order or return is waiting too long." />
-            <Row label="Automatic reminders" description="Pause this to stop both portal reminders and reminder texts. Existing history is kept.">
-                <Switch label={form.enabled ? 'Automatic reminders enabled' : 'Automatic reminders paused'} checked={form.enabled} onToggle={() => setForm({ ...form, enabled: !form.enabled })} disabled={saving} />
-            </Row>
-            <Row label="Customer reminder texts" description="Portal reminders continue even when reminder texts are off.">
-                <div className="space-y-2">
-                    <Switch label={form.customer_sms_enabled ? 'Reminder texts enabled' : 'Reminder texts paused'} checked={form.customer_sms_enabled} onToggle={() => setForm({ ...form, customer_sms_enabled: !form.customer_sms_enabled })} disabled={saving || !smsConfigured} />
-                    {!smsConfigured && <p className="text-sm text-muted-foreground">Configure Semaphore before enabling reminder texts.</p>}
-                </div>
-            </Row>
-            <Row label="SMS quiet hours" description={`Customer reminder texts use ${form.timezone}.`}>
-                <div className="flex flex-wrap items-center gap-3">
-                    <label className="text-sm text-muted-foreground">From <input aria-label="Quiet hours start" type="number" min="0" max="23" value={form.quiet_hours_start} onChange={(event) => setForm({ ...form, quiet_hours_start: Number(event.target.value) })} className="ml-2 w-20 rounded-md border-border text-sm" /></label>
-                    <label className="text-sm text-muted-foreground">until <input aria-label="Quiet hours end" type="number" min="0" max="23" value={form.quiet_hours_end} onChange={(event) => setForm({ ...form, quiet_hours_end: Number(event.target.value) })} className="ml-2 w-20 rounded-md border-border text-sm" /></label>
-                </div>
-            </Row>
-            <div className="border-t border-border py-5">
+            <div className="rounded-xl border border-border bg-card px-5 pb-5 pt-0 sm:px-6 sm:pb-6">
+                <Row first label="Automatic reminders" description="Pause this to stop both portal reminders and reminder texts. Existing history is kept.">
+                    <Switch label={form.enabled ? 'Automatic reminders enabled' : 'Automatic reminders paused'} checked={form.enabled} onToggle={() => setForm({ ...form, enabled: !form.enabled })} disabled={saving} />
+                </Row>
+                <Row label="Customer reminder texts" description="Portal reminders continue even when reminder texts are off.">
+                    <div className="space-y-2">
+                        <Switch label={form.customer_sms_enabled ? 'Reminder texts enabled' : 'Reminder texts paused'} checked={form.customer_sms_enabled} onToggle={() => setForm({ ...form, customer_sms_enabled: !form.customer_sms_enabled })} disabled={saving || !smsConfigured} />
+                        {!smsConfigured && <p className="text-sm text-muted-foreground">Configure Semaphore before enabling reminder texts.</p>}
+                    </div>
+                </Row>
+                <Row label="SMS quiet hours" description={`Customer reminder texts use ${form.timezone}.`}>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <label className="text-sm text-muted-foreground">From <input aria-label="Quiet hours start" type="number" min="0" max="23" value={form.quiet_hours_start} onChange={(event) => setForm({ ...form, quiet_hours_start: Number(event.target.value) })} className="ml-2 w-20 rounded-md border-border text-sm" /></label>
+                        <label className="text-sm text-muted-foreground">until <input aria-label="Quiet hours end" type="number" min="0" max="23" value={form.quiet_hours_end} onChange={(event) => setForm({ ...form, quiet_hours_end: Number(event.target.value) })} className="ml-2 w-20 rounded-md border-border text-sm" /></label>
+                    </div>
+                </Row>
+                <div className="-mx-5 border-t border-border px-5 py-5 sm:-mx-6 sm:px-6">
                 <p className="text-sm font-medium text-foreground">Timing in hours</p>
                 <p className="mt-1 text-sm text-muted-foreground">Escalation must occur after the earlier reminder.</p>
                 <div className="mt-4 space-y-4">
@@ -299,12 +300,13 @@ function ReminderSettings({ reminders, smsConfigured, onSaved }) {
                     ))}
                 </div>
             </div>
-            <div className="border-t border-border py-5 text-sm text-muted-foreground">
-                <p>Last scheduler run: {formatWhen(form.last_scheduler_run)}</p>
-                {form.last_failure && <p className="mt-1 text-amber-700">Most recent issue: {form.last_failure}</p>}
+                <div className="-mx-5 border-t border-border px-5 py-5 text-sm text-muted-foreground sm:-mx-6 sm:px-6">
+                    <p>Last scheduler run: {formatWhen(form.last_scheduler_run)}</p>
+                    {form.last_failure && <p className="mt-1 text-amber-700">Most recent issue: {form.last_failure}</p>}
+                </div>
+                {error && <p role="alert" className="mb-4 text-sm text-red-600">{error}</p>}
+                <div className="-mx-5 flex justify-end border-t border-border px-5 pt-5 sm:-mx-6 sm:px-6"><Button type="button" variant="primary" className="rounded-md" disabled={saving} onClick={save}>{saving ? 'Saving...' : 'Save reminder settings'}</Button></div>
             </div>
-            {error && <p role="alert" className="mb-4 text-sm text-red-600">{error}</p>}
-            <div className="flex justify-end border-t border-border pt-5"><Button type="button" variant="primary" disabled={saving} onClick={save}>{saving ? 'Saving...' : 'Save reminder settings'}</Button></div>
         </div>
     );
 }
@@ -345,48 +347,51 @@ function NotificationsSection({ sms, semaphore, reminders, onSaved }) {
 
     return (
         <>
-        <section className="mt-8 rounded-xl border border-border bg-card p-5 sm:p-6">
+        <section className="mt-8">
             <SectionHeading
                 title="Order SMS"
                 description="Choose whether customers receive text updates about their orders."
             />
 
-            <Row
-                label="Send order texts"
-                description="Send a text when an order is submitted, updated, completed, cancelled, or received."
-            >
-                <div className="flex flex-col gap-2">
-                    <Switch
-                        label={enabled ? 'Order texts enabled' : 'Order texts paused'}
-                        checked={enabled}
-                        onToggle={toggle}
-                        disabled={saving}
-                    />
-                    <p className="text-sm text-muted-foreground">
-                        {canSend
-                            ? 'Customers will receive text updates for their orders.'
-                            : enabled
-                                ? 'Order texts are enabled, but setup is still required.'
-                                : 'No order texts will be sent while this setting is paused.'}
-                    </p>
-                    {saveError && (
-                        <p className="text-sm text-red-600" role="alert">
-                            {saveError}
+            <div className="rounded-xl border border-border bg-card px-5 pb-5 pt-0 sm:px-6 sm:pb-6">
+                <Row
+                    first
+                    label="Send order texts"
+                    description="Send a text when an order is submitted, updated, completed, cancelled, or received."
+                >
+                    <div className="flex flex-col gap-2">
+                        <Switch
+                            label={enabled ? 'Order texts enabled' : 'Order texts paused'}
+                            checked={enabled}
+                            onToggle={toggle}
+                            disabled={saving}
+                        />
+                        <p className="text-sm text-muted-foreground">
+                            {canSend
+                                ? 'Customers will receive text updates for their orders.'
+                                : enabled
+                                    ? 'Order texts are enabled, but setup is still required.'
+                                    : 'No order texts will be sent while this setting is paused.'}
                         </p>
-                    )}
-                </div>
-            </Row>
+                        {saveError && (
+                            <p className="text-sm text-red-600" role="alert">
+                                {saveError}
+                            </p>
+                        )}
+                    </div>
+                </Row>
 
-            {sms.configured ? (
-                <SemaphoreUsage semaphore={semaphore} />
-            ) : (
-                <div className="mt-5 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900" role="alert">
-                    <p className="font-medium">SMS is not configured</p>
-                    <p className="mt-1">
-                        Add <code className="font-medium">SEMAPHORE_API_KEY</code> to this environment and restart the app. Until then, customers will not receive order texts.
-                    </p>
-                </div>
-            )}
+                {sms.configured ? (
+                    <SemaphoreUsage semaphore={semaphore} />
+                ) : (
+                    <div className="mt-5 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900" role="alert">
+                        <p className="font-medium">SMS is not configured</p>
+                        <p className="mt-1">
+                            Add <code className="font-medium">SEMAPHORE_API_KEY</code> to this environment and restart the app. Until then, customers will not receive order texts.
+                        </p>
+                    </div>
+                )}
+            </div>
         </section>
         <ReminderSettings reminders={reminders} smsConfigured={sms.configured} onSaved={onSaved} />
         </>
@@ -428,13 +433,14 @@ function TwoFactorSection({ twoFactor }) {
     };
 
     return (
-        <section className="mt-8 rounded-xl border border-border bg-card p-5 sm:p-6">
+        <section className="mt-8">
             <SectionHeading
                 title="Two-factor authentication"
                 description="Require a code from your authenticator app after entering your password."
             />
 
-            {twoFactor.recovery_codes && (
+            <div className="rounded-xl border border-border bg-card px-5 pb-5 pt-0 sm:px-6 sm:pb-6">
+                {twoFactor.recovery_codes && (
                 <div className="mb-5 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-950" role="status">
                     <p className="text-sm font-semibold">Save these recovery codes now</p>
                     <p className="mt-1 text-sm">Each code works once. They will not be shown again.</p>
@@ -444,20 +450,22 @@ function TwoFactorSection({ twoFactor }) {
                         ))}
                     </div>
                 </div>
-            )}
+                )}
 
             {!twoFactor.enabled && !twoFactor.setup_secret && (
                 <Row
+                    first={!twoFactor.recovery_codes}
                     label="Authenticator app"
                     description="Use Google Authenticator, Microsoft Authenticator, 1Password, or another TOTP app."
                 >
-                    <Button type="button" variant="primary" onClick={beginSetup}>Set up authenticator</Button>
+                    <Button type="button" variant="primary" className="rounded-md" onClick={beginSetup}>Set up authenticator</Button>
                 </Row>
             )}
 
             {!twoFactor.enabled && twoFactor.setup_secret && (
                 <form onSubmit={confirmSetup}>
                     <Row
+                        first={!twoFactor.recovery_codes}
                         label="Setup key"
                         description="Add an account manually in your authenticator app, then enter its current code."
                     >
@@ -478,9 +486,9 @@ function TwoFactorSection({ twoFactor }) {
                             classNames={FIELD_CLASS_NAMES}
                         />
                     </Row>
-                    <div className="flex justify-end gap-3 border-t border-border pt-5">
-                        <Button type="button" variant="tertiary" onClick={cancelSetup}>Cancel</Button>
-                        <Button type="submit" variant="primary" disabled={confirm.processing}>Confirm and enable</Button>
+                    <div className="-mx-5 flex justify-end gap-3 border-t border-border px-5 pt-5 sm:-mx-6 sm:px-6">
+                        <Button type="button" variant="tertiary" className="rounded-md" onClick={cancelSetup}>Cancel</Button>
+                        <Button type="submit" variant="primary" className="rounded-md" disabled={confirm.processing}>Confirm and enable</Button>
                     </div>
                 </form>
             )}
@@ -488,6 +496,7 @@ function TwoFactorSection({ twoFactor }) {
             {twoFactor.enabled && (
                 <>
                     <Row
+                        first={!twoFactor.recovery_codes}
                         label="Status"
                         description="Your password alone can no longer sign in to this account."
                     >
@@ -508,16 +517,17 @@ function TwoFactorSection({ twoFactor }) {
                             classNames={FIELD_CLASS_NAMES}
                         />
                         <div className="mt-3 flex flex-wrap gap-3">
-                            <Button type="button" variant="tertiary" disabled={manage.processing} onClick={regenerateRecoveryCodes}>
+                            <Button type="button" variant="tertiary" className="rounded-md" disabled={manage.processing} onClick={regenerateRecoveryCodes}>
                                 Generate new recovery codes
                             </Button>
-                            <Button type="button" variant="destructive" disabled={manage.processing} onClick={disable}>
+                            <Button type="button" variant="destructive" className="rounded-md" disabled={manage.processing} onClick={disable}>
                                 Disable two-factor authentication
                             </Button>
                         </div>
                     </Row>
                 </>
-            )}
+                )}
+            </div>
         </section>
     );
 }
@@ -593,53 +603,62 @@ export default function Edit({ user, sms, semaphore, reminders, two_factor: twoF
                 )}
 
                 {active === 'details' && (
-                    <form onSubmit={submit} className="mt-8 rounded-xl border border-border bg-card p-5 sm:p-6">
+                    <div className="mt-8">
                         <SectionHeading
                             title="My details"
                             description="Update your name and the number we reach you on."
                         />
 
-                        <Row
-                            label="Email"
-                            description={`${user.role_label} account. Contact an administrator to change your email or password.`}
-                        >
-                            <p className="text-sm text-foreground">{user.email}</p>
-                        </Row>
+                        <form onSubmit={submit} className="rounded-xl border border-border bg-card px-5 pb-5 pt-0 sm:px-6 sm:pb-6">
+                            <Row
+                                first
+                                label="Email"
+                                description={`${user.role_label} account. Contact an administrator to change your email or password.`}
+                            >
+                                <Input
+                                    label="Email"
+                                    type="email"
+                                    value={user.email}
+                                    disabled
+                                    classNames={FIELD_CLASS_NAMES}
+                                />
+                            </Row>
 
-                        <Row label="Full name" description="The name shown across the portal.">
-                            <Input
-                                label="Full Name"
-                                type="text"
-                                required
-                                autoComplete="off"
-                                value={data.full_name}
-                                onChange={(value) => updateField('full_name', value)}
-                                error={errors.full_name}
-                                classNames={FIELD_CLASS_NAMES}
-                            />
-                        </Row>
+                            <Row label="Full name" description="The name shown across the portal.">
+                                <Input
+                                    label="Full Name"
+                                    type="text"
+                                    required
+                                    autoComplete="off"
+                                    value={data.full_name}
+                                    onChange={(value) => updateField('full_name', value)}
+                                    error={errors.full_name}
+                                    classNames={FIELD_CLASS_NAMES}
+                                />
+                            </Row>
 
-                        <Row
-                            label="Phone number"
-                            description="Used for order text messages when they're turned on."
-                        >
-                            <Input
-                                label="Phone Number"
-                                type="tel"
-                                autoComplete="off"
-                                value={data.phone}
-                                onChange={(value) => updateField('phone', value)}
-                                error={errors.phone}
-                                classNames={FIELD_CLASS_NAMES}
-                            />
-                        </Row>
+                            <Row
+                                label="Phone number"
+                                description="Used for order text messages when they're turned on."
+                            >
+                                <Input
+                                    label="Phone Number"
+                                    type="tel"
+                                    autoComplete="off"
+                                    value={data.phone}
+                                    onChange={(value) => updateField('phone', value)}
+                                    error={errors.phone}
+                                    classNames={FIELD_CLASS_NAMES}
+                                />
+                            </Row>
 
-                        <div className="flex justify-end border-t border-border pt-5">
-                            <Button type="submit" variant="primary" disabled={processing}>
-                                Save Changes
-                            </Button>
-                        </div>
-                    </form>
+                            <div className="-mx-5 flex justify-end border-t border-border px-5 pt-5 sm:-mx-6 sm:px-6">
+                                <Button type="submit" variant="primary" className="rounded-md" disabled={processing}>
+                                    Save Changes
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
                 )}
 
                 {active === 'notifications' && sms && (

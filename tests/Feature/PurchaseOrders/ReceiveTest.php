@@ -53,7 +53,7 @@ class ReceiveTest extends TestCase
         $response->assertSessionHas('error', 'Enter a received quantity for at least one product.');
     }
 
-    public function test_status_transitions_submitted_to_partial_to_ready_to_complete(): void
+    public function test_status_transitions_pending_to_partial_to_processed(): void
     {
         $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
@@ -72,7 +72,7 @@ class ReceiveTest extends TestCase
             "received_{$item->id}" => 6,
         ]);
         $order->refresh();
-        $this->assertSame(PurchaseOrder::STATUS_PROCESSING, $order->status);
+        $this->assertSame(PurchaseOrder::STATUS_PROCESSED, $order->status);
         $this->assertNull($order->completed_at);
     }
 

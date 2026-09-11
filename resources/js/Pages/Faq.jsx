@@ -33,7 +33,7 @@ const FAQ_ITEMS = [
             <ul className="list-disc space-y-1.5 pl-4">
                 <li><Term>Submitted</Term> — waiting for fulfillment.</li>
                 <li><Term>Partial</Term> — part of the order has been delivered.</li>
-                <li><Term>Ready to complete</Term> — all items have been delivered and the order can be closed.</li>
+                <li><Term>Processed</Term> — all items have been delivered and the order can be closed.</li>
                 <li><Term>Completed</Term> — all items have been delivered.</li>
                 <li><Term>Cancelled</Term> — the order will not be fulfilled.</li>
             </ul>

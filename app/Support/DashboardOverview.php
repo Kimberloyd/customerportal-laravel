@@ -42,7 +42,7 @@ class DashboardOverview
         });
         $attentionCount = (clone $attention)->count();
         $attention->orderByRaw($isCustomer
-            ? "CASE WHEN status = 'completed' THEN 0 WHEN status IN ('partial', 'processing') THEN 1 ELSE 2 END"
+            ? "CASE WHEN status = 'completed' THEN 0 WHEN status IN ('partial', 'processed') THEN 1 ELSE 2 END"
             : "CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
             ->orderBy('submitted_at')->orderBy('id');
 
@@ -78,8 +78,10 @@ class DashboardOverview
             'completed' => (int) ($statuses[PurchaseOrder::STATUS_COMPLETED] ?? 0),
             'stages' => [
                 'pending' => (int) ($statuses[PurchaseOrder::STATUS_SUBMITTED] ?? 0),
-                'fulfillment' => (int) ($statuses[PurchaseOrder::STATUS_PARTIAL] ?? 0) + (int) ($statuses[PurchaseOrder::STATUS_PROCESSING] ?? 0),
+                'partial' => (int) ($statuses[PurchaseOrder::STATUS_PARTIAL] ?? 0),
+                'processed' => (int) ($statuses[PurchaseOrder::STATUS_PROCESSED] ?? 0),
                 'completed' => (int) ($statuses[PurchaseOrder::STATUS_COMPLETED] ?? 0),
+                'returned' => (int) ($statuses[PurchaseOrder::STATUS_RETURNED] ?? 0),
                 'cancelled' => (int) ($statuses[PurchaseOrder::STATUS_CANCELLED] ?? 0),
             ],
         ];

@@ -18,8 +18,8 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['"Google Sans"', 'Arial', ...defaultTheme.fontFamily.sans],
-                display: ['Montserrat', ...defaultTheme.fontFamily.sans],
+                sans: ['Outfit', ...defaultTheme.fontFamily.sans],
+                display: ['Outfit', ...defaultTheme.fontFamily.sans],
             },
             fontSize: {
                 xs: ['0.75rem', { lineHeight: '1rem' }],

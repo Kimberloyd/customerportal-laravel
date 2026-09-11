@@ -1,4 +1,4 @@
-import { ChevronUpDownIcon } from '@heroicons/react/20/solid'
+import { ChevronsUpDown } from 'lucide-react'
 import { Button } from 'react-aria-components/Button'
 import { ListBox, type ListBoxProps } from 'react-aria-components/ListBox'
 import type { PopoverProps } from 'react-aria-components/Popover'
@@ -117,7 +117,7 @@ const SelectTrigger = ({ children, className, ...props }: SelectTriggerProps) =>
                     '*:mt-0 *:data-[slot=avatar]:[--avatar-size:1.25rem] sm:*:data-[slot=avatar]:[--avatar-size:1.125rem]',
                   ])}
                 />
-                <ChevronUpDownIcon
+                <ChevronsUpDown
                   data-slot="chevron"
                   className="ms-auto -me-1 size-5 shrink-0 text-muted-fg sm:size-4"
                 />

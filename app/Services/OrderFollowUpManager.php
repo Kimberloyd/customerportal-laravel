@@ -55,7 +55,7 @@ class OrderFollowUpManager
             return;
         }
 
-        if ($order->status === PurchaseOrder::STATUS_PROCESSING) {
+        if ($order->status === PurchaseOrder::STATUS_PROCESSED) {
             $this->activate($order, self::AWAITING_CUSTOMER_CLOSE, $at, refresh: $activityAt !== null);
             $this->resolve($order, [self::AWAITING_FULFILLMENT, self::STALLED_PARTIAL]);
         }
@@ -91,7 +91,7 @@ class OrderFollowUpManager
         return match ($followUp->kind) {
             self::AWAITING_FULFILLMENT => in_array($order->status, [PurchaseOrder::STATUS_SUBMITTED, PurchaseOrder::STATUS_RETURNED], true),
             self::STALLED_PARTIAL => $order->status === PurchaseOrder::STATUS_PARTIAL,
-            self::AWAITING_CUSTOMER_CLOSE => $order->status === PurchaseOrder::STATUS_PROCESSING,
+            self::AWAITING_CUSTOMER_CLOSE => $order->status === PurchaseOrder::STATUS_PROCESSED,
             self::RETURN_REVIEW => $followUp->productReturn?->status === ProductReturn::STATUS_REQUESTED,
             self::RETURN_RECEIPT => $followUp->productReturn?->status === ProductReturn::STATUS_APPROVED,
             default => false,

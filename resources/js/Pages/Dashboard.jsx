@@ -26,11 +26,9 @@ export default function Dashboard({ dashboard, workspace }) {
         only: ['dashboard', 'workspace'], preserveState: true, preserveScroll: true,
         onStart: () => setLoading(true), onFinish: () => setLoading(false),
     });
-    const inProgressCurrent = current.stages.pending + current.stages.fulfillment;
-    const inProgressPrevious = previous.stages.pending + previous.stages.fulfillment;
     const metrics = [
-        { label: customer ? 'Orders placed' : 'Orders received', value: number.format(current.orders), href: ordersUrl, delta: percentDelta(current.orders, previous.orders) },
-        { label: 'Orders in progress', value: number.format(inProgressCurrent), href: `${ordersUrl}&status=active`, delta: percentDelta(inProgressCurrent, inProgressPrevious) },
+        { label: 'Total Orders', value: number.format(current.orders), href: ordersUrl, delta: percentDelta(current.orders, previous.orders) },
+        { label: 'Pending orders', value: number.format(current.stages.pending), href: `${ordersUrl}&status=pending`, delta: percentDelta(current.stages.pending, previous.stages.pending) },
         { label: 'Completed orders', value: number.format(current.completed), href: `${ordersUrl}&status=completed`, delta: percentDelta(current.completed, previous.completed) },
         { label: customer ? 'Your delivery progress' : 'Quantity fulfilled', value: current.fulfillment === null ? '—' : `${number.format(current.fulfillment)}%`, href: ordersUrl, delta: pointsDelta(current.fulfillment, previous.fulfillment) },
     ];

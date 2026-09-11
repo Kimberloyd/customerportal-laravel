@@ -49,7 +49,7 @@ function RequestReturnModal({ open, onClose, order, presetItemId }) {
     const [attachmentItems, setAttachmentItems] = useState([]);
     const [attachmentError, setAttachmentError] = useState('');
     const validation = useFieldValidation(reasonRules);
-    const { data, setData, post, processing, errors, clearErrors, transform } = useForm({
+    const { data, setData, post, processing, progress, errors, clearErrors, transform } = useForm({
         reason: '',
         items: [],
         return_images: [],
@@ -95,10 +95,24 @@ function RequestReturnModal({ open, onClose, order, presetItemId }) {
     };
 
     const submit = (event) => {
-        event.preventDefault();
+        event?.preventDefault?.();
+        // Reflects the files' actual place in the real request about to go
+        // out, instead of the fake "uploading" flash that used to play the
+        // instant each file was picked, long before this POST exists.
+        setAttachmentItems((current) => current.map((item) => ({ ...item, status: 'uploading', error: undefined })));
         post(route('purchase-orders.returns.store', order.public_id), {
             onSuccess: (page) => {
                 if (!page.props.flash?.error) onClose();
+            },
+            onError: (serverErrors) => {
+                // Attribute a per-image validation failure back to its own
+                // row (return_images.N) so only that file shows as failed
+                // and retryable -- the others revert to idle rather than
+                // being stuck mid-"uploading".
+                setAttachmentItems((current) => current.map((item, index) => {
+                    const message = serverErrors[`return_images.${index}`];
+                    return message ? { ...item, status: 'failed', error: message } : { ...item, status: 'idle' };
+                }));
             },
         });
     };
@@ -247,19 +261,17 @@ function RequestReturnModal({ open, onClose, order, presetItemId }) {
                         <AttachmentUpload
                             value={attachmentItems}
                             onValueChange={(items) => {
-                                const files = items.map((item) => item.file).filter(Boolean);
-                                const allowed = files.every((file) => ['image/jpeg', 'image/png', 'image/webp'].includes(file.type));
+                                const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+                                // Drop only the file(s) that fail the type check -- a bad
+                                // file dropped alongside good ones used to wipe the whole
+                                // staged batch, discarding images the user already added.
+                                const validItems = items.filter((item) => !item.file || allowedTypes.includes(item.file.type));
+                                const rejectedCount = items.length - validItems.length;
+                                const files = validItems.map((item) => item.file).filter(Boolean);
 
-                                if (!allowed) {
-                                    setAttachmentItems([]);
-                                    setData('return_images', []);
-                                    setAttachmentError('Choose JPG, PNG, or WebP images.');
-                                    return;
-                                }
-
-                                setAttachmentItems(items);
+                                setAttachmentItems(validItems);
                                 setData('return_images', files);
-                                setAttachmentError('');
+                                setAttachmentError(rejectedCount > 0 ? 'Choose JPG, PNG, or WebP images.' : '');
                                 clearErrors(
                                     'return_images',
                                     ...Object.keys(errors).filter((key) => key.startsWith('return_images.')),
@@ -272,6 +284,9 @@ function RequestReturnModal({ open, onClose, order, presetItemId }) {
                                     setAttachmentError('Add no more than 5 images.');
                                 }
                             }}
+                            onRetry={() => submit()}
+                            uploadProgress={progress?.percentage}
+                            uploadEstimatedSeconds={progress?.estimated}
                             accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
                             multiple
                             maxFiles={5}

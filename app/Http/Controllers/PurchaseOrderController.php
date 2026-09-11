@@ -41,7 +41,7 @@ class PurchaseOrderController extends Controller
     private const PENDING_STATUSES = [
         PurchaseOrder::STATUS_SUBMITTED,
         PurchaseOrder::STATUS_PARTIAL,
-        PurchaseOrder::STATUS_PROCESSING,
+        PurchaseOrder::STATUS_PROCESSED,
         PurchaseOrder::STATUS_RETURNED,
     ];
 
@@ -152,6 +152,10 @@ class PurchaseOrderController extends Controller
         } elseif ($statusFilter === PurchaseOrder::STATUS_COMPLETED) {
             $query->where('status', $statusFilter);
         } elseif ($statusFilter === PurchaseOrder::STATUS_CANCELLED) {
+            $query->where('status', $statusFilter);
+        } elseif ($statusFilter === PurchaseOrder::STATUS_PROCESSED) {
+            $query->where('status', $statusFilter);
+        } elseif ($statusFilter === PurchaseOrder::STATUS_RETURNED) {
             $query->where('status', $statusFilter);
         } else {
             $statusFilter = 'all';
@@ -591,7 +595,7 @@ class PurchaseOrderController extends Controller
                 if (in_array($locked->status, PurchaseOrder::TERMINAL_STATUSES, true)) {
                     throw new UserActionException("This order is already {$locked->status} and cannot receive deliveries.");
                 }
-                if ($locked->status === PurchaseOrder::STATUS_PROCESSING) {
+                if ($locked->status === PurchaseOrder::STATUS_PROCESSED) {
                     throw new UserActionException('All items are already delivered. Complete the order to close it.');
                 }
 

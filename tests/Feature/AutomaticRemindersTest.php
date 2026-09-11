@@ -61,7 +61,7 @@ class AutomaticRemindersTest extends TestCase
         $this->assertSame(now()->addHours(48)->format('Y-m-d H:i:s'), $partial->next_due_at->format('Y-m-d H:i:s'));
         $this->assertSame(OrderFollowUp::STATUS_RESOLVED, OrderFollowUp::where('kind', OrderFollowUpManager::AWAITING_FULFILLMENT)->value('status'));
 
-        $order->status = PurchaseOrder::STATUS_PROCESSING;
+        $order->status = PurchaseOrder::STATUS_PROCESSED;
         $order->save();
         $manager->syncOrder($order, now());
         $this->assertDatabaseHas('order_follow_ups', ['kind' => OrderFollowUpManager::AWAITING_CUSTOMER_CLOSE, 'status' => 'pending']);
@@ -215,7 +215,7 @@ class AutomaticRemindersTest extends TestCase
         $this->travelTo(now()->setTimezone('Asia/Manila')->setTime(10, 0)->utc());
         $customerUser = User::factory()->create(['role' => User::ROLE_CUSTOMER, 'phone' => '09171234567']);
         $customer = $this->makeCustomer('Hospital', $customerUser);
-        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_PROCESSING, now()->subDays(2));
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_PROCESSED, now()->subDays(2));
         app(OrderFollowUpManager::class)->syncOrder($order);
         $followUp = OrderFollowUp::firstOrFail();
         $followUp->update(['status' => 'dispatching']);
@@ -240,7 +240,7 @@ class AutomaticRemindersTest extends TestCase
         $this->travelTo(now()->setTimezone('Asia/Manila')->setTime(22, 0)->utc());
         $user = User::factory()->create(['role' => User::ROLE_CUSTOMER, 'phone' => '09171234567']);
         $customer = $this->makeCustomer('Hospital', $user);
-        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_PROCESSING, now()->subDays(2));
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_PROCESSED, now()->subDays(2));
         app(OrderFollowUpManager::class)->syncOrder($order);
         $followUp = OrderFollowUp::firstOrFail();
         $followUp->update(['status' => 'dispatching']);

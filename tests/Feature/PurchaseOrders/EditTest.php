@@ -335,7 +335,7 @@ class EditTest extends TestCase
             "quantity_{$item->id}" => 5,
         ]);
 
-        $this->assertSame(PurchaseOrder::STATUS_PROCESSING, $order->fresh()->status);
+        $this->assertSame(PurchaseOrder::STATUS_PROCESSED, $order->fresh()->status);
     }
 
     public function test_orphaned_customer_gets_403(): void

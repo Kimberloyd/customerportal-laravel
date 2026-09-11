@@ -274,7 +274,7 @@ class NotificationTest extends TestCase
         $customerUser = User::factory()->create(['role' => 'customer']);
         $customer = $this->makeCustomer('Own Co', $customerUser);
         $product = $this->makeProduct();
-        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_PROCESSING, now(), [
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_PROCESSED, now(), [
             ['product_id' => $product->id, 'quantity' => 5, 'delivered_quantity' => 5],
         ]);
 

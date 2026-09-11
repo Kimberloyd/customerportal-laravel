@@ -15,7 +15,7 @@ import { usePurchaseOrderRealtime } from '@/hooks/usePurchaseOrderRealtime';
 import { Deferred, Head, router } from '@inertiajs/react';
 import { parseDate } from '@internationalized/date';
 import { useContainerBreakpoint } from '@/lib/hooks/use-container-breakpoint';
-import { Archive, Check, Funnel, ListChecks, MoreHorizontal, Search, SquareArrowOutUpRight } from 'lucide-react';
+import { Archive, Funnel, ListChecks, MoreHorizontal, Search, SquareArrowOutUpRight } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const STATUS_FILTER_OPTIONS = [
@@ -23,7 +23,9 @@ const STATUS_FILTER_OPTIONS = [
     { value: 'active', label: 'Active' },
     { value: 'pending', label: 'Pending' },
     { value: 'partial', label: 'Partially delivered' },
+    { value: 'processed', label: 'Processed' },
     { value: 'completed', label: 'Completed' },
+    { value: 'returned', label: 'Needs redelivery' },
     { value: 'cancelled', label: 'Cancelled' },
 ];
 
@@ -437,13 +439,12 @@ export default function Index({
                                         key={option.value}
                                         type="button"
                                         onClick={() => setStatus(option.value)}
-                                        className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm transition-colors ${
+                                        className={`inline-flex items-center rounded-full border px-4 py-2 text-sm transition-colors ${
                                             status === option.value
                                                 ? 'border-primary bg-primary text-primary-foreground'
                                                 : 'border-border text-foreground hover:bg-muted'
                                         }`}
                                     >
-                                        {status === option.value && <Check className="h-4 w-4" />}
                                         {option.label}
                                     </button>
                                 ))}

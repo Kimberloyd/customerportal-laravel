@@ -34,7 +34,7 @@ class CompleteTest extends TestCase
         $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct();
-        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_PROCESSING, now(), [
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_PROCESSED, now(), [
             ['product_id' => $product->id, 'quantity' => 3, 'delivered_quantity' => 3],
         ]);
 
@@ -47,7 +47,7 @@ class CompleteTest extends TestCase
         $this->makeCustomer('Own Co', $user);
         $otherCustomer = $this->makeCustomer('Other Co');
         $product = $this->makeProduct();
-        $order = $this->makeOrder($otherCustomer, PurchaseOrder::STATUS_PROCESSING, now(), [
+        $order = $this->makeOrder($otherCustomer, PurchaseOrder::STATUS_PROCESSED, now(), [
             ['product_id' => $product->id, 'quantity' => 3, 'delivered_quantity' => 3],
         ]);
 
@@ -79,7 +79,7 @@ class CompleteTest extends TestCase
         $user = User::factory()->create(['role' => 'customer']);
         $customer = $this->makeCustomer('Own Co', $user);
         $product = $this->makeProduct();
-        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_PROCESSING, now(), [
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_PROCESSED, now(), [
             ['product_id' => $product->id, 'quantity' => 10, 'delivered_quantity' => 10],
         ]);
 

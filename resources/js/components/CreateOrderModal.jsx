@@ -81,6 +81,7 @@ export default function CreateOrderModal({
         post,
         transform,
         processing,
+        progress,
         errors,
         clearErrors,
         reset,
@@ -476,6 +477,13 @@ export default function CreateOrderModal({
             ? route('purchase-orders.update', initialOrder.public_id)
             : route('purchase-orders.store');
 
+        // Reflects the file's actual place in the real request about to go
+        // out, instead of the fake "uploading" flash that used to play the
+        // instant the file was picked, long before this POST exists.
+        if (attachmentItems[0]) {
+            setAttachmentItems([{ ...attachmentItems[0], status: 'uploading', error: undefined }]);
+        }
+
         post(endpoint, {
             forceFormData: true,
             preserveScroll: true,
@@ -484,6 +492,9 @@ export default function CreateOrderModal({
                 resetAndClose();
             },
             onError: (serverErrors) => {
+                if (serverErrors.po_attachment && attachmentItems[0]) {
+                    setAttachmentItems([{ ...attachmentItems[0], status: 'failed', error: serverErrors.po_attachment }]);
+                }
                 let targetStep = detailsStepIndex;
                 if (!skipCustomerStep && serverErrors.customer_id) targetStep = 1;
                 else if (Object.keys(serverErrors).some((key) => key.startsWith('items'))) targetStep = productsStepIndex;
@@ -746,6 +757,9 @@ export default function CreateOrderModal({
                                         }));
                                     }
                                 }}
+                                onRetry={() => submit()}
+                                uploadProgress={progress?.percentage}
+                                uploadEstimatedSeconds={progress?.estimated}
                                 accept=".pdf,.png,.jpg,.jpeg"
                                 multiple={false}
                                 maxFiles={1}

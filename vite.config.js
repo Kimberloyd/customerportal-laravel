@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import react from '@vitejs/plugin-react';
+import { fileURLToPath, URL } from 'node:url';
 
 export default defineConfig({
     plugins: [
@@ -10,6 +11,11 @@ export default defineConfig({
         }),
         react(),
     ],
+    resolve: {
+        alias: {
+            'lucide-react': fileURLToPath(new URL('./resources/js/lib/morphicons-lucide-react.tsx', import.meta.url)),
+        },
+    },
     server: {
         // Only takes effect when Vite's own dev server binds 0.0.0.0 (e.g.
         // `npm run dev -- --host 0.0.0.0`, used to run the dev server

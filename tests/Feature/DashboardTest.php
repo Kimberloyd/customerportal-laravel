@@ -111,15 +111,15 @@ class DashboardTest extends TestCase
     {
         $user = User::factory()->create(['role' => 'customer']);
         $customer = $this->makeCustomer('Own Company', $user);
-        $readyToClose = $this->makeOrder($customer, PurchaseOrder::STATUS_PROCESSING, now(), [
+        $processedOrder = $this->makeOrder($customer, PurchaseOrder::STATUS_PROCESSED, now(), [
             ['quantity' => 3, 'delivered_quantity' => 3],
         ]);
 
         $this->actingAsUser($user)->get('/dashboard')->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('dashboard.attention_count', 1)
-                ->where('dashboard.attention.0.id', $readyToClose->id)
-                ->where('dashboard.attention.0.status', PurchaseOrder::STATUS_PROCESSING));
+                ->where('dashboard.attention.0.id', $processedOrder->id)
+                ->where('dashboard.attention.0.status', PurchaseOrder::STATUS_PROCESSED));
     }
 
     public function test_company_dashboard_includes_all_customers_and_prioritizes_submitted_orders(): void

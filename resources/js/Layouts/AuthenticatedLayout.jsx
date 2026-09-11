@@ -403,16 +403,6 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                 active: route().current('settings.*'),
                 label: 'Settings',
             },
-            ...(user.role === 'admin'
-                ? []
-                : [
-                      {
-                          key: 'faq',
-                          href: route('faq'),
-                          active: route().current('faq'),
-                          label: 'FAQ',
-                      },
-                  ]),
         ],
         [user.role],
     );

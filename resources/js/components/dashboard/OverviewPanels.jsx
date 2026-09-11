@@ -1,10 +1,10 @@
 import { AnimatedBadge } from '@/components/motion/animated-badge';
+import { LineChart } from '@/components/ui/line-chart';
 import { statusBadge } from '@/utils/orderDisplay';
 import { Link } from '@inertiajs/react';
 import { ArrowRight, CheckCheck, ClipboardCheck, Package, Truck } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useLayoutEffect, useRef, useState } from 'react';
-import { Area, AreaChart, ResponsiveContainer } from 'recharts';
 
 const number = new Intl.NumberFormat('en-PH');
 const surface = 'rounded-2xl border border-stone-200/80 bg-white dark:border-white/10 dark:bg-[#1d1e22]';
@@ -46,13 +46,25 @@ export function PrimaryMetricCard({ label, value, delta, href, period, trend }) 
                     {delta && <p className="mt-2 text-xs font-medium text-stone-500 dark:text-stone-400">{delta.text} vs previous {period} days</p>}
                 </div>
                 {sparkline.length > 1 && (
-                    <div className="h-24 w-52 shrink-0 sm:h-28 sm:w-64" aria-hidden="true">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={sparkline} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
-                                <defs><linearGradient id="primary-metric-sparkline" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10b981" stopOpacity={0.25} /><stop offset="100%" stopColor="#10b981" stopOpacity={0} /></linearGradient></defs>
-                                <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2} fill="url(#primary-metric-sparkline)" isAnimationActive={false} />
-                            </AreaChart>
-                        </ResponsiveContainer>
+                    <div className="pointer-events-none h-24 w-52 shrink-0 sm:h-28 sm:w-64" aria-hidden="true">
+                        <LineChart
+                            data={sparkline}
+                            dataKey="value"
+                            config={{ value: { color: '#10b981' } }}
+                            containerHeight={112}
+                            hideXAxis
+                            hideYAxis
+                            hideGridLines
+                            tooltip={false}
+                            legend={false}
+                            connectNulls
+                            // Order counts are small integers -- an
+                            // auto-scaled axis that never touches 0 would
+                            // turn a routine 1-2 order swing into what looks
+                            // like a dramatic spike.
+                            yAxisProps={{ domain: [0, 'auto'] }}
+                            lineProps={{ isAnimationActive: false }}
+                        />
                     </div>
                 )}
             </div>
@@ -104,11 +116,20 @@ export function SecondaryMetricsCard({ metrics, reducedMotion }) {
 }
 
 export function OrderStages({ current, previous, ordersUrl, reducedMotion }) {
+    // Same tones as the order status badges (see statusBadge() in
+    // utils/orderDisplay.js and STATUS_CLASS in motion/animated-badge.tsx):
+    // neutral=muted-foreground, warning=amber-500, info/success are the
+    // custom brand tokens. Partial and Needs redelivery share amber and
+    // Pending/Cancelled share gray there too -- kept identical here rather
+    // than inventing distinct colors, so the same status always reads as
+    // the same color everywhere in the app.
     const stages = [
-        { key: 'pending', label: 'Pending', color: 'bg-indigo-500', status: 'pending' },
-        { key: 'fulfillment', label: 'In fulfillment', color: 'bg-amber-500', status: 'partial' },
-        { key: 'completed', label: 'Completed', color: 'bg-emerald-500', status: 'completed' },
-        { key: 'cancelled', label: 'Cancelled', color: 'bg-stone-400' },
+        { key: 'pending', label: 'Pending', color: 'bg-muted-foreground', status: 'pending' },
+        { key: 'partial', label: 'Partial', color: 'bg-amber-500', status: 'partial' },
+        { key: 'processed', label: 'Processed', color: 'bg-info', status: 'processed' },
+        { key: 'completed', label: 'Completed', color: 'bg-success', status: 'completed' },
+        { key: 'returned', label: 'Needs redelivery', color: 'bg-amber-500', status: 'returned' },
+        { key: 'cancelled', label: 'Cancelled', color: 'bg-muted-foreground' },
     ];
     return (
         <div className="mt-3 border-t border-stone-100 px-5 py-4 sm:px-6 dark:border-white/10">
@@ -116,7 +137,7 @@ export function OrderStages({ current, previous, ordersUrl, reducedMotion }) {
             <div aria-hidden="true" className="mb-4 flex h-1.5 gap-1 overflow-hidden rounded-full bg-stone-100 dark:bg-white/5">
                 {stages.map((stage) => <motion.span key={stage.key} className={`h-full rounded-full ${stage.color}`} initial={false} animate={{ width: `${current.orders ? current.stages[stage.key] / current.orders * 100 : 0}%` }} transition={{ duration: reducedMotion ? 0 : 0.45 }} />)}
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 {stages.map((stage) => (
                     <div key={stage.key}>
                         <p className="flex items-center gap-1.5 text-xs text-stone-600 dark:text-stone-400"><span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${stage.color}`} />{stage.label}</p>
@@ -131,7 +152,7 @@ export function OrderStages({ current, previous, ordersUrl, reducedMotion }) {
 
 function actionFor(order, customer) {
     if (order.status === 'completed') return { label: 'Confirm receipt', description: 'All items delivered. Confirm they arrived.', icon: ClipboardCheck };
-    if (order.status === 'processing') return { label: customer ? 'Close order' : 'Complete order', description: customer ? 'All items delivered. Ready to close.' : 'All items have been delivered.', icon: ClipboardCheck };
+    if (order.status === 'processed') return { label: customer ? 'Close order' : 'Complete order', description: customer ? 'All items delivered. Processed.' : 'All items have been delivered.', icon: ClipboardCheck };
     if (order.status === 'partial') return { label: customer ? 'Track delivery' : 'Continue fulfillment', description: `${number.format(order.delivered_units)} of ${number.format(order.ordered_units)} units delivered`, icon: Truck };
     return { label: customer ? 'View order' : 'Fulfill order', description: 'Pending and waiting for fulfillment.', icon: Package };
 }

@@ -1,4 +1,4 @@
-import { CheckIcon } from '@heroicons/react/20/solid'
+import { Check } from 'lucide-react'
 import { Collection } from 'react-aria-components/Collection'
 import { composeRenderProps } from 'react-aria-components/composeRenderProps'
 import { Header } from 'react-aria-components/Header'
@@ -115,7 +115,7 @@ const DropdownItem = ({ className, children, intent, ...props }: DropdownItemPro
       {composeRenderProps(children, (children, { isSelected }) => (
         <>
           {isSelected && (
-            <CheckIcon
+            <Check
               className={twJoin(
                 '-ms-0.5 me-1.5 h-lh w-4 shrink-0',
                 "group-has-[svg:not([data-slot='check-indicator'])]:absolute group-has-[svg:not([data-slot='check-indicator'])]:inset-e-0.5 group-has-[svg:not([data-slot='check-indicator'])]:top-1/2 group-has-[svg:not([data-slot='check-indicator'])]:-translate-y-1/2",
