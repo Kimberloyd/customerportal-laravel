@@ -46,12 +46,12 @@ export function PrimaryMetricCard({ label, value, delta, href, period, trend }) 
                     {delta && <p className="mt-2 text-xs font-medium text-stone-500 dark:text-stone-400">{delta.text} vs previous {period} days</p>}
                 </div>
                 {sparkline.length > 1 && (
-                    <div className="pointer-events-none h-24 w-52 shrink-0 sm:h-28 sm:w-64" aria-hidden="true">
+                    <div className="pointer-events-none h-32 w-64 shrink-0 sm:h-40 sm:w-80" aria-hidden="true">
                         <LineChart
                             data={sparkline}
                             dataKey="value"
                             config={{ value: { color: '#10b981' } }}
-                            containerHeight={112}
+                            containerHeight={160}
                             hideXAxis
                             hideYAxis
                             hideGridLines
