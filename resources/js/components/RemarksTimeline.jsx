@@ -131,7 +131,7 @@ export default function RemarksTimeline({ order, form, onSave, canEdit }) {
                 rowHeight={REMARKS_ROW_HEIGHT}
                 height={rows.length * REMARKS_ROW_HEIGHT + 60}
                 emptyState="Nothing has been noted on this order."
-                className="border-gray-200 [&>div]:overflow-hidden"
+                className="border-gray-200"
             />
         </div>
     );

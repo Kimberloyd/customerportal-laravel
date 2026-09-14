@@ -530,7 +530,7 @@ export default function Show({
                             data={itemRows}
                             columns={itemColumns}
                             getRowId={(item) => String(item.id)}
-                            className="border-gray-200 [&>div]:overflow-hidden"
+                            className="border-gray-200"
                             height={autoTableHeight(itemRows.length)}
                             resizable
                             emptyState="No products have been added to this order."
@@ -556,7 +556,7 @@ export default function Show({
                             data={order.follow_ups}
                             columns={followUpColumns}
                             getRowId={(followUp) => String(followUp.id)}
-                            className="border-gray-200 [&>div]:overflow-hidden"
+                            className="border-gray-200"
                             height={order.follow_ups.length * TABLE_ROW_HEIGHT + 60}
                         />
                     </div>

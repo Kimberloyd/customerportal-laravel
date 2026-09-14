@@ -44,7 +44,7 @@ export default function UpdateHistoryTable({ activities }) {
             rowHeight={ROW_HEIGHT}
             height={activities.length * ROW_HEIGHT + 60}
             emptyState="No updates yet — order changes will appear here when they are recorded."
-            className="border-gray-200 [&>div]:overflow-hidden"
+            className="border-gray-200"
         />
     );
 }

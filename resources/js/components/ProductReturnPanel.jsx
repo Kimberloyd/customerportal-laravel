@@ -579,7 +579,7 @@ export default function ProductReturnPanel({
                 data={returns}
                 columns={columns}
                 getRowId={(returnRequest) => String(returnRequest.id)}
-                className="border-gray-200 [&>div]:overflow-hidden"
+                className="border-gray-200"
                 height={autoTableHeight(returns.length)}
                 resizable
                 emptyState="No return requests for this order."
