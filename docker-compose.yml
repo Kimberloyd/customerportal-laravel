@@ -43,6 +43,12 @@ x-database-environment: &database-environment
   DB_USERNAME: ${DB_USERNAME:-customer_portal}
   DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
 
+x-mysql-environment: &mysql-environment
+  MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
+  MYSQL_DATABASE: ${DB_DATABASE:-customer_portal}
+  MYSQL_USER: ${DB_USERNAME:-customer_portal}
+  MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+
 x-redis-environment: &redis-environment
   REDIS_CLIENT: ${REDIS_CLIENT:-phpredis}
   REDIS_HOST: ${REDIS_HOST:-redis}
@@ -146,8 +152,10 @@ services:
     expose:
       - "9000"
     networks:
-      default:
-      flask:
+      - default
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
       test:
         - CMD-SHELL
@@ -220,6 +228,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      db:
+        condition: service_healthy
     restart: unless-stopped
     tmpfs:
       - /app/storage/framework/sessions
@@ -238,8 +248,31 @@ services:
       - no-new-privileges:true
     mem_limit: 192m
     networks:
-      default:
-      flask:
+      - default
+
+  db:
+    # This app used to reach the legacy Flask app's shared MySQL over an
+    # external Docker network (see git history / docs/flask-coupling.md
+    # for that arrangement and why it ended). Flask is retired: this is
+    # now a plain, self-contained MySQL owned entirely by this Compose
+    # project, matching every other service here.
+    image: mysql:8.4@sha256:85b9bf2e29cf836ecb8c2a15a935d4ba0c606631dff1dd79531a11983c638f2a
+    environment:
+      <<: *mysql-environment
+    restart: unless-stopped
+    volumes:
+      - mysql_data:/var/lib/mysql
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 512m
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   redis:
     image: redis:7-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
@@ -275,6 +308,8 @@ services:
     depends_on:
       app:
         condition: service_healthy
+      db:
+        condition: service_healthy
     restart: unless-stopped
     tmpfs:
       - /app/storage/framework/sessions
@@ -293,8 +328,7 @@ services:
       - no-new-privileges:true
     mem_limit: 128m
     networks:
-      default:
-      flask:
+      - default
 
   proxy:
     build:
@@ -357,18 +391,9 @@ services:
 volumes:
   laravel_storage:
   redis_data:
+  mysql_data:
 
 networks:
-  # The Flask app's `db` service lives on its own Compose project's
-  # default network, not published on any host port -- joining it here
-  # is the only way to reach `db:3306` from this separate project.
-  # This is a guess at the network name Compose auto-generated for the
-  # Flask stack (`<project-name>_default`); confirm the real name via
-  # `docker network ls` on the NAS before first boot and set
-  # FLASK_NETWORK_NAME in .env if it differs -- see DEPLOY.md.
-  flask:
-    external: true
-    name: ${FLASK_NETWORK_NAME:-customerportal_default}
   # The external network used by cloudflared-wtms. The tunnel routes
   # customerportal.theomeds.com to customerportal-laravel-proxy:8080,
   # so the proxy must share this network for Docker DNS to resolve its alias.

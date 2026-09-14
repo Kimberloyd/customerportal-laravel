@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\User;
 use App\Services\AccountDeletionService;
-use App\Services\LegacyPasswordHasher;
 use App\Support\AdminUserListing;
 use App\Support\UserAudit;
 use Illuminate\Http\Request;
@@ -322,17 +321,7 @@ class UserController extends Controller
             throw ValidationException::withMessages(['password_confirmation' => 'Enter the same password again.']);
         }
 
-        // Hash::check() throws for anything that isn't bcrypt -- accounts
-        // still on a hash from the Flask app (see LegacyPasswordHasher) fail
-        // this check the same way they fail Auth::attempt() otherwise. Those
-        // get rehashed to bcrypt on their next real login regardless, so this
-        // secondary check simply doesn't apply to them yet rather than
-        // paying LegacyPasswordHasher's ~15s scrypt cost for a nice-to-have.
-        if (
-            $currentPasswordHash
-            && ! LegacyPasswordHasher::isLegacyHash($currentPasswordHash)
-            && Hash::check($password, $currentPasswordHash)
-        ) {
+        if ($currentPasswordHash && Hash::check($password, $currentPasswordHash)) {
             throw ValidationException::withMessages([
                 'password' => 'Choose a password different from the current one.',
             ]);

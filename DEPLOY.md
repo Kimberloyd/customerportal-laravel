@@ -1,28 +1,16 @@
-# Deploying to the NAS (private)
+# Deploying to the NAS
 
-This app is meant to run alongside the existing Flask app
-(`/volume1/docker/customerportal`) on the same NAS, sharing the same
-MySQL database and data. It is **not** exposed publicly — no
-Cloudflare tunnel, no domain — just reachable on the NAS's local
-network at `http://<nas-ip>:${HOST_PORT}` (default port `8090`).
+This app is fully self-contained — its own MySQL (`db`), its own Redis,
+its own everything. It used to share a database with a legacy Flask
+app on the same NAS; that arrangement ended and Flask is retired (see
+`docs/flask-coupling.md` for the full history of what that coupling
+was and how it was closed out).
 
 These commands are meant to be run **on the NAS terminal**, in
 `/volume1/docker/customerportal-laravel` (this directory, once the
 latest commit has synced there).
 
-## 1. Confirm the Flask network name
-
-```bash
-docker network ls
-```
-
-Look for a network that looks like `customerportal_default` (or
-similar — it's whatever Compose auto-named the Flask stack's default
-network when it was first brought up). If it's *not* exactly
-`customerportal_default`, set `FLASK_NETWORK_NAME=<the real name>` in
-`.env` in step 2 below — everything else in this guide stays the same.
-
-## 2. Create `.env`
+## 1. Create `.env`
 
 ```bash
 cp .env.production.example .env
@@ -35,22 +23,37 @@ Then edit `.env` and fill in:
   docker run --rm -v "$PWD":/app -w /app php:8.4-cli php artisan key:generate --show
   ```
   Paste the output (including `base64:` prefix) as `APP_KEY=...`.
-- `DB_PASSWORD` — copy the **exact same value** already in
-  `/volume1/docker/customerportal/.env` (`MYSQL_PASSWORD` there). Do
-  not invent a new password — this must match the existing database
-  user.
-- `FLASK_NETWORK_NAME` — only if step 1 found a different name.
+- `DB_PASSWORD` — invent a real password for this app's own database
+  user (this is a fresh database now, not a value to copy from
+  anywhere).
+- `MYSQL_ROOT_PASSWORD` — invent a separate real password. Only the
+  `db` container itself uses this (to bootstrap the database/user
+  above); Laravel never touches it.
 
-## 3. Build and start
+## 2. Build and start
 
 ```bash
 docker compose up -d --build
 ```
 
-This builds both containers (`app` = PHP-FPM, `proxy` = nginx) and
-starts them. `db` is **not** part of this compose file — it joins the
-Flask stack's existing `db` container over the shared network from
-step 1.
+This builds `app` (PHP-FPM) and `proxy` (nginx), and brings up every
+other service in `docker-compose.yml` — including `db`, which is now
+part of this compose project and owned entirely by it.
+
+## 3. Migrate and seed
+
+First boot only — a fresh `db` container has no schema and no accounts
+yet:
+
+```bash
+docker compose exec app php artisan migrate --force
+docker compose exec app php artisan db:seed --force
+```
+
+This creates one admin account: `admin@theomeds.com` / `password`.
+**Log in and change that password immediately** — it's a well-known
+default, not a real secret, and this instance is reachable at a real
+public hostname (see the Cloudflare Tunnel setup below).
 
 ## 4. Verify
 
@@ -65,8 +68,10 @@ Then from a browser on the same network:
 http://<nas-ip>:8090/login
 ```
 
-You should see the login page. Log in with an existing account (same
-credentials as the Flask app — same `users` table).
+You should see the login page. Log in with the admin account from
+step 3, then create real accounts for everyone else from **Admin ->
+Users** and retire the seeded admin credential once you have another
+admin account to use instead.
 
 ## Verify security headers
 
@@ -81,37 +86,21 @@ is valid only while PHP-FPM remains private behind the Compose nginx service.
 If port 9000 is ever published or another proxy is introduced, replace the
 wildcard with the exact proxy IP or CIDR before deployment.
 
-## Apply reviewed schema changes
+## Apply schema changes on later deploys
 
-Do not run an unscoped `php artisan migrate` against the shared Flask database. Its original business tables are owned by the Flask migration history. Before deploying this release, back up the database and run only the reviewed compatibility migrations introduced for these features:
+Now that this app owns its database outright, deploying a new release
+is the normal Laravel way -- no more scoped migration list, no more
+backup-first ritual for routine schema work:
 
 ```bash
-docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_02_010000_add_assigned_employee_to_customers_table.php
-docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_02_020000_create_teams_tables.php
-docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_03_000000_create_product_returns_tables.php
-docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_07_000000_make_team_members_user_unique.php
-docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_08_000000_replace_employee_role_with_office_and_agent.php
-docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_08_010000_add_soft_deletes_to_purchase_orders.php
-docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_08_020000_create_failed_jobs_table.php
-docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_08_030000_remove_reviewing_order_status.php
-docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_09_000000_add_attachment_to_product_returns_table.php
-docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_10_000000_add_two_factor_authentication_to_users_table.php
-docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_10_030000_add_public_ids_to_route_resources.php
-docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_10_040000_add_status_submitted_at_index_to_purchase_orders.php
-docker compose exec app php artisan migrate --force --path=database/migrations/2026_09_11_000000_rename_submitted_status_to_pending.php
+docker compose exec app php artisan migrate --force
 ```
 
-Unlike the others above, `2026_09_11_000000_rename_submitted_status_to_pending` is not purely
-additive -- it rewrites the live `status` column value `'submitted'` to `'pending'` on every
-existing row and swaps the CHECK constraint accordingly. `app/Models/PurchaseOrder.php`'s
-`STATUS_SUBMITTED` constant previously mirrored the Flask app's `app/models.py` as the shared
-source of truth for this value; that mirroring is intentionally broken by this migration. If the
-Flask app still reads or writes `purchase_orders.status` anywhere, it will start writing/comparing
-against `'submitted'` while this app expects `'pending'` -- back up the database before running
-this one, and confirm Flask no longer touches this table (or has been updated to match) first.
-
-Migrations already applied in a prior deploy are skipped automatically, so it's
-safe to re-run the whole list above rather than track which ones are new.
+Migrations already applied in a prior deploy are skipped automatically.
+(`docs/flask-coupling.md` has the history of why this used to be far
+more careful -- a shared-database arrangement with a since-retired
+Flask app. `scripts/migrate-shared-db.sh` and its `I_HAVE_A_BACKUP`
+gate are no longer needed and have been removed.)
 
 Laravel records which targeted changes have already run. The role migration converts every legacy `employee` account to `agent`; assign company-wide operational users to `office` after deployment. The order archival migration adds `deleted_at`, which is required before the updated order model can serve requests. The two-factor migration adds nullable encrypted-authentication fields and does not change existing sign-ins until an account completes enrollment from Settings > Security.
 
@@ -140,7 +129,7 @@ docker compose exec app php artisan reverb:restart
 Then confirm all persistent processes are running:
 
 ```
-docker compose ps app reverb broadcast-worker scheduler redis proxy
+docker compose ps app reverb broadcast-worker scheduler redis db proxy
 ```
 
 After the scheduler has been running for up to two minutes, verify the deeper
@@ -156,13 +145,13 @@ Use the returned `request_id` to correlate the request with `docker compose logs
 
 ## Backups and restore drills
 
-The customer portal shares MySQL with the Flask application and stores private
-order/return uploads in the `laravel_storage` volume. Back up both together. Find
-the existing MySQL container name with `docker ps`, then run:
+This app's own `db` container and the `laravel_storage` volume (private
+order/return uploads) need backing up together. Find the exact
+container name with `docker compose ps db`, then run:
 
 ```bash
 chmod +x scripts/backup-production.sh
-DB_CONTAINER=customerportal-db-1 ./scripts/backup-production.sh
+DB_CONTAINER=customerportal-laravel-db-1 ./scripts/backup-production.sh
 ```
 
 Override `BACKUP_ROOT` if the NAS backup destination differs from
@@ -182,7 +171,7 @@ tar -tzf 20260910T000000Z-private-uploads.tar.gz >/dev/null
 ```
 
 Perform database restore drills into a disposable MySQL database, never directly
-over the shared production database. Import the decompressed SQL, start an
+over the production database. Import the decompressed SQL, start an
 isolated app against that database, restore the private upload archive into an
 empty volume, and confirm login, order history, and a private attachment. Record
 the date and duration of each drill. Run the backup daily and a restore drill at
@@ -190,14 +179,9 @@ least quarterly.
 
 ## Automatic reminders and escalation
 
-Reminder delivery is disabled by default. Apply only the two reviewed additive
-migrations below; do not run an unrestricted `php artisan migrate` against the
-shared Flask database.
-
-```bash
-sudo docker compose exec app php artisan migrate --path=database/migrations/2026_09_10_010000_create_order_follow_ups_table.php --force
-sudo docker compose exec app php artisan migrate --path=database/migrations/2026_09_10_020000_add_follow_up_fields_to_purchase_order_notifications.php --force
-```
+Reminder delivery is disabled by default. The two migrations it needs
+are covered by the normal `php artisan migrate --force` from "Apply
+schema changes on later deploys" above -- nothing extra to run here.
 
 Inspect existing open work without writing reminder state:
 
@@ -258,10 +242,14 @@ unavailable; do not fall back to client-stored cookie sessions.
 
 ## If something's wrong
 
-- **`app` container unhealthy / can't reach `db`**: almost always the
-  network name from step 1 — double check `FLASK_NETWORK_NAME` in
-  `.env` matches `docker network ls`'s actual output, then
-  `docker compose up -d --build` again.
+- **`app` container unhealthy / can't reach `db`**: check `docker
+  compose logs db` first -- a fresh `db` container can take a few
+  healthcheck retries to finish initializing before `app` will start.
+  If it's still failing after that, confirm `DB_PASSWORD` in `.env`
+  matches what `db` actually bootstrapped with (only matters if `.env`
+  changed after `db`'s volume was first created -- MySQL only reads
+  `MYSQL_PASSWORD`/`MYSQL_DATABASE` on that container's very first
+  boot).
 - **500 error, blank page**: `docker compose logs app` — logs go to
   stderr, so they'll show there directly (see `LOG_CHANNEL=stderr` in
   `.env`).
@@ -270,14 +258,17 @@ unavailable; do not fall back to client-stored cookie sessions.
   should persist across `docker compose up -d --build` runs; it's only
   lost if someone runs `docker compose down -v`.
 
-## Scope of this deployment
+## Flask retirement
 
-- Private only — reachable on the NAS's local network, no public
-  domain or Cloudflare tunnel. That's a deliberate, separate decision
-  to make later if this is confirmed working and wanted publicly.
-- Email and Facebook Messenger notifications stay disabled (no live
-  SMTP/Meta credentials configured) — see
-  `app/Support/OrderNotifications.php` and
-  `app/Support/FacebookMessenger.php`.
-- The live Flask app and its own `docker-compose.yml` are completely
-  untouched by any of this.
+This app no longer depends on the legacy Flask app in any way -- no
+shared database, no shared Docker network, no shared login system.
+`docs/flask-coupling.md` has the full history of what that coupling
+used to be and how each piece was closed out, for anyone who runs into
+old references to it in git history, migration comments, or this file.
+
+Once every account that needs one exists in this app (see step 3
+above), the Flask app's own Compose stack on the NAS
+(`/volume1/docker/customerportal`) can be stopped and removed. That's
+a separate action on its own project directory --
+`docker compose down` there, run from the NAS terminal -- not
+something this repo's tooling reaches into.

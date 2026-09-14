@@ -30,3 +30,9 @@ Schedule::command('orders:dispatch-follow-ups')
     ->name('order-follow-ups')
     ->withoutOverlapping()
     ->onOneServer();
+
+Schedule::command('security:legacy-passwords --quiet-log')
+    ->weeklyOn(1, '03:00')
+    ->name('legacy-password-coverage')
+    ->withoutOverlapping()
+    ->onOneServer();

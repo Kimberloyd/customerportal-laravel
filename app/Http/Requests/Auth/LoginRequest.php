@@ -4,11 +4,9 @@ namespace App\Http\Requests\Auth;
 
 use App\Models\LoginAttempt;
 use App\Models\User;
-use App\Services\LegacyPasswordHasher;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 class LoginRequest extends FormRequest
@@ -33,9 +31,8 @@ class LoginRequest extends FormRequest
      * Attempt to authenticate the request's credentials.
      *
      * Lockout and attempt history are backed by the login_attempts table
-     * (shared with the Flask app), not Laravel's cache-based RateLimiter
-     * -- same threshold/window, same table, so a lockout triggered by one
-     * app is honored by the other during the migration.
+     * (a real, persistent table, not Laravel's cache-based RateLimiter) so
+     * lockout state survives a cache flush or an app restart.
      *
      * @throws ValidationException
      */
@@ -62,23 +59,10 @@ class LoginRequest extends FormRequest
         }
     }
 
-    /**
-     * Laravel's default bcrypt Hasher::check() throws a RuntimeException
-     * for any hash that isn't bcrypt -- it does not return false -- so
-     * Auth::attempt() can't be tried first and fallen back from the way
-     * "try bcrypt, then legacy" would suggest. The stored hash's format
-     * has to be checked before deciding which path even *can* run.
-     * Once a user's hash has been rehashed below, they permanently take
-     * the fast bcrypt path on every future login.
-     */
     private function attemptAuthentication(?User $user): bool
     {
         if ($user && ! $user->is_active) {
             return false;
-        }
-
-        if ($user && LegacyPasswordHasher::isLegacyHash($user->password_hash)) {
-            return $this->attemptLegacyAuthentication($user);
         }
 
         if (Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
@@ -88,21 +72,6 @@ class LoginRequest extends FormRequest
         }
 
         return false;
-    }
-
-    private function attemptLegacyAuthentication(User $user): bool
-    {
-        if (! LegacyPasswordHasher::verify($this->string('password')->toString(), $user->password_hash)) {
-            return false;
-        }
-
-        $user->password_hash = Hash::make($this->string('password')->toString());
-        $user->save();
-
-        Auth::login($user, $this->boolean('remember'));
-        $this->session()->regenerate();
-
-        return true;
     }
 
     /**

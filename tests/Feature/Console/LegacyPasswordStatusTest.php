@@ -36,6 +36,27 @@ class LegacyPasswordStatusTest extends TestCase
         $this->artisan('security:legacy-passwords --fail-if-present')->assertFailed();
     }
 
+    public function test_it_reports_bcrypt_coverage_percentage(): void
+    {
+        User::factory()->create(['password_hash' => 'scrypt:16:8:1$salt$digest']);
+        User::factory()->create();
+        User::factory()->create();
+        User::factory()->create();
+
+        $this->artisan('security:legacy-passwords')
+            ->expectsOutputToContain('bcrypt coverage: 75%')
+            ->assertSuccessful();
+    }
+
+    public function test_quiet_log_skips_console_output_but_still_gates(): void
+    {
+        User::factory()->create(['password_hash' => 'scrypt:16:8:1$salt$digest']);
+
+        $this->artisan('security:legacy-passwords --quiet-log --fail-if-present')
+            ->doesntExpectOutput()
+            ->assertFailed();
+    }
+
     public function test_it_confirms_when_the_compatibility_dependency_can_be_removed(): void
     {
         User::factory()->create();

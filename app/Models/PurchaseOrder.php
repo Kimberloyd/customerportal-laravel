@@ -19,10 +19,10 @@ class PurchaseOrder extends Model
 
     public $timestamps = false;
 
-    // Deliberately diverges from app/models.py's ORDER_STATUS_SUBMITTED in
-    // the Flask app -- Flask is being retired for this table, so this app
-    // is now the source of truth for order status values. Renamed from
-    // 'submitted' to 'pending' for a clearer customer-facing status.
+    // Named 'pending' rather than the legacy Flask app's 'submitted' for a
+    // clearer customer-facing status -- Flask is retired, this app is the
+    // sole source of truth for order status (see docs/flask-coupling.md
+    // for how that transition happened).
     public const STATUS_SUBMITTED = 'pending';
 
     public const STATUS_PARTIAL = 'partial';
