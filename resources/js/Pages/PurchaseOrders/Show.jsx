@@ -11,6 +11,7 @@ import { formatDateTime, statusBadge } from '@/utils/orderDisplay';
 import { PdfPreview } from '@/components/PdfPreview';
 import ConfirmationDialog from '@/components/ConfirmationDialog';
 import ProductReturnPanel from '@/components/ProductReturnPanel';
+import RemarksTimeline from '@/components/RemarksTimeline';
 import { usePurchaseOrderRealtime } from '@/hooks/usePurchaseOrderRealtime';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { FileText, Minus, Plus } from 'lucide-react';
@@ -55,16 +56,11 @@ export default function Show({
     const [returnItemId, setReturnItemId] = useState(null);
     const [editProductsLoading, setEditProductsLoading] = useState(false);
     const [editProductsError, setEditProductsError] = useState(false);
-    const [editingRemarks, setEditingRemarks] = useState(false);
-    const remarksForm = useForm({ remarks: order.remarks ?? '' });
-    const startEditingRemarks = () => {
-        remarksForm.setData('remarks', order.remarks ?? '');
-        setEditingRemarks(true);
-    };
+    const remarksForm = useForm({ remarks: '' });
     const saveRemarks = () => {
         remarksForm.patch(route('purchase-orders.remarks.update', order.public_id), {
             preserveScroll: true,
-            onSuccess: () => setEditingRemarks(false),
+            onSuccess: () => remarksForm.setData('remarks', ''),
         });
     };
     const attachmentUrl = order.has_attachment ? route('purchase-orders.attachment', order.public_id) : null;
@@ -479,61 +475,6 @@ export default function Show({
                                     </dd>
                                 </div>
                             )}
-                            {(order.remarks || !order.is_terminal) && (
-                                <div className="flex gap-2">
-                                    <dt className="w-28 shrink-0 text-gray-500">Remarks</dt>
-                                    <dd className="min-w-0 flex-1 text-gray-900">
-                                        {editingRemarks ? (
-                                            <div className="space-y-2">
-                                                <textarea
-                                                    value={remarksForm.data.remarks}
-                                                    onChange={(e) => remarksForm.setData('remarks', e.target.value)}
-                                                    rows={3}
-                                                    maxLength={5000}
-                                                    autoFocus
-                                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                                                />
-                                                {remarksForm.errors.remarks && (
-                                                    <p className="text-sm text-red-600">{remarksForm.errors.remarks}</p>
-                                                )}
-                                                <div className="flex gap-2">
-                                                    <Button
-                                                        size="sm"
-                                                        onClick={saveRemarks}
-                                                        disabled={remarksForm.processing}
-                                                    >
-                                                        Save
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => {
-                                                            setEditingRemarks(false);
-                                                            remarksForm.clearErrors();
-                                                        }}
-                                                        disabled={remarksForm.processing}
-                                                    >
-                                                        Cancel
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="flex items-start justify-between gap-3">
-                                                <span className="whitespace-pre-wrap">{order.remarks || '—'}</span>
-                                                {!order.is_terminal && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={startEditingRemarks}
-                                                        className="shrink-0 text-sm text-primary hover:underline"
-                                                    >
-                                                        Edit
-                                                    </button>
-                                                )}
-                                            </div>
-                                        )}
-                                    </dd>
-                                </div>
-                            )}
                         </dl>
                         </div>
 
@@ -620,6 +561,13 @@ export default function Show({
                         />
                     </div>
                 )}
+
+                <RemarksTimeline
+                    order={order}
+                    form={remarksForm}
+                    onSave={saveRemarks}
+                    canEdit={!order.is_terminal}
+                />
 
                 <div>
                     <div className="mb-3">

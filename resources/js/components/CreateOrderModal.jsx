@@ -820,7 +820,7 @@ export default function CreateOrderModal({
                                 </p>
                             )}
                         </div>}
-                        <div>
+                        {!isEditing && <div>
                             <label htmlFor="create-order-remarks" className="mb-1 block text-sm font-medium text-gray-700">
                                 Remarks <span className="font-normal text-gray-400">(optional)</span>
                             </label>
@@ -831,7 +831,7 @@ export default function CreateOrderModal({
                                 rows={3}
                                 className="block w-full rounded-md border-border text-sm outline-none focus-visible:border-foreground/40 focus-visible:ring-2 focus-visible:ring-ring/40"
                             />
-                        </div>
+                        </div>}
                     </div>
                 </Step>
 
@@ -881,12 +881,12 @@ export default function CreateOrderModal({
                                                 : '—')}
                                     </span>
                                 </div>
-                                <div className="flex items-start justify-between gap-4 px-3 py-2">
+                                {!isEditing && <div className="flex items-start justify-between gap-4 px-3 py-2">
                                     <span className="shrink-0 text-gray-500">Remarks</span>
                                     <span className="truncate text-right font-medium text-gray-900">
                                         {data.remarks || '—'}
                                     </span>
-                                </div>
+                                </div>}
                             </div>
                         </div>
                         <p className="text-xs text-muted-foreground">
