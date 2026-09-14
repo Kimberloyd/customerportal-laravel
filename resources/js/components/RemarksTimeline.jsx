@@ -59,6 +59,37 @@ export default function RemarksTimeline({ order, form, onSave, canEdit }) {
         rows.push({ id: '__add-remark__', __isInput: true });
     }
 
+    // Shared by the desktop in-table row and the mobile-only duplicate
+    // rendered below the table -- position:sticky doesn't reliably stick
+    // inside a real <table> across browsers (confirmed broken, not just
+    // untried), so on narrow viewports this control needs to live outside
+    // the table's own horizontal scroll area entirely.
+    const renderAddRemarkControl = () => (
+        <>
+            <input
+                type="text"
+                value={form.data.remarks}
+                onChange={(e) => form.setData('remarks', e.target.value)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' && form.data.remarks.trim()) onSave();
+                }}
+                maxLength={5000}
+                placeholder="Add a remark…"
+                className="min-w-0 flex-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <Button
+                type="button"
+                variant="primary"
+                size="compact"
+                className="shrink-0 rounded-md"
+                onClick={onSave}
+                disabled={form.processing || !form.data.remarks.trim()}
+            >
+                Add remark
+            </Button>
+        </>
+    );
+
     const columns = [
         {
             key: 'created_at',
@@ -67,28 +98,8 @@ export default function RemarksTimeline({ order, form, onSave, canEdit }) {
             spanRow: (row) => (row.__isInput ? TOTAL_COLUMNS : undefined),
             cell: (row) =>
                 row.__isInput ? (
-                    <div className="sticky left-0 z-10 flex w-[min(90vw,32rem)] items-center gap-2 bg-background py-0.5">
-                        <input
-                            type="text"
-                            value={form.data.remarks}
-                            onChange={(e) => form.setData('remarks', e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' && form.data.remarks.trim()) onSave();
-                            }}
-                            maxLength={5000}
-                            placeholder="Add a remark…"
-                            className="min-w-0 flex-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                        />
-                        <Button
-                            type="button"
-                            variant="primary"
-                            size="compact"
-                            className="shrink-0 rounded-md"
-                            onClick={onSave}
-                            disabled={form.processing || !form.data.remarks.trim()}
-                        >
-                            Add remark
-                        </Button>
+                    <div className="hidden w-[min(70vw,32rem)] items-center gap-2 md:flex">
+                        {renderAddRemarkControl()}
                     </div>
                 ) : (
                     <span className="text-gray-500">{formatDateTime(row.created_at)}</span>
@@ -133,6 +144,9 @@ export default function RemarksTimeline({ order, form, onSave, canEdit }) {
                 emptyState="Nothing has been noted on this order."
                 className="border-gray-200"
             />
+            {canEdit && (
+                <div className="mt-3 flex items-center gap-2 md:hidden">{renderAddRemarkControl()}</div>
+            )}
         </div>
     );
 }

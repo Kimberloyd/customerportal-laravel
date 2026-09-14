@@ -194,6 +194,57 @@ export default function Show({
         },
     };
 
+    // Shared by itemColumns' desktop in-table row and the mobile-only
+    // duplicate rendered below the table -- same conditions, same buttons,
+    // just two different places in the DOM depending on viewport width.
+    const renderOrderActionButtons = () => (
+        <>
+            {canCancel && (
+                <Button
+                    type="button"
+                    variant="tertiary"
+                    size="compact"
+                    className="rounded-md text-red-600 hover:text-red-700"
+                    onClick={cancel}
+                >
+                    Cancel
+                </Button>
+            )}
+            {order.can_edit_items && (
+                <Button
+                    type="button"
+                    variant="tertiary"
+                    size="compact"
+                    className="rounded-md"
+                    onClick={() => setEditOrderOpen(true)}
+                >
+                    Edit
+                </Button>
+            )}
+            {canRequestReturn && (
+                <Button
+                    type="button"
+                    variant="warning"
+                    size="compact"
+                    className="rounded-md"
+                    onClick={() => setReturnItemId('blank')}
+                >
+                    Return
+                </Button>
+            )}
+            {showDeliverColumn && (
+                <Button type="submit" variant="primary" size="compact" className="rounded-md" disabled={processing}>
+                    Deliver
+                </Button>
+            )}
+            {canComplete && (
+                <Button type="button" variant="primary" size="compact" className="rounded-md" onClick={complete}>
+                    Close Order
+                </Button>
+            )}
+        </>
+    );
+
     const itemColumns = useMemo(
         () => [
             {
@@ -222,62 +273,14 @@ export default function Show({
                 spanRow: (item) => (item.__isTotal ? (showDeliverColumn ? 3 : 2) : undefined),
                 cell: (item) =>
                     item.__isTotal ? (
-                        <div className="sticky left-0 z-10 flex w-fit flex-wrap justify-end gap-2 bg-background pl-1">
-                            {canCancel && (
-                                <Button
-                                    type="button"
-                                    variant="tertiary"
-                                    size="compact"
-                                    className="rounded-md text-red-600 hover:text-red-700"
-                                    onClick={cancel}
-                                >
-                                    Cancel
-                                </Button>
-                            )}
-                            {order.can_edit_items && (
-                                <Button
-                                    type="button"
-                                    variant="tertiary"
-                                    size="compact"
-                                    className="rounded-md"
-                                    onClick={() => setEditOrderOpen(true)}
-                                >
-                                    Edit
-                                </Button>
-                            )}
-                            {canRequestReturn && (
-                                <Button
-                                    type="button"
-                                    variant="warning"
-                                    size="compact"
-                                    className="rounded-md"
-                                    onClick={() => setReturnItemId('blank')}
-                                >
-                                    Return
-                                </Button>
-                            )}
-                            {showDeliverColumn && (
-                                <Button
-                                    type="submit"
-                                    variant="primary"
-                                    size="compact"
-                                    className="rounded-md"
-                                    disabled={processing}
-                                >
-                                    Deliver
-                                </Button>
-                            )}
-                            {canComplete && (
-                                <Button
-                                    type="button"
-                                    variant="primary"
-                                    size="compact"
-                                    className="rounded-md"
-                                    onClick={complete}
-                                >
-                                    Close Order
-                                </Button>
-                            )}
+                        // Hidden below md: this row lives inside a table that scrolls
+                        // horizontally on narrow viewports, and CSS position:sticky
+                        // doesn't reliably stick inside a real <table> across browsers
+                        // -- confirmed broken, not just untried. The mobile-visible
+                        // duplicate of these same buttons renders below the table
+                        // instead (outside the scroll area entirely).
+                        <div className="hidden w-fit flex-wrap justify-end gap-2 md:flex">
+                            {renderOrderActionButtons()}
                         </div>
                     ) : (
                         item.delivered_quantity ?? 0
@@ -535,6 +538,11 @@ export default function Show({
                             resizable
                             emptyState="No products have been added to this order."
                         />
+                        {itemRows.length > 0 && (
+                            <div className="mt-3 flex flex-wrap justify-end gap-2 md:hidden">
+                                {renderOrderActionButtons()}
+                            </div>
+                        )}
                     </form>
                 </div>
 
