@@ -14,14 +14,14 @@ export default function UpdateHistoryTable({ activities }) {
         {
             key: 'actor_name',
             header: 'Actor',
-            width: '200px',
-            cell: (row) => (
-                <span className="text-gray-900">
-                    {row.actor_name
-                        ? `${row.actor_name}${row.actor_role ? ` (${row.actor_role})` : ''}`
-                        : '—'}
-                </span>
-            ),
+            width: '180px',
+            cell: (row) => <span className="text-gray-900">{row.actor_name ?? '—'}</span>,
+        },
+        {
+            key: 'actor_role',
+            header: 'Role',
+            width: '120px',
+            cell: (row) => <span className="text-gray-500 capitalize">{row.actor_role ?? '—'}</span>,
         },
         {
             key: 'action',
