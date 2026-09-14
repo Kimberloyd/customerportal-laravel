@@ -24,7 +24,7 @@ export default function OrderTrend({ trend, empty }) {
     const visibleTrend = trend.slice(-7);
 
     return <div className="px-3 pt-5 sm:px-5">
-        {empty ? <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-xl bg-stone-50 text-center dark:bg-white/[0.03]"><ChartNoAxesCombined className="mb-1 h-7 w-7 text-stone-400" aria-hidden="true" /><p className="text-sm font-medium text-stone-700 dark:text-stone-200">Your order activity will appear here</p><p className="max-w-xs text-xs leading-5 text-stone-500 dark:text-stone-400">No orders were placed or delivered in this period. Choose a longer range to check earlier activity.</p></div> :
+        {empty ? <div className="flex h-48 flex-col items-center justify-center px-6 text-center"><span className="mb-4 grid h-12 w-12 place-items-center rounded-full bg-stone-100 text-stone-500 dark:bg-white/[0.06] dark:text-stone-400"><ChartNoAxesCombined className="h-6 w-6" aria-hidden="true" /></span><p className="text-sm font-medium text-stone-800 dark:text-stone-100">Your order activity will appear here</p><p className="mt-2 max-w-xs text-sm leading-6 text-stone-500 dark:text-stone-400">No orders were placed or delivered in this period. Choose a longer range to check earlier activity.</p></div> :
             <div
                 role="group"
                 aria-label="Daily orders placed and actual deliveries."

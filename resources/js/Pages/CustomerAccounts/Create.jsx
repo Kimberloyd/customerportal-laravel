@@ -7,6 +7,7 @@ import { Table } from '@/components/motion/table';
 import { AccountFields, SecurityFields } from '@/components/UserForm';
 import { Button } from '@/components/ui/button';
 import { useFieldValidation } from '@/hooks/useFieldValidation';
+import { useSearchSelections } from '@/hooks/useSearchSelections';
 import { Head, useForm } from '@inertiajs/react';
 import { Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -69,23 +70,44 @@ export default function Create({ customers = [], assignedCustomers = [] }) {
             },
         });
     };
-    const customerField = useSuggestField();
+    const customerSelections = useSearchSelections('customer');
+    const customerField = useSuggestField(customerSelections.recent.length > 0 || Object.keys(customerSelections.popularity).length > 0);
     const selectedCustomer = customers.find(
         (customer) => String(customer.id) === String(data.customer_id),
     );
+    const customerEmptyStateKind = customerField.query.trim()
+        ? null
+        : customerSelections.recent.length > 0 ? 'recent' : 'popular';
     const customerMatches = useMemo(() => {
         const query = customerField.query.trim().toLowerCase();
-        if (!query) return [];
+        const toItem = (entityKey) => {
+            const customer = customers.find((candidate) => String(candidate.id) === String(entityKey));
+            return customer ? { id: String(customer.id), label: customer.company_name, customer } : null;
+        };
+
+        if (!query) {
+            if (customerSelections.recent.length > 0) {
+                return customerSelections.recent.map((entry) => toItem(entry.entity_key)).filter(Boolean);
+            }
+            return Object.entries(customerSelections.popularity)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .map(([entityKey]) => toItem(entityKey))
+                .filter(Boolean);
+        }
+
         return customers
             .filter((customer) => String(customer.company_name ?? '').toLowerCase().includes(query))
+            .sort((a, b) => (customerSelections.popularity[String(b.id)] ?? 0) - (customerSelections.popularity[String(a.id)] ?? 0))
             .slice(0, 8)
             .map((customer) => ({ id: String(customer.id), label: customer.company_name, customer }));
-    }, [customers, customerField.query]);
+    }, [customers, customerField.query, customerSelections.recent, customerSelections.popularity]);
     const selectCustomer = (item) => {
         updateField('customer_id', item.customer.id);
         validation.onBlur('customer_id', item.customer.id, { ...data, customer_id: item.customer.id });
         customerField.setQuery(item.label);
         customerField.setOpen(false);
+        customerSelections.record(item.id, item.label);
     };
     // Keeps the field's text in sync with the confirmed selection: reasserts
     // the picked name after a pick, and reverts to it (or clears back to
@@ -170,7 +192,7 @@ export default function Create({ customers = [], assignedCustomers = [] }) {
                                 onFocus={() => customerField.setOpen(true)}
                                 onKeyDown={suggestFieldKeyDown(customerField, customerMatches, selectCustomer)}
                                 type="text"
-                                placeholder="Search customers"
+                                placeholder="Search by company name"
                                 leftIcon={<Search className="h-4 w-4" />}
                                 error={Boolean(errors.customer_id || validation.clientErrors.customer_id)}
                                 classNames={{ field: 'h-10 rounded-md', input: 'text-sm' }}
@@ -183,7 +205,9 @@ export default function Create({ customers = [], assignedCustomers = [] }) {
                                     activeIndex={customerField.activeIndex}
                                     onHover={customerField.setActiveIndex}
                                     onSelect={selectCustomer}
-                                    emptyMessage="No customers found. Try a different search."
+                                    emptyMessage="No customers found."
+                                    onClear={() => customerField.setQuery('')}
+                                    heading={customerEmptyStateKind === 'recent' ? 'Recent' : customerEmptyStateKind === 'popular' ? 'Popular' : undefined}
                                 />
                             )}
                         </div>

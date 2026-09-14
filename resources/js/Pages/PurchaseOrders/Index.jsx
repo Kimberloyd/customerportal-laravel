@@ -12,6 +12,7 @@ import { Input } from '@/components/motion/input';
 import { RangeCalendar } from '@/components/ui/range-calendar';
 import { statusBadge } from '@/utils/orderDisplay';
 import { usePurchaseOrderRealtime } from '@/hooks/usePurchaseOrderRealtime';
+import { useSearchSelections } from '@/hooks/useSearchSelections';
 import { Deferred, Head, router } from '@inertiajs/react';
 import { parseDate } from '@internationalized/date';
 import { useContainerBreakpoint } from '@/lib/hooks/use-container-breakpoint';
@@ -54,6 +55,8 @@ export default function Index({
     const containerRef = useRef(null);
     const isCompactViewport = useContainerBreakpoint(containerRef, 639);
     const [search, setSearch] = useState(filters.search);
+    const [searchFocused, setSearchFocused] = useState(false);
+    const orderSearchSelections = useSearchSelections('order_search');
     const [status, setStatus] = useState(filters.status ?? 'all');
     const [customerId, setCustomerId] = useState(filters.customer_id ? String(filters.customer_id) : '');
     const [startDate, setStartDate] = useState(filters.start_date ?? '');
@@ -61,6 +64,13 @@ export default function Index({
     const [filterModalOpen, setFilterModalOpen] = useState(false);
     const hasActiveFilters = status !== 'all' || !!customerId || !!startDate || !!endDate;
     const showCustomerFilter = !lockedCustomerId && createOrderCustomers.length > 1;
+    const clearAllFilters = () => {
+        setSearch('');
+        setStatus('all');
+        setCustomerId('');
+        setStartDate('');
+        setEndDate('');
+    };
 
     const customerFilterItems = useMemo(
         () => [
@@ -152,7 +162,10 @@ export default function Index({
             isFirstRender.current = false;
             return;
         }
-        const timeout = setTimeout(() => applyFilters({ search }), 400);
+        const timeout = setTimeout(() => {
+            applyFilters({ search });
+            if (search.trim()) orderSearchSelections.record(null, search.trim());
+        }, 400);
         return () => clearTimeout(timeout);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [search]);
@@ -294,19 +307,44 @@ export default function Index({
 
             <div ref={containerRef} className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-center gap-2 bg-white">
-                    <Input
-                        type="text"
-                        value={search}
-                        onChange={setSearch}
-                        placeholder="PO number or customer"
-                        aria-label="Search orders"
-                        leftIcon={<Search className="h-4 w-4" />}
-                        classNames={{
-                            root: 'w-80',
-                            field: 'h-9 w-80 rounded-full border-border bg-transparent shadow-none',
-                            input: 'text-sm',
-                        }}
-                    />
+                    <div className="relative w-80">
+                        <Input
+                            type="text"
+                            value={search}
+                            onChange={setSearch}
+                            onFocus={() => setSearchFocused(true)}
+                            onBlur={() => setSearchFocused(false)}
+                            placeholder="PO number or customer"
+                            aria-label="Search orders"
+                            leftIcon={<Search className="h-4 w-4" />}
+                            classNames={{
+                                root: 'w-80',
+                                field: 'h-9 w-80 rounded-full border-border bg-transparent shadow-none',
+                                input: 'text-sm',
+                            }}
+                        />
+                        {searchFocused && !search.trim() && orderSearchSelections.recent.length > 0 && (
+                            <div className="absolute left-0 top-full z-20 mt-1.5 w-full rounded-xl border border-stone-200 bg-white p-2 shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)]">
+                                <p className="px-1 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-stone-400">Recent</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {orderSearchSelections.recent.map((entry) => (
+                                        <button
+                                            key={entry.label}
+                                            type="button"
+                                            onMouseDown={(event) => event.preventDefault()}
+                                            onClick={() => {
+                                                setSearch(entry.label);
+                                                applyFilters({ search: entry.label });
+                                            }}
+                                            className="rounded-full border border-stone-200 px-3 py-1 text-xs text-stone-700 outline-none transition-colors hover:bg-stone-50 focus-visible:ring-2 focus-visible:ring-ring"
+                                        >
+                                            {entry.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                     <button
                         type="button"
                         onClick={() => {
@@ -347,7 +385,20 @@ export default function Index({
                             height={TABLE_VIEWPORT_HEIGHT}
                             loading={tableLoading}
                             resizable
-                            emptyState="No orders found. Try a different search."
+                            emptyState={(
+                                <div className="flex flex-col items-center gap-2">
+                                    <span>No orders found.</span>
+                                    {(hasActiveFilters || search) && (
+                                        <button
+                                            type="button"
+                                            onClick={clearAllFilters}
+                                            className="font-medium text-primary outline-none hover:underline focus-visible:underline"
+                                        >
+                                            Clear all filters
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                             emptyStateHeight={PAGE_SIZE * TABLE_ROW_HEIGHT}
                         />
 
@@ -374,10 +425,7 @@ export default function Index({
                             className="h-10 rounded-md px-5 text-sm"
                             disabled={!hasActiveFilters}
                             onClick={() => {
-                                setStatus('all');
-                                setCustomerId('');
-                                setStartDate('');
-                                setEndDate('');
+                                clearAllFilters();
                             }}
                         >
                             Reset all filters

@@ -16,6 +16,7 @@ use App\Http\Controllers\ProductReturnController;
 use App\Http\Controllers\PublicConversationController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SearchSelectionController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TermsAndPrivacyController;
 use Illuminate\Support\Facades\Route;
@@ -117,6 +118,11 @@ Route::middleware('auth')->prefix('messages')->name('messages.')->group(function
 Route::middleware('auth')->prefix('notifications')->name('notifications.')->group(function () {
     Route::get('/recent', [NotificationController::class, 'recent'])->name('recent');
     Route::post('/mark-all-read', [NotificationController::class, 'markAllRead'])->name('mark-all-read');
+});
+
+Route::middleware('auth')->prefix('search')->name('search.')->group(function () {
+    Route::get('/recent', [SearchSelectionController::class, 'index'])->name('recent');
+    Route::post('/record', [SearchSelectionController::class, 'store'])->name('record');
 });
 
 Route::middleware('auth')->prefix('settings')->name('settings.')->group(function () {

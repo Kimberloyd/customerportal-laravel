@@ -658,9 +658,19 @@ export function Dropdown({
               {visibleItems.length === 0 && (
                 <li
                   role="presentation"
-                  className="flex h-8 items-center px-2.5 text-sm text-muted-foreground dark:text-stone-400"
+                  className="flex h-8 items-center justify-between gap-3 px-2.5 text-sm text-muted-foreground dark:text-stone-400"
                 >
-                  {emptyLabel}
+                  <span>{emptyLabel}</span>
+                  {searchable && searchQuery && (
+                    <button
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => setSearchQuery("")}
+                      className="shrink-0 font-medium text-primary outline-none hover:underline focus-visible:underline"
+                    >
+                      Clear search
+                    </button>
+                  )}
                 </li>
               )}
             </ul>

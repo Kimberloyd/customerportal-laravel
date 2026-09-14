@@ -8,6 +8,7 @@ import { Input } from '@/components/motion/input';
 import { Table } from '@/components/motion/table';
 import { Button } from '@/components/ui/button';
 import { useContainerBreakpoint } from '@/lib/hooks/use-container-breakpoint';
+import { useSearchSelections } from '@/hooks/useSearchSelections';
 import { useForm } from '@inertiajs/react';
 import { Minus, Plus, Search, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -73,8 +74,10 @@ export default function CreateOrderModal({
     const [attachmentItems, setAttachmentItems] = useState([]);
     const [confirmBulkDeleteOpen, setConfirmBulkDeleteOpen] = useState(false);
     const [clientErrors, setClientErrors] = useState({});
-    const customerField = useSuggestField();
-    const productField = useSuggestField();
+    const customerSelections = useSearchSelections('customer');
+    const productSelections = useSearchSelections('product');
+    const customerField = useSuggestField(customerSelections.recent.length > 0 || Object.keys(customerSelections.popularity).length > 0);
+    const productField = useSuggestField(productSelections.recent.length > 0 || Object.keys(productSelections.popularity).length > 0);
     const {
         data,
         setData,
@@ -160,20 +163,43 @@ export default function CreateOrderModal({
         (customer) => String(customer.id) === String(data.customer_id),
     );
 
+    // Empty query: show this user's recent picks, falling back to the
+    // most-picked customers across all users when there's no history yet --
+    // never just an empty box (search-bar-ux: "Empty Isn't Empty").
+    const customerEmptyStateKind = customerField.query.trim()
+        ? null
+        : customerSelections.recent.length > 0 ? 'recent' : 'popular';
     const customerMatches = useMemo(() => {
         const query = customerField.query.trim().toLowerCase();
-        if (!query) return [];
+        const toItem = (entityKey) => {
+            const customer = customers.find((candidate) => String(candidate.id) === String(entityKey));
+            return customer ? { id: String(customer.id), label: customer.company_name, customer } : null;
+        };
+
+        if (!query) {
+            if (customerSelections.recent.length > 0) {
+                return customerSelections.recent.map((entry) => toItem(entry.entity_key)).filter(Boolean);
+            }
+            return Object.entries(customerSelections.popularity)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .map(([entityKey]) => toItem(entityKey))
+                .filter(Boolean);
+        }
+
         return customers
             .filter((customer) => String(customer.company_name ?? '').toLowerCase().includes(query))
+            .sort((a, b) => (customerSelections.popularity[String(b.id)] ?? 0) - (customerSelections.popularity[String(a.id)] ?? 0))
             .slice(0, 8)
             .map((customer) => ({ id: String(customer.id), label: customer.company_name, customer }));
-    }, [customers, customerField.query]);
+    }, [customers, customerField.query, customerSelections.recent, customerSelections.popularity]);
 
     const selectCustomer = (item) => {
         setData('customer_id', item.customer.id);
         clearFieldError('customer_id');
         customerField.setQuery(item.label);
         customerField.setOpen(false);
+        customerSelections.record(item.id, item.label);
     };
 
     // Keeps the field's text in sync with the confirmed selection: reasserts
@@ -233,17 +259,34 @@ export default function CreateOrderModal({
         [products],
     );
 
+    const productEmptyStateKind = productField.query.trim()
+        ? null
+        : productSelections.recent.length > 0 ? 'recent' : 'popular';
     const productMatches = useMemo(() => {
         const query = productField.query.trim().toLowerCase();
-        if (!query) return [];
+        const toItem = (entityKey) => productItems.find((item) => item.id === String(entityKey));
+
+        if (!query) {
+            if (productSelections.recent.length > 0) {
+                return productSelections.recent.map((entry) => toItem(entry.entity_key)).filter(Boolean);
+            }
+            return Object.entries(productSelections.popularity)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .map(([entityKey]) => toItem(entityKey))
+                .filter(Boolean);
+        }
+
         return productItems
             .filter((item) => [item.label, ...(item.keywords ?? [])]
                 .some((value) => String(value ?? '').toLowerCase().includes(query)))
+            .sort((a, b) => (productSelections.popularity[b.id] ?? 0) - (productSelections.popularity[a.id] ?? 0))
             .slice(0, 8);
-    }, [productItems, productField.query]);
+    }, [productItems, productField.query, productSelections.recent, productSelections.popularity]);
 
     const selectProduct = (item) => {
         addProduct(item.product);
+        productSelections.record(item.id, item.label);
         productField.setQuery('');
         productField.setOpen(false);
     };
@@ -575,7 +618,7 @@ export default function CreateOrderModal({
                                 onFocus={() => customerField.setOpen(true)}
                                 onKeyDown={suggestFieldKeyDown(customerField, customerMatches, selectCustomer)}
                                 type="text"
-                                placeholder="Search customers"
+                                placeholder="Search by company name"
                                 leftIcon={<Search className="h-4 w-4" />}
                                 error={Boolean(errors.customer_id || clientErrors.customer_id)}
                                 classNames={{
@@ -591,7 +634,9 @@ export default function CreateOrderModal({
                                     activeIndex={customerField.activeIndex}
                                     onHover={customerField.setActiveIndex}
                                     onSelect={selectCustomer}
-                                    emptyMessage="No customers found. Try a different search."
+                                    emptyMessage="No customers found."
+                                    onClear={() => customerField.setQuery('')}
+                                    heading={customerEmptyStateKind === 'recent' ? 'Recent' : customerEmptyStateKind === 'popular' ? 'Popular' : undefined}
                                 />
                             )}
                         </div>
@@ -629,7 +674,7 @@ export default function CreateOrderModal({
                                     onFocus={() => productField.setOpen(true)}
                                     onKeyDown={suggestFieldKeyDown(productField, productMatches, selectProduct)}
                                     type="text"
-                                    placeholder="Search products"
+                                    placeholder="Search by product name, generic name, or SKU"
                                     leftIcon={<Search className="h-4 w-4" />}
                                     classNames={{
                                         field: 'h-9 rounded-md bg-transparent shadow-none',
@@ -644,7 +689,9 @@ export default function CreateOrderModal({
                                         activeIndex={productField.activeIndex}
                                         onHover={productField.setActiveIndex}
                                         onSelect={selectProduct}
-                                        emptyMessage="No products found. Try a different search."
+                                        emptyMessage="No products found."
+                                        onClear={() => productField.setQuery('')}
+                                        heading={productEmptyStateKind === 'recent' ? 'Recent' : productEmptyStateKind === 'popular' ? 'Popular' : undefined}
                                     />
                                 )}
                             </div>

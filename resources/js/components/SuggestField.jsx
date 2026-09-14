@@ -5,14 +5,20 @@ import { createPortal } from 'react-dom';
 // plumbing needed to float a suggestion list off a search input inside a
 // scrollable modal. Selection semantics differ per field, so that stays
 // with the caller.
-export function useSuggestField() {
+//
+// `hasEmptyStateContent` lets the menu stay open on an empty query when the
+// caller has something worth showing anyway (recent picks, popular picks) --
+// see the search-bar-ux skill's "Empty Isn't Empty" rule. Pass a plain
+// boolean (e.g. `recent.length > 0`); it's read fresh each render, no need
+// to memoize it.
+export function useSuggestField(hasEmptyStateContent = false) {
     const [query, setQuery] = useState('');
     const [open, setOpen] = useState(false);
     const [activeIndex, setActiveIndex] = useState(0);
     const [position, setPosition] = useState(null);
     const fieldRef = useRef(null);
     const menuRef = useRef(null);
-    const visible = open && query.trim() !== '';
+    const visible = open && (query.trim() !== '' || hasEmptyStateContent);
 
     // Portaled to <body> (like Dropdown's `portal` mode) so the list can
     // extend past the modal's own scrollable, overflow-hidden body instead
@@ -105,7 +111,7 @@ export function suggestFieldKeyDown(field, matches, onSelect) {
     };
 }
 
-export function SuggestionMenu({ menuRef, position, items, activeIndex, onHover, onSelect, emptyMessage }) {
+export function SuggestionMenu({ menuRef, position, items, activeIndex, onHover, onSelect, emptyMessage, onClear, heading }) {
     return createPortal(
         <div
             ref={menuRef}
@@ -120,8 +126,25 @@ export function SuggestionMenu({ menuRef, position, items, activeIndex, onHover,
             }}
             className="z-[60] overflow-y-auto rounded-xl border border-stone-200 bg-white p-[5px]"
         >
+            {heading && items.length > 0 && (
+                <div className="px-2.5 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-wide text-stone-400">
+                    {heading}
+                </div>
+            )}
             {items.length === 0 ? (
-                <div className="px-2.5 py-2 text-sm text-muted-foreground">{emptyMessage}</div>
+                <div className="flex items-center justify-between gap-3 px-2.5 py-2 text-sm text-muted-foreground">
+                    <span>{emptyMessage}</span>
+                    {onClear && (
+                        <button
+                            type="button"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={onClear}
+                            className="shrink-0 font-medium text-primary outline-none hover:underline focus-visible:underline"
+                        >
+                            Clear search
+                        </button>
+                    )}
+                </div>
             ) : (
                 items.map((item, index) => (
                     <button

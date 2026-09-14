@@ -1,6 +1,7 @@
 import { AutoHeightReveal, Modal } from '@/components/interior/modal';
 import { Checkbox } from '@/components/motion/checkbox';
 import { Button } from '@/components/ui/button';
+import { useSearchSelections } from '@/hooks/useSearchSelections';
 import axios from 'axios';
 import { ArrowUp, Search } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
@@ -18,24 +19,42 @@ export default function ComposeModal({ open, onClose, accounts }) {
     const [result, setResult] = useState(null);
     const [hoverIndex, setHoverIndex] = useState(-1);
     const reduced = useReducedMotion();
+    const accountSelections = useSearchSelections('message_account');
+
+    // Recent picks first (most recent first), then the rest ranked by how
+    // often each account has been messaged across all staff -- instead of
+    // whatever order the accounts happened to arrive in.
+    const rankedAccounts = useMemo(() => {
+        const recentOrder = accountSelections.recent.map((entry) => entry.entity_key);
+        return [...accounts].sort((a, b) => {
+            const aRecent = recentOrder.indexOf(a.value);
+            const bRecent = recentOrder.indexOf(b.value);
+            if (aRecent !== -1 || bRecent !== -1) {
+                return (aRecent === -1 ? Infinity : aRecent) - (bRecent === -1 ? Infinity : bRecent);
+            }
+            return (accountSelections.popularity[b.value] ?? 0) - (accountSelections.popularity[a.value] ?? 0);
+        });
+    }, [accounts, accountSelections.recent, accountSelections.popularity]);
 
     const filtered = useMemo(() => {
         const q = query.trim().toLocaleLowerCase();
-        if (!q) return accounts;
+        if (!q) return rankedAccounts;
 
-        return accounts.filter((account) =>
+        return rankedAccounts.filter((account) =>
             [account.label, account.hint].some((value) =>
                 String(value ?? '').toLocaleLowerCase().includes(q),
             ),
         );
-    }, [accounts, query]);
+    }, [rankedAccounts, query]);
 
     const toggle = (value) => {
-        setSelected((current) =>
-            current.includes(value)
-                ? current.filter((existing) => existing !== value)
-                : [...current, value],
-        );
+        setSelected((current) => {
+            if (current.includes(value)) return current.filter((existing) => existing !== value);
+
+            const account = accounts.find((candidate) => candidate.value === value);
+            if (account) accountSelections.record(value, account.label);
+            return [...current, value];
+        });
     };
 
     const reset = () => {
@@ -151,7 +170,23 @@ export default function ComposeModal({ open, onClose, accounts }) {
                                 setQuery(e.target.value);
                                 setHoverIndex(-1);
                             }}
-                            placeholder="Search accounts"
+                            onKeyDown={(e) => {
+                                if (filtered.length === 0) return;
+                                if (e.key === 'ArrowDown') {
+                                    e.preventDefault();
+                                    setHoverIndex((index) => Math.min(filtered.length - 1, index + 1));
+                                } else if (e.key === 'ArrowUp') {
+                                    e.preventDefault();
+                                    setHoverIndex((index) => Math.max(0, index - 1));
+                                } else if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    const account = filtered[hoverIndex];
+                                    if (account) toggle(account.value);
+                                } else if (e.key === 'Escape') {
+                                    setHoverIndex(-1);
+                                }
+                            }}
+                            placeholder="Search by customer name"
                             aria-label="Search accounts"
                             className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-0 dark:text-stone-100"
                         />
@@ -162,8 +197,17 @@ export default function ComposeModal({ open, onClose, accounts }) {
                         onMouseLeave={() => setHoverIndex(-1)}
                     >
                         {filtered.length === 0 ? (
-                            <li className="px-2 py-1.5 text-sm text-stone-500 dark:text-stone-400">
-                                No accounts found
+                            <li className="flex items-center justify-between gap-3 px-2 py-1.5 text-sm text-stone-500 dark:text-stone-400">
+                                <span>No accounts found</span>
+                                {query && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setQuery('')}
+                                        className="shrink-0 font-medium text-primary outline-none hover:underline focus-visible:underline"
+                                    >
+                                        Clear search
+                                    </button>
+                                )}
                             </li>
                         ) : (
                             <>

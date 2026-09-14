@@ -323,8 +323,17 @@ export function CommandPalette({
             className="max-h-[60vh] overflow-y-auto overscroll-contain p-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {filtered.length === 0 ? (
-              <div className="p-8 text-center text-sm text-muted-foreground">
-                {emptyMessage}
+              <div className="flex flex-col items-center gap-2 p-8 text-center text-sm text-muted-foreground">
+                <span>{emptyMessage}</span>
+                {query && (
+                  <button
+                    type="button"
+                    onClick={() => updateQuery("")}
+                    className="font-medium text-primary outline-none hover:underline focus-visible:underline"
+                  >
+                    Clear search
+                  </button>
+                )}
               </div>
             ) : (
               grouped.map(([group, list]) => (
