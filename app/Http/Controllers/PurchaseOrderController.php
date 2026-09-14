@@ -543,6 +543,46 @@ class PurchaseOrderController extends Controller
         return redirect()->route('purchase-orders.show', $order)->with('success', 'Order updated.');
     }
 
+    /**
+     * A dedicated, minimal endpoint for remarks specifically, so staff
+     * don't need the full Edit form (items/customer/attachment) just to
+     * leave a note -- but a completed/cancelled order still can't be
+     * changed at all, remarks included, matching the same rule the full
+     * update() above already enforces.
+     */
+    public function updateRemarks(Request $request, PurchaseOrder $order): RedirectResponse
+    {
+        $this->authorize('update', $order);
+
+        $request->validate([
+            'remarks' => ['nullable', 'string', 'max:5000'],
+        ]);
+
+        try {
+            DB::transaction(function () use ($request, $order) {
+                $locked = PurchaseOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
+
+                if (in_array($locked->status, PurchaseOrder::TERMINAL_STATUSES, true)) {
+                    throw new UserActionException("This {$locked->status} order can no longer be edited.");
+                }
+
+                $newRemarks = trim((string) $request->input('remarks', '')) ?: null;
+                if ($locked->remarks === $newRemarks) {
+                    return;
+                }
+
+                $locked->remarks = $newRemarks;
+                $locked->save();
+
+                OrderAudit::record($locked, 'Order Updated', 'Remarks updated.', $request);
+            });
+        } catch (UserActionException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('purchase-orders.show', $order)->with('success', 'Remarks updated.');
+    }
+
     public function complete(Request $request, PurchaseOrder $order)
     {
         $this->authorize('complete', $order);
