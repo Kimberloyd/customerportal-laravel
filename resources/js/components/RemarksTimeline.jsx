@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { formatDateTime } from '@/utils/orderDisplay';
 
 const REMARKS_ROW_HEIGHT = 48;
-const TOTAL_COLUMNS = 3;
+const TOTAL_COLUMNS = 4;
 
 /**
  * Every audit row already snapshots the order's remarks value at that
@@ -97,15 +97,15 @@ export default function RemarksTimeline({ order, form, onSave, canEdit }) {
         {
             key: 'actor_name',
             header: 'Added By',
-            width: '200px',
+            width: '180px',
+            cell: (row) => (row.__isInput ? null : <span className="text-gray-900">{row.actor_name ?? '—'}</span>),
+        },
+        {
+            key: 'actor_role',
+            header: 'Role',
+            width: '120px',
             cell: (row) =>
-                row.__isInput ? null : (
-                    <span className="text-gray-900">
-                        {row.actor_name
-                            ? `${row.actor_name}${row.actor_role ? ` (${row.actor_role})` : ''}`
-                            : '—'}
-                    </span>
-                ),
+                row.__isInput ? null : <span className="text-gray-500 capitalize">{row.actor_role ?? '—'}</span>,
         },
         {
             key: 'remarks',
