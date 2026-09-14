@@ -79,6 +79,12 @@ export default function AuthenticatedLayout({ header, banner, children }) {
     const [messageAccountsError, setMessageAccountsError] = useState(false);
     const mountedRef = useRef(true);
     const notificationsTriggerRef = useRef(null);
+    // Mobile has its own bell trigger (rendered on the left of the header
+    // instead of the desktop-only right-side cluster) -- both are always
+    // mounted, only one is ever visible at a given viewport width via CSS,
+    // so the popover position/outside-click logic below checks both refs
+    // rather than assuming a single one is active.
+    const mobileNotificationsTriggerRef = useRef(null);
     const notificationsPanelRef = useRef(null);
 
     const closeNotifications = useCallback(() => {
@@ -88,7 +94,10 @@ export default function AuthenticatedLayout({ header, banner, children }) {
         // outside click that closes the panel already moved focus somewhere
         // the user chose, and shouldn't be yanked away from it.
         if (notificationsPanelRef.current?.contains(document.activeElement)) {
-            notificationsTriggerRef.current?.querySelector('button')?.focus();
+            const visibleTrigger = [notificationsTriggerRef, mobileNotificationsTriggerRef]
+                .map((ref) => ref.current)
+                .find((el) => el && el.offsetWidth > 0);
+            visibleTrigger?.querySelector('button')?.focus();
         }
     }, []);
     const highlightNotification = (event) => {
@@ -108,14 +117,24 @@ export default function AuthenticatedLayout({ header, banner, children }) {
 
         fetchRecentNotifications();
 
+        // Whichever trigger is actually visible at this viewport width --
+        // the other is `hidden`/zero-size but still mounted.
+        const activeTriggerEl = () => [notificationsTriggerRef, mobileNotificationsTriggerRef]
+            .map((ref) => ref.current)
+            .find((el) => el && el.offsetWidth > 0);
+
         const updatePosition = () => {
-            const rect = notificationsTriggerRef.current?.getBoundingClientRect();
+            const rect = activeTriggerEl()?.getBoundingClientRect();
             if (!rect) return;
+            // Never wider than the viewport (minus an 8px margin each side) --
+            // on a narrow phone the fixed panel width would otherwise push
+            // its left edge past the screen edge entirely.
+            const width = Math.min(NOTIFICATIONS_PANEL_WIDTH, window.innerWidth - 16);
             const left = Math.min(
-                Math.max(8, rect.right - NOTIFICATIONS_PANEL_WIDTH),
-                window.innerWidth - NOTIFICATIONS_PANEL_WIDTH - 8,
+                Math.max(8, rect.right - width),
+                window.innerWidth - width - 8,
             );
-            setNotificationsPosition({ top: rect.bottom + NOTIFICATIONS_PANEL_GAP, left });
+            setNotificationsPosition({ top: rect.bottom + NOTIFICATIONS_PANEL_GAP, left, width });
         };
 
         updatePosition();
@@ -134,7 +153,8 @@ export default function AuthenticatedLayout({ header, banner, children }) {
             const target = event.target;
             if (
                 notificationsPanelRef.current?.contains(target) ||
-                notificationsTriggerRef.current?.contains(target)
+                notificationsTriggerRef.current?.contains(target) ||
+                mobileNotificationsTriggerRef.current?.contains(target)
             ) {
                 return;
             }
@@ -209,6 +229,12 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                     setMessageAccounts(
                         Array.isArray(data.recipients) ? data.recipients : [],
                     );
+                    // Piggybacks on this same response instead of a separate
+                    // fetchUnreadCount() round trip -- the two call sites
+                    // below always needed both together anyway.
+                    if (typeof data.unread_count === 'number') {
+                        setUnreadCount(data.unread_count);
+                    }
                 }
             })
             .catch(() => {
@@ -228,17 +254,18 @@ export default function AuthenticatedLayout({ header, banner, children }) {
     // A conversation being opened/read in the chat widget marks messages read
     // server-side but doesn't itself touch the header -- this is how that
     // gets reflected here without waiting for the next poll or new message.
+    // fetchMessageAccounts's response already carries unread_count, so one
+    // call covers both instead of a separate fetchUnreadCount round trip.
     useEffect(() => {
         if (readSignal === 0) return;
-        fetchUnreadCount();
         fetchMessageAccounts();
-    }, [readSignal, fetchUnreadCount, fetchMessageAccounts]);
+    }, [readSignal, fetchMessageAccounts]);
 
     useEffect(() => {
         let intervalId = null;
 
+        // fetchMessageAccounts's response already carries unread_count.
         const refreshFromLiveEvent = () => {
-            fetchUnreadCount();
             fetchMessageAccounts();
         };
 
@@ -557,6 +584,122 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                             </div>
                         </div>
 
+                        <div className="flex items-center gap-1 sm:hidden">
+                            <button
+                                type="button"
+                                onClick={() => setPaletteOpen(true)}
+                                aria-label="Search"
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-gray-500 outline-none transition-colors hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                                <Search aria-hidden="true" className="h-5 w-5" />
+                            </button>
+
+                            <AccountDropdown
+                                items={messageAccountItems}
+                                value=""
+                                onChange={(value) => {
+                                    const item = messageAccountItems.find(
+                                        (candidate) => candidate.value === value,
+                                    );
+                                    if (!item || item.disabled) return;
+
+                                    if (item.channel === 'facebook') {
+                                        openChat({
+                                            channel: 'facebook',
+                                            threadId: item.threadId,
+                                            name: item.label,
+                                            hint: item.hint,
+                                            viewerUserId: user.id,
+                                        });
+                                        return;
+                                    }
+
+                                    openChat({
+                                        channel: 'portal',
+                                        customerId: item.customerId,
+                                        staffUserId: item.staffUserId,
+                                        name: item.label,
+                                        hint: item.hint,
+                                        viewerIsCompany: user.role !== 'customer',
+                                        viewerUserId: user.id,
+                                    });
+                                }}
+                                label="Choose an account to message"
+                                emptyLabel="No message accounts found"
+                                menuTitle={({ close }) => (
+                                    <div className="flex w-full items-center justify-between gap-4">
+                                        <span>Chats</span>
+                                        <div className="flex items-center gap-1">
+                                            <NotificationBell
+                                                count={0}
+                                                size={36}
+                                                label="Mark all as read"
+                                                icon={
+                                                    <CheckCheck
+                                                        aria-hidden="true"
+                                                        className="h-5 w-5"
+                                                    />
+                                                }
+                                                onClick={markAllMessagesRead}
+                                                disabled={unreadCount === 0}
+                                                className="bg-transparent hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                                            />
+                                            <NotificationBell
+                                                count={0}
+                                                size={36}
+                                                label="New message"
+                                                icon={
+                                                    <SquarePen
+                                                        aria-hidden="true"
+                                                        className="h-5 w-5"
+                                                    />
+                                                }
+                                                onClick={() => {
+                                                    close(false);
+                                                    setComposeOpen(true);
+                                                }}
+                                                className="bg-transparent hover:bg-gray-100"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                                menuWidth={340}
+                                searchable
+                                searchPlaceholder="Search accounts"
+                                align="right"
+                                portal
+                                closeOnScroll={false}
+                                trigger={
+                                    <span className="relative inline-flex h-9 w-9 items-center justify-center">
+                                        <MessageCircle
+                                            aria-hidden="true"
+                                            className="h-[18px] w-[18px]"
+                                        />
+                                        <CountBadge
+                                            total={unreadCount}
+                                            max={99}
+                                            size={36}
+                                            color="red"
+                                            dot={false}
+                                            reduced={reducedMotion}
+                                        />
+                                    </span>
+                                }
+                                triggerClassName="relative inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-gray-500 outline-none transition-colors hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-ring"
+                            />
+
+                            <div ref={mobileNotificationsTriggerRef} className="inline-flex">
+                                <NotificationBell
+                                    count={notificationCount}
+                                    size={36}
+                                    icon={<Bell aria-hidden="true" className="h-5 w-5" />}
+                                    className="bg-transparent text-gray-500 hover:bg-gray-100"
+                                    aria-expanded={notificationsOpen}
+                                    onClick={() => setNotificationsOpen((previous) => !previous)}
+                                />
+                            </div>
+                        </div>
+
                         <div className="hidden sm:ms-6 sm:flex sm:items-center">
                             <button
                                 type="button"
@@ -820,7 +963,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                     position: 'fixed',
                                     top: notificationsPosition.top,
                                     left: notificationsPosition.left,
-                                    width: NOTIFICATIONS_PANEL_WIDTH,
+                                    width: notificationsPosition.width,
                                     transformOrigin: 'top right',
                                 }}
                                 className="z-[60] overflow-hidden rounded-xl border border-stone-200 bg-white shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)] dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:shadow-[0_2px_12px_rgba(0,0,0,0.6)]"

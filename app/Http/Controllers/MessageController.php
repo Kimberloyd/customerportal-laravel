@@ -285,7 +285,7 @@ class MessageController extends Controller
             $customer = CustomerScope::forCurrentUser(required: false);
 
             if (! $customer) {
-                return response()->json(['recipients' => []]);
+                return response()->json(['recipients' => [], 'unread_count' => 0]);
             }
 
             $staff = User::query()
@@ -317,11 +317,13 @@ class MessageController extends Controller
                     'contact_role' => $member->role,
                     'has_unread' => $unreadStaffIds->has($member->id),
                 ])->all(),
+                'unread_count' => MessageThread::unreadCount(),
             ]);
         }
 
         return response()->json([
             'recipients' => array_merge($this->messageRecipients(), $this->facebookRecipients()),
+            'unread_count' => MessageThread::unreadCount(),
         ]);
     }
 
