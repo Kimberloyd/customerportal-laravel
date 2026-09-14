@@ -67,7 +67,7 @@ export default function RemarksTimeline({ order, form, onSave, canEdit }) {
             spanRow: (row) => (row.__isInput ? TOTAL_COLUMNS : undefined),
             cell: (row) =>
                 row.__isInput ? (
-                    <div className="flex items-center gap-2">
+                    <div className="sticky left-0 z-10 flex w-[min(90vw,32rem)] items-center gap-2 bg-background py-0.5">
                         <input
                             type="text"
                             value={form.data.remarks}

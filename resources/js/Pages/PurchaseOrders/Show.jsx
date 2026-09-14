@@ -222,7 +222,7 @@ export default function Show({
                 spanRow: (item) => (item.__isTotal ? (showDeliverColumn ? 3 : 2) : undefined),
                 cell: (item) =>
                     item.__isTotal ? (
-                        <div className="flex flex-wrap justify-end gap-2">
+                        <div className="sticky left-0 z-10 flex w-fit flex-wrap justify-end gap-2 bg-background pl-1">
                             {canCancel && (
                                 <Button
                                     type="button"
