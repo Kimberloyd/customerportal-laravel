@@ -279,7 +279,7 @@ export default function Show({
                         // -- confirmed broken, not just untried. The mobile-visible
                         // duplicate of these same buttons renders below the table
                         // instead (outside the scroll area entirely).
-                        <div className="hidden w-fit flex-wrap justify-end gap-2 md:flex">
+                        <div className="hidden flex-wrap justify-end gap-2 md:flex">
                             {renderOrderActionButtons()}
                         </div>
                     ) : (
