@@ -1,0 +1,9 @@
+{
+  "appId": "com.theomeds.customerportal",
+  "appName": "Customer Portal",
+  "webDir": "www",
+  "server": {
+    "url": "https://customerportal.theomeds.com",
+    "cleartext": false
+  }
+}
