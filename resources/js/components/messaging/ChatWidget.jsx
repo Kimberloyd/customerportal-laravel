@@ -587,6 +587,13 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
 export default function ChatWidget() {
     const { chats, closeChat, setChatMinimized, setComposeOpen, isAuthenticated } = useChatWidget();
 
+    // Belt-and-suspenders: clearChats() on logout already empties `chats`,
+    // but nothing should ever render here for a signed-out visitor even if
+    // that state somehow lingers for a render or two during navigation.
+    if (!isAuthenticated) {
+        return null;
+    }
+
     const ordered = [...chats].reverse();
     const expanded = ordered.filter((chat) => !chat.minimized);
     const minimizedList = ordered.filter((chat) => chat.minimized);
@@ -619,32 +626,30 @@ export default function ChatWidget() {
                     onMinimizeChange={(value) => setChatMinimized(chat.key, value)}
                 />
             ))}
-            {isAuthenticated ? (
-                <motion.div
-                    key="new-message-launcher"
-                    layout
-                    style={{
-                        right: minimizedColumnRight,
-                        // Sits one slot above the minimized stack (closest to
-                        // the page content, farthest from the screen edge)
-                        // so it stays reachable instead of crowding the
-                        // bottom edge as more minimized chats pile up.
-                        bottom: 16 + minimizedList.length * (MINIMIZED_SLOT_HEIGHT + MINIMIZED_GAP),
-                    }}
-                    className="fixed z-50"
-                >
-                    <Tooltip content="New message" side="left">
-                        <button
-                            type="button"
-                            aria-label="New message"
-                            onClick={() => setComposeOpen(true)}
-                            className="flex size-11 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)] outline-none transition-colors hover:bg-stone-50 focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:text-stone-200 dark:shadow-[0_2px_12px_rgba(0,0,0,0.6)] dark:hover:bg-white/5"
-                        >
-                            <SquarePen className="size-4" aria-hidden="true" />
-                        </button>
-                    </Tooltip>
-                </motion.div>
-            ) : null}
+            <motion.div
+                key="new-message-launcher"
+                layout
+                style={{
+                    right: minimizedColumnRight,
+                    // Sits one slot above the minimized stack (closest to
+                    // the page content, farthest from the screen edge)
+                    // so it stays reachable instead of crowding the
+                    // bottom edge as more minimized chats pile up.
+                    bottom: 16 + minimizedList.length * (MINIMIZED_SLOT_HEIGHT + MINIMIZED_GAP),
+                }}
+                className="fixed z-50"
+            >
+                <Tooltip content="New message" side="left">
+                    <button
+                        type="button"
+                        aria-label="New message"
+                        onClick={() => setComposeOpen(true)}
+                        className="flex size-11 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)] outline-none transition-colors hover:bg-stone-50 focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:text-stone-200 dark:shadow-[0_2px_12px_rgba(0,0,0,0.6)] dark:hover:bg-white/5"
+                    >
+                        <SquarePen className="size-4" aria-hidden="true" />
+                    </button>
+                </Tooltip>
+            </motion.div>
         </AnimatePresence>,
         document.body,
     );

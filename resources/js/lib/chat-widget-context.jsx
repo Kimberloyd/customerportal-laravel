@@ -49,6 +49,12 @@ export function ChatWidgetProvider({ children }) {
         setChats((current) => current.filter((chat) => chat.key !== key));
     }, []);
 
+    // Called when AuthenticatedLayout unmounts (logout, or navigating to a
+    // guest-only page) -- otherwise an open or minimized chat panel just
+    // keeps rendering with whatever it last showed, visible to anyone at
+    // the login screen.
+    const clearChats = useCallback(() => setChats([]), []);
+
     const setChatMinimized = useCallback((key, minimized) => {
         setChats((current) =>
             current.map((chat) => (chat.key === key ? { ...chat, minimized } : chat)),
@@ -66,6 +72,7 @@ export function ChatWidgetProvider({ children }) {
             chats,
             openChat,
             closeChat,
+            clearChats,
             setChatMinimized,
             renameChat,
             maxOpenChats: MAX_OPEN_CHATS,
@@ -76,7 +83,7 @@ export function ChatWidgetProvider({ children }) {
             isAuthenticated,
             setIsAuthenticated,
         }),
-        [chats, openChat, closeChat, setChatMinimized, renameChat, readSignal, notifyRead, composeOpen, isAuthenticated],
+        [chats, openChat, closeChat, clearChats, setChatMinimized, renameChat, readSignal, notifyRead, composeOpen, isAuthenticated],
     );
 
     return (

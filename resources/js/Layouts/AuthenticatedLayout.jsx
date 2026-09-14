@@ -53,7 +53,7 @@ const USER_MENU_ITEMS = [
 
 export default function AuthenticatedLayout({ header, banner, children }) {
     const user = usePage().props.auth.user;
-    const { openChat, readSignal, composeOpen, setComposeOpen, setIsAuthenticated } = useChatWidget();
+    const { openChat, readSignal, composeOpen, setComposeOpen, setIsAuthenticated, clearChats } = useChatWidget();
     const reducedMotion = useReducedMotion() ?? false;
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
@@ -174,8 +174,15 @@ export default function AuthenticatedLayout({ header, banner, children }) {
 
     useEffect(() => {
         setIsAuthenticated(true);
-        return () => setIsAuthenticated(false);
-    }, [setIsAuthenticated]);
+        return () => {
+            setIsAuthenticated(false);
+            // Otherwise a chat left open (or minimized) when this layout
+            // unmounts -- logout, or navigating to a guest-only page --
+            // keeps rendering exactly as it last looked, visible to
+            // whoever's at the login screen next.
+            clearChats();
+        };
+    }, [setIsAuthenticated, clearChats]);
 
     const fetchUnreadCount = useCallback(() => {
         fetch(route('messages.unread-count'))
