@@ -81,7 +81,13 @@ services:
       ACCOUNT_DELETION_RETENTION_DAYS: ${ACCOUNT_DELETION_RETENTION_DAYS:-30}
       DATA_ERASURE_DEADLINE_DAYS: ${DATA_ERASURE_DEADLINE_DAYS:-30}
       BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
-      CACHE_STORE: ${CACHE_STORE:-file}
+      # Not `file`: on this NAS's container runtime, `docker compose exec`
+      # (and possibly PHP-FPM's own worker processes) can't create new
+      # subdirectories under the app-owned tmpfs cache dir even as root --
+      # confirmed via `system:smoke-test`, which caught every file-cache
+      # write failing outright. Redis is already required for
+      # sessions/queues and already proven working here.
+      CACHE_STORE: ${CACHE_STORE:-redis}
       QUEUE_CONNECTION: ${QUEUE_CONNECTION:-redis}
       FILESYSTEM_DISK: ${FILESYSTEM_DISK:-local}
       MAIL_MAILER: ${MAIL_MAILER:-log}
@@ -122,8 +128,8 @@ services:
     volumes:
       - laravel_storage:/app/storage/app/private
     tmpfs:
-      # Session/cache files (SESSION_DRIVER=file, CACHE_STORE=file),
-      # compiled Blade views, and bootstrap's cache dir -- ephemeral,
+      # Sessions and cache use Redis, not these paths -- this tmpfs backs
+      # compiled Blade views and bootstrap's cache dir, both ephemeral,
       # rebuilt on container start, nothing here needs to survive a
       # restart. Logs go to stderr (LOG_CHANNEL=stderr in .env) instead
       # of a file, specifically so storage/logs doesn't need to be
@@ -174,11 +180,15 @@ services:
       REVERB_SERVER_PATH: ${REVERB_SERVER_PATH:-}
       REVERB_ALLOWED_ORIGINS: ${REVERB_ALLOWED_ORIGINS:?REVERB_ALLOWED_ORIGINS is required}
       REVERB_SCALING_ENABLED: ${REVERB_SCALING_ENABLED:-false}
-      # Reverb polls Laravel's cache for graceful restart signals. Keep this
-      # process on its writable tmpfs-backed file cache; without an explicit
-      # store Laravel falls back to the database cache and default SQLite
-      # connection because this deliberately isolated service has no DB env.
-      CACHE_STORE: file
+      # Reverb polls Laravel's cache for graceful restart signals. Without an
+      # explicit store Laravel falls back to the database cache and default
+      # SQLite connection, because this deliberately isolated service has no
+      # DB env -- so this can't be left unset. Redis (not `file`): on this
+      # NAS's container runtime, writes to the app-owned tmpfs cache dir can
+      # fail even as root (see the `app` service's CACHE_STORE comment,
+      # confirmed via `system:smoke-test`). Reverb already has Redis env via
+      # *redis-environment above.
+      CACHE_STORE: redis
     command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
     depends_on:
       app:
@@ -218,7 +228,8 @@ services:
     environment:
       <<: [*laravel-base-environment, *database-environment, *redis-environment, *reverb-environment]
       QUEUE_CONNECTION: ${QUEUE_CONNECTION:-redis}
-      CACHE_STORE: file
+      # Not `file` -- same reason as the `app` service above.
+      CACHE_STORE: redis
       PO_NOTIFICATIONS_SMS_ENABLED: ${PO_NOTIFICATIONS_SMS_ENABLED:-false}
       SEMAPHORE_API_KEY: ${SEMAPHORE_API_KEY:-}
       SEMAPHORE_SENDER_NAME: ${SEMAPHORE_SENDER_NAME:-}
