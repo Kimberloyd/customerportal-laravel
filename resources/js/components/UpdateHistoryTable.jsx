@@ -32,13 +32,7 @@ export default function UpdateHistoryTable({ activities }) {
         {
             key: 'details',
             header: 'Details',
-            cell: (row) => (
-                <span className="line-clamp-2 whitespace-pre-wrap text-gray-900">
-                    {row.details}
-                    {row.remarks && (row.details ? ' ' : '')}
-                    {row.remarks && <span className="text-gray-500">Remarks: {row.remarks}</span>}
-                </span>
-            ),
+            cell: (row) => <span className="line-clamp-2 whitespace-pre-wrap text-gray-900">{row.details}</span>,
         },
     ];
 
