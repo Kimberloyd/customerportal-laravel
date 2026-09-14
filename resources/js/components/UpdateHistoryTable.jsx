@@ -1,0 +1,56 @@
+import { Table } from '@/components/motion/table';
+import { formatDateTime } from '@/utils/orderDisplay';
+
+const ROW_HEIGHT = 48;
+
+export default function UpdateHistoryTable({ activities }) {
+    const columns = [
+        {
+            key: 'created_at',
+            header: 'Date',
+            width: '180px',
+            cell: (row) => <span className="text-gray-500">{formatDateTime(row.created_at)}</span>,
+        },
+        {
+            key: 'actor_name',
+            header: 'Actor',
+            width: '200px',
+            cell: (row) => (
+                <span className="text-gray-900">
+                    {row.actor_name
+                        ? `${row.actor_name}${row.actor_role ? ` (${row.actor_role})` : ''}`
+                        : '—'}
+                </span>
+            ),
+        },
+        {
+            key: 'action',
+            header: 'Action',
+            width: '180px',
+            cell: (row) => <span className="font-medium text-gray-900">{row.action}</span>,
+        },
+        {
+            key: 'details',
+            header: 'Details',
+            cell: (row) => (
+                <span className="line-clamp-2 whitespace-pre-wrap text-gray-900">
+                    {row.details}
+                    {row.remarks && (row.details ? ' ' : '')}
+                    {row.remarks && <span className="text-gray-500">Remarks: {row.remarks}</span>}
+                </span>
+            ),
+        },
+    ];
+
+    return (
+        <Table
+            data={activities}
+            columns={columns}
+            getRowId={(row, index) => `${row.created_at ?? 'unknown'}-${row.action}-${index}`}
+            rowHeight={ROW_HEIGHT}
+            height={activities.length * ROW_HEIGHT + 60}
+            emptyState="No updates yet — order changes will appear here when they are recorded."
+            className="border-gray-200 [&>div]:overflow-hidden"
+        />
+    );
+}

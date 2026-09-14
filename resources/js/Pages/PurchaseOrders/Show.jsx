@@ -4,7 +4,7 @@ import { Input } from '@/components/motion/input';
 import { AnimatedBadge } from '@/components/motion/animated-badge';
 import { Table } from '@/components/motion/table';
 import { Tooltip } from '@/components/motion/tooltip';
-import { OrderActivityFeed } from '@/components/timelines-activity-feed';
+import UpdateHistoryTable from '@/components/UpdateHistoryTable';
 import { Button } from '@/components/ui/button';
 import { AutoHeightReveal, Modal } from '@/components/interior/modal';
 import { formatDateTime, statusBadge } from '@/utils/orderDisplay';
@@ -574,7 +574,7 @@ export default function Show({
                         <h3 className="text-lg font-semibold text-gray-900">Update History</h3>
                         <p className="text-sm text-gray-500">Remarks and changes recorded by update time.</p>
                     </div>
-                    <OrderActivityFeed activities={order.audit_logs} />
+                    <UpdateHistoryTable activities={order.audit_logs} />
                 </div>
             </div>
 
