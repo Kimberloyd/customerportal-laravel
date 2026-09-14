@@ -98,7 +98,7 @@ export default function RemarksTimeline({ order, form, onSave, canEdit }) {
             spanRow: (row) => (row.__isInput ? TOTAL_COLUMNS : undefined),
             cell: (row) =>
                 row.__isInput ? (
-                    <div className="hidden w-[min(70vw,32rem)] items-center gap-2 md:flex">
+                    <div className="hidden items-center gap-2 md:flex">
                         {renderAddRemarkControl()}
                     </div>
                 ) : (
