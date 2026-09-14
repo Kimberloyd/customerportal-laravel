@@ -45,7 +45,11 @@ function buildRemarksRows(auditLogs, order) {
         });
     }
 
-    return rows;
+    // Built oldest-to-newest above -- that order is what makes "value
+    // actually changed from the one before it" detectable in the first
+    // place -- but latest belongs at the top for display, same as every
+    // other table on this page.
+    return rows.reverse();
 }
 
 export default function RemarksTimeline({ order, form, onSave, canEdit }) {
