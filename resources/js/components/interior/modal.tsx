@@ -77,6 +77,19 @@ function unlockDocumentScroll() {
 
 const stack: object[] = [];
 
+/**
+ * Lets code outside this hook (the Capacitor hardware back-button bridge,
+ * see lib/capacitor-back-button.ts) ask "is a modal open right now, and if
+ * so, close only the topmost one" -- reusing the exact same single-flight
+ * semantics the Escape key already gets below, instead of maintaining a
+ * second parallel notion of "which modal is on top."
+ */
+export function closeTopmostModal(): boolean {
+  if (stack.length === 0) return false;
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+  return true;
+}
+
 export type UseModalOptions = {
   open: boolean;
   onClose: () => void;

@@ -3,11 +3,14 @@ import './bootstrap';
 
 import ChatWidget from '@/components/messaging/ChatWidget';
 import { ChatWidgetProvider } from '@/lib/chat-widget-context';
+import { installCapacitorBackButton } from '@/lib/capacitor-back-button';
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+
+installCapacitorBackButton();
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,
