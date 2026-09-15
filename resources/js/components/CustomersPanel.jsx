@@ -73,7 +73,7 @@ export function CustomersPanel({ customers = { data: [], last_page: 1, current_p
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-center bg-white">
+            <div className="flex justify-center bg-white dark:bg-background">
                 <Input
                     type="text"
                     value={search}

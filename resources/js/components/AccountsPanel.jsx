@@ -195,7 +195,7 @@ export function AccountsPanel({ users = { data: [], last_page: 1, current_page: 
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-wrap items-center justify-center bg-white">
+            <div className="flex flex-wrap items-center justify-center bg-white dark:bg-background">
                 <Input
                     type="text"
                     value={search}

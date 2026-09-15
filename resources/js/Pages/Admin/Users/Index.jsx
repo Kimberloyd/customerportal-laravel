@@ -11,7 +11,7 @@ export default function Index({ users, filters, roleLabels, accountForm }) {
 
     return (
         <AuthenticatedLayout
-            header={<h2 className="text-xl font-semibold leading-tight text-gray-800">Accounts</h2>}
+            header={<h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-100">Accounts</h2>}
         >
             <Head title="Accounts" />
 
