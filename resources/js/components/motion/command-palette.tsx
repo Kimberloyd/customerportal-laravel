@@ -276,11 +276,11 @@ export function CommandPalette({
           }
           onKeyDown={onKeyDown}
           className={cn(
-            "w-full max-w-xl overflow-hidden rounded-2xl border border-gray-200 bg-card shadow-2xl will-change-transform",
+            "w-full max-w-xl overflow-hidden rounded-2xl border border-gray-200 bg-card shadow-2xl will-change-transform dark:border-white/10",
             open ? "pointer-events-auto" : "pointer-events-none",
           )}
         >
-          <div className="flex items-center gap-3 border-b border-gray-200 px-4">
+          <div className="flex items-center gap-3 border-b border-gray-200 px-4 dark:border-white/10">
             <Search className="h-4 w-4 text-muted-foreground" />
             <input
               ref={inputRef}
@@ -311,7 +311,7 @@ export function CommandPalette({
             </kbd>
           </div>
           {note ? (
-            <div className="border-b border-gray-200 bg-muted/40 px-4 py-1.5 text-xs text-muted-foreground">
+            <div className="border-b border-gray-200 bg-muted/40 px-4 py-1.5 text-xs text-muted-foreground dark:border-white/10">
               {note}
             </div>
           ) : null}

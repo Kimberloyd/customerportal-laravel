@@ -143,8 +143,8 @@ export function TeamsPanel({ teams = [], agents = [] }) {
         <div>
             <div className="mb-6 flex items-start justify-between gap-4">
                 <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Teams</h3>
-                    <p className="mt-1 text-sm text-gray-600">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Teams</h3>
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
                         Organize active agents into teams of up to 3 members.
                     </p>
                 </div>
@@ -192,7 +192,7 @@ export function TeamsPanel({ teams = [], agents = [] }) {
                 }
             >
                 <form id="team-form" onSubmit={submit}>
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                         Team name
                         <div className="relative">
                             <input
@@ -206,7 +206,7 @@ export function TeamsPanel({ teams = [], agents = [] }) {
                                 className={`mt-1 h-10 w-full rounded-md border px-3 text-sm outline-none focus-visible:ring-2 ${
                                     editor.errors.name || validation.clientErrors.name
                                         ? 'border-red-300 focus-visible:border-red-400 focus-visible:ring-red-200'
-                                        : 'border-gray-300 focus-visible:border-primary focus-visible:ring-primary/20'
+                                        : 'border-gray-300 focus-visible:border-primary focus-visible:ring-primary/20 dark:border-gray-600'
                                 }`}
                                 required
                                 autoComplete="off"
@@ -221,7 +221,7 @@ export function TeamsPanel({ teams = [], agents = [] }) {
                     )}
 
                     <fieldset className="mt-5">
-                        <legend className="text-sm font-medium text-gray-700">
+                        <legend className="text-sm font-medium text-gray-700 dark:text-gray-300">
                             Agents ({editor.data.agent_ids.length}/3)
                         </legend>
                         <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -237,7 +237,7 @@ export function TeamsPanel({ teams = [], agents = [] }) {
                                 </div>
                             ))}
                             {selectableAgents.length === 0 && (
-                                <p className="text-sm text-gray-500 sm:col-span-2">
+                                <p className="text-sm text-gray-500 dark:text-gray-400 sm:col-span-2">
                                     All active agents already belong to a team.
                                 </p>
                             )}

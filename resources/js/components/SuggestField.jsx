@@ -124,10 +124,10 @@ export function SuggestionMenu({ menuRef, position, items, activeIndex, onHover,
                 width: position.width,
                 maxHeight: position.maxHeight,
             }}
-            className="z-[60] overflow-y-auto rounded-xl border border-stone-200 bg-white p-[5px]"
+            className="z-[60] overflow-y-auto rounded-xl border border-stone-200 bg-white p-[5px] dark:border-white/[0.16] dark:bg-[#1D1D1A]"
         >
             {heading && items.length > 0 && (
-                <div className="px-2.5 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-wide text-stone-400">
+                <div className="px-2.5 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-wide text-stone-400 dark:text-stone-500">
                     {heading}
                 </div>
             )}
@@ -155,14 +155,14 @@ export function SuggestionMenu({ menuRef, position, items, activeIndex, onHover,
                         onClick={() => onSelect(item)}
                         className={`flex w-full items-center gap-2 rounded-[7px] px-2.5 py-1.5 text-left text-sm ${
                             index === activeIndex
-                                ? 'bg-stone-100 text-stone-900'
-                                : 'text-stone-700'
+                                ? 'bg-stone-100 text-stone-900 dark:bg-white/10 dark:text-stone-100'
+                                : 'text-stone-700 dark:text-stone-300'
                         }`}
                     >
                         <span className="min-w-0 flex-1 truncate">{item.label}</span>
                         {item.badge}
                         {item.hint ? (
-                            <span className="shrink-0 font-mono text-[10.5px] text-stone-500">
+                            <span className="shrink-0 font-mono text-[10.5px] text-stone-500 dark:text-stone-400">
                                 {item.hint}
                             </span>
                         ) : null}
