@@ -21,7 +21,7 @@ export default function Dashboard({ activeTab, products, customers, users, filte
         <AuthenticatedLayout
             header={
                 <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold leading-tight text-gray-800">Admin</h2>
+                    <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-100">Admin</h2>
                     {activeTab === 'accounts' && (
                         <Button
                             type="button"
@@ -42,8 +42,8 @@ export default function Dashboard({ activeTab, products, customers, users, filte
                         href={route('admin.dashboard', { tab: 'products' })}
                         className={`block text-sm ${
                             activeTab === 'products'
-                                ? 'font-semibold text-gray-900'
-                                : 'text-gray-500 hover:text-gray-700'
+                                ? 'font-semibold text-gray-900 dark:text-gray-100'
+                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                         }`}
                     >
                         Products
@@ -52,8 +52,8 @@ export default function Dashboard({ activeTab, products, customers, users, filte
                         href={route('admin.dashboard', { tab: 'customers' })}
                         className={`block text-sm ${
                             activeTab === 'customers'
-                                ? 'font-semibold text-gray-900'
-                                : 'text-gray-500 hover:text-gray-700'
+                                ? 'font-semibold text-gray-900 dark:text-gray-100'
+                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                         }`}
                     >
                         Customers
@@ -62,15 +62,15 @@ export default function Dashboard({ activeTab, products, customers, users, filte
                         href={route('admin.dashboard', { tab: 'accounts' })}
                         className={`block text-sm ${
                             activeTab === 'accounts'
-                                ? 'font-semibold text-gray-900'
-                                : 'text-gray-500 hover:text-gray-700'
+                                ? 'font-semibold text-gray-900 dark:text-gray-100'
+                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                         }`}
                     >
                         Accounts
                     </Link>
                     <Link
                         href={route('admin.dashboard', { tab: 'teams' })}
-                        className={`block text-sm ${activeTab === 'teams' ? 'font-semibold text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                        className={`block text-sm ${activeTab === 'teams' ? 'font-semibold text-gray-900 dark:text-gray-100' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
                     >
                         Teams
                     </Link>

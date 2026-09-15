@@ -19,11 +19,11 @@ export default function Show({ token, thread, messages }) {
     };
 
     return (
-        <div className="min-h-screen bg-gray-100 py-10">
+        <div className="min-h-screen bg-gray-100 py-10 dark:bg-background">
             <Head title={thread.subject} />
 
             <div className="mx-auto max-w-2xl space-y-4 px-4">
-                <h1 className="text-xl font-semibold text-gray-900">{thread.subject}</h1>
+                <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{thread.subject}</h1>
 
                 {flash?.success && (
                     <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-700" role="status" aria-live="polite">
@@ -36,9 +36,9 @@ export default function Show({ token, thread, messages }) {
                     </div>
                 )}
 
-                <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
+                <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-[#1D1D1A]">
                     {messages.length === 0 && (
-                        <p className="text-sm text-gray-500">No messages yet. Replies will appear here.</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">No messages yet. Replies will appear here.</p>
                     )}
                     {messages.map((message) => (
                         <div
@@ -46,11 +46,11 @@ export default function Show({ token, thread, messages }) {
                             className={`max-w-lg rounded-lg p-3 text-sm ${
                                 message.sender_type === 'customer'
                                     ? 'ml-auto bg-primary/10 text-foreground'
-                                    : 'bg-gray-100 text-gray-900'
+                                    : 'bg-gray-100 text-gray-900 dark:bg-white/10 dark:text-gray-100'
                             }`}
                         >
                             <div className="whitespace-pre-wrap">{message.body}</div>
-                            <div className="mt-1 text-xs text-gray-500">
+                            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                 {message.sender_type === 'customer' ? 'You' : 'Company'} · {formatDateTime(message.created_at)}
                             </div>
                         </div>
@@ -58,14 +58,14 @@ export default function Show({ token, thread, messages }) {
                 </div>
 
                 {canReply ? (
-                    <form onSubmit={submit} className="space-y-2 rounded-lg border border-gray-200 bg-white p-4">
+                    <form onSubmit={submit} className="space-y-2 rounded-lg border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-[#1D1D1A]">
                         <textarea
                             required
                             rows={3}
                             value={data.body}
                             onChange={(e) => setData('body', e.target.value)}
                             placeholder="Write your reply"
-                            className="block w-full rounded-md border-gray-300 text-sm"
+                            className="block w-full rounded-md border-gray-300 text-sm dark:border-gray-600 dark:bg-transparent dark:text-gray-100"
                         />
                         <div className="flex justify-end">
                             <Button type="submit" variant="primary" disabled={processing}>
@@ -74,7 +74,7 @@ export default function Show({ token, thread, messages }) {
                         </div>
                     </form>
                 ) : (
-                    <div className="rounded-lg bg-gray-50 p-4 text-sm text-gray-500">
+                    <div className="rounded-lg bg-gray-50 p-4 text-sm text-gray-500 dark:bg-white/5 dark:text-gray-400">
                         This conversation is closed.
                     </div>
                 )}
