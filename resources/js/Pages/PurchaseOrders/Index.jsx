@@ -183,7 +183,7 @@ export default function Index({
                 header: 'PO Number',
                 sortable: true,
                 cell: (order) => (
-                    <span className="font-medium text-gray-900">{order.po_number}</span>
+                    <span className="font-medium text-gray-900 dark:text-gray-100">{order.po_number}</span>
                 ),
             },
             // Priority 2 -- state, dropped under the table's own container
@@ -290,7 +290,7 @@ export default function Index({
         <AuthenticatedLayout
             header={
                 <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold leading-tight text-gray-800">
+                    <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-100">
                         Orders
                     </h2>
                     <Button
@@ -306,7 +306,7 @@ export default function Index({
             <Head title="Orders" />
 
             <div ref={containerRef} className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-                <div className="flex items-center justify-center gap-2 bg-white">
+                <div className="flex items-center justify-center gap-2 bg-white dark:bg-background">
                     <div className="relative w-80">
                         <Input
                             type="text"
@@ -324,8 +324,8 @@ export default function Index({
                             }}
                         />
                         {searchFocused && !search.trim() && orderSearchSelections.recent.length > 0 && (
-                            <div className="absolute left-0 top-full z-20 mt-1.5 w-full rounded-xl border border-stone-200 bg-white p-2 shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)]">
-                                <p className="px-1 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-stone-400">Recent</p>
+                            <div className="absolute left-0 top-full z-20 mt-1.5 w-full rounded-xl border border-stone-200 bg-white p-2 shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)] dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
+                                <p className="px-1 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-stone-400 dark:text-stone-500">Recent</p>
                                 <div className="flex flex-wrap gap-1.5">
                                     {orderSearchSelections.recent.map((entry) => (
                                         <button
@@ -336,7 +336,7 @@ export default function Index({
                                                 setSearch(entry.label);
                                                 applyFilters({ search: entry.label });
                                             }}
-                                            className="rounded-full border border-stone-200 px-3 py-1 text-xs text-stone-700 outline-none transition-colors hover:bg-stone-50 focus-visible:ring-2 focus-visible:ring-ring"
+                                            className="rounded-full border border-stone-200 px-3 py-1 text-xs text-stone-700 outline-none transition-colors hover:bg-stone-50 focus-visible:ring-2 focus-visible:ring-ring dark:border-white/[0.16] dark:text-stone-300 dark:hover:bg-white/10"
                                         >
                                             {entry.label}
                                         </button>
@@ -355,7 +355,7 @@ export default function Index({
                             setFilterModalOpen(true);
                         }}
                         aria-label="Advanced filters"
-                        className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-white text-[#868593] shadow-none outline-none transition-colors hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-ring"
+                        className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-white text-[#868593] shadow-none outline-none transition-colors hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-ring dark:bg-[#1D1D1A] dark:text-[#9B9AA7] dark:hover:bg-white/10"
                     >
                         <Funnel aria-hidden="true" className="h-[18px] w-[18px]" />
                     </button>
@@ -462,7 +462,7 @@ export default function Index({
                             placeholder="Search customer"
                             emptyLabel="No customers found"
                             className="block w-full"
-                            triggerClassName="flex h-11 w-full items-center gap-2 rounded-lg border border-border bg-white px-4 text-left text-sm text-foreground outline-none transition-colors hover:border-muted-foreground/40 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20"
+                            triggerClassName="flex h-11 w-full items-center gap-2 rounded-lg border border-border bg-white px-4 text-left text-sm text-foreground outline-none transition-colors hover:border-muted-foreground/40 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20 dark:bg-[#1D1D1A]"
                             trigger={(
                                 <>
                                     <Search aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -517,7 +517,7 @@ export default function Index({
                                     </button>
                                 )}
                             </div>
-                            <div className="w-full rounded-xl bg-white">
+                            <div className="w-full rounded-xl bg-white dark:bg-[#1D1D1A]">
                                 <RangeCalendar
                                     aria-label="Order date range"
                                     value={
