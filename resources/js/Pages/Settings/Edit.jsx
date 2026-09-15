@@ -446,7 +446,7 @@ function TwoFactorSection({ twoFactor }) {
                     <p className="mt-1 text-sm">Each code works once. They will not be shown again.</p>
                     <div className="mt-3 grid gap-2 font-mono text-sm sm:grid-cols-2">
                         {twoFactor.recovery_codes.map((code) => (
-                            <code key={code} className="rounded border border-amber-200 bg-white px-3 py-2">{code}</code>
+                            <code key={code} className="rounded border border-amber-200 bg-white px-3 py-2 dark:border-amber-900 dark:bg-white/5">{code}</code>
                         ))}
                     </div>
                 </div>
@@ -569,7 +569,7 @@ export default function Edit({ user, sms, semaphore, reminders, two_factor: twoF
         <AuthenticatedLayout
             header={
                 <div>
-                    <h1 className="text-xl font-semibold leading-tight text-gray-800">
+                    <h1 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-100">
                         Settings
                     </h1>
                 </div>

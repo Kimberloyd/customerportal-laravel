@@ -136,7 +136,7 @@ export default function OrderMessageLogModal({ order, open, onClose }) {
             }
         >
             {loading ? (
-                <div className="flex min-h-52 flex-col items-center justify-center gap-3 text-stone-500">
+                <div className="flex min-h-52 flex-col items-center justify-center gap-3 text-stone-500 dark:text-stone-400">
                     <LoaderCircle aria-hidden="true" className="size-5 animate-spin" />
                     <p>Loading message log…</p>
                 </div>
@@ -145,7 +145,7 @@ export default function OrderMessageLogModal({ order, open, onClose }) {
                     <CircleAlert aria-hidden="true" className="size-6 text-red-500" />
                     <div>
                         <p className="font-medium text-stone-900 dark:text-stone-100">We couldn’t load this message log.</p>
-                        <p className="mt-1 text-xs text-stone-500">Check your connection and try again.</p>
+                        <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">Check your connection and try again.</p>
                     </div>
                     <Button type="button" variant="tertiary" size="compact" onClick={load}>
                         Try again

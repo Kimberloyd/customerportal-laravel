@@ -40,9 +40,9 @@ export default function ConfirmationDialog({
                             <div className="space-y-2">
                                 <label
                                     htmlFor="confirmation-account-name"
-                                    className="block text-sm text-stone-600"
+                                    className="block text-sm text-stone-600 dark:text-stone-400"
                                 >
-                                    Type <strong className="font-semibold text-stone-900">{confirmationText}</strong> to confirm.
+                                    Type <strong className="font-semibold text-stone-900 dark:text-stone-100">{confirmationText}</strong> to confirm.
                                 </label>
                                 <Input
                                     id="confirmation-account-name"
