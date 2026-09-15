@@ -1,11 +1,21 @@
 import { Capacitor } from '@capacitor/core';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { router } from '@inertiajs/react';
 import { RefreshCw } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 
 const PULL_THRESHOLD = 64;
-const MAX_PULL = 96;
+const VISUAL_CAP = 96;
+const RELEASE_SPRING = { type: 'spring', stiffness: 300, damping: 20, mass: 0.5 };
+
+// Diminishing-returns curve: a finger that has dragged well past VISUAL_CAP
+// still only moves the content asymptotically toward it, so the drag feels
+// elastic (a rubber band getting harder to stretch) instead of a 1:1 pass-
+// through -- present for the whole drag, not just once armed.
+function resistedPull(rawDelta) {
+    return VISUAL_CAP * (1 - 1 / (rawDelta / VISUAL_CAP + 1));
+}
 
 /**
  * The Android WebView (unlike Chrome/Safari) has no built-in pull-to-refresh
@@ -17,19 +27,19 @@ export default function PullToRefresh({ children }) {
     const native = typeof window !== 'undefined' && Capacitor.isNativePlatform();
     const containerRef = useRef(null);
     const [pull, setPull] = useState(0);
+    const [armed, setArmed] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+    const [dragging, setDragging] = useState(false);
     const reducedMotion = useReducedMotion();
-    const state = useRef({ dragging: false, startY: 0, pull: 0, refreshing: false });
+    // Raw (unresisted) drag distance drives the commit decision and the
+    // haptic/armed moment; `pull` (the resisted curve above) is purely what
+    // gets rendered -- they're deliberately not the same number.
+    const state = useRef({ dragging: false, startY: 0, raw: 0, refreshing: false, armed: false });
 
     useEffect(() => {
         if (!native) return;
         const el = containerRef.current;
         if (!el) return;
-
-        const setPullBoth = (value) => {
-            state.current.pull = value;
-            setPull(value);
-        };
 
         const onTouchStart = (event) => {
             if (state.current.refreshing || window.scrollY > 0 || event.touches.length !== 1) return;
@@ -46,36 +56,55 @@ export default function PullToRefresh({ children }) {
 
             state.current.dragging = true;
             state.current.startY = event.touches[0].clientY;
+            state.current.armed = false;
+            setDragging(true);
         };
 
         const onTouchMove = (event) => {
             if (!state.current.dragging) return;
-            const delta = event.touches[0].clientY - state.current.startY;
-            if (delta <= 0) {
-                setPullBoth(0);
+            const raw = Math.max(0, event.touches[0].clientY - state.current.startY);
+            if (raw <= 0) {
+                state.current.raw = 0;
+                setPull(0);
                 return;
             }
             event.preventDefault();
-            setPullBoth(delta < MAX_PULL ? delta : MAX_PULL + (delta - MAX_PULL) * 0.15);
+            state.current.raw = raw;
+            setPull(resistedPull(raw));
+
+            const pastThreshold = raw >= PULL_THRESHOLD;
+            if (pastThreshold && !state.current.armed) {
+                state.current.armed = true;
+                setArmed(true);
+                Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+            } else if (!pastThreshold && state.current.armed) {
+                // Pulled back below the line without releasing -- re-arm so
+                // crossing it again in the same gesture ticks again too.
+                state.current.armed = false;
+                setArmed(false);
+            }
         };
 
         const onTouchEnd = () => {
             if (!state.current.dragging) return;
             state.current.dragging = false;
+            setDragging(false);
 
-            if (state.current.pull >= PULL_THRESHOLD) {
+            if (state.current.raw >= PULL_THRESHOLD) {
                 state.current.refreshing = true;
                 setRefreshing(true);
-                setPullBoth(PULL_THRESHOLD);
+                setPull(resistedPull(PULL_THRESHOLD));
                 router.reload({
                     onFinish: () => {
                         state.current.refreshing = false;
+                        state.current.armed = false;
                         setRefreshing(false);
-                        setPullBoth(0);
+                        setArmed(false);
+                        setPull(0);
                     },
                 });
             } else {
-                setPullBoth(0);
+                setPull(0);
             }
         };
 
@@ -93,34 +122,33 @@ export default function PullToRefresh({ children }) {
 
     if (!native) return children;
 
-    const settling = !state.current.dragging;
+    // Immediate while a finger is down (must track the drag 1:1 frame to
+    // frame), a real spring once released -- a fixed-duration ease here is
+    // exactly the "hard stop" this is trying to avoid.
+    const releaseTransition = dragging || reducedMotion ? { duration: 0 } : RELEASE_SPRING;
+    const progress = Math.min(pull / VISUAL_CAP, 1);
 
     return (
         <div ref={containerRef} className="relative">
-            <div
+            <motion.div
                 aria-hidden="true"
                 className="pointer-events-none absolute inset-x-0 top-0 flex justify-center overflow-hidden"
-                style={{
-                    height: pull,
-                    transition: settling ? 'height 0.2s ease' : 'none',
-                }}
+                animate={{ height: pull }}
+                transition={releaseTransition}
             >
                 <motion.div
-                    animate={{ rotate: refreshing || reducedMotion ? 0 : pull * 3 }}
-                    transition={{ duration: 0 }}
-                    className="mt-3 grid h-8 w-8 place-items-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-md"
+                    animate={{ rotate: refreshing || reducedMotion ? 0 : progress * 360 }}
+                    transition={dragging ? { duration: 0 } : RELEASE_SPRING}
+                    className={`mt-3 grid h-8 w-8 place-items-center rounded-full border bg-white shadow-md ${
+                        armed || refreshing ? 'border-primary text-primary' : 'border-gray-200 text-gray-500'
+                    }`}
                 >
                     <RefreshCw aria-hidden="true" className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
                 </motion.div>
-            </div>
-            <div
-                style={{
-                    transform: `translateY(${pull}px)`,
-                    transition: settling ? 'transform 0.2s ease' : 'none',
-                }}
-            >
+            </motion.div>
+            <motion.div animate={{ y: pull }} transition={releaseTransition}>
                 {children}
-            </div>
+            </motion.div>
         </div>
     );
 }
