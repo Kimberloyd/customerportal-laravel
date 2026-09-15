@@ -7,6 +7,11 @@ import { useEffect, useRef, useState } from 'react';
 
 const PULL_THRESHOLD = 64;
 const VISUAL_CAP = 96;
+// The armed-and-refreshing hold pins the pull at this height rather than at
+// resistedPull(PULL_THRESHOLD) (~38px) -- that's shorter than the ring icon
+// itself (12px margin + 32px circle = 44px), which crowds it against the
+// nav above for the whole refresh, not just a passing frame.
+const REFRESH_HOLD_HEIGHT = 56;
 const RELEASE_SPRING = { type: 'spring', stiffness: 300, damping: 20, mass: 0.5 };
 
 // Diminishing-returns curve: a finger that has dragged well past VISUAL_CAP
@@ -93,7 +98,7 @@ export default function PullToRefresh({ children }) {
             if (state.current.raw >= PULL_THRESHOLD) {
                 state.current.refreshing = true;
                 setRefreshing(true);
-                setPull(resistedPull(PULL_THRESHOLD));
+                setPull(REFRESH_HOLD_HEIGHT);
                 router.reload({
                     onFinish: () => {
                         state.current.refreshing = false;
@@ -132,14 +137,21 @@ export default function PullToRefresh({ children }) {
         <div ref={containerRef} className="relative">
             <motion.div
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-x-0 top-0 flex justify-center overflow-hidden"
+                className="pointer-events-none absolute inset-x-0 top-0 flex justify-center"
                 animate={{ height: pull }}
                 transition={releaseTransition}
             >
+                {/* No overflow clip here -- the ring's own progress (rotation,
+                    then the armed color, then the spinner) is what should read
+                    as "how far along", not a hard edge cutting the icon off.
+                    At the threshold's resisted height (~38px) a 44px icon
+                    (12px margin + 32px circle) would otherwise lose its
+                    bottom edge for the entire refreshing hold, not just a
+                    passing frame. */}
                 <motion.div
                     animate={{ rotate: refreshing || reducedMotion ? 0 : progress * 360 }}
                     transition={dragging ? { duration: 0 } : RELEASE_SPRING}
-                    className={`mt-3 grid h-8 w-8 place-items-center rounded-full border bg-white shadow-md ${
+                    className={`mt-4 grid h-8 w-8 shrink-0 place-items-center rounded-full border bg-white shadow-md ${
                         armed || refreshing ? 'border-primary text-primary' : 'border-gray-200 text-gray-500'
                     }`}
                 >
