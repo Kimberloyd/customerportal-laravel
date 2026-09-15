@@ -108,7 +108,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         <label
           htmlFor={id}
           className={cn(
-            "px-1 text-sm text-gray-600",
+            "px-1 text-sm text-gray-600 dark:text-gray-400",
             classNames?.label,
           )}
         >

@@ -5,6 +5,9 @@ const withOpacity = (variable) => `hsl(var(${variable}) / <alpha-value>)`;
 
 /** @type {import('tailwindcss').Config} */
 export default {
+    // Class-based, not the 'media' default -- a manual toggle needs a class
+    // on <html> it can flip; 'media' can only ever follow the OS setting.
+    darkMode: 'class',
     content: [
         './vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',
         './storage/framework/views/*.php',

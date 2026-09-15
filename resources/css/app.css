@@ -103,6 +103,40 @@
         --radius-lg: 0.75rem;
         --radius-xl: 1rem;
     }
+
+    /*
+     * Dark-mode overrides for the tokens above, activated by the `.dark`
+     * class the theme toggle puts on <html> (Tailwind's darkMode: 'class').
+     * Neutral hue (~60, warm stone) rather than the brand's blue-indigo --
+     * matches the one dark surface that already shipped before this token
+     * system existed (the notifications popover: bg-[#1D1D1A], text-stone-*,
+     * border-white/[0.16]), so this doesn't introduce a second, competing
+     * dark palette. The light values were each individually contrast-audited
+     * against a white background (see the comments above); these dark
+     * counterparts are a reasonable first pass at the same relationships
+     * rather than independently re-verified per-token -- flag any specific
+     * combination that reads as low-contrast in practice.
+     */
+    .dark {
+        --background-hsl: 60 6% 8%;
+        --foreground-hsl: 60 9% 96%;
+        --card-hsl: 60 5% 11%;
+        --card-foreground-hsl: 60 9% 96%;
+        --border-hsl: 60 4% 22%;
+        --muted-hsl: 60 4% 16%;
+        --muted-foreground-hsl: 60 4% 65%;
+        --primary-hsl: 238 65% 68%;
+        --primary-foreground-hsl: 60 6% 8%;
+        --ring-hsl: 238 65% 68%;
+        --accent-hsl: 60 4% 16%;
+        --hover-hsl: 60 4% 22%;
+        --active-hsl: 60 4% 27%;
+        --destructive-hsl: 0 75% 58%;
+        --success-hsl: 150 55% 45%;
+        --info-hsl: 187 55% 50%;
+        --selected: #404040;
+        --destructive-light: #3f1212;
+    }
 }
 
 @layer components {

@@ -7,6 +7,19 @@
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
         <link rel="icon" type="image/png" href="/images/TM%20Logomark_Transparent%20BG.png">
 
+        <!-- Applies the saved theme before first paint -- run here, not in
+             React, so there's no flash of the wrong theme while JS boots. -->
+        <script>
+            (function () {
+                try {
+                    var stored = localStorage.getItem('theme');
+                    var dark = stored === 'dark'
+                        || (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                    document.documentElement.classList.toggle('dark', dark);
+                } catch (e) {}
+            })();
+        </script>
+
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />

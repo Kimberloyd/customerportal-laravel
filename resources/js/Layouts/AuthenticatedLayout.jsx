@@ -2,6 +2,7 @@ import echo from '@/echo';
 import FlashBanner from '@/components/FlashBanner';
 import PullToRefresh from '@/components/PullToRefresh';
 import ResponsiveNavLink from '@/components/ResponsiveNavLink';
+import ThemeToggle from '@/components/ThemeToggle';
 import { Dropdown as AccountDropdown } from '@/components/interior/dropdown';
 import { useModal } from '@/components/interior/modal';
 import { Tooltip } from '@/components/motion/tooltip';
@@ -503,14 +504,14 @@ export default function AuthenticatedLayout({ header, banner, children }) {
     }, [user.role, setComposeOpen]);
 
     return (
-        <div className="min-h-screen bg-white">
+        <div className="min-h-screen bg-white dark:bg-background">
             <a
                 href="#main-content"
                 className="sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:left-2 focus-visible:top-2 focus-visible:z-50 focus-visible:rounded-md focus-visible:bg-primary focus-visible:px-4 focus-visible:py-2 focus-visible:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
             >
                 Skip to main content
             </a>
-            <nav className="sticky top-0 z-40 border-b border-gray-100 bg-white">
+            <nav className="sticky top-0 z-40 border-b border-gray-100 bg-white dark:border-white/10 dark:bg-background">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="relative flex h-16 justify-between">
                         <div className="pointer-events-none absolute inset-x-0 flex h-16 items-center justify-center sm:hidden">
@@ -531,7 +532,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                             (previousState) => !previousState,
                                         )
                                     }
-                                    className="inline-flex items-center justify-center rounded-md bg-transparent p-2 text-gray-400 transition duration-150 ease-in-out hover:text-gray-500 focus:outline-none focus-visible:text-gray-500 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    className="inline-flex items-center justify-center rounded-md bg-transparent p-2 text-gray-400 transition duration-150 ease-in-out hover:text-gray-500 focus:outline-none focus-visible:text-gray-500 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:text-gray-500 dark:hover:text-gray-300"
                                 >
                                     <svg
                                         className="h-6 w-6"
@@ -582,8 +583,8 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                         href={tab.href}
                                         className={`inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium transition-colors ${
                                             tab.active
-                                                ? 'border-primary text-gray-900'
-                                                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                                                ? 'border-primary text-gray-900 dark:text-gray-100'
+                                                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:text-gray-200'
                                         }`}
                                     >
                                         {tab.label}
@@ -593,11 +594,13 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                         </div>
 
                         <div className="flex items-center gap-1 sm:hidden">
+                            <ThemeToggle />
+
                             <button
                                 type="button"
                                 onClick={() => setPaletteOpen(true)}
                                 aria-label="Search"
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-gray-500 outline-none transition-colors hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-ring"
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-gray-500 outline-none transition-colors hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-ring dark:text-gray-400 dark:hover:bg-white/10"
                             >
                                 <Search aria-hidden="true" className="h-5 w-5" />
                             </button>
@@ -713,13 +716,15 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                 type="button"
                                 onClick={() => setPaletteOpen(true)}
                                 aria-label="Search"
-                                className="me-2 flex h-9 w-48 items-center gap-2 rounded-full border border-gray-200 bg-transparent pl-3.5 pr-4 text-sm text-gray-500 transition-colors hover:border-gray-400 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:w-64"
+                                className="me-2 flex h-9 w-48 items-center gap-2 rounded-full border border-gray-200 bg-transparent pl-3.5 pr-4 text-sm text-gray-500 transition-colors hover:border-gray-400 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-white/15 dark:text-gray-400 dark:hover:border-white/30 dark:hover:text-gray-200 lg:w-64"
                             >
                                 <Search aria-hidden="true" className="h-4 w-4 shrink-0" />
                                 <span className="truncate text-left">Search</span>
                             </button>
 
                             <div className="flex items-center gap-1">
+                                <ThemeToggle />
+
                                 <AccountDropdown
                                     items={messageAccountItems}
                                     value=""
@@ -850,7 +855,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                     placeholder="User actions"
                                     align="right"
                                     portal
-                                    triggerClassName="flex h-9 select-none items-center gap-2 whitespace-nowrap rounded-md border border-transparent bg-white px-3 text-sm font-medium text-gray-500 outline-none transition-colors hover:bg-gray-100 hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-ring"
+                                    triggerClassName="flex h-9 select-none items-center gap-2 whitespace-nowrap rounded-md border border-transparent bg-white px-3 text-sm font-medium text-gray-500 outline-none transition-colors hover:bg-gray-100 hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-ring dark:bg-background dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-gray-200"
                                 />
                             </div>
                         </div>
@@ -879,14 +884,14 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                     animate={{ x: 0 }}
                                     exit={{ x: '-100%' }}
                                     transition={reducedMotion ? { duration: 0 } : OPEN_SPRING}
-                                    className="flex h-full w-full max-w-xs flex-col overflow-y-auto bg-white shadow-xl outline-none"
+                                    className="flex h-full w-full max-w-xs flex-col overflow-y-auto bg-white shadow-xl outline-none dark:bg-[#1D1D1A]"
                                 >
-                                    <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-4 py-3">
+                                    <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-white/[0.16]">
                                         <div className="min-w-0">
-                                            <div className="truncate text-base font-medium text-gray-800">
+                                            <div className="truncate text-base font-medium text-gray-800 dark:text-stone-100">
                                                 {user.full_name}
                                             </div>
-                                            <div className="truncate text-sm font-medium text-gray-500">
+                                            <div className="truncate text-sm font-medium text-gray-500 dark:text-stone-400">
                                                 {user.email}
                                             </div>
                                         </div>
@@ -894,7 +899,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                             type="button"
                                             onClick={closeMobileNav}
                                             aria-label="Close navigation"
-                                            className="grid h-9 w-9 place-items-center rounded-md text-gray-400 outline-none transition-colors hover:bg-gray-100 hover:text-gray-500 focus-visible:ring-2 focus-visible:ring-ring"
+                                            className="grid h-9 w-9 place-items-center rounded-md text-gray-400 outline-none transition-colors hover:bg-gray-100 hover:text-gray-500 focus-visible:ring-2 focus-visible:ring-ring dark:text-stone-500 dark:hover:bg-white/10 dark:hover:text-stone-300"
                                         >
                                             <X aria-hidden="true" className="h-5 w-5" />
                                         </button>
@@ -913,7 +918,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                         ))}
                                     </div>
 
-                                    <div className="border-t border-gray-200 pb-1 pt-4">
+                                    <div className="border-t border-gray-200 pb-1 pt-4 dark:border-white/[0.16]">
                                         <div className="space-y-1">
                                             <ResponsiveNavLink
                                                 method="post"
@@ -1087,14 +1092,14 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                 {banner}
 
                 {header && (
-                    <header className="border-b border-gray-100 bg-white">
+                    <header className="border-b border-gray-100 bg-white dark:border-white/10 dark:bg-background">
                         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
                             {header}
                         </div>
                     </header>
                 )}
 
-                <main id="main-content" tabIndex={-1} className="bg-white focus:outline-none">{children}</main>
+                <main id="main-content" tabIndex={-1} className="bg-white focus:outline-none dark:bg-background">{children}</main>
 
                 <FooterSimple
                     companyName="Theomeds Marketing Inc."
