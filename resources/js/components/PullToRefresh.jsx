@@ -81,6 +81,26 @@ export default function PullToRefresh({ children }) {
             }, 2500);
         };
 
+        // A tap that turns out to be a link click (or anything else that
+        // starts an Inertia visit) can have its own touchend queued behind
+        // the navigation -- once the visit swaps this component out and
+        // back in, React has already torn down these listeners by the time
+        // that queued touchend would have arrived, so it never fires at
+        // all. The 2.5s watchdog above eventually catches this too, but
+        // this closes the same gap the instant it's known, instead of
+        // leaving the ring visibly stuck for however long is left on the
+        // timer. Only clears a stray drag -- our own reload firing this
+        // same 'start' event is handled by its own onFinish below.
+        const unsubscribeNavigate = router.on('start', () => {
+            if (state.current.refreshing || !state.current.dragging) return;
+            clearWatchdog();
+            state.current.dragging = false;
+            state.current.moved = false;
+            setDragging(false);
+            setPull(0);
+            setArmed(false);
+        });
+
         const onTouchStart = (event) => {
             if (state.current.refreshing || window.scrollY > 0 || event.touches.length !== 1) return;
 
@@ -168,6 +188,7 @@ export default function PullToRefresh({ children }) {
         el.addEventListener('touchcancel', onTouchEnd);
         return () => {
             clearWatchdog();
+            unsubscribeNavigate();
             el.removeEventListener('touchstart', onTouchStart);
             el.removeEventListener('touchmove', onTouchMove);
             el.removeEventListener('touchend', onTouchEnd);
@@ -187,17 +208,17 @@ export default function PullToRefresh({ children }) {
         <div ref={containerRef} className="relative">
             <motion.div
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-x-0 top-0 flex justify-center"
+                className="pointer-events-none absolute inset-x-0 top-0 flex justify-center overflow-hidden"
                 animate={{ height: pull }}
                 transition={releaseTransition}
             >
-                {/* No overflow clip here -- the ring's own progress (rotation,
-                    then the armed color, then the spinner) is what should read
-                    as "how far along", not a hard edge cutting the icon off.
-                    At the threshold's resisted height (~38px) a 44px icon
-                    (12px margin + 32px circle) would otherwise lose its
-                    bottom edge for the entire refreshing hold, not just a
-                    passing frame. */}
+                {/* The clip is what hides this entirely at rest (height 0) --
+                    dropping it earlier to stop the ring's bottom edge from
+                    getting cut off during the refreshing hold was the wrong
+                    fix; REFRESH_HOLD_HEIGHT (56px) already clears the icon's
+                    own footprint (16px margin + 32px circle = 48px), so the
+                    clip was never what caused that -- pinning the hold
+                    height too short was. */}
                 <motion.div
                     animate={{ rotate: refreshing || reducedMotion ? 0 : progress * 360 }}
                     transition={dragging ? { duration: 0 } : RELEASE_SPRING}
