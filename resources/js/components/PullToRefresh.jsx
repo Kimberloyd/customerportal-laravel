@@ -39,12 +39,47 @@ export default function PullToRefresh({ children }) {
     // Raw (unresisted) drag distance drives the commit decision and the
     // haptic/armed moment; `pull` (the resisted curve above) is purely what
     // gets rendered -- they're deliberately not the same number.
-    const state = useRef({ dragging: false, startY: 0, raw: 0, refreshing: false, armed: false, moved: false });
+    const state = useRef({
+        dragging: false,
+        startY: 0,
+        raw: 0,
+        refreshing: false,
+        armed: false,
+        moved: false,
+        watchdog: null,
+    });
 
     useEffect(() => {
         if (!native) return;
         const el = containerRef.current;
         if (!el) return;
+
+        const clearWatchdog = () => {
+            if (state.current.watchdog !== null) {
+                clearTimeout(state.current.watchdog);
+                state.current.watchdog = null;
+            }
+        };
+
+        // A touchstart+touchmove with no touchend ever following leaves the
+        // gesture hanging forever -- pull stuck at whatever the last move
+        // set it to, with nothing else to snap it back. Seen in practice
+        // right after a login form's autofill auto-submits (whatever
+        // synthesizes that tap doesn't always deliver a clean touchend
+        // before the page navigates). A drag has no legitimate reason to
+        // still be "in progress" several seconds later, so force a reset.
+        const armWatchdog = () => {
+            clearWatchdog();
+            state.current.watchdog = setTimeout(() => {
+                state.current.watchdog = null;
+                if (!state.current.dragging) return;
+                state.current.dragging = false;
+                state.current.moved = false;
+                setDragging(false);
+                setPull(0);
+                setArmed(false);
+            }, 2500);
+        };
 
         const onTouchStart = (event) => {
             if (state.current.refreshing || window.scrollY > 0 || event.touches.length !== 1) return;
@@ -64,10 +99,12 @@ export default function PullToRefresh({ children }) {
             state.current.armed = false;
             state.current.moved = false;
             setDragging(true);
+            armWatchdog();
         };
 
         const onTouchMove = (event) => {
             if (!state.current.dragging) return;
+            armWatchdog();
             const raw = Math.max(0, event.touches[0].clientY - state.current.startY);
             if (raw <= 0) {
                 state.current.raw = 0;
@@ -93,6 +130,7 @@ export default function PullToRefresh({ children }) {
         };
 
         const onTouchEnd = () => {
+            clearWatchdog();
             if (!state.current.dragging) return;
             state.current.dragging = false;
             setDragging(false);
@@ -129,6 +167,7 @@ export default function PullToRefresh({ children }) {
         el.addEventListener('touchend', onTouchEnd);
         el.addEventListener('touchcancel', onTouchEnd);
         return () => {
+            clearWatchdog();
             el.removeEventListener('touchstart', onTouchStart);
             el.removeEventListener('touchmove', onTouchMove);
             el.removeEventListener('touchend', onTouchEnd);
