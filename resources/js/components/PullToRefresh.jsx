@@ -39,7 +39,7 @@ export default function PullToRefresh({ children }) {
     // Raw (unresisted) drag distance drives the commit decision and the
     // haptic/armed moment; `pull` (the resisted curve above) is purely what
     // gets rendered -- they're deliberately not the same number.
-    const state = useRef({ dragging: false, startY: 0, raw: 0, refreshing: false, armed: false });
+    const state = useRef({ dragging: false, startY: 0, raw: 0, refreshing: false, armed: false, moved: false });
 
     useEffect(() => {
         if (!native) return;
@@ -62,6 +62,7 @@ export default function PullToRefresh({ children }) {
             state.current.dragging = true;
             state.current.startY = event.touches[0].clientY;
             state.current.armed = false;
+            state.current.moved = false;
             setDragging(true);
         };
 
@@ -75,6 +76,7 @@ export default function PullToRefresh({ children }) {
             }
             event.preventDefault();
             state.current.raw = raw;
+            state.current.moved = true;
             setPull(resistedPull(raw));
 
             const pastThreshold = raw >= PULL_THRESHOLD;
@@ -94,6 +96,15 @@ export default function PullToRefresh({ children }) {
             if (!state.current.dragging) return;
             state.current.dragging = false;
             setDragging(false);
+
+            // A touchend with no touchmove in between never happened as a
+            // real drag -- committing off it anyway is exactly how a stray/
+            // duplicate touchend (observed once, in a dev-server hot-reload
+            // reconnect window) fired a refresh no one actually asked for.
+            if (!state.current.moved) {
+                setPull(0);
+                return;
+            }
 
             if (state.current.raw >= PULL_THRESHOLD) {
                 state.current.refreshing = true;
