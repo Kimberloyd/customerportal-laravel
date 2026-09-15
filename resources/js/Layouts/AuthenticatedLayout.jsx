@@ -1,5 +1,6 @@
 import echo from '@/echo';
 import FlashBanner from '@/components/FlashBanner';
+import PullToRefresh from '@/components/PullToRefresh';
 import ResponsiveNavLink from '@/components/ResponsiveNavLink';
 import { Dropdown as AccountDropdown } from '@/components/interior/dropdown';
 import { useModal } from '@/components/interior/modal';
@@ -1081,37 +1082,39 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                 accounts={composableAccounts}
             />
 
-            <FlashBanner />
-            {banner}
+            <PullToRefresh>
+                <FlashBanner />
+                {banner}
 
-            {header && (
-                <header className="border-b border-gray-100 bg-white">
-                    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                        {header}
-                    </div>
-                </header>
-            )}
+                {header && (
+                    <header className="border-b border-gray-100 bg-white">
+                        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+                            {header}
+                        </div>
+                    </header>
+                )}
 
-            <main id="main-content" tabIndex={-1} className="bg-white focus:outline-none">{children}</main>
+                <main id="main-content" tabIndex={-1} className="bg-white focus:outline-none">{children}</main>
 
-            <FooterSimple
-                companyName="Theomeds Marketing Inc."
-                logoSrc="/images/TM Horizontal Lockup_Transparent BG.png"
-                description="Delay is not an Option"
-                linkGroups={[
-                    {
-                        heading: 'Navigate',
-                        items: [
-                            { name: 'Dashboard', url: route('dashboard') },
-                            { name: 'Orders', url: route('purchase-orders.index') },
-                            { name: 'FAQ', url: route('faq') },
-                            { name: 'Terms & Privacy', url: route('terms-and-privacy') },
-                        ],
-                    },
-                ]}
-                social={{ facebook: 'https://www.facebook.com/profile.php?id=61560877803829' }}
-                copyright={`© ${new Date().getFullYear()} Theomeds Marketing Inc. All rights reserved.`}
-            />
+                <FooterSimple
+                    companyName="Theomeds Marketing Inc."
+                    logoSrc="/images/TM Horizontal Lockup_Transparent BG.png"
+                    description="Delay is not an Option"
+                    linkGroups={[
+                        {
+                            heading: 'Navigate',
+                            items: [
+                                { name: 'Dashboard', url: route('dashboard') },
+                                { name: 'Orders', url: route('purchase-orders.index') },
+                                { name: 'FAQ', url: route('faq') },
+                                { name: 'Terms & Privacy', url: route('terms-and-privacy') },
+                            ],
+                        },
+                    ]}
+                    social={{ facebook: 'https://www.facebook.com/profile.php?id=61560877803829' }}
+                    copyright={`© ${new Date().getFullYear()} Theomeds Marketing Inc. All rights reserved.`}
+                />
+            </PullToRefresh>
         </div>
     );
 }
