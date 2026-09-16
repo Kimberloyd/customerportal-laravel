@@ -115,9 +115,9 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
 
                 <div className="space-y-6 lg:col-span-10">
                 <form onSubmit={applyFilters} className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card p-4">
-                    <label className="flex flex-col text-sm text-muted-foreground">
+                    <label className="flex min-w-0 flex-col text-sm text-muted-foreground">
                         Period
-                        <select value={range} onChange={(e) => setRange(e.target.value)} className="mt-1 rounded-md border-border bg-transparent text-sm text-foreground focus-visible:ring-[color:var(--focus-ring)]">
+                        <select value={range} onChange={(e) => setRange(e.target.value)} className="mt-1 w-full min-w-0 max-w-[16rem] rounded-md border-border bg-transparent text-sm text-foreground focus-visible:ring-[color:var(--focus-ring)]">
                             {RANGE_OPTIONS.map((opt) => (
                                 <option key={opt.value} value={opt.value}>{opt.label}</option>
                             ))}
@@ -130,9 +130,9 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                         </>
                     )}
                     {!isCustomerView && (
-                        <label className="flex flex-col text-sm text-muted-foreground">
+                        <label className="flex min-w-0 flex-col text-sm text-muted-foreground">
                             Customer
-                            <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="mt-1 rounded-md border-border bg-transparent text-sm text-foreground focus-visible:ring-[color:var(--focus-ring)]">
+                            <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="mt-1 w-full min-w-0 max-w-[16rem] truncate rounded-md border-border bg-transparent text-sm text-foreground focus-visible:ring-[color:var(--focus-ring)]">
                                 <option value="">All Customers</option>
                                 {customers.map((c) => (
                                     <option key={c.id} value={c.id}>{c.company_name}</option>
