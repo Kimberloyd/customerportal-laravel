@@ -9,7 +9,7 @@
 
         <!-- Applies the saved theme before first paint -- run here, not in
              React, so there's no flash of the wrong theme while JS boots. -->
-        <script>
+        <script nonce="{{ Vite::cspNonce() }}">
             (function () {
                 try {
                     var stored = localStorage.getItem('theme');

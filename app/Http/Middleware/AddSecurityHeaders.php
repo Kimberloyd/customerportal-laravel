@@ -17,7 +17,11 @@ class AddSecurityHeaders
         $policy = implode('; ', [
             "default-src 'self'",
             "base-uri 'self'",
-            "connect-src 'self' ws://{$host} wss://{$host}",
+            // Wildcard port: Vite's HMR websocket runs on an arbitrary dev
+            // port, and Reverb's port is env-configurable (VITE_REVERB_PORT)
+            // -- ws://{$host} alone (no port) only matches the ws default
+            // port, which is neither of those.
+            "connect-src 'self' ws://{$host}:* wss://{$host}:*",
             "font-src 'self' https://fonts.bunny.net data:",
             "form-action 'self'",
             "frame-ancestors 'self'",
