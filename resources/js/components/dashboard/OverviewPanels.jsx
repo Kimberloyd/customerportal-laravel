@@ -115,7 +115,7 @@ export function SecondaryMetricsCard({ metrics, reducedMotion }) {
     );
 }
 
-export function OrderStages({ current, previous, ordersUrl, reducedMotion }) {
+export function OrderStages({ current, ordersUrl, reducedMotion }) {
     // Same tones as the order status badges (see statusBadge() in
     // utils/orderDisplay.js and STATUS_CLASS in motion/animated-badge.tsx):
     // neutral=muted-foreground, warning=amber-500, info/success are the
@@ -142,7 +142,6 @@ export function OrderStages({ current, previous, ordersUrl, reducedMotion }) {
                     <div key={stage.key}>
                         <p className="flex items-center gap-1.5 text-xs text-stone-600 dark:text-stone-400"><span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${stage.color}`} />{stage.label}</p>
                         {stage.status && current.stages[stage.key] > 0 ? <Link className={`mt-1 inline-block rounded text-lg font-semibold text-stone-800 tabular-nums hover:text-primary ${focus} dark:text-stone-200`} href={`${ordersUrl}&status=${stage.status}`} aria-label={`${current.stages[stage.key]} orders ${stage.label.toLowerCase()}`}>{number.format(current.stages[stage.key])}</Link> : <p className="mt-1 text-lg font-semibold text-stone-800 tabular-nums dark:text-stone-200">{number.format(current.stages[stage.key])}</p>}
-                        <p className="text-xs text-stone-500 dark:text-stone-400">{number.format(previous.stages[stage.key])} previously</p>
                     </div>
                 ))}
             </div>

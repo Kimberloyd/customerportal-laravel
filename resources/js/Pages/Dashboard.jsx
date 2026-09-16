@@ -74,7 +74,7 @@ export default function Dashboard({ dashboard, workspace }) {
                                         {workspace.can_order && <Link href={ordersUrl} className="inline-flex items-center gap-1.5 rounded text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-indigo-300">View orders <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>}
                                     </div>
                                     <OrderTrend trend={dashboard.trend} empty={dashboard.trend.every((point) => point.current === 0 && point.delivered === 0)} reducedMotion={reducedMotion} />
-                                    <OrderStages current={current} previous={previous} ordersUrl={ordersUrl} reducedMotion={reducedMotion} />
+                                    <OrderStages current={current} ordersUrl={ordersUrl} reducedMotion={reducedMotion} />
                                 </section>
                             </motion.div>
                             <motion.div {...enter(0.24)}>
