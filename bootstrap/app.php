@@ -9,6 +9,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -63,7 +64,23 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
-        $exceptions->respond(function ($response) {
+        $exceptions->respond(function (\Symfony\Component\HttpFoundation\Response $response, \Throwable $e, Request $request) {
+            $status = $response->getStatusCode();
+
+            // Swap Laravel's plain vendor error page for the app's own
+            // branded, navigable one on every real HTML request -- but
+            // never in local/testing, where the raw exception page with
+            // its stack trace is what you actually want while debugging.
+            if (
+                ! $request->is('api/*')
+                && ! $request->expectsJson()
+                && in_array($status, [403, 404, 419, 429, 500, 503], true)
+                && ! app()->environment(['local', 'testing'])
+            ) {
+                $response = Inertia::render('Error', ['status' => $status])
+                    ->toResponse($request)
+                    ->setStatusCode($status);
+            }
             if (app()->bound('request') && ($requestId = request()->attributes->get('request_id'))) {
                 $response->headers->set('X-Request-ID', $requestId);
             }
