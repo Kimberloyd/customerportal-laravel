@@ -3,11 +3,26 @@
 @tailwind utilities;
 
 @layer base {
+    /*
+     * IBM Plex Sans replaces Outfit as the app's one type family (see the
+     * $impeccable typeset decision) -- this is an Operate-mode product
+     * (dashboards, order tables, dense data) where a single well-tuned
+     * sans is meant to carry headings, labels, body, and data alike, so
+     * the fix wasn't pairing in a second face. Outfit is a geometric
+     * display face: strong personality for headlines, but geometric
+     * sans commonly under-serve small-size legibility and numeral
+     * disambiguation (0/O, 1/l/I) -- a real cost here given how much of
+     * this app is order quantities, prices, dates, and PO numbers. Plex
+     * Sans was designed by IBM specifically for enterprise/technical
+     * software UI, with genuinely distinct numerals and full weight
+     * coverage (100-700) for every weight this app actually uses (up to
+     * font-bold/700; nothing here reaches 800/900).
+     */
     @font-face {
-        font-family: 'Outfit';
-        src: url('/fonts/Outfit/Outfit-VariableFont_wght.ttf') format('truetype');
+        font-family: 'IBM Plex Sans';
+        src: url('/fonts/IBMPlexSans/IBMPlexSans-VariableFont_wght.woff2') format('woff2');
         font-style: normal;
-        font-weight: 100 900;
+        font-weight: 100 700;
         font-display: swap;
     }
 
