@@ -4,25 +4,54 @@
 
 @layer base {
     /*
-     * IBM Plex Sans replaces Outfit as the app's one type family (see the
-     * $impeccable typeset decision) -- this is an Operate-mode product
-     * (dashboards, order tables, dense data) where a single well-tuned
-     * sans is meant to carry headings, labels, body, and data alike, so
-     * the fix wasn't pairing in a second face. Outfit is a geometric
-     * display face: strong personality for headlines, but geometric
-     * sans commonly under-serve small-size legibility and numeral
-     * disambiguation (0/O, 1/l/I) -- a real cost here given how much of
-     * this app is order quantities, prices, dates, and PO numbers. Plex
-     * Sans was designed by IBM specifically for enterprise/technical
-     * software UI, with genuinely distinct numerals and full weight
-     * coverage (100-700) for every weight this app actually uses (up to
-     * font-bold/700; nothing here reaches 800/900).
+     * IBM Plex Sans replaced Outfit as the workhorse face (see the
+     * $impeccable typeset decision): geometric faces like Outfit commonly
+     * under-serve small-size legibility and numeral disambiguation
+     * (0/O, 1/l/I), a real cost given how much of this app is order
+     * quantities, prices, dates, and PO numbers. Plex Sans was designed by
+     * IBM for enterprise/technical software UI, with genuinely distinct
+     * numerals and full weight coverage (100-700) for every weight this
+     * app uses in body text, labels, buttons, and data (nothing there
+     * reaches 800/900).
+     *
+     * It stays the ONLY face for those functional roles -- operate.md's
+     * own guidance is that a display face has no business in labels,
+     * buttons, or data on a product surface. Headings are where brand
+     * character actually belongs, so IBM Plex Serif (below) is paired in
+     * for h1-h6 and the type-page-heading/type-section-heading roles
+     * specifically. Same IBM Plex super-family, designed by IBM to be
+     * mixed -- real visual contrast (serif headlines read as considered
+     * and credible, fitting a pharma/medical B2B brand) without the
+     * metric-mismatch risk of pairing two unrelated third-party faces.
      */
     @font-face {
         font-family: 'IBM Plex Sans';
         src: url('/fonts/IBMPlexSans/IBMPlexSans-VariableFont_wght.woff2') format('woff2');
         font-style: normal;
         font-weight: 100 700;
+        font-display: swap;
+    }
+
+    /*
+     * Display pairing for headings only -- see the comment above. Only the
+     * two weights headings actually use (font-semibold/600 for the
+     * type-*-heading roles, font-bold/700 for any bolder emphasis inside
+     * a heading); IBM Plex Serif isn't published as a variable font, so
+     * these are real static files rather than one variable one.
+     */
+    @font-face {
+        font-family: 'IBM Plex Serif';
+        src: url('/fonts/IBMPlexSerif/IBMPlexSerif-SemiBold.woff2') format('woff2');
+        font-style: normal;
+        font-weight: 600;
+        font-display: swap;
+    }
+
+    @font-face {
+        font-family: 'IBM Plex Serif';
+        src: url('/fonts/IBMPlexSerif/IBMPlexSerif-Bold.woff2') format('woff2');
+        font-style: normal;
+        font-weight: 700;
         font-display: swap;
     }
 
@@ -173,11 +202,11 @@
     }
 
     .type-section-heading {
-        @apply text-lg font-semibold leading-6 tracking-tight;
+        @apply text-lg font-semibold leading-6 tracking-tight font-display;
     }
 
     .type-page-heading {
-        @apply text-2xl font-semibold leading-8 tracking-tight;
+        @apply text-2xl font-semibold leading-8 tracking-tight font-display;
     }
 }
 
