@@ -334,7 +334,7 @@ export default function Show({
                                                   type="button"
                                                   disabled={item.pending_quantity === 0 || numeric <= 0}
                                                   onClick={() => setQty(numeric - 1)}
-                                                  className="pointer-events-auto grid h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-gray-100 hover:text-foreground disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-white/10"
+                                                  className="pointer-events-auto grid h-6 w-6 place-items-center rounded text-muted-foreground outline-none hover:bg-gray-100 hover:text-foreground focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-white/10"
                                               >
                                                   <Minus className="h-3.5 w-3.5" />
                                               </button>
@@ -344,7 +344,7 @@ export default function Show({
                                                   type="button"
                                                   disabled={item.pending_quantity === 0 || numeric >= item.pending_quantity}
                                                   onClick={() => setQty(numeric + 1)}
-                                                  className="grid h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-gray-100 hover:text-foreground disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-white/10"
+                                                  className="grid h-6 w-6 place-items-center rounded text-muted-foreground outline-none hover:bg-gray-100 hover:text-foreground focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-white/10"
                                               >
                                                   <Plus className="h-3.5 w-3.5" />
                                               </button>
@@ -361,7 +361,7 @@ export default function Show({
                                           type="button"
                                           disabled={item.pending_quantity === 0 || numeric >= item.pending_quantity}
                                           onClick={() => setQty(item.pending_quantity)}
-                                          className="h-8 shrink-0 rounded px-2 text-xs font-medium text-primary hover:bg-primary/10 disabled:pointer-events-none disabled:opacity-40"
+                                          className="h-8 shrink-0 rounded px-2 text-xs font-medium text-primary outline-none hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] disabled:pointer-events-none disabled:opacity-40"
                                       >
                                           Max
                                       </button>
@@ -444,7 +444,7 @@ export default function Show({
                                                 <button
                                                     type="button"
                                                     onClick={() => setAttachmentPreviewOpen(true)}
-                                                    className="text-primary hover:underline"
+                                                    className="rounded text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]"
                                                 >
                                                     View File
                                                 </button>
@@ -521,7 +521,7 @@ export default function Show({
                 <div>
                     <div className="mb-3 flex flex-wrap items-start justify-between gap-4">
                         <div>
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Items and Fulfillment</h3>
+                            <h3 className="type-section-heading text-gray-900 dark:text-gray-100">Items and Fulfillment</h3>
                             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Track ordered, delivered, and remaining quantities.</p>
                         </div>
                         {showDeliverColumn && (
@@ -557,7 +557,7 @@ export default function Show({
                 {order.follow_ups?.length > 0 && (
                     <div>
                         <div className="mb-3">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Automatic follow-up</h3>
+                            <h3 className="type-section-heading text-gray-900 dark:text-gray-100">Automatic follow-up</h3>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Current reminder and escalation timing for this order.</p>
                         </div>
                         <Table
@@ -579,7 +579,7 @@ export default function Show({
 
                 <div>
                     <div className="mb-3">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Update History</h3>
+                        <h3 className="type-section-heading text-gray-900 dark:text-gray-100">Update History</h3>
                         <p className="text-sm text-gray-500 dark:text-gray-400">Remarks and changes recorded by update time.</p>
                     </div>
                     <UpdateHistoryTable activities={order.audit_logs} />

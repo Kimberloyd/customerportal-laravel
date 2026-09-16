@@ -306,7 +306,7 @@ export default function Index({
             <Head title="Orders" />
 
             <div ref={containerRef} className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-                <div className="flex items-center justify-center gap-2 bg-white dark:bg-background">
+                <div className="flex items-center justify-center gap-2 bg-background">
                     <div className="relative w-full max-w-80">
                         <Input
                             type="text"
@@ -486,8 +486,9 @@ export default function Index({
                                     <button
                                         key={option.value}
                                         type="button"
+                                        aria-pressed={status === option.value}
                                         onClick={() => setStatus(option.value)}
-                                        className={`inline-flex items-center rounded-full border px-4 py-2 text-sm transition-colors ${
+                                        className={`inline-flex items-center rounded-full border px-4 py-2 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] ${
                                             status === option.value
                                                 ? 'border-primary bg-primary text-primary-foreground'
                                                 : 'border-border text-foreground hover:bg-muted'
@@ -511,7 +512,7 @@ export default function Index({
                                             setStartDate('');
                                             setEndDate('');
                                         }}
-                                        className="text-sm font-medium text-primary hover:underline"
+                                        className="rounded text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]"
                                     >
                                         Clear
                                     </button>
