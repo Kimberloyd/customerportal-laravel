@@ -15,7 +15,6 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProductReturnController;
 use App\Http\Controllers\PublicConversationController;
 use App\Http\Controllers\PurchaseOrderController;
-use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SearchSelectionController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TermsAndPrivacyController;
@@ -139,12 +138,6 @@ Route::middleware('auth')->prefix('settings')->name('settings.')->group(function
     Route::delete('/two-factor/setup', [TwoFactorAuthenticationController::class, 'cancelSetup'])->name('two-factor.cancel');
     Route::post('/two-factor/recovery-codes', [TwoFactorAuthenticationController::class, 'regenerateRecoveryCodes'])->middleware('throttle:two-factor')->name('two-factor.recovery-codes');
     Route::delete('/two-factor', [TwoFactorAuthenticationController::class, 'disable'])->middleware('throttle:two-factor')->name('two-factor.disable');
-});
-
-Route::middleware('auth')->prefix('reports')->name('reports.')->group(function () {
-    Route::get('/overview', [ReportController::class, 'overview'])->name('overview');
-    Route::get('/orders', [ReportController::class, 'orders'])->name('orders');
-    Route::get('/orders/export', [ReportController::class, 'exportOrders'])->middleware('throttle:report-exports')->name('orders.export');
 });
 
 // Unauthenticated guest conversation link -- token-gated, not session-based.

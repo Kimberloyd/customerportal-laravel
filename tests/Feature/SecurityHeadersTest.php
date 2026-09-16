@@ -58,9 +58,9 @@ class SecurityHeadersTest extends TestCase
         $this->assertContains('throttle:return-actions', Route::getRoutes()->getByName('purchase-orders.returns.store')->gatherMiddleware());
         $this->assertContains('throttle:message-writes', Route::getRoutes()->getByName('messages.widget.send')->gatherMiddleware());
         $this->assertContains('throttle:admin-sensitive', Route::getRoutes()->getByName('admin.users.erase-now')->gatherMiddleware());
-        $this->assertContains('throttle:report-exports', Route::getRoutes()->getByName('reports.orders.export')->gatherMiddleware());
+        $this->assertContains('throttle:report-exports', Route::getRoutes()->getByName('admin.users.data-export')->gatherMiddleware());
 
-        $request = Request::create('/reports/orders/export');
+        $request = Request::create('/admin/users/1/data-export');
         $request->setUserResolver(fn () => null);
         $limit = RateLimiter::limiter('report-exports')($request);
         $this->assertSame(5, $limit->maxAttempts);
