@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\AccountDeletionService;
 use App\Support\AdminUserListing;
 use App\Support\UserAudit;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -43,13 +44,16 @@ class UserController extends Controller
         ]);
     }
 
-    public function create(Request $request): Response
+    // The standalone create page was replaced by CreateUserModal on the
+    // Accounts tab; this route is kept only so old links/bookmarks land
+    // somewhere sensible instead of a 404, and still enforces the same
+    // admin-only check the old page relied on -- covered by
+    // tests/Feature/Admin/Users/CreateTest.php::test_agent_gets_403.
+    public function create(Request $request): RedirectResponse
     {
         $this->requireAdmin();
 
-        return Inertia::render('Admin/Users/Create', [
-            'customers' => $this->customerOptions(),
-        ]);
+        return redirect()->route('admin.dashboard', ['tab' => 'accounts']);
     }
 
     public function store(Request $request)

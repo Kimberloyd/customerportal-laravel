@@ -383,7 +383,12 @@ class PurchaseOrderController extends Controller
         return $candidate;
     }
 
-    public function edit(PurchaseOrder $order): Response|RedirectResponse
+    // The standalone edit page was replaced by the Edit modal on the order's
+    // Show page (see CreateOrderModal in edit mode); this route is kept only
+    // so old links/bookmarks land somewhere sensible instead of a 404, and
+    // still enforces the same authorization/terminal-status checks the old
+    // page relied on -- both covered by tests/Feature/PurchaseOrders/EditTest.php.
+    public function edit(PurchaseOrder $order): RedirectResponse
     {
         $this->authorize('update', $order);
 
@@ -392,32 +397,7 @@ class PurchaseOrderController extends Controller
                 ->with('error', "This {$order->status} order can no longer be edited.");
         }
 
-        $order->load(['customer', 'items']);
-
-        $customer = CustomerScope::forCurrentUser();
-        $customers = CustomerAccess::applyToCustomers(Customer::query(), Auth::user())
-            ->orderBy('company_name')->get(['id', 'company_name'])->toArray();
-
-        $isTerminal = in_array($order->status, PurchaseOrder::TERMINAL_STATUSES, true);
-
-        return Inertia::render('PurchaseOrders/Edit', [
-            'order' => [
-                'id' => $order->id,
-                'po_number' => $order->po_number,
-                'customer_id' => $order->customer_id,
-                'remarks' => $order->remarks,
-                'has_attachment' => (bool) $order->po_file,
-                'is_terminal' => $isTerminal,
-                'items' => $order->items->map(fn (PurchaseOrderItem $item) => [
-                    'id' => $item->id,
-                    'display_name' => $item->display_name,
-                    'quantity' => $item->quantity,
-                    'delivered_quantity' => $item->delivered_quantity,
-                ]),
-            ],
-            'customers' => $customers,
-            'lockedCustomerId' => $customer?->id,
-        ]);
+        return redirect()->route('purchase-orders.show', $order);
     }
 
     public function update(Request $request, PurchaseOrder $order)
