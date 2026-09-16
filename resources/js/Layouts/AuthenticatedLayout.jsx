@@ -22,6 +22,8 @@ import {
     SquarePen,
     X,
 } from 'lucide-react';
+import { Menu as MenuIconNode, X as XIconNode } from 'lucide';
+import { MorphIcon } from 'morphicons/react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -464,37 +466,17 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                             (previousState) => !previousState,
                                         )
                                     }
+                                    aria-label={showingNavigationDropdown ? 'Close menu' : 'Open menu'}
                                     className="inline-flex items-center justify-center rounded-md bg-transparent p-2 text-gray-400 transition duration-150 ease-in-out hover:text-gray-500 focus:outline-none focus-visible:text-gray-500 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:text-gray-500 dark:hover:text-gray-300"
                                 >
-                                    <svg
-                                        className="h-6 w-6"
-                                        stroke="currentColor"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            className={
-                                                !showingNavigationDropdown
-                                                    ? 'inline-flex'
-                                                    : 'hidden'
-                                            }
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth="2"
-                                            d="M4 6h16M4 12h16M4 18h16"
-                                        />
-                                        <path
-                                            className={
-                                                showingNavigationDropdown
-                                                    ? 'inline-flex'
-                                                    : 'hidden'
-                                            }
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth="2"
-                                            d="M6 18L18 6M6 6l12 12"
-                                        />
-                                    </svg>
+                                    <MorphIcon
+                                        aria-hidden="true"
+                                        icon={showingNavigationDropdown ? XIconNode : MenuIconNode}
+                                        spring="snappy"
+                                        reducedMotion="user"
+                                        size={24}
+                                        strokeWidth={2}
+                                    />
                                 </button>
 
                                 <ThemeToggle />

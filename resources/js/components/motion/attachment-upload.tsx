@@ -10,12 +10,12 @@ import {
   LoaderCircle,
   Mic,
   Paperclip,
-  Pause,
-  Play,
   RotateCcw,
   Upload,
   X,
 } from "lucide-react";
+import { Pause, Play } from "lucide";
+import { MorphIcon } from "morphicons/react";
 import {
   AnimatePresence,
   LayoutGroup,
@@ -656,21 +656,14 @@ function AttachmentRow({
               transition={SPRING_PRESS}
               className="grid size-9 shrink-0 place-items-center rounded-full bg-foreground text-background outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.span
-                  key={playing ? "pause" : "play"}
-                  initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.8 }}
-                  transition={ITEM_TRANSITION}
-                >
-                  {playing ? (
-                    <Pause className="size-4 fill-current" />
-                  ) : (
-                    <Play className="size-4 translate-x-px fill-current" />
-                  )}
-                </motion.span>
-              </AnimatePresence>
+              <MorphIcon
+                aria-hidden="true"
+                icon={playing ? Pause : Play}
+                spring="snappy"
+                reducedMotion="user"
+                size={16}
+                className="fill-current"
+              />
             </motion.button>
           </>
         ) : (

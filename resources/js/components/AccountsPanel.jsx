@@ -5,7 +5,9 @@ import { Input } from '@/components/motion/input';
 import { Table } from '@/components/motion/table';
 import ConfirmationDialog from '@/components/ConfirmationDialog';
 import { router } from '@inertiajs/react';
-import { Download, KeyRound, MoreHorizontal, Pencil, RotateCcw, Search, Trash2, UserCheck, UserRoundX } from 'lucide-react';
+import { Download, KeyRound, MoreHorizontal, Pencil, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { UserCheck, UserRoundX } from 'lucide';
+import { MorphIcon } from 'morphicons/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 const PAGE_SIZE = 10;
@@ -158,7 +160,15 @@ export function AccountsPanel({ users = { data: [], last_page: 1, current_page: 
                         {
                             value: user.is_active ? 'deactivate' : 'reactivate',
                             label: user.is_active ? 'Deactivate' : 'Reactivate',
-                            icon: user.is_active ? <UserRoundX /> : <UserCheck />,
+                            icon: (
+                                <MorphIcon
+                                    aria-hidden="true"
+                                    icon={user.is_active ? UserRoundX : UserCheck}
+                                    spring="snappy"
+                                    reducedMotion="user"
+                                    size={16}
+                                />
+                            ),
                             onSelect: () => toggleActive(user),
                         },
                         {
