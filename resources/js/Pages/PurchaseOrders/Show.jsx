@@ -202,9 +202,9 @@ export default function Show({
             {canCancel && (
                 <Button
                     type="button"
-                    variant="tertiary"
+                    variant="destructive"
                     size="compact"
-                    className="rounded-md text-destructive hover:opacity-80"
+                    className="rounded-md"
                     onClick={cancel}
                 >
                     Cancel
