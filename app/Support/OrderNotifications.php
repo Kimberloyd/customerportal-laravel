@@ -8,6 +8,7 @@ use App\Models\AppSetting;
 use App\Models\CustomerMessage;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderNotification;
+use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -128,6 +129,13 @@ class OrderNotifications
         } catch (\Throwable $e) {
             Log::warning("Failed to send Facebook Messenger order summary for {$order->po_number}.", ['exception' => $e]);
             self::record($order, 'facebook', 'failed', note: $e->getMessage());
+        }
+
+        try {
+            self::sendAgentSms($order);
+        } catch (\Throwable $e) {
+            Log::warning("Failed to send agent SMS order summary for {$order->po_number}.", ['exception' => $e]);
+            self::record($order, 'agent_sms', 'failed', note: $e->getMessage());
         }
     }
 
@@ -390,6 +398,68 @@ class OrderNotifications
     }
 
     /**
+     * Texts the same sales agents sendFacebookSummary() messages on
+     * Messenger, so an order summary reaches them even if their 24-hour
+     * Messenger window has lapsed or they haven't linked a Facebook thread
+     * at all. Reuses the same "which threads are agent-linked" query, but
+     * resolves each thread's assignedUser and sends by phone rather than
+     * PSID -- deduped, since one agent can have more than one linked
+     * thread and shouldn't be texted the same summary twice.
+     */
+    private static function sendAgentSms(PurchaseOrder $order): void
+    {
+        if (! config('services.po_notifications.agent_sms_enabled', false)) {
+            Log::info("Agent SMS notification skipped for {$order->po_number}: feature not enabled in this environment.");
+            self::record($order, 'agent_sms', 'skipped', note: 'feature not enabled in this environment');
+
+            return;
+        }
+
+        $agentIds = CustomerMessage::whereNull('parent_id')
+            ->where('channel', 'facebook_messenger')
+            ->whereNotNull('assigned_user_id')
+            ->where('status', '!=', 'closed')
+            ->distinct()
+            ->pluck('assigned_user_id');
+
+        $agents = User::whereIn('id', $agentIds)->get();
+
+        if ($agents->isEmpty()) {
+            Log::info("Agent SMS notification skipped for {$order->po_number}: no sales agent has a linked Facebook thread.");
+            self::record($order, 'agent_sms', 'skipped', note: 'no sales agent has a linked Facebook thread');
+
+            return;
+        }
+
+        $body = self::agentSmsSummaryBody($order);
+
+        // Each agent's send is independent -- one missing/invalid phone
+        // number shouldn't stop the others from being notified.
+        foreach ($agents as $agent) {
+            if (! $agent->phone) {
+                Log::info("Agent SMS notification skipped for {$order->po_number}: agent {$agent->id} has no phone number on file.");
+                self::record($order, 'agent_sms', 'skipped', recipient: (string) $agent->id, note: 'agent has no phone number on file');
+
+                continue;
+            }
+
+            try {
+                $messageId = SemaphoreSms::send($agent->phone, $body);
+
+                if ($messageId) {
+                    Log::info("Agent SMS order summary sent for {$order->po_number} (Semaphore message id {$messageId}).");
+                    self::record($order, 'agent_sms', 'sent', recipient: $agent->phone, externalReference: (string) $messageId);
+                } else {
+                    self::record($order, 'agent_sms', 'failed', recipient: $agent->phone, note: 'Semaphore did not return a message id');
+                }
+            } catch (\Throwable $e) {
+                Log::warning("Failed to send agent SMS order summary to user {$agent->id} for {$order->po_number}.", ['exception' => $e]);
+                self::record($order, 'agent_sms', 'failed', recipient: $agent->phone, note: $e->getMessage());
+            }
+        }
+    }
+
+    /**
      * Every field carries its own label and the item list is numbered so a
      * sales agent can scan straight to what they need (or reference "item
      * 2" back to a customer) without parsing a paragraph.
@@ -445,5 +515,16 @@ class OrderNotifications
         $lines[] = "We'll text you again once it's processed.";
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * Same content as facebookSummaryBody() -- an agent reading this over
+     * SMS needs to be able to act on it exactly as they would from
+     * Messenger, so it isn't trimmed down the way the customer-facing
+     * smsSummaryBody() is.
+     */
+    private static function agentSmsSummaryBody(PurchaseOrder $order): string
+    {
+        return self::facebookSummaryBody($order);
     }
 }

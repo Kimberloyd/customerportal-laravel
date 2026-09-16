@@ -107,6 +107,121 @@ class NotificationTest extends TestCase
         $this->assertSame('skipped', $record->status);
     }
 
+    public function test_agent_is_texted_the_order_summary_when_agent_sms_is_enabled(): void
+    {
+        config(['services.po_notifications.agent_sms_enabled' => true, 'services.semaphore.api_key' => 'test-key']);
+        Http::fake([
+            'api.semaphore.co/*' => Http::response([['message_id' => 1, 'status' => 'Queued']]),
+        ]);
+        $agent = User::factory()->create(['role' => 'office', 'phone' => '09179876543']);
+        $customerUser = User::factory()->create(['role' => 'customer']);
+        $customer = $this->makeCustomer('Own Co', $customerUser);
+        $product = $this->makeProduct('Widget');
+
+        $this->makeThread(null, [
+            'assigned_user_id' => $agent->id,
+            'channel' => 'facebook_messenger',
+            'external_sender_id' => 'facebook-recipient',
+        ]);
+
+        $this->actingAsUser($customerUser)->post('/orders', [
+            'po_number' => 'PO-'.uniqid(),
+            'customer_id' => $customer->id,
+            'product_id' => [$product->id],
+            'product_search' => [''],
+            'quantity' => [1],
+        ]);
+
+        Http::assertSent(function (Request $request) {
+            return $request->url() === 'https://api.semaphore.co/api/v4/messages'
+                && $request['number'] === '09179876543';
+        });
+
+        $record = PurchaseOrderNotification::where('channel', 'agent_sms')->first();
+        $this->assertNotNull($record);
+        $this->assertSame('sent', $record->status);
+        $this->assertSame('09179876543', $record->recipient);
+    }
+
+    public function test_agent_sms_skips_when_disabled(): void
+    {
+        config(['services.po_notifications.agent_sms_enabled' => false]);
+        $agent = User::factory()->create(['role' => 'office', 'phone' => '09179876543']);
+        $customerUser = User::factory()->create(['role' => 'customer']);
+        $customer = $this->makeCustomer('Own Co', $customerUser);
+        $product = $this->makeProduct('Widget');
+
+        $this->makeThread(null, [
+            'assigned_user_id' => $agent->id,
+            'channel' => 'facebook_messenger',
+            'external_sender_id' => 'facebook-recipient',
+        ]);
+
+        $this->actingAsUser($customerUser)->post('/orders', [
+            'po_number' => 'PO-'.uniqid(),
+            'customer_id' => $customer->id,
+            'product_id' => [$product->id],
+            'product_search' => [''],
+            'quantity' => [1],
+        ]);
+
+        Http::assertNotSent(fn (Request $request) => str_contains($request->url(), 'semaphore.co'));
+
+        $record = PurchaseOrderNotification::where('channel', 'agent_sms')->first();
+        $this->assertNotNull($record);
+        $this->assertSame('skipped', $record->status);
+    }
+
+    public function test_agent_sms_is_sent_once_per_agent_even_with_multiple_linked_threads(): void
+    {
+        // Facebook explicitly off here -- this test isolates agent SMS
+        // dedup, and this environment's real Messenger credentials would
+        // otherwise also fire (and get counted by assertSentCount below).
+        config([
+            'services.po_notifications.agent_sms_enabled' => true,
+            'services.po_notifications.facebook_enabled' => false,
+            'services.semaphore.api_key' => 'test-key',
+        ]);
+        Http::fake([
+            'api.semaphore.co/*' => Http::response([['message_id' => 1, 'status' => 'Queued']]),
+        ]);
+        $agent = User::factory()->create(['role' => 'office', 'phone' => '09179876543']);
+        $customerUser = User::factory()->create(['role' => 'customer']);
+        $customer = $this->makeCustomer('Own Co', $customerUser);
+        $product = $this->makeProduct('Widget');
+
+        // The same agent linked to two different Facebook contact threads
+        // should still only be texted once.
+        $this->makeThread(null, [
+            'assigned_user_id' => $agent->id,
+            'channel' => 'facebook_messenger',
+            'external_sender_id' => 'facebook-recipient-1',
+        ]);
+        $this->makeThread(null, [
+            'assigned_user_id' => $agent->id,
+            'channel' => 'facebook_messenger',
+            'external_sender_id' => 'facebook-recipient-2',
+        ]);
+
+        $this->actingAsUser($customerUser)->post('/orders', [
+            'po_number' => 'PO-'.uniqid(),
+            'customer_id' => $customer->id,
+            'product_id' => [$product->id],
+            'product_search' => [''],
+            'quantity' => [1],
+        ]);
+
+        // Filtered rather than Http::assertSentCount(): order submission
+        // can make other incidental HTTP calls (e.g. inventory lookups)
+        // unrelated to what this test is isolating.
+        $semaphoreRequests = Http::recorded(fn (Request $request) => str_contains($request->url(), 'semaphore.co'));
+        $this->assertCount(1, $semaphoreRequests);
+        $this->assertSame(
+            1,
+            PurchaseOrderNotification::where('channel', 'agent_sms')->where('status', 'sent')->count(),
+        );
+    }
+
     public function test_facebook_is_not_marked_sent_when_messenger_is_not_configured(): void
     {
         config([

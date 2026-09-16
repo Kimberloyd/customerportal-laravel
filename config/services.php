@@ -43,6 +43,10 @@ return [
         'email_enabled' => env('PO_NOTIFICATIONS_EMAIL_ENABLED', false),
         'facebook_enabled' => env('PO_NOTIFICATIONS_FACEBOOK_ENABLED', false),
         'sms_enabled' => env('PO_NOTIFICATIONS_SMS_ENABLED', false),
+        // Separate from the customer-facing sms_enabled flag above so an
+        // administrator can turn agent texts on/off independently of
+        // customer texts -- see OrderNotifications::sendAgentSms().
+        'agent_sms_enabled' => env('PO_NOTIFICATIONS_AGENT_SMS_ENABLED', false),
     ],
 
     // See App\Support\SemaphoreSms. Used by OrderNotifications to text the
