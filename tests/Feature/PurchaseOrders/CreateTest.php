@@ -103,6 +103,51 @@ class CreateTest extends TestCase
         $this->assertEquals(37.50, $item->line_total);
     }
 
+    public function test_blank_po_number_gets_an_auto_generated_one(): void
+    {
+        $staff = User::factory()->create(['role' => 'office']);
+        $customer = $this->makeCustomer();
+        $product = $this->makeProduct('Amoxicillin 500mg');
+
+        $response = $this->actingAsUser($staff)->post('/orders', [
+            'po_number' => '',
+            'customer_id' => $customer->id,
+            'product_id' => [$product->id],
+            'product_search' => [''],
+            'quantity' => [1],
+        ]);
+
+        $response->assertRedirect(route('purchase-orders.index'));
+        $order = PurchaseOrder::first();
+        $this->assertNotNull($order);
+        $this->assertNotSame('', $order->po_number);
+        $this->assertMatchesRegularExpression('/^PO-\d{6}-[A-Z0-9]{4}$/', $order->po_number);
+    }
+
+    public function test_rejects_a_duplicate_po_number(): void
+    {
+        $staff = User::factory()->create(['role' => 'office']);
+        $customer = $this->makeCustomer();
+        $product = $this->makeProduct('Amoxicillin 500mg');
+        PurchaseOrder::create([
+            'po_number' => 'PO-DUPLICATE',
+            'customer_id' => $customer->id,
+            'status' => PurchaseOrder::STATUS_SUBMITTED,
+            'submitted_at' => now(),
+        ]);
+
+        $response = $this->actingAsUser($staff)->post('/orders', [
+            'po_number' => 'PO-DUPLICATE',
+            'customer_id' => $customer->id,
+            'product_id' => [$product->id],
+            'product_search' => [''],
+            'quantity' => [1],
+        ]);
+
+        $response->assertSessionHasErrors('po_number');
+        $this->assertSame(1, PurchaseOrder::count());
+    }
+
     public function test_resolves_line_via_unambiguous_product_search(): void
     {
         $staff = User::factory()->create(['role' => 'office']);

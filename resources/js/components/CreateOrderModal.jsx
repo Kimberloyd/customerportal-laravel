@@ -465,20 +465,13 @@ export default function CreateOrderModal({
         return true;
     };
 
-    const validateDetails = () => {
-        if (data.po_number.trim() === '') {
-            setClientErrors((current) => ({ ...current, po_number: 'Enter a PO number.' }));
-            return false;
-        }
-        return true;
-    };
-
-    // Each step validates itself on the way forward; the Review step (and,
-    // when skipped, the Customer step) has nothing to check here.
+    // Each step validates itself on the way forward; the Details step (PO
+    // number is optional, attachment has its own inline errors) and the
+    // Review step (and, when skipped, the Customer step) have nothing to
+    // check here.
     const stepValidators = {
         ...(skipCustomerStep ? {} : { 1: validateCustomer }),
         [productsStepIndex]: validateProducts,
-        [detailsStepIndex]: validateDetails,
     };
 
     const goForward = () => {
@@ -489,7 +482,7 @@ export default function CreateOrderModal({
     };
 
     const submit = () => {
-        if (processing || !validateCustomer() || !validateProducts() || !validateDetails()) return;
+        if (processing || !validateCustomer() || !validateProducts()) return;
 
         transform((values) => {
             if (isEditing) {
@@ -758,7 +751,7 @@ export default function CreateOrderModal({
                     <div className="space-y-5 pt-2">
                         <div>
                             <label htmlFor="create-order-po-number" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                PO Number
+                                PO Number <span className="font-normal text-gray-400 dark:text-gray-500">(optional)</span>
                             </label>
                             <Input
                                 id="create-order-po-number"
@@ -769,6 +762,7 @@ export default function CreateOrderModal({
                                     setData('po_number', value);
                                     clearFieldError('po_number');
                                 }}
+                                placeholder="Leave blank to auto-generate one"
                                 error={errors.po_number ?? clientErrors.po_number}
                                 classNames={{ field: 'rounded-md' }}
                             />

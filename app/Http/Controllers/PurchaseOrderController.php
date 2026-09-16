@@ -26,6 +26,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -295,13 +296,15 @@ class PurchaseOrderController extends Controller
             ]);
         }
 
+        // The customer's own external PO reference -- optional, since not
+        // every customer has one. Left blank, one is generated so the
+        // column (NOT NULL, unique) and every downstream reference to it
+        // (notifications, exports, the archive dialog's type-to-confirm)
+        // keep working unchanged.
         $poNumber = trim((string) $request->input('po_number', ''));
         if ($poNumber === '') {
-            throw ValidationException::withMessages([
-                'po_number' => 'Enter a PO number.',
-            ]);
-        }
-        if (PurchaseOrder::where('po_number', $poNumber)->exists()) {
+            $poNumber = self::generatePoNumber();
+        } elseif (PurchaseOrder::where('po_number', $poNumber)->exists()) {
             throw ValidationException::withMessages([
                 'po_number' => 'This PO number is already in use.',
             ]);
@@ -364,6 +367,20 @@ class PurchaseOrderController extends Controller
         PurchaseOrderChanged::dispatch($order->id, 'created');
 
         return redirect()->route('purchase-orders.index')->with('success', 'Order created.');
+    }
+
+    /**
+     * A date-plus-random format rather than an id-based one (e.g. "ORD-1")
+     * so it can be generated before the order exists, and reads clearly as
+     * auto-assigned rather than looking like a real customer PO reference.
+     */
+    private static function generatePoNumber(): string
+    {
+        do {
+            $candidate = 'PO-'.now()->format('ymd').'-'.Str::upper(Str::random(4));
+        } while (PurchaseOrder::where('po_number', $candidate)->exists());
+
+        return $candidate;
     }
 
     public function edit(PurchaseOrder $order): Response|RedirectResponse
