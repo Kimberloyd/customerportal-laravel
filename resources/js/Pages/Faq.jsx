@@ -8,76 +8,102 @@ function Term({ children }) {
     return <strong className="font-medium text-stone-800 dark:text-stone-100">{children}</strong>;
 }
 
-const FAQ_ITEMS = [
+// Grouped by category so a reader scanning for e.g. "Returns" finds the
+// right cluster by its heading alone, without reading every question in a
+// flat list first. Each group becomes its own Accordion instance below.
+const FAQ_GROUPS = [
     {
-        id: 'create-order',
-        title: 'How do I create a purchase order?',
-        meta: 'Orders',
-        content: (
-            <div className="space-y-2.5">
-                <ol className="list-decimal space-y-1.5 pl-4">
-                    <li>Open <Term>Orders</Term>.</li>
-                    <li>Select <Term>Create Order</Term>.</li>
-                    <li>Choose the products and quantities you need.</li>
-                    <li>Submit your PO.</li>
-                </ol>
-                <p>Your order will immediately appear in the Orders list with a Submitted status.</p>
-            </div>
-        ),
+        category: 'Orders',
+        items: [
+            {
+                id: 'create-order',
+                title: 'How do I create a purchase order?',
+                content: (
+                    <div className="space-y-2.5">
+                        <ol className="list-decimal space-y-1.5 pl-4">
+                            <li>Open <Term>Orders</Term>.</li>
+                            <li>Select <Term>Create Order</Term>.</li>
+                            <li>Choose the products and quantities you need.</li>
+                            <li>Submit your PO.</li>
+                        </ol>
+                        <p>Your order will immediately appear in the Orders list with a Submitted status.</p>
+                    </div>
+                ),
+            },
+            {
+                id: 'order-status',
+                title: 'What do the order statuses mean?',
+                content: (
+                    <ul className="list-disc space-y-1.5 pl-4">
+                        <li><Term>Submitted</Term> — waiting for fulfillment.</li>
+                        <li><Term>Partial</Term> — part of the order has been delivered.</li>
+                        <li><Term>Processed</Term> — all items have been delivered and the order can be closed.</li>
+                        <li><Term>Completed</Term> — all items have been delivered.</li>
+                        <li><Term>Cancelled</Term> — the order will not be fulfilled.</li>
+                    </ul>
+                ),
+            },
+        ],
     },
     {
-        id: 'order-status',
-        title: 'What do the order statuses mean?',
-        meta: 'Orders',
-        content: (
-            <ul className="list-disc space-y-1.5 pl-4">
-                <li><Term>Submitted</Term> — waiting for fulfillment.</li>
-                <li><Term>Partial</Term> — part of the order has been delivered.</li>
-                <li><Term>Processed</Term> — all items have been delivered and the order can be closed.</li>
-                <li><Term>Completed</Term> — all items have been delivered.</li>
-                <li><Term>Cancelled</Term> — the order will not be fulfilled.</li>
-            </ul>
-        ),
+        category: 'Delivery',
+        items: [
+            {
+                id: 'confirm-delivery',
+                title: 'How do I confirm that a delivery was received?',
+                content: 'When an order is marked Completed, open the order and select "Order Received." This lets Theomeds know that the delivery reached your facility.',
+            },
+        ],
     },
     {
-        id: 'confirm-delivery',
-        title: 'How do I confirm that a delivery was received?',
-        meta: 'Delivery',
-        content: 'When an order is marked Completed, open the order and select "Order Received." This lets Theomeds know that the delivery reached your facility.',
+        category: 'Returns',
+        items: [
+            {
+                id: 'product-returns',
+                title: 'How do product returns work?',
+                content: 'After you confirm receipt of a completed order, you can request a return from the order page within 7 days. Select only the delivered products and quantities you want to return, explain the reason, and submit the request. Theomeds will approve or decline it before arranging collection or delivery. Returned products are recorded separately; this portal does not issue credits or refunds automatically.',
+            },
+        ],
     },
     {
-        id: 'product-returns',
-        title: 'How do product returns work?',
-        meta: 'Returns',
-        content: 'After you confirm receipt of a completed order, you can request a return from the order page within 7 days. Select only the delivered products and quantities you want to return, explain the reason, and submit the request. Theomeds will approve or decline it before arranging collection or delivery. Returned products are recorded separately; this portal does not issue credits or refunds automatically.',
+        category: 'Updates',
+        items: [
+            {
+                id: 'order-notifications',
+                title: 'Where can I see order updates?',
+                content: (
+                    <ul className="list-disc space-y-1.5 pl-4">
+                        <li>Select the bell in the top navigation for recent order updates.</li>
+                        <li>Open the order itself to see its current status and delivery information.</li>
+                    </ul>
+                ),
+            },
+        ],
     },
     {
-        id: 'order-notifications',
-        title: 'Where can I see order updates?',
-        meta: 'Updates',
-        content: (
-            <ul className="list-disc space-y-1.5 pl-4">
-                <li>Select the bell in the top navigation for recent order updates.</li>
-                <li>Open the order itself to see its current status and delivery information.</li>
-            </ul>
-        ),
+        category: 'Support',
+        items: [
+            {
+                id: 'message-support',
+                title: 'How do I contact Theomeds about an order?',
+                content: 'Select the message icon in the header to start or continue a conversation. Include the PO number and the details you need help with so the team can respond quickly.',
+            },
+        ],
     },
     {
-        id: 'message-support',
-        title: 'How do I contact Theomeds about an order?',
-        meta: 'Support',
-        content: 'Select the message icon in the header to start or continue a conversation. Include the PO number and the details you need help with so the team can respond quickly.',
-    },
-    {
-        id: 'account-access',
-        title: 'Who can change account details or add users?',
-        meta: 'Accounts',
-        content: (
-            <ul className="list-disc space-y-1.5 pl-4">
-                <li>You can update your own name and phone number from Settings.</li>
-                <li>Administrators manage company accounts, customer links, account status, and permissions from the Admin area.</li>
-            </ul>
-        ),
+        category: 'Accounts',
+        items: [
+            {
+                id: 'account-access',
+                title: 'Who can change account details or add users?',
+                content: (
+                    <ul className="list-disc space-y-1.5 pl-4">
+                        <li>You can update your own name and phone number from Settings.</li>
+                        <li>Administrators manage company accounts, customer links, account status, and permissions from the Admin area.</li>
+                    </ul>
+                ),
+            },
+        ],
     },
 ];
 
@@ -94,11 +120,10 @@ export default function Faq() {
 
             <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
                 <section className="overflow-hidden rounded-2xl border border-border bg-card px-6 py-8 text-center sm:px-8 sm:py-10">
-                    <p className="text-base font-semibold tracking-wide text-primary">HELP CENTER</p>
-                    <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                    <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
                         Answers for managing your orders
                     </h1>
-                    <p className="mx-auto mt-3 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
+                    <p className="mx-auto mt-3 max-w-2xl type-body text-muted-foreground sm:text-lg">
                         Find quick guidance on submitting purchase orders, tracking deliveries,
                         receiving updates, and contacting the Theomeds team.
                     </p>
@@ -114,27 +139,41 @@ export default function Faq() {
 
                 <section className="mt-8" aria-labelledby="faq-list-heading">
                     <div className="mb-4">
-                        <h2 id="faq-list-heading" className="text-xl font-semibold text-foreground">
+                        <h2 id="faq-list-heading" className="type-page-heading text-foreground">
                             Common questions
                         </h2>
-                        <p className="mt-1 text-base text-muted-foreground">
+                        <p className="mt-1 type-body text-muted-foreground">
                             Select a question to see the answer.
                         </p>
                     </div>
 
-                    <Accordion items={FAQ_ITEMS} defaultOpen={['create-order']} maxPanelHeight={400} />
+                    <div className="space-y-6">
+                        {FAQ_GROUPS.map((group) => (
+                            <div key={group.category}>
+                                <h3 className="type-label mb-2 text-muted-foreground">
+                                    {group.category}
+                                </h3>
+                                <Accordion
+                                    items={group.items}
+                                    defaultOpen={group.category === 'Orders' ? ['create-order'] : []}
+                                    maxPanelHeight={400}
+                                    headingLevel={4}
+                                />
+                            </div>
+                        ))}
+                    </div>
                 </section>
 
                 <section className="mt-8 rounded-xl border border-border bg-card p-5 sm:flex sm:items-center sm:justify-between sm:gap-6">
                     <div>
-                        <h2 className="text-lg font-semibold text-foreground">Still need help?</h2>
-                        <p className="mt-1 text-base text-muted-foreground">
+                        <h2 className="type-section-heading text-foreground">Still need help?</h2>
+                        <p className="mt-1 type-body text-muted-foreground">
                             Use the message icon in the header to contact the Theomeds team.
                         </p>
                     </div>
                     <Link
                         href={route('dashboard')}
-                        className="mt-4 inline-flex items-center gap-1 text-base font-medium text-primary hover:underline sm:mt-0"
+                        className="mt-4 inline-flex items-center gap-1 type-body font-medium text-primary hover:underline sm:mt-0"
                     >
                         Return to dashboard <ArrowRight className="size-5" aria-hidden="true" />
                     </Link>
