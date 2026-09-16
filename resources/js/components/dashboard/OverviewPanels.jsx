@@ -43,8 +43,8 @@ export function PrimaryMetricCard({ label, value, delta, href, period, trend }) 
                 <p className="text-sm font-medium text-stone-600 dark:text-stone-300">{label}</p>
                 {delta && <span title={`vs previous ${period} days`} className="shrink-0 text-xs font-medium text-stone-500 dark:text-stone-400">{delta.text}</span>}
             </div>
-            <div className="flex flex-1 items-center justify-between gap-4">
-                <div className="min-w-0">
+            <div className="flex flex-1 flex-row-reverse items-center justify-between gap-4 sm:flex-row">
+                <div className="min-w-0 text-right sm:text-left">
                     <p className="break-words text-5xl font-semibold leading-tight tracking-tight text-stone-900 tabular-nums sm:text-6xl dark:text-stone-100">{value}</p>
                 </div>
                 {sparkline.length > 1 && (
