@@ -18,7 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const SURFACE = "bg-[#F4F4F9] dark:bg-[#262626]";
-const GLYPH = "text-[#868593] dark:text-[#9B9AA7]";
+const GLYPH = "text-muted-foreground";
 
 const COLORS = {
   red: "bg-destructive",

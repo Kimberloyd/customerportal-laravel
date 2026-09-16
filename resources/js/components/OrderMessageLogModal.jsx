@@ -142,7 +142,7 @@ export default function OrderMessageLogModal({ order, open, onClose }) {
                 </div>
             ) : error ? (
                 <div className="flex min-h-52 flex-col items-center justify-center gap-3 text-center">
-                    <CircleAlert aria-hidden="true" className="size-6 text-red-500" />
+                    <CircleAlert aria-hidden="true" className="size-6 text-destructive" />
                     <div>
                         <p className="font-medium text-stone-900 dark:text-stone-100">We couldn’t load this message log.</p>
                         <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">Check your connection and try again.</p>

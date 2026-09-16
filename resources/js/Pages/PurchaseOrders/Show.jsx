@@ -204,7 +204,7 @@ export default function Show({
                     type="button"
                     variant="tertiary"
                     size="compact"
-                    className="rounded-md text-red-600 hover:text-red-700"
+                    className="rounded-md text-destructive hover:opacity-80"
                     onClick={cancel}
                 >
                     Cancel
@@ -473,7 +473,7 @@ export default function Show({
                             {order.customer_received_at && (
                                 <div className="flex gap-2">
                                     <dt className="w-28 shrink-0 text-gray-500 dark:text-gray-400">Order Received</dt>
-                                    <dd className="font-medium text-green-700">
+                                    <dd className="font-medium text-success">
                                         {formatDateTime(order.customer_received_at)}
                                     </dd>
                                 </div>

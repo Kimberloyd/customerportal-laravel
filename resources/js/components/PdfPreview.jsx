@@ -66,7 +66,7 @@ export function PdfPreview({ url, className, firstPageOnly = false, loadingClass
 
     if (status === 'error') {
         return (
-            <p className="p-2 text-xs text-red-600">
+            <p className="p-2 text-xs text-destructive">
                 We couldn’t preview this PDF. Download the file to view it.
             </p>
         );

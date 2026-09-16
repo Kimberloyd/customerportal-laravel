@@ -134,7 +134,7 @@ export default function RemarksTimeline({ order, form, onSave, canEdit }) {
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Remarks</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Notes recorded on this order, in the order they were added.</p>
             </div>
-            {form.errors.remarks && <p className="mb-2 text-sm text-red-600">{form.errors.remarks}</p>}
+            {form.errors.remarks && <p className="mb-2 text-sm text-destructive">{form.errors.remarks}</p>}
             <Table
                 data={rows}
                 columns={columns}

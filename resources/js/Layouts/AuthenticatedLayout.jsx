@@ -509,7 +509,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-1 sm:hidden">
+                        <div className="flex items-center gap-2 sm:hidden">
                             <AccountDropdown
                                 items={messageAccountItems}
                                 value=""
@@ -586,7 +586,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                 portal
                                 closeOnScroll={false}
                                 trigger={
-                                    <span className="relative inline-flex h-9 w-9 items-center justify-center">
+                                    <span className="relative inline-flex h-10 w-10 items-center justify-center">
                                         <MessageCircle
                                             aria-hidden="true"
                                             className="h-[18px] w-[18px]"
@@ -594,20 +594,20 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                         <CountBadge
                                             total={unreadCount}
                                             max={99}
-                                            size={36}
+                                            size={40}
                                             color="red"
                                             dot={false}
                                             reduced={reducedMotion}
                                         />
                                     </span>
                                 }
-                                triggerClassName="relative inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-gray-500 outline-none transition-colors hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-ring dark:text-gray-400 dark:hover:bg-white/10"
+                                triggerClassName="relative inline-flex h-10 w-10 items-center justify-center rounded-full bg-transparent text-gray-500 outline-none transition-colors hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-ring dark:text-gray-400 dark:hover:bg-white/10"
                             />
 
                             <div ref={mobileNotificationsTriggerRef} className="inline-flex">
                                 <NotificationBell
                                     count={notificationCount}
-                                    size={36}
+                                    size={40}
                                     icon={<Bell aria-hidden="true" className="h-5 w-5" />}
                                     className="bg-transparent text-gray-500 hover:bg-gray-100 dark:bg-transparent dark:text-gray-400 dark:hover:bg-white/10"
                                     aria-expanded={notificationsOpen}

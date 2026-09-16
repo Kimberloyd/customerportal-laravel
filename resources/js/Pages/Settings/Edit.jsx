@@ -304,7 +304,7 @@ function ReminderSettings({ reminders, smsConfigured, onSaved }) {
                     <p>Last scheduler run: {formatWhen(form.last_scheduler_run)}</p>
                     {form.last_failure && <p className="mt-1 text-amber-700">Most recent issue: {form.last_failure}</p>}
                 </div>
-                {error && <p role="alert" className="mb-4 text-sm text-red-600">{error}</p>}
+                {error && <p role="alert" className="mb-4 text-sm text-destructive">{error}</p>}
                 <div className="-mx-5 flex justify-end border-t border-border px-5 pt-5 sm:-mx-6 sm:px-6"><Button type="button" variant="primary" className="rounded-md" disabled={saving} onClick={save}>{saving ? 'Saving...' : 'Save reminder settings'}</Button></div>
             </div>
         </div>
@@ -374,7 +374,7 @@ function NotificationsSection({ sms, semaphore, reminders, onSaved }) {
                                     : 'No order texts will be sent while this setting is paused.'}
                         </p>
                         {saveError && (
-                            <p className="text-sm text-red-600" role="alert">
+                            <p className="text-sm text-destructive" role="alert">
                                 {saveError}
                             </p>
                         )}
@@ -384,7 +384,7 @@ function NotificationsSection({ sms, semaphore, reminders, onSaved }) {
                 {sms.configured ? (
                     <SemaphoreUsage semaphore={semaphore} />
                 ) : (
-                    <div className="mt-5 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900" role="alert">
+                    <div className="mt-5 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300" role="alert">
                         <p className="font-medium">SMS is not configured</p>
                         <p className="mt-1">
                             Add <code className="font-medium">SEMAPHORE_API_KEY</code> to this environment and restart the app. Until then, customers will not receive order texts.
@@ -441,7 +441,7 @@ function TwoFactorSection({ twoFactor }) {
 
             <div className="rounded-xl border border-border bg-card px-5 pb-5 pt-0 sm:px-6 sm:pb-6">
                 {twoFactor.recovery_codes && (
-                <div className="mb-5 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-950" role="status">
+                <div className="mb-5 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200" role="status">
                     <p className="text-sm font-semibold">Save these recovery codes now</p>
                     <p className="mt-1 text-sm">Each code works once. They will not be shown again.</p>
                     <div className="mt-3 grid gap-2 font-mono text-sm sm:grid-cols-2">

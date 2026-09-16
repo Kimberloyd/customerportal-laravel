@@ -217,7 +217,7 @@ export function TeamsPanel({ teams = [], agents = [] }) {
                         </div>
                     </label>
                     {(editor.errors.name || validation.clientErrors.name) && (
-                        <p className="mt-1 text-sm text-red-600" role="alert">{editor.errors.name || validation.clientErrors.name}</p>
+                        <p className="mt-1 text-sm text-destructive" role="alert">{editor.errors.name || validation.clientErrors.name}</p>
                     )}
 
                     <fieldset className="mt-5">
@@ -243,7 +243,7 @@ export function TeamsPanel({ teams = [], agents = [] }) {
                             )}
                         </div>
                     </fieldset>
-                    {editor.errors.agent_ids && <p className="mt-2 text-sm text-red-600" role="alert">{editor.errors.agent_ids}</p>}
+                    {editor.errors.agent_ids && <p className="mt-2 text-sm text-destructive" role="alert">{editor.errors.agent_ids}</p>}
                 </form>
             </Modal>
 

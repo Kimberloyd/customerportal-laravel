@@ -7,30 +7,33 @@ const AUTO_DISMISS_MS = 5000;
 const BANNER_STYLES = {
     success: {
         icon: CircleCheck,
-        container: 'border-green-300 bg-green-50',
-        content: 'text-green-800',
-        dismiss: 'text-green-800 hover:text-green-950',
+        container: 'border-success/30 bg-success/10',
+        content: 'text-success',
+        dismiss: 'text-success hover:opacity-75',
         role: 'status',
     },
     error: {
         icon: CircleAlert,
-        container: 'border-red-300 bg-red-50',
-        content: 'text-red-800',
-        dismiss: 'text-red-800 hover:text-red-950',
+        container: 'border-destructive/30 bg-destructive/10',
+        content: 'text-destructive',
+        dismiss: 'text-destructive hover:opacity-75',
         role: 'alert',
     },
+    // No semantic --warning token exists yet (see app.css) -- amber with
+    // explicit dark variants, matching the pattern already used for this
+    // same color elsewhere (e.g. Auth/Login.jsx's status banner).
     link: {
         icon: Link2,
-        container: 'border-amber-300 bg-amber-50',
-        content: 'text-amber-800',
-        dismiss: 'text-amber-800 hover:text-amber-950',
+        container: 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40',
+        content: 'text-amber-800 dark:text-amber-300',
+        dismiss: 'text-amber-800 hover:text-amber-950 dark:text-amber-300 dark:hover:text-amber-100',
         role: 'status',
     },
     warning: {
         icon: TriangleAlert,
-        container: 'border-amber-300 bg-amber-50',
-        content: 'text-amber-800',
-        dismiss: 'text-amber-800 hover:text-amber-950',
+        container: 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40',
+        content: 'text-amber-800 dark:text-amber-300',
+        dismiss: 'text-amber-800 hover:text-amber-950 dark:text-amber-300 dark:hover:text-amber-100',
         role: 'status',
     },
 };

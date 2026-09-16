@@ -26,7 +26,7 @@ export function PrimaryMetricCard({ label, value, href, trend }) {
                         <LineChart
                             data={sparkline}
                             dataKey="value"
-                            config={{ value: { color: '#10b981' } }}
+                            config={{ value: { color: 'hsl(var(--success-hsl))' } }}
                             containerHeight={160}
                             hideXAxis
                             hideYAxis

@@ -307,7 +307,7 @@ export default function Index({
 
             <div ref={containerRef} className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-center gap-2 bg-white dark:bg-background">
-                    <div className="relative w-80">
+                    <div className="relative w-full max-w-80">
                         <Input
                             type="text"
                             value={search}
@@ -318,8 +318,8 @@ export default function Index({
                             aria-label="Search orders"
                             leftIcon={<Search className="h-4 w-4" />}
                             classNames={{
-                                root: 'w-80',
-                                field: 'h-9 w-80 rounded-full border-border bg-transparent shadow-none',
+                                root: 'w-full',
+                                field: 'h-9 w-full rounded-full border-border bg-transparent shadow-none',
                                 input: 'text-sm',
                             }}
                         />
@@ -355,7 +355,7 @@ export default function Index({
                             setFilterModalOpen(true);
                         }}
                         aria-label="Advanced filters"
-                        className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-white text-[#868593] shadow-none outline-none transition-colors hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-ring dark:bg-[#1D1D1A] dark:text-[#9B9AA7] dark:hover:bg-white/10"
+                        className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-white text-muted-foreground shadow-none outline-none transition-colors hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-ring dark:bg-[#1D1D1A] dark:hover:bg-white/10"
                     >
                         <Funnel aria-hidden="true" className="h-[18px] w-[18px]" />
                     </button>

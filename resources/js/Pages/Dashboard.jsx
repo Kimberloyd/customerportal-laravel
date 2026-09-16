@@ -48,7 +48,7 @@ export default function Dashboard({ dashboard, workspace }) {
                                 </p>
                             </div>
                         </motion.div>
-                        {!workspace.can_order && <div role="status" className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">Your account needs an active customer profile before you can place or view orders. Contact your company representative to link your account.</div>}
+                        {!workspace.can_order && <div role="status" className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">Your account needs an active customer profile before you can place or view orders. Contact your company representative to link your account.</div>}
                         <motion.div {...enter(0.04)} className="mb-5 mt-7 flex flex-wrap items-center gap-3">
                             <div role="group" aria-label="Dashboard date range" className="flex rounded-xl border border-stone-200 bg-white p-1 dark:border-white/10 dark:bg-[#1d1e22]">
                                 {[7, 30, 90].map((days) => <button key={days} type="button" disabled={loading} aria-pressed={period === days} onClick={() => visit(days)} className={`relative min-h-9 rounded-lg px-4 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:cursor-wait ${period === days ? 'text-white' : 'text-stone-600 hover:text-stone-900 dark:text-stone-300 dark:hover:text-stone-100'}`}>

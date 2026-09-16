@@ -212,7 +212,7 @@ export default function Create({ customers = [], assignedCustomers = [] }) {
                             )}
                         </div>
                         {(errors.customer_id || validation.clientErrors.customer_id) && (
-                            <p role="alert" className="text-sm text-red-600">{errors.customer_id || validation.clientErrors.customer_id}</p>
+                            <p role="alert" className="text-sm text-destructive">{errors.customer_id || validation.clientErrors.customer_id}</p>
                         )}
                     </div>
                 </Step>

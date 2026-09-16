@@ -80,12 +80,12 @@ export default function Edit({ order, customers, lockedCustomerId }) {
             <div className="mx-auto max-w-4xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
                 <form onSubmit={submit} className="space-y-6 rounded-lg border border-gray-200 bg-white p-6 dark:border-white/10 dark:bg-[#1D1D1A]">
                     {order.is_terminal && (
-                        <div className="rounded-md bg-amber-50 p-3 text-sm text-amber-800">
+                        <div className="rounded-md bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
                             This order is {order.status} — only remarks can be changed.
                         </div>
                     )}
                     {Object.entries(errors).map(([key, message]) => (
-                        <div key={key} className="rounded-md bg-red-50 p-3 text-sm text-red-700">{message}</div>
+                        <div key={key} className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{message}</div>
                     ))}
 
                     <div>
