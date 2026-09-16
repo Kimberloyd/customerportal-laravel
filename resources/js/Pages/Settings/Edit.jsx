@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import axios from 'axios';
 import { Head, router, useForm } from '@inertiajs/react';
+import { ChevronDown } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 const FIELD_CLASS_NAMES = { field: 'h-10 rounded-md', input: 'text-sm' };
@@ -46,6 +47,53 @@ function Row({ label, description, children, first = false }) {
                 )}
             </div>
             <div className="md:col-span-2 md:max-w-xl">{children}</div>
+        </div>
+    );
+}
+
+/**
+ * One follow-up kind in the escalation timing list. Collapsed by default to
+ * a single scannable row (label + a "24h -> 72h" summary of its threshold
+ * levels); expands in place to edit each level via the app's Input
+ * component. Keeps a 5-kind x 2-3-level settings block from reading as a
+ * single dense grid of 10+ unlabeled number spinners.
+ */
+function ThresholdRow({ label, levels, onChange }) {
+    const [open, setOpen] = useState(false);
+    const summary = Object.entries(levels)
+        .map(([, hours]) => `${hours}h`)
+        .join(' → ');
+
+    return (
+        <div className="rounded-lg bg-muted/40">
+            <button
+                type="button"
+                onClick={() => setOpen((value) => !value)}
+                aria-expanded={open}
+                className="flex w-full items-center justify-between gap-3 p-4 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]"
+            >
+                <span className="text-sm font-medium text-foreground">{label}</span>
+                <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                    {summary}
+                    <ChevronDown aria-hidden className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+                </span>
+            </button>
+            {open && (
+                <div className="flex flex-wrap gap-3 px-4 pb-4">
+                    {Object.entries(levels).map(([level, hours]) => (
+                        <Input
+                            key={level}
+                            label={level.charAt(0).toUpperCase() + level.slice(1)}
+                            type="number"
+                            min="1"
+                            max="720"
+                            value={String(hours)}
+                            onChange={(value) => onChange(level, value)}
+                            classNames={{ root: 'w-24', ...FIELD_CLASS_NAMES }}
+                        />
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
@@ -280,23 +328,37 @@ function ReminderSettings({ reminders, smsConfigured, onSaved }) {
                 </Row>
                 <Row label="SMS quiet hours" description={`Customer reminder texts use ${form.timezone}.`}>
                     <div className="flex flex-wrap items-center gap-3">
-                        <label className="text-sm text-muted-foreground">From <input aria-label="Quiet hours start" type="number" min="0" max="23" value={form.quiet_hours_start} onChange={(event) => setForm({ ...form, quiet_hours_start: Number(event.target.value) })} className="ml-2 w-20 rounded-md border-border bg-transparent text-sm text-foreground focus-visible:ring-[color:var(--focus-ring)]" /></label>
-                        <label className="text-sm text-muted-foreground">until <input aria-label="Quiet hours end" type="number" min="0" max="23" value={form.quiet_hours_end} onChange={(event) => setForm({ ...form, quiet_hours_end: Number(event.target.value) })} className="ml-2 w-20 rounded-md border-border bg-transparent text-sm text-foreground focus-visible:ring-[color:var(--focus-ring)]" /></label>
+                        <Input
+                            label="From"
+                            type="number"
+                            min="0"
+                            max="23"
+                            value={String(form.quiet_hours_start)}
+                            onChange={(value) => setForm({ ...form, quiet_hours_start: Number(value) })}
+                            classNames={{ root: 'w-24', ...FIELD_CLASS_NAMES }}
+                        />
+                        <Input
+                            label="Until"
+                            type="number"
+                            min="0"
+                            max="23"
+                            value={String(form.quiet_hours_end)}
+                            onChange={(value) => setForm({ ...form, quiet_hours_end: Number(value) })}
+                            classNames={{ root: 'w-24', ...FIELD_CLASS_NAMES }}
+                        />
                     </div>
                 </Row>
                 <div className="-mx-5 border-t border-border px-5 py-5 sm:-mx-6 sm:px-6">
                 <p className="text-sm font-medium text-foreground">Timing in hours</p>
                 <p className="mt-1 text-sm text-muted-foreground">Escalation must occur after the earlier reminder.</p>
-                <div className="mt-4 space-y-4">
+                <div className="mt-4 space-y-2">
                     {Object.entries(form.thresholds).map(([kind, levels]) => (
-                        <div key={kind} className="grid gap-3 rounded-lg bg-muted/40 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-                            <p className="text-sm font-medium text-foreground">{labels[kind]}</p>
-                            <div className="flex flex-wrap gap-3">
-                                {Object.entries(levels).map(([level, hours]) => (
-                                    <label key={level} className="text-xs capitalize text-muted-foreground">{level}<input aria-label={`${labels[kind]} ${level} hours`} type="number" min="1" max="720" value={hours} onChange={(event) => setThreshold(kind, level, event.target.value)} className="ml-2 w-20 rounded-md border-border bg-transparent text-sm text-foreground focus-visible:ring-[color:var(--focus-ring)]" /></label>
-                                ))}
-                            </div>
-                        </div>
+                        <ThresholdRow
+                            key={kind}
+                            label={labels[kind]}
+                            levels={levels}
+                            onChange={(level, value) => setThreshold(kind, level, value)}
+                        />
                     ))}
                 </div>
             </div>
