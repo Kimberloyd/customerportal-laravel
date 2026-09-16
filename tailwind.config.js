@@ -21,10 +21,10 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['IBM Plex Sans', ...defaultTheme.fontFamily.sans],
+                sans: ['Raleway', ...defaultTheme.fontFamily.sans],
                 // Headings only (h1-h6 + the type-page-heading/
                 // type-section-heading roles) -- see app.css for why.
-                display: ['IBM Plex Serif', ...defaultTheme.fontFamily.serif],
+                display: ['Bitter', ...defaultTheme.fontFamily.serif],
             },
             fontSize: {
                 xs: ['0.75rem', { lineHeight: '1rem' }],

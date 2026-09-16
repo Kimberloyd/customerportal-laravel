@@ -4,54 +4,54 @@
 
 @layer base {
     /*
-     * IBM Plex Sans replaced Outfit as the workhorse face (see the
-     * $impeccable typeset decision): geometric faces like Outfit commonly
-     * under-serve small-size legibility and numeral disambiguation
-     * (0/O, 1/l/I), a real cost given how much of this app is order
-     * quantities, prices, dates, and PO numbers. Plex Sans was designed by
-     * IBM for enterprise/technical software UI, with genuinely distinct
-     * numerals and full weight coverage (100-700) for every weight this
-     * app uses in body text, labels, buttons, and data (nothing there
-     * reaches 800/900).
+     * Raleway is the workhorse face for body text, labels, buttons, and
+     * data ($impeccable typeset decision, replacing IBM Plex Sans). A
+     * single self-hosted variable file covers every weight this app
+     * actually uses (font-normal/400 through font-bold/700 -- confirmed by
+     * grepping every font-weight utility class in use; nothing here reaches
+     * 800/900, so the axis is declared only that far).
      *
      * It stays the ONLY face for those functional roles -- operate.md's
      * own guidance is that a display face has no business in labels,
      * buttons, or data on a product surface. Headings are where brand
-     * character actually belongs, so IBM Plex Serif (below) is paired in
-     * for h1-h6 and the type-page-heading/type-section-heading roles
-     * specifically. Same IBM Plex super-family, designed by IBM to be
-     * mixed -- real visual contrast (serif headlines read as considered
-     * and credible, fitting a pharma/medical B2B brand) without the
-     * metric-mismatch risk of pairing two unrelated third-party faces.
+     * character belongs, so Bitter (below) is paired in for h1-h6 and the
+     * type-page-heading/type-section-heading roles specifically: a slab
+     * serif reads as considered and credible, fitting a pharma/medical B2B
+     * brand, while staying legible at heading sizes where Raleway's own
+     * thin geometry would read too light.
      */
     @font-face {
-        font-family: 'IBM Plex Sans';
-        src: url('/fonts/IBMPlexSans/IBMPlexSans-VariableFont_wght.woff2') format('woff2');
+        font-family: 'Raleway';
+        src: url('/fonts/Raleway/Raleway-VariableFont_wght.woff2') format('woff2');
         font-style: normal;
         font-weight: 100 700;
         font-display: swap;
     }
 
     /*
-     * Display pairing for headings only -- see the comment above. Only the
-     * two weights headings actually use (font-semibold/600 for the
-     * type-*-heading roles, font-bold/700 for any bolder emphasis inside
-     * a heading); IBM Plex Serif isn't published as a variable font, so
-     * these are real static files rather than one variable one.
+     * Display pairing for headings only -- see the comment above. Bitter is
+     * a genuine variable font, so one file (unlike the old IBM Plex Serif
+     * pair of static weights) covers both weights headings use:
+     * font-semibold/600 for the type-*-heading roles, font-bold/700 for any
+     * bolder emphasis inside a heading.
      */
     @font-face {
-        font-family: 'IBM Plex Serif';
-        src: url('/fonts/IBMPlexSerif/IBMPlexSerif-SemiBold.woff2') format('woff2');
+        font-family: 'Bitter';
+        src: url('/fonts/Bitter/Bitter-VariableFont_wght.woff2') format('woff2');
         font-style: normal;
-        font-weight: 600;
+        font-weight: 600 700;
         font-display: swap;
     }
 
+    /*
+     * A real italic instance, not a browser-synthesized oblique -- the
+     * login page's tagline and the footer both set `font-display italic`.
+     */
     @font-face {
-        font-family: 'IBM Plex Serif';
-        src: url('/fonts/IBMPlexSerif/IBMPlexSerif-Bold.woff2') format('woff2');
-        font-style: normal;
-        font-weight: 700;
+        font-family: 'Bitter';
+        src: url('/fonts/Bitter/Bitter-Italic-VariableFont_wght.woff2') format('woff2');
+        font-style: italic;
+        font-weight: 600 700;
         font-display: swap;
     }
 
