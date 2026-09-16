@@ -1,10 +1,15 @@
 import { Capacitor } from '@capacitor/core';
 import { Style, StatusBar } from '@capacitor/status-bar';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 const ThemeContext = createContext(null);
 
 const STORAGE_KEY = 'theme';
+
+// Matches the transition duration set on .theme-transitioning in app.css --
+// kept in one place so the class removal can't drift out of sync with the
+// CSS and get pulled off mid-fade on a slow frame.
+const THEME_TRANSITION_MS = 220;
 
 // Matches --background-hsl in each half of app.css's :root/.dark block --
 // the native status bar is OS chrome, not web content, so it can't pick
@@ -49,8 +54,24 @@ export function ThemeProvider({ children }) {
         return () => media.removeEventListener('change', onChange);
     }, [preference]);
 
+    // Skips the crossfade on first paint -- only an actual switch (by the
+    // user, or the OS firing its change event under 'system') should
+    // animate; applying the initial resolved theme is not a transition.
+    const isFirstRender = useRef(true);
     useEffect(() => {
-        document.documentElement.classList.toggle('dark', resolved === 'dark');
+        const root = document.documentElement;
+
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            root.classList.toggle('dark', resolved === 'dark');
+            return;
+        }
+
+        root.classList.add('theme-transitioning');
+        root.classList.toggle('dark', resolved === 'dark');
+
+        const timer = setTimeout(() => root.classList.remove('theme-transitioning'), THEME_TRANSITION_MS);
+        return () => clearTimeout(timer);
     }, [resolved]);
 
     useEffect(() => {

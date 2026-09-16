@@ -204,6 +204,32 @@
         --selected: hsl(60 4% 25%);
         --destructive-light: #3f1212;
     }
+
+    /*
+     * Theme-switch crossfade. Scoped to fire only while
+     * lib/theme-context.jsx has the .theme-transitioning class on <html>
+     * (added right before toggling .dark, removed ~220ms later) rather
+     * than a permanent transition on every element -- a blanket rule would
+     * also soften every OTHER color change app-wide (a status badge
+     * updating, a table row recoloring on refresh), which is decorative
+     * motion with no state to convey, not this transition. 200ms sits in
+     * operate.md's 150-250ms band for a state-change transition.
+     */
+    .theme-transitioning,
+    .theme-transitioning *,
+    .theme-transitioning *::before,
+    .theme-transitioning *::after {
+        transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease, fill 200ms ease, stroke 200ms ease, box-shadow 200ms ease !important;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .theme-transitioning,
+        .theme-transitioning *,
+        .theme-transitioning *::before,
+        .theme-transitioning *::after {
+            transition: none !important;
+        }
+    }
 }
 
 @layer components {
