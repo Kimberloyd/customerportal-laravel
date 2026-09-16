@@ -15,6 +15,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProductReturnController;
 use App\Http\Controllers\PublicConversationController;
 use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\SavedOrderFilterController;
 use App\Http\Controllers\SearchSelectionController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TermsAndPrivacyController;
@@ -39,9 +40,20 @@ Route::get('/faq', [FaqController::class, 'index'])
 Route::get('/terms-and-privacy', [TermsAndPrivacyController::class, 'index'])
     ->name('terms-and-privacy');
 
+// Registered before the purchase-orders group below: its /{order} wildcard
+// would otherwise swallow GET/POST /orders/saved-filters as an attempted
+// (and failing) order lookup, since Laravel matches routes in registration
+// order, not by specificity.
+Route::middleware('auth')->prefix('orders/saved-filters')->name('purchase-orders.saved-filters.')->group(function () {
+    Route::get('/', [SavedOrderFilterController::class, 'index'])->name('index');
+    Route::post('/', [SavedOrderFilterController::class, 'store'])->name('store');
+    Route::delete('/{savedOrderFilter}', [SavedOrderFilterController::class, 'destroy'])->name('destroy');
+});
+
 Route::middleware('auth')->prefix('orders')->name('purchase-orders.')->group(function () {
     Route::get('/', [PurchaseOrderController::class, 'index'])->name('index');
     Route::get('/create', [PurchaseOrderController::class, 'create'])->name('create');
+    Route::post('/bulk-archive', [PurchaseOrderController::class, 'bulkDestroy'])->middleware('throttle:admin-sensitive')->name('bulk-destroy');
     Route::post('/', [PurchaseOrderController::class, 'store'])->middleware('throttle:order-writes')->name('store');
     Route::get('/{order}/message-log', [PurchaseOrderController::class, 'messageLog'])->name('message-log');
     Route::get('/{order}', [PurchaseOrderController::class, 'show'])->name('show');

@@ -12,6 +12,7 @@ import { Input } from '@/components/motion/input';
 import { RangeCalendar } from '@/components/ui/range-calendar';
 import { statusBadge } from '@/utils/orderDisplay';
 import { usePurchaseOrderRealtime } from '@/hooks/usePurchaseOrderRealtime';
+import { useSavedOrderFilters } from '@/hooks/useSavedOrderFilters';
 import { useSearchSelections } from '@/hooks/useSearchSelections';
 import { Deferred, Head, router } from '@inertiajs/react';
 import { parseDate } from '@internationalized/date';
@@ -92,6 +93,14 @@ export default function Index({
     const [tableLoading, setTableLoading] = useState(false);
     const latestFilterVisit = useRef(0);
 
+    const [selectedOrderIds, setSelectedOrderIds] = useState([]);
+    const [bulkArchiveOpen, setBulkArchiveOpen] = useState(false);
+    const [isBulkArchiving, setIsBulkArchiving] = useState(false);
+    const savedOrderFilters = useSavedOrderFilters();
+    const [saveFilterOpen, setSaveFilterOpen] = useState(false);
+    const [saveFilterName, setSaveFilterName] = useState('');
+    const [isSavingFilter, setIsSavingFilter] = useState(false);
+
     const deleteOrder = useCallback(() => {
         if (!orderPendingDeletion) return;
 
@@ -104,6 +113,62 @@ export default function Index({
             },
         });
     }, [orderPendingDeletion]);
+
+    const bulkArchiveOrders = useCallback(() => {
+        const publicIds = orders.data
+            .filter((order) => selectedOrderIds.includes(String(order.id)))
+            .map((order) => order.public_id);
+
+        if (publicIds.length === 0) return;
+
+        router.post(route('purchase-orders.bulk-destroy'), { order_ids: publicIds }, {
+            preserveScroll: true,
+            onStart: () => setIsBulkArchiving(true),
+            onFinish: () => {
+                setIsBulkArchiving(false);
+                setBulkArchiveOpen(false);
+                setSelectedOrderIds([]);
+            },
+        });
+    }, [orders.data, selectedOrderIds]);
+
+    const applySavedFilter = useCallback((preset) => {
+        const values = preset.filters ?? {};
+        setStatus(values.status ?? 'all');
+        setCustomerId(values.customer_id ? String(values.customer_id) : '');
+        setStartDate(values.start_date ?? '');
+        setEndDate(values.end_date ?? '');
+        setFilterModalOpen(false);
+        applyFilters({
+            status: values.status ?? 'all',
+            customer_id: values.customer_id ?? '',
+            date_filter: values.date_filter ?? 'all',
+            start_date: values.start_date ?? '',
+            end_date: values.end_date ?? '',
+            page: 1,
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const saveCurrentFilter = useCallback(() => {
+        const name = saveFilterName.trim();
+        if (!name || isSavingFilter) return;
+
+        setIsSavingFilter(true);
+        savedOrderFilters
+            .save(name, {
+                status,
+                customer_id: customerId || null,
+                date_filter: startDate && endDate ? 'custom' : 'all',
+                start_date: startDate || null,
+                end_date: endDate || null,
+            })
+            .then(() => {
+                setSaveFilterOpen(false);
+                setSaveFilterName('');
+            })
+            .finally(() => setIsSavingFilter(false));
+    }, [saveFilterName, isSavingFilter, savedOrderFilters, status, customerId, startDate, endDate]);
 
     const loadCreateOrderProducts = useCallback(() => {
         router.reload({
@@ -361,6 +426,34 @@ export default function Index({
                     </button>
                 </div>
 
+                {savedOrderFilters.filters.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-[11px] font-medium uppercase tracking-wide text-stone-400 dark:text-stone-500">Saved</span>
+                        {savedOrderFilters.filters.map((preset) => (
+                            <span
+                                key={preset.id}
+                                className="inline-flex items-center gap-1 rounded-full border border-stone-200 py-1 pl-3 pr-1.5 text-xs text-stone-700 dark:border-white/[0.16] dark:text-stone-300"
+                            >
+                                <button
+                                    type="button"
+                                    onClick={() => applySavedFilter(preset)}
+                                    className="outline-none hover:underline focus-visible:underline"
+                                >
+                                    {preset.name}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => savedOrderFilters.remove(preset.id)}
+                                    aria-label={`Delete saved filter ${preset.name}`}
+                                    className="grid h-4 w-4 place-items-center rounded-full text-stone-400 outline-none hover:bg-stone-100 hover:text-stone-700 focus-visible:ring-2 focus-visible:ring-ring dark:hover:bg-white/10 dark:hover:text-stone-200"
+                                >
+                                    &times;
+                                </button>
+                            </span>
+                        ))}
+                    </div>
+                )}
+
                 <Deferred
                     data="orders"
                     fallback={(
@@ -375,6 +468,19 @@ export default function Index({
                     )}
                 >
                     <>
+                        {canDeleteOrders && selectedOrderIds.length > 0 && (
+                            <div className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-2.5 text-sm">
+                                <span className="text-muted-foreground">{selectedOrderIds.length} selected</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setBulkArchiveOpen(true)}
+                                    className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-destructive outline-none hover:bg-destructive/10 focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]"
+                                >
+                                    <Archive className="h-4 w-4" aria-hidden="true" />
+                                    Archive selected
+                                </button>
+                            </div>
+                        )}
                         <Table
                             data={orders.data}
                             columns={columns}
@@ -385,6 +491,9 @@ export default function Index({
                             height={TABLE_VIEWPORT_HEIGHT}
                             loading={tableLoading}
                             resizable
+                            selectable={canDeleteOrders}
+                            selectedRowIds={selectedOrderIds}
+                            onSelectionChange={setSelectedOrderIds}
                             emptyState={(
                                 <div className="flex flex-col items-center gap-2">
                                     <span>No orders found.</span>
@@ -417,8 +526,45 @@ export default function Index({
             </div>
 
             {(() => {
-                const filterFooter = (
+                const filterFooter = saveFilterOpen ? (
+                    <div className="flex w-full items-center gap-2">
+                        <Input
+                            autoFocus
+                            value={saveFilterName}
+                            onChange={setSaveFilterName}
+                            placeholder="Name this filter"
+                            aria-label="Filter name"
+                            classNames={{ root: 'flex-1', field: 'h-10 rounded-md', input: 'text-sm' }}
+                        />
+                        <Button
+                            type="button"
+                            variant="tertiary"
+                            className="h-10 rounded-md px-4 text-sm"
+                            onClick={() => { setSaveFilterOpen(false); setSaveFilterName(''); }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="primary"
+                            className="h-10 rounded-md px-4 text-sm"
+                            disabled={!saveFilterName.trim() || isSavingFilter}
+                            onClick={saveCurrentFilter}
+                        >
+                            {isSavingFilter ? 'Saving…' : 'Save'}
+                        </Button>
+                    </div>
+                ) : (
                     <>
+                        <Button
+                            type="button"
+                            variant="tertiary"
+                            className="h-10 rounded-md px-5 text-sm"
+                            disabled={!hasActiveFilters}
+                            onClick={() => setSaveFilterOpen(true)}
+                        >
+                            Save as…
+                        </Button>
                         <Button
                             type="button"
                             variant="tertiary"
@@ -542,7 +688,11 @@ export default function Index({
                 return (
                     <Modal
                         open={filterModalOpen}
-                        onClose={() => setFilterModalOpen(false)}
+                        onClose={() => {
+                            setFilterModalOpen(false);
+                            setSaveFilterOpen(false);
+                            setSaveFilterName('');
+                        }}
                         title="Advanced filters"
                         maxWidth={800}
                         maxHeight="min(85vh, 720px)"
@@ -583,6 +733,18 @@ export default function Index({
                 confirmationText={orderPendingDeletion?.po_number}
                 destructive
                 processing={isDeletingOrder}
+            />
+
+            <ConfirmationDialog
+                open={bulkArchiveOpen}
+                onOpenChange={(open) => !open && !isBulkArchiving && setBulkArchiveOpen(false)}
+                title={`Archive ${selectedOrderIds.length} ${selectedOrderIds.length === 1 ? 'order' : 'orders'}?`}
+                description="This removes them from active views while retaining their items, activity history, messages, returns, and attachments for audit purposes."
+                confirmLabel="Archive"
+                cancelLabel="Cancel"
+                onConfirm={bulkArchiveOrders}
+                destructive
+                processing={isBulkArchiving}
             />
         </AuthenticatedLayout>
     );

@@ -779,6 +779,37 @@ class PurchaseOrderController extends Controller
         return redirect()->route('purchase-orders.index')->with('success', 'Order archived.');
     }
 
+    public function bulkDestroy(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'order_ids' => 'required|array|min:1|max:50',
+            'order_ids.*' => 'distinct|exists:purchase_orders,public_id',
+        ]);
+
+        $archived = [];
+
+        DB::transaction(function () use ($validated, $request, &$archived): void {
+            $orders = PurchaseOrder::whereIn('public_id', $validated['order_ids'])->lockForUpdate()->get();
+
+            foreach ($orders as $order) {
+                $this->authorize('delete', $order);
+                OrderAudit::record($order, 'Order Archived', 'Order removed from active order views while its history was retained.', $request);
+                $order->delete();
+                app(OrderFollowUpManager::class)->syncOrder($order);
+                $archived[] = ['id' => $order->id, 'customer_id' => $order->customer_id];
+            }
+        });
+
+        foreach ($archived as $entry) {
+            PurchaseOrderChanged::dispatch($entry['id'], 'archived', $entry['customer_id']);
+        }
+
+        $count = count($archived);
+
+        return redirect()->route('purchase-orders.index')
+            ->with('success', $count === 1 ? '1 order archived.' : "{$count} orders archived.");
+    }
+
     public function show(Request $request, PurchaseOrder $order): Response
     {
         $this->authorize('view', $order);
