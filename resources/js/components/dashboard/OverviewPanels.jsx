@@ -39,11 +39,13 @@ export function PrimaryMetricCard({ label, value, delta, href, period, trend }) 
     const sparkline = (trend ?? []).map((point) => ({ value: point.current }));
     return (
         <Card href={href || undefined} className={`${surface} ${focus} group relative flex h-full flex-col overflow-hidden p-5 transition-colors ${href ? 'hover:bg-stone-50 dark:hover:bg-white/[0.03]' : ''} sm:p-6`}>
-            <p className="text-sm font-medium text-stone-600 dark:text-stone-300">{label}</p>
+            <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium text-stone-600 dark:text-stone-300">{label}</p>
+                {delta && <span title={`vs previous ${period} days`} className="shrink-0 text-xs font-medium text-stone-500 dark:text-stone-400">{delta.text}</span>}
+            </div>
             <div className="flex flex-1 items-center justify-between gap-4">
                 <div className="min-w-0">
                     <p className="break-words text-5xl font-semibold leading-tight tracking-tight text-stone-900 tabular-nums sm:text-6xl dark:text-stone-100">{value}</p>
-                    {delta && <p className="mt-2 text-xs font-medium text-stone-500 dark:text-stone-400">{delta.text} vs previous {period} days</p>}
                 </div>
                 {sparkline.length > 1 && (
                     <div className="pointer-events-none h-32 w-64 shrink-0 sm:h-40 sm:w-80" aria-hidden="true">
