@@ -124,7 +124,14 @@ export default function Create({ customers = [], assignedCustomers = [] }) {
         { key: 'email', header: 'Email', cell: (customer) => customer.user?.email ?? '-' },
     ], []);
 
-    return <AuthenticatedLayout header={<div className="flex items-center justify-between"><h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Customers</h2><Button type="button" onClick={() => setOpen(true)}>Add customer account</Button></div>}>
+    return <AuthenticatedLayout
+        header={(
+            <div className="flex items-center justify-between">
+                <h2 className="type-page-heading text-foreground">Customers</h2>
+                <Button type="button" onClick={() => setOpen(true)}>Add customer account</Button>
+            </div>
+        )}
+    >
         <Head title="Customers" />
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
             <div className="mb-6"><h1 className="type-page-heading text-foreground">My customers</h1><p className="mt-1 text-sm text-muted-foreground">Customer accounts you create are automatically assigned to you.</p></div>
@@ -179,9 +186,10 @@ export default function Create({ customers = [], assignedCustomers = [] }) {
                 </Step>
                 <Step>
                     <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Customer</label>
+                        <label htmlFor="customer-search" className="block text-sm font-medium text-foreground">Customer</label>
                         <div ref={customerField.fieldRef} className="relative w-full">
                             <Input
+                                id="customer-search"
                                 value={customerField.query}
                                 onChange={(value) => {
                                     customerField.setQuery(value);
@@ -195,6 +203,7 @@ export default function Create({ customers = [], assignedCustomers = [] }) {
                                 placeholder="Search by company name"
                                 leftIcon={<Search className="h-4 w-4" />}
                                 error={Boolean(errors.customer_id || validation.clientErrors.customer_id)}
+                                aria-describedby={(errors.customer_id || validation.clientErrors.customer_id) ? 'customer-search-error' : undefined}
                                 classNames={{ field: 'h-10 rounded-md', input: 'text-sm' }}
                             />
                             {customerField.visible && customerField.position && (
@@ -212,7 +221,7 @@ export default function Create({ customers = [], assignedCustomers = [] }) {
                             )}
                         </div>
                         {(errors.customer_id || validation.clientErrors.customer_id) && (
-                            <p role="alert" className="text-sm text-destructive">{errors.customer_id || validation.clientErrors.customer_id}</p>
+                            <p id="customer-search-error" role="alert" className="text-sm text-destructive">{errors.customer_id || validation.clientErrors.customer_id}</p>
                         )}
                     </div>
                 </Step>

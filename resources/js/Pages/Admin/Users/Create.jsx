@@ -23,7 +23,7 @@ export default function Create({ customers }) {
     return (
         <AuthenticatedLayout
             header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-100">
+                <h2 className="type-page-heading text-foreground">
                     Create Account
                 </h2>
             }
@@ -31,7 +31,7 @@ export default function Create({ customers }) {
             <Head title="Create Account" />
 
             <div className="mx-auto max-w-2xl space-y-4 px-4 py-8 sm:px-6 lg:px-8">
-                <form onSubmit={submit} className="space-y-4 rounded-lg border border-gray-200 bg-white p-6 dark:border-white/10 dark:bg-[#1D1D1A]">
+                <form onSubmit={submit} className="space-y-4 rounded-lg border border-border bg-card p-6">
                     <UserForm
                         data={data}
                         setData={setData}
@@ -42,7 +42,7 @@ export default function Create({ customers }) {
                         isSelf={false}
                     />
                     <div className="flex justify-end">
-                        <Button type="submit" variant="primary" disabled={processing}>
+                        <Button type="submit" variant="primary" loading={processing}>
                             Create Account
                         </Button>
                     </div>

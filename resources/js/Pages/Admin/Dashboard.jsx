@@ -21,7 +21,7 @@ export default function Dashboard({ activeTab, products, customers, users, filte
         <AuthenticatedLayout
             header={
                 <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-100">Admin</h2>
+                    <h2 className="type-page-heading text-foreground">Admin</h2>
                     {activeTab === 'accounts' && (
                         <Button
                             type="button"
@@ -37,40 +37,44 @@ export default function Dashboard({ activeTab, products, customers, users, filte
             <Head title="Admin" />
 
             <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-8 sm:px-6 lg:grid-cols-12 lg:px-8">
-                <nav className="space-y-4 lg:col-span-2">
+                <nav className="space-y-1" aria-label="Admin sections">
                     <Link
                         href={route('admin.dashboard', { tab: 'products' })}
-                        className={`block text-sm ${
+                        aria-current={activeTab === 'products' ? 'page' : undefined}
+                        className={`block rounded-md px-2 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)] ${
                             activeTab === 'products'
-                                ? 'font-semibold text-gray-900 dark:text-gray-100'
-                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                                ? 'font-semibold text-foreground'
+                                : 'text-muted-foreground hover:bg-hover hover:text-foreground'
                         }`}
                     >
                         Products
                     </Link>
                     <Link
                         href={route('admin.dashboard', { tab: 'customers' })}
-                        className={`block text-sm ${
+                        aria-current={activeTab === 'customers' ? 'page' : undefined}
+                        className={`block rounded-md px-2 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)] ${
                             activeTab === 'customers'
-                                ? 'font-semibold text-gray-900 dark:text-gray-100'
-                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                                ? 'font-semibold text-foreground'
+                                : 'text-muted-foreground hover:bg-hover hover:text-foreground'
                         }`}
                     >
                         Customers
                     </Link>
                     <Link
                         href={route('admin.dashboard', { tab: 'accounts' })}
-                        className={`block text-sm ${
+                        aria-current={activeTab === 'accounts' ? 'page' : undefined}
+                        className={`block rounded-md px-2 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)] ${
                             activeTab === 'accounts'
-                                ? 'font-semibold text-gray-900 dark:text-gray-100'
-                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                                ? 'font-semibold text-foreground'
+                                : 'text-muted-foreground hover:bg-hover hover:text-foreground'
                         }`}
                     >
                         Accounts
                     </Link>
                     <Link
                         href={route('admin.dashboard', { tab: 'teams' })}
-                        className={`block text-sm ${activeTab === 'teams' ? 'font-semibold text-gray-900 dark:text-gray-100' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
+                        aria-current={activeTab === 'teams' ? 'page' : undefined}
+                        className={`block rounded-md px-2 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)] ${activeTab === 'teams' ? 'font-semibold text-foreground' : 'text-muted-foreground hover:bg-hover hover:text-foreground'}`}
                     >
                         Teams
                     </Link>
