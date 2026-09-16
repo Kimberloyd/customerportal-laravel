@@ -152,6 +152,10 @@ export function Table<T>({
   }, [loading]);
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
+    if (el) {
+      setCanScrollLeft(el.scrollLeft > 1);
+      setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+    }
     if (!el || !onEndReached || loading || endReachedRef.current) return;
     if (el.scrollHeight - el.scrollTop - el.clientHeight < rowHeight * 4) {
       endReachedRef.current = true;
@@ -214,6 +218,37 @@ export function Table<T>({
   const [hoveredRowIndex, setHoveredRowIndex] = useState<number | null>(null);
   const leadColumns = columns.length + (selectable ? 1 : 0);
 
+  // Horizontal scroll-shadow affordance: a wide table's own overflow-auto
+  // scrolls correctly, but nothing on screen hints there's more to the
+  // right until the user happens to drag it -- these edge fades make that
+  // visible up front, and update as content loads or the table resizes.
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const tableRef = useRef<HTMLTableElement>(null);
+  const updateScrollShadows = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 1);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+  }, []);
+  useEffect(() => {
+    const el = scrollRef.current;
+    const table = tableRef.current;
+    if (!el) return;
+    updateScrollShadows();
+    // Observe both: the scroll container's own box (viewport resizes) and
+    // the table's box (its content -- and therefore scrollWidth -- growing
+    // wider as columns render, without the container itself changing size).
+    const observer = new ResizeObserver(updateScrollShadows);
+    observer.observe(el);
+    if (table) observer.observe(table);
+    window.addEventListener("resize", updateScrollShadows);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateScrollShadows);
+    };
+  }, [updateScrollShadows, sortedRows.length, orderedColumns]);
+
   if (loading) {
     return (
       <div
@@ -232,7 +267,7 @@ export function Table<T>({
   return (
     <div
       className={cn(
-        "w-full overflow-hidden rounded-xl border border-border bg-background text-sm",
+        "relative w-full overflow-hidden rounded-xl border border-border bg-background text-sm",
         className,
       )}
     >
@@ -241,7 +276,19 @@ export function Table<T>({
         onScroll={handleScroll}
         onPointerLeave={() => setHoveredRowIndex(null)}
         className="relative overflow-auto"
-        style={{ maxHeight: height }}
+        style={{
+          maxHeight: height,
+          // A gradient fading to "transparent" has no visible edge over a
+          // background that's already this color -- an inset shadow reads
+          // as depth regardless of the surface color underneath, so it
+          // stays visible in both light and dark theme.
+          boxShadow: [
+            canScrollLeft ? "inset 12px 0 8px -8px hsl(var(--foreground-hsl) / 0.15)" : null,
+            canScrollRight ? "inset -12px 0 8px -8px hsl(var(--foreground-hsl) / 0.15)" : null,
+          ]
+            .filter(Boolean)
+            .join(", ") || undefined,
+        }}
       >
         {hoveredRowIndex != null ? (
           <motion.div
@@ -257,6 +304,7 @@ export function Table<T>({
           />
         ) : null}
         <table
+          ref={tableRef}
           className="relative z-10 min-w-full border-collapse"
           style={{
             // Only pin to "fixed" once every column has a resolved pixel

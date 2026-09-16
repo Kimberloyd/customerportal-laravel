@@ -133,9 +133,9 @@ export default function Orders({ orders, filters, customers, summary }) {
 
                 <div className="space-y-6 lg:col-span-10">
                 <form onSubmit={applyFilters} className="no-print flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card p-4">
-                    <label className="flex flex-col text-sm text-muted-foreground">
+                    <label className="flex min-w-0 flex-col text-sm text-muted-foreground">
                         Date filter
-                        <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="mt-1 rounded-md border-border bg-transparent text-sm text-foreground focus-visible:ring-[color:var(--focus-ring)]">
+                        <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="mt-1 w-full min-w-0 max-w-[16rem] rounded-md border-border bg-transparent text-sm text-foreground focus-visible:ring-[color:var(--focus-ring)]">
                             <option value="all">All Dates</option>
                             <option value="month">By Month</option>
                             <option value="custom">Custom Range</option>
@@ -151,9 +151,9 @@ export default function Orders({ orders, filters, customers, summary }) {
                         </>
                     )}
                     {customers.length > 1 && (
-                        <label className="flex flex-col text-sm text-muted-foreground">
+                        <label className="flex min-w-0 flex-col text-sm text-muted-foreground">
                             Customer
-                            <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="mt-1 rounded-md border-border bg-transparent text-sm text-foreground focus-visible:ring-[color:var(--focus-ring)]">
+                            <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="mt-1 w-full min-w-0 max-w-[16rem] truncate rounded-md border-border bg-transparent text-sm text-foreground focus-visible:ring-[color:var(--focus-ring)]">
                                 <option value="">All Customers</option>
                                 {customers.map((c) => (
                                     <option key={c.id} value={c.id}>{c.company_name}</option>
@@ -161,9 +161,9 @@ export default function Orders({ orders, filters, customers, summary }) {
                             </select>
                         </label>
                     )}
-                    <label className="flex flex-col text-sm text-muted-foreground">
+                    <label className="flex min-w-0 flex-col text-sm text-muted-foreground">
                         Status
-                        <select value={status} onChange={(e) => setStatus(e.target.value)} className="mt-1 rounded-md border-border bg-transparent text-sm text-foreground focus-visible:ring-[color:var(--focus-ring)]">
+                        <select value={status} onChange={(e) => setStatus(e.target.value)} className="mt-1 w-full min-w-0 max-w-[16rem] rounded-md border-border bg-transparent text-sm text-foreground focus-visible:ring-[color:var(--focus-ring)]">
                             {STATUS_OPTIONS.map((opt) => (
                                 <option key={opt.value} value={opt.value}>{opt.label}</option>
                             ))}
