@@ -3,7 +3,7 @@ import { AttentionPanel, OrderStages, percentDelta, pointsDelta, PrimaryMetricCa
 import OrderTrend from '@/components/dashboard/OrderTrend';
 import { useDashboardRealtime } from '@/hooks/useDashboardRealtime';
 import { Head, Link, router } from '@inertiajs/react';
-import { ArrowRight, CalendarDays, RefreshCw } from 'lucide-react';
+import { ArrowRight, CalendarDays } from 'lucide-react';
 import { MotionConfig, motion, useReducedMotion } from 'motion/react';
 import { useState } from 'react';
 
@@ -80,10 +80,6 @@ export default function Dashboard({ dashboard, workspace }) {
                             <motion.div {...enter(0.24)}>
                                 <AttentionPanel orders={dashboard.attention} count={dashboard.attention_count} customer={customer} reducedMotion={reducedMotion} canOrder={workspace.can_order} />
                             </motion.div>
-                        </div>
-                        <div className="mt-5 flex flex-wrap items-center justify-between gap-2 text-xs leading-5 text-stone-500 dark:text-stone-400">
-                            <p>Progress reflects the latest status of orders placed in the selected period.</p>
-                            <button type="button" disabled={loading} onClick={() => visit(period)} className="inline-flex min-h-9 items-center gap-2 rounded-lg px-2 hover:bg-stone-200/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:cursor-wait dark:hover:bg-white/10"><RefreshCw aria-hidden="true" className={`h-3.5 w-3.5 ${loading && !reducedMotion ? 'animate-spin' : ''}`} />{loading ? 'Updating overview…' : `Updated ${new Date(dashboard.updated_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} · Refresh`}</button>
                         </div>
                         <span role="status" className="sr-only">{loading ? 'Updating dashboard.' : `Showing the last ${period} days.`}</span>
                     </div>
