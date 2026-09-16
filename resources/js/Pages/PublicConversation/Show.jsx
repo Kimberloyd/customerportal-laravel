@@ -19,26 +19,26 @@ export default function Show({ token, thread, messages }) {
     };
 
     return (
-        <div className="min-h-screen bg-gray-100 py-10 dark:bg-background">
+        <main className="min-h-screen bg-muted py-10 dark:bg-background">
             <Head title={thread.subject} />
 
             <div className="mx-auto max-w-2xl space-y-4 px-4">
-                <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{thread.subject}</h1>
+                <h1 className="text-xl font-semibold text-foreground">{thread.subject}</h1>
 
                 {flash?.success && (
-                    <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-700" role="status" aria-live="polite">
+                    <div className="rounded-md border border-success/20 bg-success/10 p-3 text-sm text-success" role="status" aria-live="polite">
                         {flash.success}
                     </div>
                 )}
                 {flash?.error && (
-                    <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
+                    <div className="rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive" role="alert">
                         {flash.error}
                     </div>
                 )}
 
-                <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-[#1D1D1A]">
+                <div className="space-y-3 rounded-lg border border-border bg-card p-4">
                     {messages.length === 0 && (
-                        <p className="text-sm text-gray-500 dark:text-gray-400">No messages yet. Replies will appear here.</p>
+                        <p className="text-sm text-muted-foreground">No messages yet. Replies will appear here.</p>
                     )}
                     {messages.map((message) => (
                         <div
@@ -46,11 +46,11 @@ export default function Show({ token, thread, messages }) {
                             className={`max-w-lg rounded-lg p-3 text-sm ${
                                 message.sender_type === 'customer'
                                     ? 'ml-auto bg-primary/10 text-foreground'
-                                    : 'bg-gray-100 text-gray-900 dark:bg-white/10 dark:text-gray-100'
+                                    : 'bg-muted text-foreground'
                             }`}
                         >
                             <div className="whitespace-pre-wrap">{message.body}</div>
-                            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            <div className="mt-1 text-xs text-muted-foreground">
                                 {message.sender_type === 'customer' ? 'You' : 'Company'} · {formatDateTime(message.created_at)}
                             </div>
                         </div>
@@ -58,27 +58,31 @@ export default function Show({ token, thread, messages }) {
                 </div>
 
                 {canReply ? (
-                    <form onSubmit={submit} className="space-y-2 rounded-lg border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-[#1D1D1A]">
+                    <form onSubmit={submit} className="space-y-2 rounded-lg border border-border bg-card p-4">
+                        <label htmlFor="reply-body" className="sr-only">
+                            Write your reply
+                        </label>
                         <textarea
+                            id="reply-body"
                             required
                             rows={3}
                             value={data.body}
                             onChange={(e) => setData('body', e.target.value)}
                             placeholder="Write your reply"
-                            className="block w-full rounded-md border-gray-300 text-sm dark:border-gray-600 dark:bg-transparent dark:text-gray-100"
+                            className="block w-full rounded-md border-border bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60"
                         />
                         <div className="flex justify-end">
-                            <Button type="submit" variant="primary" disabled={processing}>
+                            <Button type="submit" variant="primary" loading={processing}>
                                 Send Reply
                             </Button>
                         </div>
                     </form>
                 ) : (
-                    <div className="rounded-lg bg-gray-50 p-4 text-sm text-gray-500 dark:bg-white/5 dark:text-gray-400">
+                    <div className="rounded-lg bg-muted p-4 text-sm text-muted-foreground">
                         This conversation is closed.
                     </div>
                 )}
             </div>
-        </div>
+        </main>
     );
 }

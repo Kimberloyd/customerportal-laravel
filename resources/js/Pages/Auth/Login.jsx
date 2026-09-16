@@ -24,16 +24,16 @@ export default function Login({ status }) {
             <Head title="Log in" />
 
             <div className="mb-8">
-                <h2 className="text-3xl font-semibold tracking-tight text-gray-950 dark:text-gray-100">
+                <h1 className="text-3xl font-semibold tracking-tight text-foreground">
                     Sign in to your account
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">
+                </h1>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
                     Enter your account details to continue.
                 </p>
             </div>
 
             {status && (
-                <div className="mb-5 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm font-medium text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-400" role="status">
+                <div className="mb-5 rounded-md border border-success/20 bg-success/10 px-3 py-2 text-sm font-medium text-success" role="status">
                     {status}
                 </div>
             )}

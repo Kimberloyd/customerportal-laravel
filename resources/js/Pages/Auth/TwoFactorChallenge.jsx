@@ -15,8 +15,8 @@ export default function TwoFactorChallenge() {
         <GuestLayout>
             <Head title="Two-factor authentication" />
             <div className="mb-8">
-                <h2 className="text-3xl font-semibold tracking-tight text-gray-950 dark:text-gray-100">Verify your sign-in</h2>
-                <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">
+                <h1 className="text-3xl font-semibold tracking-tight text-foreground">Verify your sign-in</h1>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
                     Enter the six-digit code from your authenticator app or one unused recovery code.
                 </p>
             </div>
@@ -58,7 +58,10 @@ export default function TwoFactorChallenge() {
                 </div>
             </form>
 
-            <Link href={route('login')} className="mt-5 block text-center text-sm font-medium text-primary hover:underline">
+            <Link
+                href={route('login')}
+                className="mt-5 block rounded-sm text-center text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
                 Return to sign in
             </Link>
         </GuestLayout>

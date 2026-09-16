@@ -9,7 +9,7 @@ function Section({ id, title, children }) {
             <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
                 {title}
             </h2>
-            <div className="mt-3 space-y-4 text-justify text-base leading-7 text-muted-foreground">
+            <div className="mt-3 space-y-4 text-base leading-7 text-muted-foreground">
                 {children}
             </div>
         </section>
@@ -23,8 +23,7 @@ function LegalContent() {
 
             <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
                 <header className="border-b border-border pb-8">
-                    <p className="text-sm font-semibold tracking-wide text-primary">THEOMEDS MARKETING INC.</p>
-                    <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                    <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
                         Terms of Use &amp; Privacy Notice
                     </h1>
                     <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
@@ -36,10 +35,10 @@ function LegalContent() {
                 <nav aria-label="On this page" className="my-8 rounded-xl border border-border bg-card p-4">
                     <p className="text-sm font-medium text-foreground">On this page</p>
                     <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm font-medium text-primary">
-                        <a href="#terms" className="hover:underline">Terms of use</a>
-                        <a href="#orders-returns" className="hover:underline">Orders &amp; returns</a>
-                        <a href="#privacy" className="hover:underline">Privacy</a>
-                        <a href="#retention" className="hover:underline">Retention &amp; deletion</a>
+                        <a href="#terms" className="rounded-sm outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-card">Terms of use</a>
+                        <a href="#orders-returns" className="rounded-sm outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-card">Orders &amp; returns</a>
+                        <a href="#privacy" className="rounded-sm outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-card">Privacy</a>
+                        <a href="#retention" className="rounded-sm outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-card">Retention &amp; deletion</a>
                     </div>
                 </nav>
 
@@ -66,7 +65,7 @@ function LegalContent() {
                         <p>
                             After a completed order is confirmed as received, the linked customer may request a return within
                             seven days. The request must identify delivered products and quantities and include a reason. A
-                            A Theomeds admin, office user, or agent reviews the request before collection or delivery is arranged.
+                            Theomeds admin, office user, or agent reviews the request before collection or delivery is arranged.
                         </p>
                         <p>
                             Recording a return in the portal does not automatically issue a refund, credit, replacement, or
@@ -138,7 +137,10 @@ export default function TermsAndPrivacy() {
                             className="h-12 w-auto"
                         />
                     </Link>
-                    <Link href={route('login')} className="text-sm font-medium text-primary hover:underline">
+                    <Link
+                        href={route('login')}
+                        className="rounded-sm text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                    >
                         Sign in
                     </Link>
                 </div>
