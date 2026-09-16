@@ -7,7 +7,6 @@ import { Dropdown as AccountDropdown } from '@/components/interior/dropdown';
 import { useModal } from '@/components/interior/modal';
 import { Tooltip } from '@/components/motion/tooltip';
 import ComposeModal from '@/components/messaging/ComposeModal';
-import { CommandPalette } from '@/components/motion/command-palette';
 import { FooterSimple } from '@/components/smoothui/footer-1';
 import { CountBadge, NotificationBell } from '@/components/ui/notification-bell';
 import { useChatWidget } from '@/lib/chat-widget-context';
@@ -16,16 +15,10 @@ import { Link, router, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import {
     Bell,
-    ChartPie,
     CheckCheck,
     LogOut,
     MessageCircle,
-    MessageCircleQuestionMark,
     MonitorX,
-    Package,
-    Plus,
-    Search,
-    ShieldCheck,
     SquarePen,
     X,
 } from 'lucide-react';
@@ -64,7 +57,6 @@ export default function AuthenticatedLayout({ header, banner, children }) {
     const mobileNav = useModal({ open: showingNavigationDropdown, onClose: closeMobileNav });
     const [notificationsOpen, setNotificationsOpen] = useState(false);
     const [notificationsPosition, setNotificationsPosition] = useState(null);
-    const [paletteOpen, setPaletteOpen] = useState(false);
     // Unread chat messages. Sourced from MessageThread::unreadCount(), which
     // counts CustomerMessage rows with is_read = false -- message records, not
     // notification records. This badges the Chats icon only.
@@ -443,66 +435,6 @@ export default function AuthenticatedLayout({ header, banner, children }) {
         [user.role],
     );
 
-    // Everything the header palette can jump to.
-    const commandItems = useMemo(() => {
-        const navigate = (routeName) => () => router.visit(route(routeName));
-
-        return [
-            {
-                id: 'nav-dashboard',
-                label: 'Dashboard',
-                group: 'Navigate',
-                keywords: ['home', 'overview'],
-                icon: ChartPie,
-                onSelect: navigate('dashboard'),
-            },
-            {
-                id: 'nav-orders',
-                label: 'Orders',
-                group: 'Navigate',
-                keywords: ['purchase', 'po'],
-                icon: Package,
-                onSelect: navigate('purchase-orders.index'),
-            },
-            {
-                id: 'nav-faq',
-                label: 'Frequently Asked Questions',
-                group: 'Navigate',
-                keywords: ['help', 'faq', 'support', 'questions'],
-                icon: MessageCircleQuestionMark,
-                onSelect: navigate('faq'),
-            },
-            ...(user.role === 'admin'
-                ? [
-                      {
-                          id: 'nav-admin',
-                          label: 'Admin',
-                          group: 'Navigate',
-                          keywords: ['products', 'customers', 'accounts', 'users'],
-                          icon: ShieldCheck,
-                          onSelect: navigate('admin.dashboard'),
-                      },
-                  ]
-                : []),
-            {
-                id: 'action-new-order',
-                label: 'New Order',
-                group: 'Actions',
-                keywords: ['create', 'add', 'purchase order'],
-                icon: Plus,
-                onSelect: () => router.visit(route('purchase-orders.index', { create: 1 })),
-            },
-            {
-                id: 'action-new-message',
-                label: 'New Message',
-                group: 'Actions',
-                keywords: ['compose', 'chat', 'send'],
-                icon: SquarePen,
-                onSelect: () => setComposeOpen(true),
-            },
-        ];
-    }, [user.role, setComposeOpen]);
-
     return (
         <div className="min-h-screen bg-white dark:bg-background">
             <a
@@ -595,15 +527,6 @@ export default function AuthenticatedLayout({ header, banner, children }) {
 
                         <div className="flex items-center gap-1 sm:hidden">
                             <ThemeToggle />
-
-                            <button
-                                type="button"
-                                onClick={() => setPaletteOpen(true)}
-                                aria-label="Search"
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-gray-500 outline-none transition-colors hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-ring dark:text-gray-400 dark:hover:bg-white/10"
-                            >
-                                <Search aria-hidden="true" className="h-5 w-5" />
-                            </button>
 
                             <AccountDropdown
                                 items={messageAccountItems}
@@ -712,16 +635,6 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                         </div>
 
                         <div className="hidden sm:ms-6 sm:flex sm:items-center">
-                            <button
-                                type="button"
-                                onClick={() => setPaletteOpen(true)}
-                                aria-label="Search"
-                                className="me-2 flex h-9 w-48 items-center gap-2 rounded-full border border-gray-200 bg-transparent pl-3.5 pr-4 text-sm text-gray-500 transition-colors hover:border-gray-400 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-white/15 dark:text-gray-400 dark:hover:border-white/30 dark:hover:text-gray-200 lg:w-64"
-                            >
-                                <Search aria-hidden="true" className="h-4 w-4 shrink-0" />
-                                <span className="truncate text-left">Search</span>
-                            </button>
-
                             <div className="flex items-center gap-1">
                                 <ThemeToggle />
 
@@ -1068,18 +981,6 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                     </AnimatePresence>,
                     document.body,
                 )}
-
-            {/* shortcut={null}: the order form mounts its own product-search
-                palette on Ctrl+K, and this one is mounted on every page -- a
-                shared binding would open both at once. */}
-            <CommandPalette
-                items={commandItems}
-                open={paletteOpen}
-                onOpenChange={setPaletteOpen}
-                shortcut={null}
-                placeholder="Search pages and actions"
-                emptyMessage="No matches found."
-            />
 
             <ComposeModal
                 open={composeOpen}
