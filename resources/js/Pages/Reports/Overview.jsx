@@ -14,7 +14,7 @@ const RANGE_OPTIONS = [
 
 function Tile({ label, value, featured = false }) {
     return (
-        <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-[#1D1D1A]">
+        <div className="rounded-lg border border-border bg-card p-4">
             <p className="type-label text-muted-foreground">{label}</p>
             <p className={`mt-1 font-semibold text-foreground ${featured ? 'text-3xl' : 'text-2xl'}`}>{value}</p>
         </div>
@@ -23,7 +23,7 @@ function Tile({ label, value, featured = false }) {
 
 function ProgressBar({ percent, className = 'bg-primary' }) {
     return (
-        <div className="h-2 w-full rounded-full bg-gray-100 dark:bg-white/10">
+        <div className="h-2 w-full rounded-full bg-muted">
             <div className={`h-2 rounded-full ${className}`} style={{ width: `${percent}%` }} />
         </div>
     );
@@ -109,15 +109,15 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                                 : 'text-muted-foreground hover:text-foreground'
                         }`}
                     >
-                        Reports
+                        Orders
                     </Link>
                 </nav>
 
                 <div className="space-y-6 lg:col-span-10">
-                <form onSubmit={applyFilters} className="flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-[#1D1D1A]">
+                <form onSubmit={applyFilters} className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card p-4">
                     <label className="flex flex-col text-sm text-muted-foreground">
                         Period
-                        <select value={range} onChange={(e) => setRange(e.target.value)} className="mt-1 rounded-md border-gray-300 text-sm dark:border-gray-600 dark:bg-transparent dark:text-gray-100">
+                        <select value={range} onChange={(e) => setRange(e.target.value)} className="mt-1 rounded-md border-border bg-transparent text-sm text-foreground focus-visible:ring-[color:var(--focus-ring)]">
                             {RANGE_OPTIONS.map((opt) => (
                                 <option key={opt.value} value={opt.value}>{opt.label}</option>
                             ))}
@@ -132,7 +132,7 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                     {!isCustomerView && (
                         <label className="flex flex-col text-sm text-muted-foreground">
                             Customer
-                            <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="mt-1 rounded-md border-gray-300 text-sm dark:border-gray-600 dark:bg-transparent dark:text-gray-100">
+                            <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="mt-1 rounded-md border-border bg-transparent text-sm text-foreground focus-visible:ring-[color:var(--focus-ring)]">
                                 <option value="">All Customers</option>
                                 {customers.map((c) => (
                                     <option key={c.id} value={c.id}>{c.company_name}</option>
@@ -154,8 +154,20 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                     </div>
                 </div>
 
-                <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-[#1D1D1A]">
-                    <h3 className="type-section-heading mb-3 text-foreground">Ordered vs Delivered</h3>
+                <section className="rounded-lg border border-border bg-card p-4">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <h3 className="type-section-heading text-foreground">Ordered vs Delivered</h3>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <span className="flex items-center gap-1.5">
+                                <span className="h-2.5 w-2.5 rounded-sm bg-primary" aria-hidden="true" />
+                                Ordered
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                                <span className="h-2.5 w-2.5 rounded-sm bg-success" aria-hidden="true" />
+                                Delivered
+                            </span>
+                        </div>
+                    </div>
                     <div className="flex items-end gap-3 overflow-x-auto pb-1">
                         {monthlyTrend.map((month) => (
                             <div key={month.full_label} className="flex min-w-[3rem] flex-1 flex-col items-center gap-1">
@@ -170,7 +182,7 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                 </section>
 
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-[#1D1D1A]">
+                    <section className="rounded-lg border border-border bg-card p-4">
                         <h3 className="type-section-heading mb-3 text-foreground">Order Status Mix</h3>
                         <div className="space-y-2">
                             {statusMix.map((row) => (
@@ -185,7 +197,7 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                         </div>
                     </section>
 
-                    <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-[#1D1D1A]">
+                    <section className="rounded-lg border border-border bg-card p-4">
                         <h3 className="type-section-heading mb-3 text-foreground">Backlog Aging</h3>
                         <div className="space-y-2">
                             {agingRows.map((row) => (
@@ -201,23 +213,21 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                     </section>
                 </div>
 
-                <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-[#1D1D1A]">
+                <div className="space-y-3">
                     <h3 className="type-section-heading text-foreground">Product Fulfillment Gaps</h3>
-                </section>
-                <Table
-                    data={productPerformanceRows}
-                    columns={productPerformanceColumns}
-                    getRowId={(p) => p.__rowId}
-                    loading={tableLoading}
-                    resizable
-                    emptyState="No report data is available for this period. Try a different date range."
-                />
+                    <Table
+                        data={productPerformanceRows}
+                        columns={productPerformanceColumns}
+                        getRowId={(p) => p.__rowId}
+                        loading={tableLoading}
+                        resizable
+                        emptyState="No report data is available for this period. Try a different date range."
+                    />
+                </div>
 
                 {!isCustomerView && (
-                    <>
-                        <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-[#1D1D1A]">
-                            <h3 className="type-section-heading text-foreground">Customer Performance</h3>
-                        </section>
+                    <div className="space-y-3">
+                        <h3 className="type-section-heading text-foreground">Customer Performance</h3>
                         <Table
                             data={customerPerformanceRows}
                             columns={customerPerformanceColumns}
@@ -226,7 +236,7 @@ export default function Overview({ filters, customers, isCustomerView, metrics, 
                             resizable
                             emptyState="No report data is available for this period. Try a different date range."
                         />
-                    </>
+                    </div>
                 )}
                 </div>
             </div>

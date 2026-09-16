@@ -127,15 +127,15 @@ export default function Orders({ orders, filters, customers, summary }) {
                                 : 'text-muted-foreground hover:text-foreground'
                         }`}
                     >
-                        Reports
+                        Orders
                     </Link>
                 </nav>
 
                 <div className="space-y-6 lg:col-span-10">
-                <form onSubmit={applyFilters} className="no-print flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-[#1D1D1A]">
+                <form onSubmit={applyFilters} className="no-print flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card p-4">
                     <label className="flex flex-col text-sm text-muted-foreground">
                         Date filter
-                        <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="mt-1 rounded-md border-gray-300 text-sm dark:border-gray-600 dark:bg-transparent dark:text-gray-100">
+                        <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="mt-1 rounded-md border-border bg-transparent text-sm text-foreground focus-visible:ring-[color:var(--focus-ring)]">
                             <option value="all">All Dates</option>
                             <option value="month">By Month</option>
                             <option value="custom">Custom Range</option>
@@ -153,7 +153,7 @@ export default function Orders({ orders, filters, customers, summary }) {
                     {customers.length > 1 && (
                         <label className="flex flex-col text-sm text-muted-foreground">
                             Customer
-                            <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="mt-1 rounded-md border-gray-300 text-sm dark:border-gray-600 dark:bg-transparent dark:text-gray-100">
+                            <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="mt-1 rounded-md border-border bg-transparent text-sm text-foreground focus-visible:ring-[color:var(--focus-ring)]">
                                 <option value="">All Customers</option>
                                 {customers.map((c) => (
                                     <option key={c.id} value={c.id}>{c.company_name}</option>
@@ -163,7 +163,7 @@ export default function Orders({ orders, filters, customers, summary }) {
                     )}
                     <label className="flex flex-col text-sm text-muted-foreground">
                         Status
-                        <select value={status} onChange={(e) => setStatus(e.target.value)} className="mt-1 rounded-md border-gray-300 text-sm dark:border-gray-600 dark:bg-transparent dark:text-gray-100">
+                        <select value={status} onChange={(e) => setStatus(e.target.value)} className="mt-1 rounded-md border-border bg-transparent text-sm text-foreground focus-visible:ring-[color:var(--focus-ring)]">
                             {STATUS_OPTIONS.map((opt) => (
                                 <option key={opt.value} value={opt.value}>{opt.label}</option>
                             ))}
@@ -175,20 +175,20 @@ export default function Orders({ orders, filters, customers, summary }) {
                 </form>
 
                 <div className="space-y-4">
-                    <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-[#1D1D1A]">
+                    <div className="rounded-lg border border-border bg-card p-4">
                         <p className="type-label text-muted-foreground">Total Orders</p>
                         <p className="mt-1 text-3xl font-semibold text-foreground">{summary.orders}</p>
                     </div>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-[#1D1D1A]">
+                        <div className="rounded-lg border border-border bg-card p-4">
                             <p className="type-label text-muted-foreground">Ordered Units</p>
                             <p className="mt-1 text-2xl font-semibold text-foreground">{summary.ordered_units}</p>
                         </div>
-                        <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-[#1D1D1A]">
+                        <div className="rounded-lg border border-border bg-card p-4">
                             <p className="type-label text-muted-foreground">Delivered Units</p>
                             <p className="mt-1 text-2xl font-semibold text-foreground">{summary.delivered_units}</p>
                         </div>
-                        <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-[#1D1D1A]">
+                        <div className="rounded-lg border border-border bg-card p-4">
                             <p className="type-label text-muted-foreground">Balance Units</p>
                             <p className="mt-1 text-2xl font-semibold text-foreground">{summary.balance_units}</p>
                         </div>
@@ -214,9 +214,10 @@ export default function Orders({ orders, filters, customers, summary }) {
                                     preserveScroll
                                     onStart={() => setTableLoading(true)}
                                     onFinish={() => setTableLoading(false)}
-                                    className={`rounded px-3 py-1 ${
+                                    aria-current={link.active ? 'page' : undefined}
+                                    className={`rounded px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] ${
                                         link.active
-                                            ? 'bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-900'
+                                            ? 'bg-primary text-primary-foreground'
                                             : link.url
                                               ? 'text-muted-foreground hover:bg-muted'
                                               : 'cursor-not-allowed text-muted-foreground/50'

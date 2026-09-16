@@ -59,7 +59,8 @@ export default function Edit({ order, customers, lockedCustomerId }) {
                                 [item.id]: e.target.value,
                             })
                         }
-                        className="w-24 rounded-md border-gray-300 text-sm disabled:bg-gray-100 dark:border-gray-600 dark:bg-transparent dark:text-gray-100 dark:disabled:bg-white/5"
+                        aria-label={`Quantity for ${item.display_name}`}
+                        className="w-24 rounded-md border-border bg-transparent text-sm text-foreground focus-visible:ring-[color:var(--focus-ring)] disabled:bg-muted"
                     />
                 ),
             },
@@ -70,7 +71,7 @@ export default function Edit({ order, customers, lockedCustomerId }) {
     return (
         <AuthenticatedLayout
             header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-100">
+                <h2 className="type-page-heading text-foreground">
                     Edit {order.po_number}
                 </h2>
             }
@@ -78,27 +79,28 @@ export default function Edit({ order, customers, lockedCustomerId }) {
             <Head title={`Edit ${order.po_number}`} />
 
             <div className="mx-auto max-w-4xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-                <form onSubmit={submit} className="space-y-6 rounded-lg border border-gray-200 bg-white p-6 dark:border-white/10 dark:bg-[#1D1D1A]">
+                <form onSubmit={submit} className="space-y-6 rounded-lg border border-border bg-card p-6">
                     {order.is_terminal && (
-                        <div className="rounded-md bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                        <div className="rounded-md bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300" role="status">
                             This order is {order.status} — only remarks can be changed.
                         </div>
                     )}
                     {Object.entries(errors).map(([key, message]) => (
-                        <div key={key} className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{message}</div>
+                        <div key={key} role="alert" className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{message}</div>
                     ))}
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Customer</label>
+                        <label htmlFor="po-customer" className="type-label text-foreground">Customer</label>
                         {lockedCustomerId || order.is_terminal ? (
-                            <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">
+                            <p id="po-customer" className="mt-1 text-sm text-foreground">
                                 {customers.find((c) => c.id === data.customer_id)?.company_name}
                             </p>
                         ) : (
                             <select
+                                id="po-customer"
                                 value={data.customer_id}
                                 onChange={(e) => setData('customer_id', e.target.value)}
-                                className="mt-1 block w-full rounded-md border-gray-300 text-sm dark:border-gray-600 dark:bg-transparent dark:text-gray-100"
+                                className="mt-1 block w-full rounded-md border-border bg-transparent text-sm text-foreground focus-visible:ring-[color:var(--focus-ring)]"
                             >
                                 {customers.map((c) => (
                                     <option key={c.id} value={c.id}>
@@ -110,39 +112,42 @@ export default function Edit({ order, customers, lockedCustomerId }) {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Remarks</label>
+                        <label htmlFor="po-remarks" className="type-label text-foreground">Remarks</label>
                         <textarea
+                            id="po-remarks"
                             value={data.remarks}
                             onChange={(e) => setData('remarks', e.target.value)}
                             rows={3}
-                            className="mt-1 block w-full rounded-md border-gray-300 text-sm dark:border-gray-600 dark:bg-transparent dark:text-gray-100"
+                            className="mt-1 block w-full rounded-md border-border bg-transparent text-sm text-foreground focus-visible:ring-[color:var(--focus-ring)]"
                         />
                     </div>
 
                     {!order.is_terminal && (
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Attachment</label>
+                            <label htmlFor="po-attachment" className="type-label text-foreground">Attachment</label>
                             {order.has_attachment && !data.remove_attachment && (
-                                <label className="mt-1 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                <label className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
                                     <input
                                         type="checkbox"
                                         checked={data.remove_attachment}
                                         onChange={(e) => setData('remove_attachment', e.target.checked)}
+                                        className="rounded border-border text-primary focus-visible:ring-[color:var(--focus-ring)]"
                                     />
                                     Remove existing attachment
                                 </label>
                             )}
                             <input
+                                id="po-attachment"
                                 type="file"
                                 accept=".pdf,.png,.jpg,.jpeg"
                                 onChange={(e) => setData('po_attachment', e.target.files[0] ?? null)}
-                                className="mt-1 block w-full text-sm"
+                                className="mt-1 block w-full text-sm text-foreground file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground hover:file:bg-hover"
                             />
                         </div>
                     )}
 
                     <div>
-                        <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Product Lines</label>
+                        <label className="mb-2 block type-label text-foreground">Product Lines</label>
                         <Table
                             data={order.items}
                             columns={itemColumns}
@@ -154,7 +159,7 @@ export default function Edit({ order, customers, lockedCustomerId }) {
 
                     <div className="flex justify-end">
                         <Button type="submit" variant="primary" disabled={processing}>
-                            Save Changes
+                            {processing ? 'Saving...' : 'Save Changes'}
                         </Button>
                     </div>
                 </form>

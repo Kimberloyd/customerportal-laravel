@@ -280,8 +280,8 @@ function ReminderSettings({ reminders, smsConfigured, onSaved }) {
                 </Row>
                 <Row label="SMS quiet hours" description={`Customer reminder texts use ${form.timezone}.`}>
                     <div className="flex flex-wrap items-center gap-3">
-                        <label className="text-sm text-muted-foreground">From <input aria-label="Quiet hours start" type="number" min="0" max="23" value={form.quiet_hours_start} onChange={(event) => setForm({ ...form, quiet_hours_start: Number(event.target.value) })} className="ml-2 w-20 rounded-md border-border text-sm" /></label>
-                        <label className="text-sm text-muted-foreground">until <input aria-label="Quiet hours end" type="number" min="0" max="23" value={form.quiet_hours_end} onChange={(event) => setForm({ ...form, quiet_hours_end: Number(event.target.value) })} className="ml-2 w-20 rounded-md border-border text-sm" /></label>
+                        <label className="text-sm text-muted-foreground">From <input aria-label="Quiet hours start" type="number" min="0" max="23" value={form.quiet_hours_start} onChange={(event) => setForm({ ...form, quiet_hours_start: Number(event.target.value) })} className="ml-2 w-20 rounded-md border-border bg-transparent text-sm text-foreground focus-visible:ring-[color:var(--focus-ring)]" /></label>
+                        <label className="text-sm text-muted-foreground">until <input aria-label="Quiet hours end" type="number" min="0" max="23" value={form.quiet_hours_end} onChange={(event) => setForm({ ...form, quiet_hours_end: Number(event.target.value) })} className="ml-2 w-20 rounded-md border-border bg-transparent text-sm text-foreground focus-visible:ring-[color:var(--focus-ring)]" /></label>
                     </div>
                 </Row>
                 <div className="-mx-5 border-t border-border px-5 py-5 sm:-mx-6 sm:px-6">
@@ -293,7 +293,7 @@ function ReminderSettings({ reminders, smsConfigured, onSaved }) {
                             <p className="text-sm font-medium text-foreground">{labels[kind]}</p>
                             <div className="flex flex-wrap gap-3">
                                 {Object.entries(levels).map(([level, hours]) => (
-                                    <label key={level} className="text-xs capitalize text-muted-foreground">{level}<input aria-label={`${labels[kind]} ${level} hours`} type="number" min="1" max="720" value={hours} onChange={(event) => setThreshold(kind, level, event.target.value)} className="ml-2 w-20 rounded-md border-border text-sm" /></label>
+                                    <label key={level} className="text-xs capitalize text-muted-foreground">{level}<input aria-label={`${labels[kind]} ${level} hours`} type="number" min="1" max="720" value={hours} onChange={(event) => setThreshold(kind, level, event.target.value)} className="ml-2 w-20 rounded-md border-border bg-transparent text-sm text-foreground focus-visible:ring-[color:var(--focus-ring)]" /></label>
                                 ))}
                             </div>
                         </div>
@@ -302,7 +302,7 @@ function ReminderSettings({ reminders, smsConfigured, onSaved }) {
             </div>
                 <div className="-mx-5 border-t border-border px-5 py-5 text-sm text-muted-foreground sm:-mx-6 sm:px-6">
                     <p>Last scheduler run: {formatWhen(form.last_scheduler_run)}</p>
-                    {form.last_failure && <p className="mt-1 text-amber-700">Most recent issue: {form.last_failure}</p>}
+                    {form.last_failure && <p className="mt-1 text-amber-700 dark:text-amber-400">Most recent issue: {form.last_failure}</p>}
                 </div>
                 {error && <p role="alert" className="mb-4 text-sm text-destructive">{error}</p>}
                 <div className="-mx-5 flex justify-end border-t border-border px-5 pt-5 sm:-mx-6 sm:px-6"><Button type="button" variant="primary" className="rounded-md" disabled={saving} onClick={save}>{saving ? 'Saving...' : 'Save reminder settings'}</Button></div>
@@ -500,7 +500,7 @@ function TwoFactorSection({ twoFactor }) {
                         label="Status"
                         description="Your password alone can no longer sign in to this account."
                     >
-                        <p className="text-sm font-medium text-emerald-700">Enabled</p>
+                        <p className="text-sm font-medium text-success">Enabled</p>
                     </Row>
                     <Row
                         label="Manage two-factor authentication"
@@ -569,7 +569,7 @@ export default function Edit({ user, sms, semaphore, reminders, two_factor: twoF
         <AuthenticatedLayout
             header={
                 <div>
-                    <h1 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-100">
+                    <h1 className="type-page-heading text-foreground">
                         Settings
                     </h1>
                 </div>
