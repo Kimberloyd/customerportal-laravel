@@ -576,7 +576,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                                 }
                                                 onClick={markAllMessagesRead}
                                                 disabled={unreadCount === 0}
-                                                className="bg-transparent hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:hover:bg-white/10"
+                                                className="bg-transparent hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:bg-transparent dark:hover:bg-white/10"
                                             />
                                             <NotificationBell
                                                 count={0}
@@ -592,7 +592,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                                     close(false);
                                                     setComposeOpen(true);
                                                 }}
-                                                className="bg-transparent hover:bg-gray-100 dark:hover:bg-white/10"
+                                                className="bg-transparent hover:bg-gray-100 dark:bg-transparent dark:hover:bg-white/10"
                                             />
                                         </div>
                                     </div>
@@ -627,7 +627,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                     count={notificationCount}
                                     size={36}
                                     icon={<Bell aria-hidden="true" className="h-5 w-5" />}
-                                    className="bg-transparent text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/10"
+                                    className="bg-transparent text-gray-500 hover:bg-gray-100 dark:bg-transparent dark:text-gray-400 dark:hover:bg-white/10"
                                     aria-expanded={notificationsOpen}
                                     onClick={() => setNotificationsOpen((previous) => !previous)}
                                 />
@@ -690,7 +690,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                                         }
                                                         onClick={markAllMessagesRead}
                                                         disabled={unreadCount === 0}
-                                                        className="bg-transparent hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:hover:bg-white/10"
+                                                        className="bg-transparent hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:bg-transparent dark:hover:bg-white/10"
                                                     />
                                                 </Tooltip>
                                                 <Tooltip
@@ -711,7 +711,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                                             close(false);
                                                             setComposeOpen(true);
                                                         }}
-                                                        className="bg-transparent hover:bg-gray-100 dark:hover:bg-white/10"
+                                                        className="bg-transparent hover:bg-gray-100 dark:bg-transparent dark:hover:bg-white/10"
                                                     />
                                                 </Tooltip>
                                             </div>
@@ -746,7 +746,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                         count={notificationCount}
                                         size={36}
                                         icon={<Bell aria-hidden="true" className="h-5 w-5" />}
-                                        className="bg-transparent text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/10"
+                                        className="bg-transparent text-gray-500 hover:bg-gray-100 dark:bg-transparent dark:text-gray-400 dark:hover:bg-white/10"
                                         aria-expanded={notificationsOpen}
                                         onClick={() => setNotificationsOpen((previous) => !previous)}
                                     />
@@ -904,7 +904,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                             icon={<CheckCheck aria-hidden="true" className="h-5 w-5" />}
                                             onClick={markAllNotificationsRead}
                                             disabled={notificationCount === 0}
-                                            className="bg-transparent hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:hover:bg-white/10"
+                                            className="bg-transparent hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:bg-transparent dark:hover:bg-white/10"
                                         />
                                     </Tooltip>
                                 </div>
