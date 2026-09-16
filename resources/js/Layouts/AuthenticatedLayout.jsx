@@ -496,6 +496,8 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                         />
                                     </svg>
                                 </button>
+
+                                <ThemeToggle />
                             </div>
 
                             <div className="hidden shrink-0 items-center sm:flex">
@@ -526,8 +528,6 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                         </div>
 
                         <div className="flex items-center gap-1 sm:hidden">
-                            <ThemeToggle />
-
                             <AccountDropdown
                                 items={messageAccountItems}
                                 value=""
