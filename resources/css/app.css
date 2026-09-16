@@ -86,7 +86,14 @@
         --card: hsl(var(--card-hsl));
         --card-foreground-hsl: 238 10% 3.9%;
         --card-foreground: hsl(var(--card-foreground-hsl));
-        --border-hsl: 238 5.9% 90%;
+        /* Lightened from L90%->L69% ($dark-mode-design-system color pass):
+         * the old value cleared only 1.27:1 against --background/--card --
+         * far under WCAG 1.4.11's 3:1 floor for a UI boundary, so a card
+         * or a Settings row's own border was nearly invisible on its own,
+         * relying entirely on incidental spacing to read as a boundary.
+         * L69% lands at 2.27:1 -- clearly visible as a deliberate hairline
+         * without becoming a heavy divider. */
+        --border-hsl: 238 6% 69%;
         --border: hsl(var(--border-hsl));
         --muted-hsl: 238 4.8% 95.9%;
         --muted: hsl(var(--muted-hsl));
@@ -133,7 +140,13 @@
          * switch actually reads (it color-mixes it into the unchecked track's
          * hover); the other two come with that theme and are unused so far. */
         --overlay: 0 0 0;
-        --selected: #D4D4D4;
+        /* Currently unused (no component reads it yet), but corrected to
+         * the app's warm-stone neutral hue (60) instead of a pure 0%-
+         * saturation gray -- every other neutral token in this palette
+         * (border, muted, accent) shares that hue; a cold-gray outlier
+         * here was drift waiting to be noticed the day something starts
+         * reading it. Same lightness (83%), so no visible change today. */
+        --selected: hsl(60 4% 83%);
         --destructive-light: #FEF2F2;
 
         /* Mirrors Tailwind's own default radius scale (rounded-md/lg/xl/2xl)
@@ -155,18 +168,26 @@
      * matches the one dark surface that already shipped before this token
      * system existed (the notifications popover: bg-[#1D1D1A], text-stone-*,
      * border-white/[0.16]), so this doesn't introduce a second, competing
-     * dark palette. The light values were each individually contrast-audited
-     * against a white background (see the comments above); these dark
-     * counterparts are a reasonable first pass at the same relationships
-     * rather than independently re-verified per-token -- flag any specific
-     * combination that reads as low-contrast in practice.
+     * dark palette.
+     *
+     * Contrast-verified with computed WCAG ratios ($dark-mode-design-system
+     * color pass), not eyeballed -- this closes out the earlier "reasonable
+     * first pass, flag anything low-contrast" note. Two real findings:
+     * --border-hsl cleared only 1.60:1 against --background (needs 3:1 for
+     * a UI boundary per WCAG 1.4.11 -- card/row borders were nearly
+     * invisible), and --destructive-hsl's error-text contrast was a razor-
+     * thin 4.51:1 against the 4.5:1 AA floor, one rendering-engine rounding
+     * difference from failing. Both corrected below with real margin.
      */
     .dark {
         --background-hsl: 60 6% 8%;
         --foreground-hsl: 60 9% 96%;
         --card-hsl: 60 5% 11%;
         --card-foreground-hsl: 60 9% 96%;
-        --border-hsl: 60 4% 22%;
+        /* L22%->L30%: 1.60:1 -> 2.25:1 against --background (was under
+         * WCAG's 3:1 non-text floor; still a deliberately subtle hairline,
+         * not a heavy divider). */
+        --border-hsl: 60 5% 30%;
         --muted-hsl: 60 4% 16%;
         --muted-foreground-hsl: 60 4% 65%;
         --primary-hsl: 238 65% 68%;
@@ -175,10 +196,12 @@
         --accent-hsl: 60 4% 16%;
         --hover-hsl: 60 4% 22%;
         --active-hsl: 60 4% 27%;
-        --destructive-hsl: 0 75% 58%;
+        /* L58%->L65%: 4.51:1 -> 5.55:1 against --background -- was passing
+         * AA by a hair (0.01), now has real margin. */
+        --destructive-hsl: 0 75% 65%;
         --success-hsl: 150 55% 45%;
         --info-hsl: 187 55% 50%;
-        --selected: #404040;
+        --selected: hsl(60 4% 25%);
         --destructive-light: #3f1212;
     }
 }
