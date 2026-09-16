@@ -11,38 +11,12 @@ const surface = 'rounded-2xl border border-stone-200/80 bg-white dark:border-whi
 const focus = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2';
 const spring = { type: 'spring', stiffness: 700, damping: 46, mass: 0.5 };
 
-/**
- * Percent change vs. the previous period, for count-style metrics (orders,
- * completed orders). Null when there's no meaningful baseline to compare
- * against (previous period had zero and still has zero).
- */
-export function percentDelta(current, previous) {
-    if (current == null || previous == null) return null;
-    if (previous === 0) return current === 0 ? null : { text: '+New' };
-    const pct = (current - previous) / previous * 100;
-    return { text: `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%` };
-}
-
-/**
- * Percentage-point change vs. the previous period, for metrics that are
- * already a percentage (e.g. fulfillment rate) -- a relative "%" delta on
- * a percentage is misleading, so this reports the raw point difference.
- */
-export function pointsDelta(current, previous) {
-    if (current == null || previous == null) return null;
-    const diff = current - previous;
-    return { text: `${diff >= 0 ? '+' : ''}${diff.toFixed(1)} pt` };
-}
-
-export function PrimaryMetricCard({ label, value, delta, href, period, trend }) {
+export function PrimaryMetricCard({ label, value, href, trend }) {
     const Card = href ? Link : 'div';
     const sparkline = (trend ?? []).map((point) => ({ value: point.current }));
     return (
         <Card href={href || undefined} className={`${surface} ${focus} group relative flex h-full flex-col overflow-hidden p-5 transition-colors ${href ? 'hover:bg-stone-50 dark:hover:bg-white/[0.03]' : ''} sm:p-6`}>
-            <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-medium text-stone-600 dark:text-stone-300">{label}</p>
-                {delta && <span title={`vs previous ${period} days`} className="shrink-0 text-xs font-medium text-stone-500 dark:text-stone-400">{delta.text}</span>}
-            </div>
+            <p className="text-sm font-medium text-stone-600 dark:text-stone-300">{label}</p>
             <div className="flex flex-1 flex-row-reverse items-center justify-between gap-4 sm:flex-row">
                 <div className="min-w-0 text-right sm:text-left">
                     <p className="break-words text-5xl font-semibold leading-tight tracking-tight text-stone-900 tabular-nums sm:text-6xl dark:text-stone-100">{value}</p>
@@ -104,10 +78,7 @@ export function SecondaryMetricsCard({ metrics, reducedMotion }) {
                     <div key={metric.label} ref={(el) => { rowRefs.current[index] = el; }} onMouseEnter={() => metric.href && setHoveredIndex(index)} onFocus={() => metric.href && setHoveredIndex(index)} onBlur={() => setHoveredIndex(null)}>
                         <Row href={metric.href || undefined} className={`${focus} relative z-10 flex flex-1 items-center justify-between gap-3 p-4`}>
                             <p className="min-w-0 truncate text-xs font-medium text-stone-500 dark:text-stone-400">{metric.label}</p>
-                            <div className="shrink-0 text-right">
-                                <p className="text-xl font-semibold tracking-tight text-stone-900 tabular-nums dark:text-stone-100 sm:text-2xl">{metric.value}</p>
-                                {metric.delta && <p className="mt-1 text-xs font-medium text-stone-500 dark:text-stone-400">{metric.delta.text}</p>}
-                            </div>
+                            <p className="shrink-0 text-xl font-semibold tracking-tight text-stone-900 tabular-nums dark:text-stone-100 sm:text-2xl">{metric.value}</p>
                         </Row>
                     </div>
                 );

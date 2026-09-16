@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { AttentionPanel, OrderStages, percentDelta, pointsDelta, PrimaryMetricCard, SecondaryMetricsCard } from '@/components/dashboard/OverviewPanels';
+import { AttentionPanel, OrderStages, PrimaryMetricCard, SecondaryMetricsCard } from '@/components/dashboard/OverviewPanels';
 import OrderTrend from '@/components/dashboard/OrderTrend';
 import { useDashboardRealtime } from '@/hooks/useDashboardRealtime';
 import { Head, Link, router } from '@inertiajs/react';
@@ -15,7 +15,7 @@ export default function Dashboard({ dashboard, workspace }) {
     const [loading, setLoading] = useState(false);
     useDashboardRealtime({ onStart: () => setLoading(true), onFinish: () => setLoading(false) });
     const customer = workspace.is_customer;
-    const { current, previous, period } = dashboard;
+    const { current, period } = dashboard;
     const ordersUrl = route('purchase-orders.index', { date_filter: 'custom', start_date: dashboard.start, end_date: dashboard.end });
     const enter = (delay) => ({
         initial: reducedMotion ? false : { opacity: 0, y: 12 },
@@ -27,10 +27,10 @@ export default function Dashboard({ dashboard, workspace }) {
         onStart: () => setLoading(true), onFinish: () => setLoading(false),
     });
     const metrics = [
-        { label: 'Total Orders', value: number.format(current.orders), href: ordersUrl, delta: percentDelta(current.orders, previous.orders) },
-        { label: 'Pending orders', value: number.format(current.stages.pending), href: `${ordersUrl}&status=pending`, delta: percentDelta(current.stages.pending, previous.stages.pending) },
-        { label: 'Completed orders', value: number.format(current.completed), href: `${ordersUrl}&status=completed`, delta: percentDelta(current.completed, previous.completed) },
-        { label: customer ? 'Your delivery progress' : 'Quantity fulfilled', value: current.fulfillment === null ? '—' : `${number.format(current.fulfillment)}%`, href: ordersUrl, delta: pointsDelta(current.fulfillment, previous.fulfillment) },
+        { label: 'Total Orders', value: number.format(current.orders), href: ordersUrl },
+        { label: 'Pending orders', value: number.format(current.stages.pending), href: `${ordersUrl}&status=pending` },
+        { label: 'Completed orders', value: number.format(current.completed), href: `${ordersUrl}&status=completed` },
+        { label: customer ? 'Your delivery progress' : 'Quantity fulfilled', value: current.fulfillment === null ? '—' : `${number.format(current.fulfillment)}%`, href: ordersUrl },
     ];
 
     return (
@@ -61,7 +61,7 @@ export default function Dashboard({ dashboard, workspace }) {
                         <div aria-busy={loading} className={`space-y-5 transition-opacity ${loading ? 'opacity-60' : ''}`}>
                             <div className="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-5">
                                 <motion.div {...enter(0.06)} className="lg:col-span-3">
-                                    <PrimaryMetricCard {...metrics[0]} href={workspace.can_order ? metrics[0].href : null} period={period} trend={dashboard.trend} />
+                                    <PrimaryMetricCard {...metrics[0]} href={workspace.can_order ? metrics[0].href : null} trend={dashboard.trend} />
                                 </motion.div>
                                 <motion.div {...enter(0.1)} className="lg:col-span-2">
                                     <SecondaryMetricsCard metrics={metrics.slice(1).map((metric) => ({ ...metric, href: workspace.can_order ? metric.href : null }))} reducedMotion={reducedMotion} />
