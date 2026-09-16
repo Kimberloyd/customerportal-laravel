@@ -101,11 +101,11 @@ export function SecondaryMetricsCard({ metrics, reducedMotion }) {
                 return (
                     <div key={metric.label} ref={(el) => { rowRefs.current[index] = el; }} onMouseEnter={() => metric.href && setHoveredIndex(index)} onFocus={() => metric.href && setHoveredIndex(index)} onBlur={() => setHoveredIndex(null)}>
                         <Row href={metric.href || undefined} className={`${focus} relative z-10 flex flex-1 items-center justify-between gap-3 p-4`}>
-                            <div className="min-w-0">
-                                <p className="truncate text-xs font-medium text-stone-500 dark:text-stone-400">{metric.label}</p>
-                                <p className="mt-1 text-xl font-semibold tracking-tight text-stone-900 tabular-nums dark:text-stone-100 sm:text-2xl">{metric.value}</p>
+                            <p className="min-w-0 truncate text-xs font-medium text-stone-500 dark:text-stone-400">{metric.label}</p>
+                            <div className="shrink-0 text-right">
+                                <p className="text-xl font-semibold tracking-tight text-stone-900 tabular-nums dark:text-stone-100 sm:text-2xl">{metric.value}</p>
+                                {metric.delta && <p className="mt-1 text-xs font-medium text-stone-500 dark:text-stone-400">{metric.delta.text}</p>}
                             </div>
-                            {metric.delta && <span className="shrink-0 text-xs font-medium text-stone-500 dark:text-stone-400">{metric.delta.text}</span>}
                         </Row>
                     </div>
                 );
