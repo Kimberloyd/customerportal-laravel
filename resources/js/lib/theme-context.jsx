@@ -1,8 +1,15 @@
+import { Capacitor } from '@capacitor/core';
+import { Style, StatusBar } from '@capacitor/status-bar';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 const ThemeContext = createContext(null);
 
 const STORAGE_KEY = 'theme';
+
+// Matches --background-hsl in each half of app.css's :root/.dark block --
+// the native status bar is OS chrome, not web content, so it can't pick
+// these up from CSS itself and has to be told explicitly.
+const STATUS_BAR_COLOR = { light: '#FFFFFF', dark: '#161613' };
 
 function systemPrefersDark() {
     return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -44,6 +51,19 @@ export function ThemeProvider({ children }) {
 
     useEffect(() => {
         document.documentElement.classList.toggle('dark', resolved === 'dark');
+    }, [resolved]);
+
+    useEffect(() => {
+        if (!Capacitor.isNativePlatform()) return;
+        const isDark = resolved === 'dark';
+        // @capacitor/status-bar's setBackgroundColor() calls the deprecated
+        // Window.setStatusBarColor(), which Android ignores under the
+        // edge-to-edge window setup Capacitor 8 uses -- it has no visible
+        // effect. setStyle() (icon color) still works through it. The actual
+        // visible background is the decorView, repainted directly through a
+        // small native plugin (see ThemeStatusBarPlugin.java) instead.
+        Capacitor.Plugins.ThemeStatusBar?.setBackgroundColor({ color: STATUS_BAR_COLOR[resolved] }).catch(() => {});
+        StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light }).catch(() => {});
     }, [resolved]);
 
     const setTheme = useCallback((next) => {
