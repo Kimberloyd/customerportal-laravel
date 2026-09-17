@@ -622,6 +622,8 @@ export default function Index({
                             onChange={setCustomerId}
                             label="Search customer"
                             placeholder="Search customer"
+                            searchable
+                            searchPlaceholder="Search customer"
                             emptyLabel="No customers found"
                             className="block w-full"
                             triggerClassName="flex h-11 w-full items-center gap-2 rounded-lg border border-border bg-card px-4 text-left text-sm text-foreground outline-none transition-colors hover:border-muted-foreground/40 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20"
