@@ -411,7 +411,10 @@ export function Table<T>({
                       )}
                     >
                       {selectable ? (
-                        <td className="text-center">
+                        <td
+                          className="text-center"
+                          onClick={onRowClick ? (e) => e.stopPropagation() : undefined}
+                        >
                           <div className="flex items-center justify-center">
                             <Checkbox
                               checked={isSelected}

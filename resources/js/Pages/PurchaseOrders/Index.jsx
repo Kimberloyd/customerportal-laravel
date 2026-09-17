@@ -328,7 +328,10 @@ export default function Index({
                     ];
 
                     return (
-                        <div className="flex items-center">
+                        // Stops the click from also bubbling to the row's own
+                        // onClick (which navigates to the order) -- opening
+                        // this menu shouldn't also navigate away from under it.
+                        <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
                             <Dropdown
                                 items={items}
                                 value=""
@@ -494,6 +497,7 @@ export default function Index({
                             selectable={canDeleteOrders}
                             selectedRowIds={selectedOrderIds}
                             onSelectionChange={setSelectedOrderIds}
+                            onRowClick={goToOrder}
                             emptyState={(
                                 <div className="flex flex-col items-center gap-2">
                                     <span>No orders found.</span>

@@ -59,7 +59,7 @@ export default function Dashboard({ dashboard, workspace }) {
                         <div aria-busy={loading} className={`space-y-5 transition-opacity ${loading ? 'opacity-60' : ''}`}>
                             <div className="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-5">
                                 <motion.div {...enter(0.06)} className="lg:col-span-3">
-                                    <PrimaryMetricCard {...metrics[0]} href={workspace.can_order ? metrics[0].href : null} trend={dashboard.trend} />
+                                    <PrimaryMetricCard {...metrics[0]} rawValue={current.orders} href={workspace.can_order ? metrics[0].href : null} trend={dashboard.trend} reducedMotion={reducedMotion} />
                                 </motion.div>
                                 <motion.div {...enter(0.1)} className="lg:col-span-2">
                                     <SecondaryMetricsCard metrics={metrics.slice(1).map((metric) => ({ ...metric, href: workspace.can_order ? metric.href : null }))} reducedMotion={reducedMotion} />

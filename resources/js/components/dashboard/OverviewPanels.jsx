@@ -1,46 +1,84 @@
 import { AnimatedBadge } from '@/components/motion/animated-badge';
-import { LineChart } from '@/components/ui/line-chart';
 import { statusBadge } from '@/utils/orderDisplay';
 import { Link } from '@inertiajs/react';
 import { ArrowRight, CheckCheck, ClipboardCheck, Package, Truck } from 'lucide-react';
-import { motion } from 'motion/react';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { animate, motion, useMotionValue } from 'motion/react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { Area, AreaChart, ResponsiveContainer, YAxis } from 'recharts';
 
 const number = new Intl.NumberFormat('en-PH');
 const surface = 'rounded-2xl border border-stone-200/80 bg-white dark:border-white/10 dark:bg-[#1d1e22]';
 const focus = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2';
 const spring = { type: 'spring', stiffness: 700, damping: 46, mass: 0.5 };
 
-export function PrimaryMetricCard({ label, value, href, trend }) {
+/**
+ * Counts up to `target` on mount and whenever it changes (e.g. switching the
+ * 7/30/90-day period) -- a small, responsive flourish tied to a real user
+ * action, not a page-load orchestration. Skips straight to the target under
+ * reduced motion.
+ */
+function useCountUp(target, reducedMotion) {
+    const [display, setDisplay] = useState(reducedMotion ? target : 0);
+    const motionValue = useMotionValue(0);
+
+    useEffect(() => {
+        if (reducedMotion || Number.isNaN(target)) {
+            setDisplay(target);
+            return;
+        }
+        const controls = animate(motionValue, target, {
+            duration: 0.8,
+            ease: [0.16, 1, 0.3, 1],
+            onUpdate: (value) => setDisplay(Math.round(value)),
+        });
+        return () => controls.stop();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [target, reducedMotion]);
+
+    return display;
+}
+
+export function PrimaryMetricCard({ label, value, rawValue, href, trend, reducedMotion }) {
     const Card = href ? Link : 'div';
     const sparkline = (trend ?? []).map((point) => ({ value: point.current }));
+    const gradientId = useId();
+    const hasCountUp = typeof rawValue === 'number' && !Number.isNaN(rawValue);
+    const displayValue = useCountUp(hasCountUp ? rawValue : 0, reducedMotion);
     return (
         <Card href={href || undefined} className={`${surface} ${focus} group relative flex h-full flex-col overflow-hidden p-5 transition-colors ${href ? 'hover:bg-stone-50 dark:hover:bg-white/[0.03]' : ''} sm:p-6`}>
             <p className="text-sm font-medium text-stone-600 dark:text-stone-300">{label}</p>
             <div className="flex flex-1 flex-row-reverse items-center justify-between gap-4 sm:flex-row">
                 <div className="min-w-0 text-right sm:text-left">
-                    <p className="break-words text-5xl font-semibold leading-tight tracking-tight text-stone-900 tabular-nums sm:text-6xl dark:text-stone-100">{value}</p>
+                    <p className="break-words text-5xl font-semibold leading-tight tracking-tight text-stone-900 tabular-nums sm:text-6xl dark:text-stone-100">{hasCountUp ? number.format(displayValue) : value}</p>
                 </div>
                 {sparkline.length > 1 && (
                     <div className="pointer-events-none h-32 w-64 shrink-0 sm:h-40 sm:w-80" aria-hidden="true">
-                        <LineChart
-                            data={sparkline}
-                            dataKey="value"
-                            config={{ value: { color: 'hsl(var(--success-hsl))' } }}
-                            containerHeight={160}
-                            hideXAxis
-                            hideYAxis
-                            hideGridLines
-                            tooltip={false}
-                            legend={false}
-                            connectNulls
-                            // Order counts are small integers -- an
-                            // auto-scaled axis that never touches 0 would
-                            // turn a routine 1-2 order swing into what looks
-                            // like a dramatic spike.
-                            yAxisProps={{ domain: [0, 'auto'] }}
-                            lineProps={{ isAnimationActive: false }}
-                        />
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={sparkline} margin={{ top: 5, right: 0, bottom: 0, left: 0 }}>
+                                <defs>
+                                    <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="hsl(var(--success-hsl))" stopOpacity={0.28} />
+                                        <stop offset="100%" stopColor="hsl(var(--success-hsl))" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                {/* Order counts are small integers -- an
+                                    auto-scaled axis that never touches 0
+                                    would turn a routine 1-2 order swing
+                                    into what looks like a dramatic spike. */}
+                                <YAxis hide domain={[0, 'auto']} />
+                                <Area
+                                    type="linear"
+                                    dataKey="value"
+                                    stroke="hsl(var(--success-hsl))"
+                                    strokeWidth={2}
+                                    strokeLinejoin="round"
+                                    strokeLinecap="round"
+                                    fill={`url(#${gradientId})`}
+                                    isAnimationActive={false}
+                                    connectNulls
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
                     </div>
                 )}
             </div>
