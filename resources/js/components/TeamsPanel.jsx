@@ -6,7 +6,7 @@ import { Table } from '@/components/motion/table';
 import { Button } from '@/components/ui/button';
 import { useFieldValidation } from '@/hooks/useFieldValidation';
 import { useForm } from '@inertiajs/react';
-import { Check, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Check, MoreHorizontal, Pencil, Trash2, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 const teamRules = {
@@ -156,7 +156,15 @@ export function TeamsPanel({ teams = [], agents = [] }) {
                 columns={columns}
                 getRowId={(team) => String(team.id)}
                 height={480}
-                emptyState="No teams have been created yet. Add a team to get started."
+                emptyState={(
+                    <div className="flex flex-col items-center gap-1 py-4">
+                        <span className="mb-2 grid h-12 w-12 place-items-center rounded-full bg-muted text-muted-foreground">
+                            <Users className="h-6 w-6" aria-hidden="true" />
+                        </span>
+                        <p className="text-sm font-medium text-foreground">No teams have been created yet</p>
+                        <p className="max-w-xs text-sm leading-6 text-muted-foreground">Add a team to get started.</p>
+                    </div>
+                )}
                 emptyStateHeight={240}
             />
 

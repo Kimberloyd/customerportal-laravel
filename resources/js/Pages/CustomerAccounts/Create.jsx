@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useFieldValidation } from '@/hooks/useFieldValidation';
 import { useSearchSelections } from '@/hooks/useSearchSelections';
 import { Head, useForm } from '@inertiajs/react';
-import { Search } from 'lucide-react';
+import { Search, User } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 const customerRules = {
@@ -135,7 +135,22 @@ export default function Create({ customers = [], assignedCustomers = [] }) {
         <Head title="Customers" />
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
             <div className="mb-6"><h1 className="type-page-heading text-foreground">My customers</h1><p className="mt-1 text-sm text-muted-foreground">Customer accounts you create are automatically assigned to you.</p></div>
-            <Table data={assignedCustomers} columns={columns} getRowId={(customer) => String(customer.id)} height={480} emptyState="You have no assigned customers yet. Add a customer account to get started." emptyStateHeight={240} />
+            <Table
+                data={assignedCustomers}
+                columns={columns}
+                getRowId={(customer) => String(customer.id)}
+                height={480}
+                emptyState={(
+                    <div className="flex flex-col items-center gap-1 py-4">
+                        <span className="mb-2 grid h-12 w-12 place-items-center rounded-full bg-muted text-muted-foreground">
+                            <User className="h-6 w-6" aria-hidden="true" />
+                        </span>
+                        <p className="text-sm font-medium text-foreground">You have no assigned customers yet</p>
+                        <p className="max-w-xs text-sm leading-6 text-muted-foreground">Add a customer account to get started.</p>
+                    </div>
+                )}
+                emptyStateHeight={240}
+            />
         </div>
 
         <Modal
