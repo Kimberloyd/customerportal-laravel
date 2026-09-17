@@ -222,7 +222,7 @@ export default function PullToRefresh({ children }) {
                 <motion.div
                     animate={{ rotate: refreshing || reducedMotion ? 0 : progress * 360 }}
                     transition={dragging ? { duration: 0 } : RELEASE_SPRING}
-                    className={`mt-4 grid h-8 w-8 shrink-0 place-items-center rounded-full border bg-white shadow-md dark:bg-[#1D1D1A] ${
+                    className={`mt-4 grid h-8 w-8 shrink-0 place-items-center rounded-full border bg-card shadow-md ${
                         armed || refreshing ? 'border-primary text-primary' : 'border-border text-muted-foreground'
                     }`}
                 >

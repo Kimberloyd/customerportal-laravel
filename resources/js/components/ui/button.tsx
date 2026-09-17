@@ -26,8 +26,8 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary: "text-background",
-        destructive: "text-white",
-        warning: "text-white",
+        destructive: "text-background",
+        warning: "text-amber-950",
         secondary: "text-foreground",
         tertiary: "text-foreground",
         ghost: "text-muted-foreground hover:text-foreground",

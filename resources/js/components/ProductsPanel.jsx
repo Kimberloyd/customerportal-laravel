@@ -104,7 +104,7 @@ export function ProductsPanel({ products = [], filters, loading = false }) {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-center bg-white dark:bg-background">
+            <div className="flex justify-center bg-background">
                 <Input
                     type="text"
                     value={search}

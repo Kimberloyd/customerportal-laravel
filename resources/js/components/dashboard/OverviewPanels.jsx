@@ -183,7 +183,7 @@ export function AttentionPanel({ orders, count, customer, reducedMotion, canOrde
         <section aria-labelledby="attention-heading" className={`${surface} flex flex-col overflow-hidden`}>
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-5 sm:px-6">
                 <div><h2 id="attention-heading" className="type-section-heading text-foreground">{customer ? 'Your next steps' : 'Work to pick up'}</h2><p className="mt-1 text-sm text-muted-foreground">{customer ? 'Updates to follow up on' : 'Fulfillment queue'} · All dates</p></div>
-                <span className="grid h-6 min-w-6 place-items-center rounded-full bg-destructive px-1.5 text-xs font-semibold text-white tabular-nums">{number.format(count)}</span>
+                <span className="grid h-6 min-w-6 place-items-center rounded-full bg-destructive px-1.5 text-xs font-semibold text-background tabular-nums">{number.format(count)}</span>
             </div>
             {orders.length ? (
                 <div className="relative flex-1" onMouseLeave={() => setHoveredIndex(null)}>

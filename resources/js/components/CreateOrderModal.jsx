@@ -591,7 +591,7 @@ export default function CreateOrderModal({
                 onFinalStepCompleted={submit}
                 stepLabels={stepLabels}
                 hideDefaultFooter
-                stepContainerClassName="sticky top-0 z-10 bg-white pt-4 dark:bg-[#1D1D1A]"
+                stepContainerClassName="sticky top-0 z-10 bg-card pt-4"
             >
                 {!skipCustomerStep && (
                 <Step>

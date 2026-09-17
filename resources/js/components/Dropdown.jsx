@@ -38,7 +38,7 @@ const Trigger = ({ children }) => {
 const Content = ({
     align = 'right',
     width = '48',
-    contentClasses = 'bg-white dark:bg-[#1D1D1A]',
+    contentClasses = 'bg-card',
     children,
 }) => {
     const { open, setOpen } = useContext(DropDownContext);

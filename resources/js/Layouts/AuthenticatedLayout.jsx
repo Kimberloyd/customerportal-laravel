@@ -438,10 +438,10 @@ export default function AuthenticatedLayout({ header, banner, children }) {
     );
 
     return (
-        <div className="min-h-screen bg-white dark:bg-background">
+        <div className="min-h-screen bg-background">
             <a
                 href="#main-content"
-                className="sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:left-2 focus-visible:top-2 focus-visible:z-50 focus-visible:rounded-md focus-visible:bg-primary focus-visible:px-4 focus-visible:py-2 focus-visible:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                className="sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:left-2 focus-visible:top-2 focus-visible:z-50 focus-visible:rounded-md focus-visible:bg-primary focus-visible:px-4 focus-visible:py-2 focus-visible:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
             >
                 Skip to main content
             </a>
@@ -779,7 +779,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                     animate={{ x: 0 }}
                                     exit={{ x: '-100%' }}
                                     transition={reducedMotion ? { duration: 0 } : OPEN_SPRING}
-                                    className="flex h-full w-full max-w-xs flex-col overflow-y-auto bg-white shadow-xl outline-none dark:bg-[#1D1D1A]"
+                                    className="flex h-full w-full max-w-xs flex-col overflow-y-auto bg-card shadow-xl outline-none"
                                 >
                                     <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
                                         <div className="min-w-0">
@@ -982,7 +982,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                     </header>
                 )}
 
-                <main id="main-content" tabIndex={-1} className="bg-white focus:outline-none dark:bg-background">{children}</main>
+                <main id="main-content" tabIndex={-1} className="bg-background focus:outline-none">{children}</main>
 
                 <FooterSimple
                     companyName="Theomeds Marketing Inc."
