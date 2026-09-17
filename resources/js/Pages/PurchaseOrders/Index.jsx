@@ -416,7 +416,7 @@ export default function Index({
 
             <div ref={containerRef} className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-center gap-2 bg-background">
-                    <div className="relative w-full max-w-80">
+                    <div className="relative w-full sm:max-w-80">
                         <Input
                             type="text"
                             value={search}
