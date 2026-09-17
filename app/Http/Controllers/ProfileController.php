@@ -24,12 +24,15 @@ class ProfileController extends Controller
 
         $activity = AdminAudit::where('entity_type', 'user')
             ->where('entity_id', $user->id)
+            ->with('actor:id,full_name')
             ->latest('created_at')
             ->limit(self::ACTIVITY_LIMIT)
-            ->get(['action', 'details', 'actor_role', 'created_at'])
+            ->get(['id', 'action', 'details', 'actor_user_id', 'actor_role', 'created_at'])
             ->map(fn (AdminAudit $entry) => [
+                'id' => $entry->id,
                 'action' => $entry->action,
                 'details' => $entry->details,
+                'actor_name' => $entry->actor?->full_name,
                 'actor_role' => $entry->actor_role,
                 'created_at' => $entry->created_at?->toIso8601String(),
             ]);

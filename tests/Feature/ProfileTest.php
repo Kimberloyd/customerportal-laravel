@@ -80,6 +80,31 @@ class ProfileTest extends TestCase
                 ->component('Profile/Show')
                 ->has('activity', 1)
                 ->where('activity.0.action', 'two_factor_enabled')
+                ->where('activity.0.actor_name', $user->full_name)
+            );
+    }
+
+    public function test_activity_shows_the_admin_who_acted_on_the_account(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'full_name' => 'Ada Reyes']);
+        $user = User::factory()->create(['role' => 'office']);
+
+        AdminAudit::create([
+            'entity_type' => 'user',
+            'entity_id' => $user->id,
+            'action' => 'password reset',
+            'details' => "email={$user->email}",
+            'actor_user_id' => $admin->id,
+            'actor_role' => 'admin',
+            'created_at' => now(),
+        ]);
+
+        $this->actingAsUser($user)->get('/profile')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Profile/Show')
+                ->where('activity.0.actor_name', 'Ada Reyes')
+                ->where('activity.0.actor_role', 'admin')
             );
     }
 }

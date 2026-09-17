@@ -1,55 +1,60 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { SecondaryMetricsCard } from '@/components/dashboard/OverviewPanels';
 import { AnimatedBadge } from '@/components/motion/animated-badge';
-import { Timeline } from '@/components/timelines-activity-feed';
+import { Table } from '@/components/motion/table';
 import { Button } from '@/components/ui/button';
+import { formatDateTime } from '@/utils/orderDisplay';
 import { Head, Link } from '@inertiajs/react';
-import {
-    KeyRound,
-    Pencil,
-    PencilLineIcon,
-    Shield,
-    ShieldCheck,
-    User,
-    UserCheck,
-    UserRoundX,
-} from 'lucide-react';
 
 const number = new Intl.NumberFormat('en-PH');
+const ACTIVITY_ROW_HEIGHT = 48;
 
-const ACTIVITY_STYLE = {
-    created: { Icon: User, tone: 'bg-primary/10 text-primary', label: 'Account created' },
-    updated: { Icon: PencilLineIcon, tone: 'bg-primary/10 text-primary', label: 'Details updated' },
-    'password reset': { Icon: KeyRound, tone: 'bg-info/10 text-info', label: 'Password reset' },
-    activated: { Icon: UserCheck, tone: 'bg-success/10 text-success', label: 'Account activated' },
-    deactivated: { Icon: UserRoundX, tone: 'bg-destructive/10 text-destructive', label: 'Account deactivated' },
-    two_factor_enabled: { Icon: ShieldCheck, tone: 'bg-success/10 text-success', label: 'Two-factor authentication enabled' },
-    two_factor_disabled: { Icon: Shield, tone: 'bg-muted text-muted-foreground', label: 'Two-factor authentication disabled' },
-    two_factor_recovery_regenerated: { Icon: KeyRound, tone: 'bg-info/10 text-info', label: 'Recovery codes regenerated' },
-    two_factor_recovery_used: { Icon: KeyRound, tone: 'bg-amber-500/10 text-amber-600 dark:text-amber-400', label: 'Recovery code used at sign-in' },
+// Account-audit actions are stored as db-style strings (see
+// App\Support\UserAudit / UserController / TwoFactorAuthenticationController)
+// -- this is the plain-language label for each one this page shows.
+const ACTIVITY_LABEL = {
+    created: 'Account created',
+    updated: 'Details updated',
+    'password reset': 'Password reset',
+    activated: 'Account activated',
+    deactivated: 'Account deactivated',
+    two_factor_enabled: 'Two-factor authentication enabled',
+    two_factor_disabled: 'Two-factor authentication disabled',
+    two_factor_recovery_regenerated: 'Recovery codes regenerated',
+    two_factor_recovery_used: 'Recovery code used at sign-in',
 };
-const DEFAULT_ACTIVITY_STYLE = { Icon: Pencil, tone: 'bg-primary/10 text-primary', label: null };
 
-// Mirrors the shape components/timelines-activity-feed.tsx expects (see
-// OrderMessageLogModal's toTimelineEntry) -- account-audit actions get
-// their own icon/tone map since they're a different vocabulary than
-// order-activity actions, but reuse the same Timeline shell.
-function toTimelineEntry(entry, index) {
-    const style = ACTIVITY_STYLE[entry.action] ?? DEFAULT_ACTIVITY_STYLE;
-
-    return {
-        key: `${entry.created_at ?? 'unknown'}-${index}`,
-        createdAt: entry.created_at,
-        icon: style.Icon,
-        tone: style.tone,
-        render: () => (
-            <div>
-                <p className="text-sm font-medium text-foreground">{style.label ?? entry.action}</p>
-                {entry.details && <p className="mt-0.5 text-sm text-muted-foreground">{entry.details}</p>}
-            </div>
-        ),
-    };
-}
+const activityColumns = [
+    {
+        key: 'created_at',
+        header: 'Date',
+        width: '180px',
+        cell: (row) => <span className="text-muted-foreground">{formatDateTime(row.created_at)}</span>,
+    },
+    {
+        key: 'actor_name',
+        header: 'Actor',
+        width: '180px',
+        cell: (row) => <span className="text-foreground">{row.actor_name ?? '—'}</span>,
+    },
+    {
+        key: 'actor_role',
+        header: 'Role',
+        width: '120px',
+        cell: (row) => <span className="text-muted-foreground capitalize">{row.actor_role ?? '—'}</span>,
+    },
+    {
+        key: 'action',
+        header: 'Action',
+        width: '220px',
+        cell: (row) => <span className="font-medium text-foreground">{ACTIVITY_LABEL[row.action] ?? row.action}</span>,
+    },
+    {
+        key: 'details',
+        header: 'Details',
+        cell: (row) => <span className="line-clamp-2 whitespace-pre-wrap text-foreground">{row.details ?? '—'}</span>,
+    },
+];
 
 function initialsFor(fullName) {
     const initials = fullName
@@ -126,19 +131,20 @@ export default function Show({ user, stats, activity }) {
 
                 <SecondaryMetricsCard metrics={metrics} reducedMotion={false} />
 
-                <section className="rounded-xl border border-border bg-card">
-                    <div className="border-b border-border px-5 py-4 sm:px-6">
+                <div>
+                    <div className="mb-3">
                         <h2 className="type-section-heading text-foreground">Recent account activity</h2>
-                        <p className="mt-1 text-sm text-muted-foreground">Changes and security events on your account.</p>
+                        <p className="text-sm text-muted-foreground">Changes and security events on your account.</p>
                     </div>
-                    <div className="p-5 sm:p-6">
-                        <Timeline
-                            entries={activity.map(toTimelineEntry)}
-                            emptyTitle="No recent activity"
-                            emptyDescription="Changes to your account and security events will appear here."
-                        />
-                    </div>
-                </section>
+                    <Table
+                        data={activity}
+                        columns={activityColumns}
+                        getRowId={(row) => String(row.id)}
+                        rowHeight={ACTIVITY_ROW_HEIGHT}
+                        height={Math.max(activity.length, 1) * ACTIVITY_ROW_HEIGHT + 60}
+                        emptyState="No recent activity. Changes to your account and security events will appear here."
+                    />
+                </div>
             </div>
         </AuthenticatedLayout>
     );
