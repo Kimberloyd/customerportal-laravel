@@ -170,7 +170,7 @@ export function SuggestionMenu({ menuRef, position, items, activeIndex, onHover,
                 </div>
             )}
             {items.length === 0 ? (
-                <div className="flex items-center justify-between gap-3 px-2.5 py-2 text-sm text-muted-foreground">
+                <div className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm text-muted-foreground">
                     <span>{emptyMessage}</span>
                     {onClear && (
                         <button
@@ -191,7 +191,7 @@ export function SuggestionMenu({ menuRef, position, items, activeIndex, onHover,
                         onMouseDown={(event) => event.preventDefault()}
                         onMouseEnter={() => onHover(index)}
                         onClick={() => onSelect(item)}
-                        className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm ${
+                        className={`flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm ${
                             index === activeIndex
                                 ? 'bg-hover text-foreground'
                                 : 'text-foreground'
