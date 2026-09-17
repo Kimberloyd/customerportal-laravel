@@ -342,7 +342,7 @@ export default function CreateOrderModal({
                                             disabled={locked || quantity <= minQuantity}
                                             onClick={() => updateQuantity(line.key, String(Math.max(minQuantity, quantity - 1)))}
                                             aria-label={`Decrease quantity for ${line.product_name}`}
-                                            className="pointer-events-auto grid h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-gray-100 hover:text-foreground disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-white/10"
+                                            className="pointer-events-auto grid h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
                                         >
                                             <Minus className="h-3.5 w-3.5" />
                                         </button>
@@ -353,7 +353,7 @@ export default function CreateOrderModal({
                                             disabled={locked}
                                             onClick={() => updateQuantity(line.key, String(quantity + 1))}
                                             aria-label={`Increase quantity for ${line.product_name}`}
-                                            className="grid h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-gray-100 hover:text-foreground disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-white/10"
+                                            className="grid h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
                                         >
                                             <Plus className="h-3.5 w-3.5" />
                                         </button>
@@ -381,7 +381,7 @@ export default function CreateOrderModal({
                                 disabled={locked || quantity <= minQuantity}
                                 onClick={() => updateQuantity(line.key, String(Math.max(minQuantity, quantity - 1)))}
                                 aria-label={`Decrease quantity for ${line.product_name}`}
-                                className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border text-gray-600 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-gray-400 dark:hover:bg-white/10"
+                                className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                             >
                                 <Minus className="h-3.5 w-3.5" />
                             </button>
@@ -401,7 +401,7 @@ export default function CreateOrderModal({
                                 disabled={locked}
                                 onClick={() => updateQuantity(line.key, String(quantity + 1))}
                                 aria-label={`Increase quantity for ${line.product_name}`}
-                                className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border text-gray-600 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-gray-400 dark:hover:bg-white/10"
+                                className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                             >
                                 <Plus className="h-3.5 w-3.5" />
                             </button>
@@ -425,7 +425,7 @@ export default function CreateOrderModal({
                               title={isEditing && line.item_id && line.delivered_quantity > 0
                                   ? 'Delivered products cannot be removed.'
                                   : undefined}
-                              className="grid h-7 w-7 place-items-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-gray-200"
+                              className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-hover hover:text-foreground disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent"
                           >
                               <Trash2 className="h-4 w-4" />
                           </button>
@@ -596,7 +596,7 @@ export default function CreateOrderModal({
                 {!skipCustomerStep && (
                 <Step>
                     <div className="space-y-2 pt-2">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Customer</label>
+                        <label className="block text-sm font-medium text-foreground">Customer</label>
                         <div ref={customerField.fieldRef} className="relative w-full">
                             <Input
                                 value={customerField.query}
@@ -649,7 +649,7 @@ export default function CreateOrderModal({
                                 <button
                                     type="button"
                                     onClick={onRetryProducts}
-                                    className="flex h-9 w-80 items-center justify-center gap-2 rounded-full border border-red-200 bg-transparent px-4 text-sm text-red-600 hover:border-red-300"
+                                    className="flex h-9 w-80 items-center justify-center gap-2 rounded-full border border-destructive/30 bg-transparent px-4 text-sm text-destructive hover:border-destructive/50"
                                 >
                                     <span>Couldn't load products. Retry</span>
                                 </button>
@@ -709,7 +709,7 @@ export default function CreateOrderModal({
                                             type="button"
                                             onClick={() => setConfirmBulkDeleteOpen(true)}
                                             aria-label="Remove selected products"
-                                            className="grid h-7 w-7 place-items-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-gray-200"
+                                            className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground hover:bg-hover hover:text-foreground"
                                         >
                                             <Trash2 className="h-4 w-4" />
                                         </button>
@@ -761,8 +761,8 @@ export default function CreateOrderModal({
                 <Step>
                     <div className="space-y-5 pt-2">
                         <div>
-                            <label htmlFor="create-order-po-number" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                PO Number <span className="font-normal text-gray-400 dark:text-gray-500">(optional)</span>
+                            <label htmlFor="create-order-po-number" className="mb-1 block text-sm font-medium text-foreground">
+                                PO Number <span className="font-normal text-muted-foreground">(optional)</span>
                             </label>
                             <Input
                                 id="create-order-po-number"
@@ -779,16 +779,16 @@ export default function CreateOrderModal({
                             />
                         </div>
                         {canEditItems && <div>
-                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Attachment <span className="font-normal text-gray-400 dark:text-gray-500">(optional)</span>
+                            <label className="mb-1 block text-sm font-medium text-foreground">
+                                Attachment <span className="font-normal text-muted-foreground">(optional)</span>
                             </label>
                             {isEditing && initialOrder.has_attachment && (
-                                <label className="mb-3 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                <label className="mb-3 flex items-center gap-2 text-sm text-muted-foreground">
                                     <input
                                         type="checkbox"
                                         checked={data.remove_attachment}
                                         onChange={(event) => setData('remove_attachment', event.target.checked)}
-                                        className="rounded border-gray-300 text-primary focus:ring-0 focus-visible:ring-2 focus-visible:ring-primary dark:border-gray-600"
+                                        className="rounded border-border text-primary focus:ring-0 focus-visible:ring-2 focus-visible:ring-primary"
                                     />
                                     Remove existing attachment
                                 </label>
@@ -826,8 +826,8 @@ export default function CreateOrderModal({
                             )}
                         </div>}
                         {!isEditing && <div>
-                            <label htmlFor="create-order-remarks" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Remarks <span className="font-normal text-gray-400 dark:text-gray-500">(optional)</span>
+                            <label htmlFor="create-order-remarks" className="mb-1 block text-sm font-medium text-foreground">
+                                Remarks <span className="font-normal text-muted-foreground">(optional)</span>
                             </label>
                             <textarea
                                 id="create-order-remarks"
@@ -843,43 +843,43 @@ export default function CreateOrderModal({
                 <Step>
                     <div className="space-y-5 pt-2">
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Products</label>
+                            <label className="mb-1 block text-sm font-medium text-foreground">Products</label>
                             <div className="divide-y divide-border rounded-md border border-border text-sm">
                                 <div className="flex items-center justify-between gap-4 px-3 py-2">
-                                    <span className="text-gray-500 dark:text-gray-400">Customer</span>
-                                    <span className="truncate font-medium text-gray-900 dark:text-gray-100">
+                                    <span className="text-muted-foreground">Customer</span>
+                                    <span className="truncate font-medium text-foreground">
                                         {selectedCustomer?.company_name ?? '—'}
                                     </span>
                                 </div>
                                 <div className="max-h-40 overflow-y-auto">
                                     {lines.map((line) => (
                                         <div key={line.key} className="flex items-center justify-between gap-4 px-3 py-2">
-                                            <span className="min-w-0 truncate text-gray-700 dark:text-gray-300">
+                                            <span className="min-w-0 truncate text-foreground">
                                                 {line.product_name}
                                                 {line.dosage ? ` (${line.dosage})` : ''}
                                             </span>
-                                            <span className="shrink-0 text-gray-500 dark:text-gray-400">Qty {line.quantity}</span>
+                                            <span className="shrink-0 text-muted-foreground">Qty {line.quantity}</span>
                                         </div>
                                     ))}
                                 </div>
                                 <div className="flex items-center justify-between gap-4 px-3 py-2">
-                                    <span className="text-gray-500 dark:text-gray-400">Total</span>
-                                    <span className="font-medium text-gray-900 dark:text-gray-100">
+                                    <span className="text-muted-foreground">Total</span>
+                                    <span className="font-medium text-foreground">
                                         {lines.length} {lines.length === 1 ? 'product' : 'products'} · {totalQuantity} {totalQuantity === 1 ? 'unit' : 'units'}
                                     </span>
                                 </div>
                             </div>
                         </div>
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Order details</label>
+                            <label className="mb-1 block text-sm font-medium text-foreground">Order details</label>
                             <div className="divide-y divide-border rounded-md border border-border text-sm">
                                 <div className="flex items-center justify-between gap-4 px-3 py-2">
-                                    <span className="text-gray-500 dark:text-gray-400">PO Number</span>
-                                    <span className="truncate font-medium text-gray-900 dark:text-gray-100">{data.po_number || '—'}</span>
+                                    <span className="text-muted-foreground">PO Number</span>
+                                    <span className="truncate font-medium text-foreground">{data.po_number || '—'}</span>
                                 </div>
                                 <div className="flex items-center justify-between gap-4 px-3 py-2">
-                                    <span className="text-gray-500 dark:text-gray-400">Attachment</span>
-                                    <span className="truncate font-medium text-gray-900 dark:text-gray-100">
+                                    <span className="text-muted-foreground">Attachment</span>
+                                    <span className="truncate font-medium text-foreground">
                                         {attachmentItems[0]?.name
                                             ?? (isEditing && initialOrder.has_attachment && !data.remove_attachment
                                                 ? 'Current attachment'
@@ -887,8 +887,8 @@ export default function CreateOrderModal({
                                     </span>
                                 </div>
                                 {!isEditing && <div className="flex items-start justify-between gap-4 px-3 py-2">
-                                    <span className="shrink-0 text-gray-500 dark:text-gray-400">Remarks</span>
-                                    <span className="truncate text-right font-medium text-gray-900 dark:text-gray-100">
+                                    <span className="shrink-0 text-muted-foreground">Remarks</span>
+                                    <span className="truncate text-right font-medium text-foreground">
                                         {data.remarks || '—'}
                                     </span>
                                 </div>}

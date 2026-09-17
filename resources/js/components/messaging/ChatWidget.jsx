@@ -251,7 +251,7 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
             exit={reduce ? { opacity: 0 } : { opacity: 0, y: 24, scale: 0.96 }}
             transition={reduce ? { duration: 0.15 } : SPRING_PANEL}
             style={position}
-            className={`group/panel fixed z-50 flex max-w-[calc(100vw-2rem)] flex-col rounded-2xl border border-stone-200 bg-white dark:border-white/[0.16] dark:bg-[#1D1D1A] ${
+            className={`group/panel fixed z-50 flex max-w-[calc(100vw-2rem)] flex-col rounded-2xl border border-border bg-card ${
                 minimized
                     ? 'h-auto w-auto overflow-visible'
                     : 'h-[560px] w-[420px] max-h-[calc(100vh-2rem)] overflow-hidden'
@@ -261,18 +261,18 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
                 className={`relative flex shrink-0 items-center justify-between gap-2 px-4 py-3 ${
                     minimized
                         ? 'cursor-pointer'
-                        : 'border-b border-stone-200 dark:border-white/[0.16]'
+                        : 'border-b border-border'
                 }`}
                 onClick={minimized ? () => onMinimizeChange(false) : undefined}
             >
                 <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-stone-900 dark:text-stone-100">
+                    <p className="truncate text-sm font-semibold text-foreground">
                         {chat.name}
                     </p>
                     {chat.hint || (isFacebook && !minimized) ? (
                         <div className="flex min-w-0 items-center gap-1 text-xs">
                             {chat.hint ? (
-                                <span className="shrink-0 text-stone-500 dark:text-stone-400">
+                                <span className="shrink-0 text-muted-foreground">
                                     {chat.hint}
                                 </span>
                             ) : null}
@@ -281,7 +281,7 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
                                     {chat.hint ? (
                                         <span
                                             aria-hidden="true"
-                                            className="shrink-0 text-stone-400 dark:text-stone-500"
+                                            className="shrink-0 text-muted-foreground"
                                         >
                                             -
                                         </span>
@@ -348,7 +348,7 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
                                 e.stopPropagation();
                                 onClose();
                             }}
-                            className="absolute -right-2 -top-2 rounded-full border border-stone-200 bg-white opacity-0 shadow-sm transition-opacity duration-150 group-hover/panel:opacity-100 dark:border-white/[0.16] dark:bg-[#1D1D1A]"
+                            className="absolute -right-2 -top-2 rounded-full border border-border bg-card opacity-0 shadow-sm transition-opacity duration-150 group-hover/panel:opacity-100"
                         >
                             <X aria-hidden="true" />
                         </Button>
@@ -403,7 +403,7 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
                             onSubmit={submitRename}
                             className="space-y-3 px-2 pb-2 pt-2"
                         >
-                            <p className="text-sm text-stone-600 dark:text-stone-300">
+                            <p className="text-sm text-muted-foreground">
                                 Choose a name that helps your team recognize this Facebook contact.
                             </p>
                             <Input
@@ -444,12 +444,12 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
                             }`}
                         >
                             {loading ? (
-                                <p className="px-1 text-sm text-stone-500 dark:text-stone-400">
+                                <p className="px-1 text-sm text-muted-foreground">
                                     Loading conversation...
                                 </p>
                             ) : loadError ? (
                                 <div className="flex flex-col items-center gap-2 px-1 text-center">
-                                    <p className="text-sm text-stone-500 dark:text-stone-400">
+                                    <p className="text-sm text-muted-foreground">
                                         Couldn't load this conversation.
                                     </p>
                                     <button
@@ -461,7 +461,7 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
                                     </button>
                                 </div>
                             ) : messages.length === 0 ? (
-                                <p className="px-1 text-sm text-stone-500 dark:text-stone-400">
+                                <p className="px-1 text-sm text-muted-foreground">
                                     No messages yet. Say hello!
                                 </p>
                             ) : (
@@ -553,7 +553,7 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
                                         behavior: reduce ? 'auto' : 'smooth',
                                     });
                                 }}
-                                className="absolute bottom-2 left-1/2 inline-flex h-7 -translate-x-1/2 items-center gap-1 rounded-full border border-stone-200 bg-white px-3 text-xs font-medium text-stone-600 shadow-sm outline-none transition-colors hover:text-stone-900 focus-visible:ring-2 focus-visible:ring-ring dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:text-stone-300"
+                                className="absolute bottom-2 left-1/2 inline-flex h-7 -translate-x-1/2 items-center gap-1 rounded-full border border-border bg-card px-3 text-xs font-medium text-muted-foreground shadow-sm outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
                             >
                                 <ArrowDown className="size-3.5" aria-hidden="true" />
                                 Jump to latest
@@ -562,12 +562,12 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
                     </div>
 
                     {error ? (
-                        <p className="shrink-0 px-3 pb-1 text-xs text-rose-500">{error}</p>
+                        <p className="shrink-0 px-3 pb-1 text-xs text-destructive">{error}</p>
                     ) : null}
 
                     <form
                         onSubmit={submit}
-                        className="relative shrink-0 border-t border-stone-200 p-3 dark:border-white/[0.16]"
+                        className="relative shrink-0 border-t border-border p-3"
                     >
                         <textarea
                             required
@@ -581,7 +581,7 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
                                 }
                             }}
                             placeholder="Write a message"
-                            className="block max-h-40 min-h-20 w-full resize-none rounded-lg border-stone-200 py-2 pl-3 pr-12 text-sm outline-none focus:ring-0 focus-visible:border-stone-400 dark:border-white/[0.16] dark:bg-transparent dark:text-stone-100"
+                            className="block max-h-40 min-h-20 w-full resize-none rounded-lg border-border bg-transparent py-2 pl-3 pr-12 text-sm text-foreground outline-none focus:ring-0 focus-visible:border-muted-foreground"
                         />
                         <Button
                             type="submit"
@@ -659,7 +659,7 @@ export default function ChatWidget() {
                         type="button"
                         aria-label="New message"
                         onClick={() => setComposeOpen(true)}
-                        className="flex size-11 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)] outline-none transition-colors hover:bg-stone-50 focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:text-stone-200 dark:shadow-[0_2px_12px_rgba(0,0,0,0.6)] dark:hover:bg-white/5"
+                        className="flex size-11 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)] outline-none transition-colors hover:bg-hover focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.6)]"
                     >
                         <SquarePen className="size-4" aria-hidden="true" />
                     </button>

@@ -134,7 +134,7 @@ export default function ComposeModal({ open, onClose, accounts }) {
                                 }
                             }}
                             placeholder="Write a message"
-                            className="block max-h-40 min-h-20 w-full resize-none rounded-lg border-stone-200 py-2 pl-3 pr-12 text-sm text-stone-900 outline-none focus:ring-0 focus-visible:border-stone-400 dark:border-white/[0.16] dark:bg-transparent dark:text-stone-100"
+                            className="block max-h-40 min-h-20 w-full resize-none rounded-lg border-border bg-transparent py-2 pl-3 pr-12 text-sm text-foreground outline-none focus:ring-0 focus-visible:border-muted-foreground"
                         />
                         <Button
                             type="submit"
@@ -151,7 +151,7 @@ export default function ComposeModal({ open, onClose, accounts }) {
         >
             <AutoHeightReveal>
             {result ? (
-                <p className="text-sm text-stone-600 dark:text-stone-300">
+                <p className="text-sm text-muted-foreground">
                     {result.sent > 0
                         ? `Sent to ${result.sent} account${result.sent === 1 ? '' : 's'}.`
                         : null}
@@ -161,7 +161,7 @@ export default function ComposeModal({ open, onClose, accounts }) {
                 </p>
             ) : (
                 <div className="space-y-3">
-                    <div className="flex h-9 items-center gap-2 rounded-full border border-stone-200 px-3 text-stone-500 focus-within:border-stone-400 dark:border-white/[0.16] dark:text-stone-400">
+                    <div className="flex h-9 items-center gap-2 rounded-full border border-border px-3 text-muted-foreground focus-within:border-muted-foreground/60">
                         <Search className="size-4 shrink-0" aria-hidden="true" />
                         <input
                             type="search"
@@ -188,7 +188,7 @@ export default function ComposeModal({ open, onClose, accounts }) {
                             }}
                             placeholder="Search by customer name"
                             aria-label="Search accounts"
-                            className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-0 dark:text-stone-100"
+                            className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-0"
                         />
                     </div>
 
@@ -197,7 +197,7 @@ export default function ComposeModal({ open, onClose, accounts }) {
                         onMouseLeave={() => setHoverIndex(-1)}
                     >
                         {filtered.length === 0 ? (
-                            <li className="flex items-center justify-between gap-3 px-2 py-1.5 text-sm text-stone-500 dark:text-stone-400">
+                            <li className="flex items-center justify-between gap-3 px-2 py-1.5 text-sm text-muted-foreground">
                                 <span>No accounts found</span>
                                 {query && (
                                     <button
@@ -213,7 +213,7 @@ export default function ComposeModal({ open, onClose, accounts }) {
                             <>
                                 <motion.span
                                     aria-hidden
-                                    className="pointer-events-none absolute inset-x-0 top-0 h-9 rounded-lg bg-stone-100 dark:bg-white/10"
+                                    className="pointer-events-none absolute inset-x-0 top-0 h-9 rounded-lg bg-hover"
                                     initial={false}
                                     animate={{
                                         y: hoverIndex < 0 ? 0 : hoverIndex * ROW_H,
@@ -235,10 +235,10 @@ export default function ComposeModal({ open, onClose, accounts }) {
                                                 aria-label={account.label}
                                             />
                                         </span>
-                                        <span className="min-w-0 flex-1 truncate text-sm text-stone-700 dark:text-stone-200">
+                                        <span className="min-w-0 flex-1 truncate text-sm text-foreground">
                                             {account.label}
                                         </span>
-                                        <span className="shrink-0 text-[10.5px] tabular-nums text-stone-500 dark:text-stone-400">
+                                        <span className="shrink-0 text-[10.5px] tabular-nums text-muted-foreground">
                                             {account.hint}
                                         </span>
                                     </div>
