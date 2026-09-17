@@ -625,7 +625,7 @@ export function Dropdown({
                     {item.hint || picked ? (
                       <span className="ml-auto flex shrink-0 items-center gap-2">
                         {item.hint ? (
-                          <span className="font-mono text-[10.5px] text-stone-500 dark:text-stone-400">
+                          <span className="text-[10.5px] tabular-nums text-stone-500 dark:text-stone-400">
                             {item.hint}
                           </span>
                         ) : null}

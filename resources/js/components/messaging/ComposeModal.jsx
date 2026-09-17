@@ -238,7 +238,7 @@ export default function ComposeModal({ open, onClose, accounts }) {
                                         <span className="min-w-0 flex-1 truncate text-sm text-stone-700 dark:text-stone-200">
                                             {account.label}
                                         </span>
-                                        <span className="shrink-0 font-mono text-[10.5px] text-stone-500 dark:text-stone-400">
+                                        <span className="shrink-0 text-[10.5px] tabular-nums text-stone-500 dark:text-stone-400">
                                             {account.hint}
                                         </span>
                                     </div>

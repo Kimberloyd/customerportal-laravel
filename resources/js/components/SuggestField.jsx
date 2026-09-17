@@ -162,7 +162,7 @@ export function SuggestionMenu({ menuRef, position, items, activeIndex, onHover,
                         <span className="min-w-0 flex-1 truncate">{item.label}</span>
                         {item.badge}
                         {item.hint ? (
-                            <span className="shrink-0 font-mono text-[10.5px] text-stone-500 dark:text-stone-400">
+                            <span className="shrink-0 text-[10.5px] tabular-nums text-stone-500 dark:text-stone-400">
                                 {item.hint}
                             </span>
                         ) : null}
