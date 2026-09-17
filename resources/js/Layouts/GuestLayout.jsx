@@ -28,7 +28,7 @@ export default function GuestLayout({ children }) {
                         </div>
                     </div>
 
-                <p className="relative z-10 max-w-lg pb-2 text-left text-lg leading-8 text-gray-600 dark:text-gray-400">
+                <p className="relative z-10 max-w-lg pb-2 text-left text-lg leading-8 text-muted-foreground">
                     Sign in to manage purchase orders, account activity, and customer communication.
                 </p>
                 <Link

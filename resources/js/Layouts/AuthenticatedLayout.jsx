@@ -445,7 +445,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
             >
                 Skip to main content
             </a>
-            <nav className="sticky top-0 z-40 border-b border-gray-100 bg-white dark:border-white/10 dark:bg-background">
+            <nav className="sticky top-0 z-40 border-b border-border bg-background">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="relative flex h-16 justify-between">
                         <div className="pointer-events-none absolute inset-x-0 flex h-16 items-center justify-center sm:hidden">
@@ -467,7 +467,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                         )
                                     }
                                     aria-label={showingNavigationDropdown ? 'Close menu' : 'Open menu'}
-                                    className="inline-flex items-center justify-center rounded-md bg-transparent p-2 text-gray-400 transition duration-150 ease-in-out hover:text-gray-500 focus:outline-none focus-visible:text-gray-500 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:text-gray-500 dark:hover:text-gray-300"
+                                    className="inline-flex items-center justify-center rounded-md bg-transparent p-2 text-muted-foreground transition duration-150 ease-in-out hover:text-foreground focus:outline-none focus-visible:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 >
                                     <MorphIcon
                                         aria-hidden="true"
@@ -499,8 +499,8 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                         href={tab.href}
                                         className={`inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium transition-colors ${
                                             tab.active
-                                                ? 'border-primary text-gray-900 dark:text-gray-100'
-                                                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:text-gray-200'
+                                                ? 'border-primary text-foreground'
+                                                : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground'
                                         }`}
                                     >
                                         {tab.label}
@@ -558,7 +558,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                                 }
                                                 onClick={markAllMessagesRead}
                                                 disabled={unreadCount === 0}
-                                                className="bg-transparent hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:bg-transparent dark:hover:bg-white/10"
+                                                className="bg-transparent hover:bg-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                                             />
                                             <NotificationBell
                                                 count={0}
@@ -574,7 +574,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                                     close(false);
                                                     setComposeOpen(true);
                                                 }}
-                                                className="bg-transparent hover:bg-gray-100 dark:bg-transparent dark:hover:bg-white/10"
+                                                className="bg-transparent hover:bg-hover"
                                             />
                                         </div>
                                     </div>
@@ -601,7 +601,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                         />
                                     </span>
                                 }
-                                triggerClassName="relative inline-flex h-10 w-10 items-center justify-center rounded-full bg-transparent text-gray-500 outline-none transition-colors hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-ring dark:text-gray-400 dark:hover:bg-white/10"
+                                triggerClassName="relative inline-flex h-10 w-10 items-center justify-center rounded-full bg-transparent text-muted-foreground outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring"
                             />
 
                             <div ref={mobileNotificationsTriggerRef} className="inline-flex">
@@ -609,7 +609,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                     count={notificationCount}
                                     size={40}
                                     icon={<Bell aria-hidden="true" className="h-5 w-5" />}
-                                    className="bg-transparent text-gray-500 hover:bg-gray-100 dark:bg-transparent dark:text-gray-400 dark:hover:bg-white/10"
+                                    className="bg-transparent text-muted-foreground hover:bg-hover"
                                     aria-expanded={notificationsOpen}
                                     onClick={() => setNotificationsOpen((previous) => !previous)}
                                 />
@@ -672,7 +672,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                                         }
                                                         onClick={markAllMessagesRead}
                                                         disabled={unreadCount === 0}
-                                                        className="bg-transparent hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:bg-transparent dark:hover:bg-white/10"
+                                                        className="bg-transparent hover:bg-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                                                     />
                                                 </Tooltip>
                                                 <Tooltip
@@ -693,7 +693,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                                             close(false);
                                                             setComposeOpen(true);
                                                         }}
-                                                        className="bg-transparent hover:bg-gray-100 dark:bg-transparent dark:hover:bg-white/10"
+                                                        className="bg-transparent hover:bg-hover"
                                                     />
                                                 </Tooltip>
                                             </div>
@@ -721,14 +721,14 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                             />
                                         </span>
                                     }
-                                    triggerClassName="relative inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-gray-500 outline-none transition-colors hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-ring dark:text-gray-400 dark:hover:bg-white/10"
+                                    triggerClassName="relative inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-muted-foreground outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring"
                                 />
                                 <div ref={notificationsTriggerRef} className="inline-flex">
                                     <NotificationBell
                                         count={notificationCount}
                                         size={36}
                                         icon={<Bell aria-hidden="true" className="h-5 w-5" />}
-                                        className="bg-transparent text-gray-500 hover:bg-gray-100 dark:bg-transparent dark:text-gray-400 dark:hover:bg-white/10"
+                                        className="bg-transparent text-muted-foreground hover:bg-hover"
                                         aria-expanded={notificationsOpen}
                                         onClick={() => setNotificationsOpen((previous) => !previous)}
                                     />
@@ -750,7 +750,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                     placeholder="User actions"
                                     align="right"
                                     portal
-                                    triggerClassName="flex h-9 select-none items-center gap-2 whitespace-nowrap rounded-md border border-transparent bg-white px-3 text-sm font-medium text-gray-500 outline-none transition-colors hover:bg-gray-100 hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-ring dark:bg-background dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-gray-200"
+                                    triggerClassName="flex h-9 select-none items-center gap-2 whitespace-nowrap rounded-md border border-transparent bg-background px-3 text-sm font-medium text-muted-foreground outline-none transition-colors hover:bg-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
                                 />
                             </div>
                         </div>
@@ -781,12 +781,12 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                     transition={reducedMotion ? { duration: 0 } : OPEN_SPRING}
                                     className="flex h-full w-full max-w-xs flex-col overflow-y-auto bg-white shadow-xl outline-none dark:bg-[#1D1D1A]"
                                 >
-                                    <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-white/[0.16]">
+                                    <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
                                         <div className="min-w-0">
-                                            <div className="truncate text-base font-medium text-gray-800 dark:text-stone-100">
+                                            <div className="truncate text-base font-medium text-foreground">
                                                 {user.full_name}
                                             </div>
-                                            <div className="truncate text-sm font-medium text-gray-500 dark:text-stone-400">
+                                            <div className="truncate text-sm font-medium text-muted-foreground">
                                                 {user.email}
                                             </div>
                                         </div>
@@ -794,7 +794,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                             type="button"
                                             onClick={closeMobileNav}
                                             aria-label="Close navigation"
-                                            className="grid h-9 w-9 place-items-center rounded-md text-gray-400 outline-none transition-colors hover:bg-gray-100 hover:text-gray-500 focus-visible:ring-2 focus-visible:ring-ring dark:text-stone-500 dark:hover:bg-white/10 dark:hover:text-stone-300"
+                                            className="grid h-9 w-9 place-items-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
                                         >
                                             <X aria-hidden="true" className="h-5 w-5" />
                                         </button>
@@ -813,7 +813,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                         ))}
                                     </div>
 
-                                    <div className="border-t border-gray-200 pb-1 pt-4 dark:border-white/[0.16]">
+                                    <div className="border-t border-border pb-1 pt-4">
                                         <div className="space-y-1">
                                             <ResponsiveNavLink
                                                 method="post"
@@ -874,10 +874,10 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                     width: notificationsPosition.width,
                                     transformOrigin: 'top right',
                                 }}
-                                className="z-[60] overflow-hidden rounded-xl border border-stone-200 bg-white shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)] dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:shadow-[0_2px_12px_rgba(0,0,0,0.6)]"
+                                className="z-[60] overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.6)]"
                             >
-                                <div className="flex items-center justify-between gap-4 border-b border-stone-200 px-4 py-3 dark:border-white/[0.16]">
-                                    <h2 className="text-[15px] font-semibold text-stone-900 dark:text-stone-100">Notifications</h2>
+                                <div className="flex items-center justify-between gap-4 border-b border-border px-4 py-3">
+                                    <h2 className="text-[15px] font-semibold text-foreground">Notifications</h2>
                                     <Tooltip content="Mark all as read" side="top">
                                         <NotificationBell
                                             count={0}
@@ -886,7 +886,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                             icon={<CheckCheck aria-hidden="true" className="h-5 w-5" />}
                                             onClick={markAllNotificationsRead}
                                             disabled={notificationCount === 0}
-                                            className="bg-transparent hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:bg-transparent dark:hover:bg-white/10"
+                                            className="bg-transparent hover:bg-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                                         />
                                     </Tooltip>
                                 </div>
@@ -897,11 +897,11 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                         listed here; they belong to the Chats icon instead. */}
                                     {orderNotifications.length === 0 ? (
                                         <div className="flex flex-col items-center justify-center px-4 py-8 text-center">
-                                            <div className="grid h-11 w-11 place-items-center rounded-full bg-stone-100 text-stone-500 dark:bg-white/10 dark:text-stone-400">
+                                            <div className="grid h-11 w-11 place-items-center rounded-full bg-muted text-muted-foreground">
                                                 <Bell aria-hidden="true" className="h-5 w-5" />
                                             </div>
-                                            <h3 className="mt-3 text-[13px] font-medium text-stone-900 dark:text-stone-100">You're all caught up</h3>
-                                            <p className="mt-1 max-w-xs text-sm text-muted-foreground dark:text-stone-400">
+                                            <h3 className="mt-3 text-[13px] font-medium text-foreground">You're all caught up</h3>
+                                            <p className="mt-1 max-w-xs text-sm text-muted-foreground">
                                                 New activity on your orders will appear here.
                                             </p>
                                         </div>
@@ -915,7 +915,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                         >
                                             <motion.li
                                                 aria-hidden="true"
-                                                className="pointer-events-none absolute inset-x-0 top-0 rounded-[7px] bg-stone-100 dark:bg-white/10"
+                                                className="pointer-events-none absolute inset-x-0 top-0 rounded-[7px] bg-hover"
                                                 initial={false}
                                                 animate={notificationHighlight}
                                                 transition={reducedMotion
@@ -942,14 +942,14 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                                         className="relative block rounded-[7px] py-2.5 pl-3 pr-8 text-left"
                                                     >
                                                         {notification.is_unread && (
-                                                            <span className="absolute right-3 top-4 h-2 w-2 rounded-full bg-red-600 dark:bg-red-400">
+                                                            <span className="absolute right-3 top-4 h-2 w-2 rounded-full bg-destructive">
                                                                 <span className="sr-only">Unread</span>
                                                             </span>
                                                         )}
-                                                        <p className="text-sm font-medium text-foreground dark:text-stone-100">
+                                                        <p className="text-sm font-medium text-foreground">
                                                             {notification.note ?? 'Order updated'}
                                                         </p>
-                                                        <p className="mt-0.5 text-[12px] text-stone-500 dark:text-stone-400">
+                                                        <p className="mt-0.5 text-[12px] text-muted-foreground">
                                                             PO {notification.po_number} · {formatDateTime(notification.created_at)}
                                                         </p>
                                                     </Link>
@@ -975,7 +975,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                 {banner}
 
                 {header && (
-                    <header className="border-b border-gray-100 bg-white dark:border-white/10 dark:bg-background">
+                    <header className="border-b border-border bg-background">
                         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
                             {header}
                         </div>
