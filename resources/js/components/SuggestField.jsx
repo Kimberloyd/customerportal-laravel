@@ -1,5 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { motion, useReducedMotion } from 'motion/react';
+
+// Matches the sliding-highlight spring used elsewhere for hovered-row
+// treatments (OverviewPanels.jsx's AttentionPanel/SecondaryMetricsCard,
+// ComposeModal's account list).
+const HIGHLIGHT_SPRING = { type: 'spring', stiffness: 700, damping: 46, mass: 0.5 };
 
 // Owns the query text, open/active state, and the outside-click/reposition
 // plumbing needed to float a suggestion list off a search input inside a
@@ -150,6 +156,19 @@ export function suggestFieldKeyDown(field, matches, onSelect) {
 const RADIUS = { md: 'rounded-md', lg: 'rounded-lg', xl: 'rounded-xl' };
 
 export function SuggestionMenu({ menuRef, position, items, activeIndex, onHover, onSelect, emptyMessage, onClear, heading, radius = 'xl' }) {
+    const reducedMotion = useReducedMotion();
+    const itemRefs = useRef([]);
+    const [highlightRect, setHighlightRect] = useState(null);
+
+    useLayoutEffect(() => {
+        const node = itemRefs.current[activeIndex];
+        if (!node) {
+            setHighlightRect(null);
+            return;
+        }
+        setHighlightRect({ top: node.offsetTop, height: node.offsetHeight });
+    }, [activeIndex, items]);
+
     return createPortal(
         <div
             ref={menuRef}
@@ -184,28 +203,36 @@ export function SuggestionMenu({ menuRef, position, items, activeIndex, onHover,
                     )}
                 </div>
             ) : (
-                items.map((item, index) => (
-                    <button
-                        key={item.id}
-                        type="button"
-                        onMouseDown={(event) => event.preventDefault()}
-                        onMouseEnter={() => onHover(index)}
-                        onClick={() => onSelect(item)}
-                        className={`flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm ${
-                            index === activeIndex
-                                ? 'bg-hover text-foreground'
-                                : 'text-foreground'
-                        }`}
-                    >
-                        <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                        {item.badge}
-                        {item.hint ? (
-                            <span className="shrink-0 text-[10.5px] tabular-nums text-muted-foreground">
-                                {item.hint}
-                            </span>
-                        ) : null}
-                    </button>
-                ))
+                <>
+                    {highlightRect && (
+                        <motion.div
+                            aria-hidden="true"
+                            className="pointer-events-none absolute inset-x-0 z-0 bg-hover"
+                            initial={false}
+                            animate={{ top: highlightRect.top, height: highlightRect.height, opacity: 1 }}
+                            transition={reducedMotion ? { duration: 0 } : HIGHLIGHT_SPRING}
+                        />
+                    )}
+                    {items.map((item, index) => (
+                        <button
+                            key={item.id}
+                            ref={(el) => { itemRefs.current[index] = el; }}
+                            type="button"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onMouseEnter={() => onHover(index)}
+                            onClick={() => onSelect(item)}
+                            className="relative z-10 flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-foreground"
+                        >
+                            <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                            {item.badge}
+                            {item.hint ? (
+                                <span className="shrink-0 text-[10.5px] tabular-nums text-muted-foreground">
+                                    {item.hint}
+                                </span>
+                            ) : null}
+                        </button>
+                    ))}
+                </>
             )}
         </div>,
         document.body,
