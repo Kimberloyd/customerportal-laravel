@@ -232,6 +232,7 @@ export default function Create({ customers = [], assignedCustomers = [] }) {
                                     emptyMessage="No customers found."
                                     onClear={() => customerField.setQuery('')}
                                     heading={customerEmptyStateKind === 'recent' ? 'Recent' : customerEmptyStateKind === 'popular' ? 'Popular' : undefined}
+                                    radius="md"
                                 />
                             )}
                         </div>

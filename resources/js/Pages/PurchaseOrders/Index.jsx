@@ -675,6 +675,7 @@ export default function Index({
                                     items={customerFilterMatches}
                                     activeIndex={customerFilterField.activeIndex}
                                     onHover={customerFilterField.setActiveIndex}
+                                    radius="lg"
                                     onSelect={selectCustomerFilter}
                                     emptyMessage="No customers found."
                                     onClear={() => customerFilterField.setQuery('')}

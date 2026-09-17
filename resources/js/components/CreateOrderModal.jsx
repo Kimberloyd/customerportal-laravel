@@ -630,6 +630,7 @@ export default function CreateOrderModal({
                                     emptyMessage="No customers found."
                                     onClear={() => customerField.setQuery('')}
                                     heading={customerEmptyStateKind === 'recent' ? 'Recent' : customerEmptyStateKind === 'popular' ? 'Popular' : undefined}
+                                    radius="md"
                                 />
                             )}
                         </div>
@@ -685,6 +686,7 @@ export default function CreateOrderModal({
                                         emptyMessage="No products found."
                                         onClear={() => productField.setQuery('')}
                                         heading={productEmptyStateKind === 'recent' ? 'Recent' : productEmptyStateKind === 'popular' ? 'Popular' : undefined}
+                                        radius="md"
                                     />
                                 )}
                             </div>
