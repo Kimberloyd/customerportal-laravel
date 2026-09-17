@@ -83,7 +83,14 @@ export function ThemeProvider({ children }) {
         // effect. setStyle() (icon color) still works through it. The actual
         // visible background is the decorView, repainted directly through a
         // small native plugin (see ThemeStatusBarPlugin.java) instead.
-        Capacitor.Plugins.ThemeStatusBar?.setBackgroundColor({ color: STATUS_BAR_COLOR[resolved] }).catch(() => {});
+        // durationMs matches THEME_TRANSITION_MS so the native decorView
+        // crossfade and the web .theme-transitioning crossfade run over the
+        // same window -- an instant native snap arrives (after the bridge
+        // round-trip) well after the web fade has already finished.
+        Capacitor.Plugins.ThemeStatusBar?.setBackgroundColor({
+            color: STATUS_BAR_COLOR[resolved],
+            durationMs: THEME_TRANSITION_MS,
+        }).catch(() => {});
         StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light }).catch(() => {});
     }, [resolved]);
 
