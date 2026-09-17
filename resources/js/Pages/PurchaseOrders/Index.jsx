@@ -33,12 +33,20 @@ const STATUS_FILTER_OPTIONS = [
 
 const PAGE_SIZE = 10;
 const TABLE_ROW_HEIGHT = 48;
-// Compact rows stack customer + status onto a second line (see the
+// Compact rows stack the status onto a second line (see the
 // responsive-data-tables "2-line stack" pattern below), so they need more
 // vertical room than the single-line desktop row.
 const COMPACT_ROW_HEIGHT = 60;
 const HORIZONTAL_SCROLLBAR_HEIGHT = 20;
 const TABLE_VIEWPORT_HEIGHT = (rowHeight) => (PAGE_SIZE + 1) * rowHeight + HORIZONTAL_SCROLLBAR_HEIGHT;
+const STATUS_TITLE_CLASS = {
+    neutral: 'text-muted-foreground',
+    info: 'text-info',
+    success: 'text-success',
+    warning: 'text-amber-600 dark:text-amber-400',
+    danger: 'text-destructive',
+    loading: 'text-primary',
+};
 
 export default function Index({
     orders = { data: [], last_page: 1, current_page: 1 },
@@ -246,10 +254,8 @@ export default function Index({
     const columns = useMemo(
         () => [
             // Priority 1 -- identity, always shown: which order is this.
-            // Under the table's own container breakpoint, customer + status
-            // (priority 2, "state") stack onto a second line here instead of
-            // being dropped into the "..." menu -- keeps them scannable at a
-            // glance rather than requiring a tap per row to see them.
+            // Under the table's own container breakpoint, only the PO number
+            // remains in the row; status is available in the actions menu.
             {
                 key: 'po_number',
                 header: 'PO Number',
@@ -257,23 +263,6 @@ export default function Index({
                 cell: (order) => isCompactViewport ? (
                     <div className="min-w-0 py-1">
                         <span className="block truncate font-medium text-foreground">{order.po_number}</span>
-                        <div className="mt-0.5 flex items-center gap-1.5">
-                            <span className="min-w-0 truncate text-xs text-muted-foreground">{order.customer_name || '—'}</span>
-                            {(() => {
-                                const badge = statusBadge(order.display_status ?? order.status);
-                                return (
-                                    <AnimatedBadge
-                                        status={badge.status}
-                                        size="sm"
-                                        pulse={false}
-                                        icon={badge.icon ? <badge.icon className="h-3 w-3" /> : undefined}
-                                        className="shrink-0 border-0 bg-transparent px-0 shadow-none"
-                                    >
-                                        {badge.label}
-                                    </AnimatedBadge>
-                                );
-                            })()}
-                        </div>
                     </div>
                 ) : (
                     <span className="font-medium text-foreground">{order.po_number}</span>
@@ -316,6 +305,8 @@ export default function Index({
                 header: '',
                 width: '56px',
                 cell: (order) => {
+                    const badge = statusBadge(order.display_status ?? order.status);
+                    const StatusIcon = badge.icon;
                     const items = [
                         {
                             value: 'view',
@@ -355,7 +346,12 @@ export default function Index({
                                     item?.onSelect();
                                 }}
                                 label={`Actions for ${order.po_number}`}
-                                menuTitle={isCompactViewport ? order.po_number : undefined}
+                                menuTitle={isCompactViewport ? (
+                                    <div className={`flex items-center gap-2 font-normal ${STATUS_TITLE_CLASS[badge.status] ?? STATUS_TITLE_CLASS.neutral}`}>
+                                        {StatusIcon ? <StatusIcon aria-hidden="true" className="h-4 w-4" /> : null}
+                                        <span>{badge.label}</span>
+                                    </div>
+                                ) : undefined}
                                 trigger={<MoreHorizontal />}
                                 align="right"
                                 portal

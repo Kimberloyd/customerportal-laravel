@@ -21,7 +21,8 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Raleway', ...defaultTheme.fontFamily.sans],
+                sans: ['Inter Tight', ...defaultTheme.fontFamily.sans],
+                mono: ['NumericBitter', ...defaultTheme.fontFamily.mono],
                 // Headings only (h1-h6 + the type-page-heading/
                 // type-section-heading roles) -- see app.css for why.
                 display: ['Bitter', ...defaultTheme.fontFamily.serif],

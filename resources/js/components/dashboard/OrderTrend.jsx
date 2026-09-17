@@ -22,8 +22,8 @@ const chartConfig = {
 };
 
 export default function OrderTrend({ trend, empty }) {
-    const visibleTrend = trend.slice(-7);
     const isMobile = useIsMobile();
+    const visibleTrend = isMobile ? trend.slice(-1) : trend.slice(-7);
     // Recharts' own tick-gap logic still fits 3-4 date labels on a phone
     // width, which reads as clutter on a chart this narrow -- on mobile,
     // label only the most recent (rightmost) day instead.
@@ -43,6 +43,7 @@ export default function OrderTrend({ trend, empty }) {
                     containerHeight={250}
                     barCategoryGap={18}
                     barGap={4}
+                    barSize={isMobile ? 24 : undefined}
                     barRadius={6}
                     valueFormatter={(value) => number.format(value)}
                     xAxisProps={{

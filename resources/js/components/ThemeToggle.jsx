@@ -28,7 +28,7 @@ export default function ThemeToggle({ className = '' }) {
                 icon={isDark ? Sun : Moon}
                 spring="snappy"
                 reducedMotion="user"
-                size={18}
+                size={20}
             />
         </button>
     );

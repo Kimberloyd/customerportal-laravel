@@ -4,7 +4,7 @@
 
 @layer base {
     /*
-     * Raleway is the workhorse face for body text, labels, buttons, and
+     * Inter Tight is the workhorse face for body text, labels, buttons, and
      * data ($impeccable typeset decision, replacing IBM Plex Sans). A
      * single self-hosted variable file covers every weight this app
      * actually uses (font-normal/400 through font-bold/700 -- confirmed by
@@ -17,13 +17,20 @@
      * character belongs, so Bitter (below) is paired in for h1-h6 and the
      * type-page-heading/type-section-heading roles specifically: a slab
      * serif reads as considered and credible, fitting a pharma/medical B2B
-     * brand, while staying legible at heading sizes where Raleway's own
+     * brand, while staying legible at heading sizes where Inter Tight's own
      * thin geometry would read too light.
      */
     @font-face {
-        font-family: 'Raleway';
-        src: url('/fonts/Raleway/Raleway-VariableFont_wght.woff2') format('woff2');
+        font-family: 'Inter Tight';
+        src: url('/fonts/InterTight/InterTight-VariableFont_wght.ttf') format('truetype');
         font-style: normal;
+        font-weight: 100 700;
+        font-display: swap;
+    }
+    @font-face {
+        font-family: 'Inter Tight';
+        src: url('/fonts/InterTight/InterTight-Italic-VariableFont_wght.ttf') format('truetype');
+        font-style: italic;
         font-weight: 100 700;
         font-display: swap;
     }
@@ -39,7 +46,7 @@
         font-family: 'Bitter';
         src: url('/fonts/Bitter/Bitter-VariableFont_wght.woff2') format('woff2');
         font-style: normal;
-        font-weight: 600 700;
+        font-weight: 400 700;
         font-display: swap;
     }
 
@@ -56,25 +63,24 @@
     }
 
     /*
-     * Roboto Mono, but ONLY for digits -- unicode-range restricts these
+     * Bitter is also used for digits throughout the normal and display
+     * families. unicode-range restricts these
      * declarations to 0-9 plus the punctuation that appears inside a single
      * numeric value (. , % + - :), so the browser pulls glyphs for those
-     * characters from Roboto Mono and falls through to Raleway/Bitter for
+     * characters from Bitter and falls through to Inter Tight/Bitter for
      * everything else in the SAME text node, automatically. This is
-     * deliberately declared under the 'Raleway' and 'Bitter' family names
+     * deliberately declared under the 'Inter Tight' and 'Bitter' family names
      * themselves (not a separate font-family an element has to opt into) so
      * it applies everywhere numbers already appear -- order quantities,
      * prices, dates, PO numbers, badge counts -- without touching any
-     * component. Roboto Mono was picked for clean, professional, plain
-     * numeral shapes (no dotted/slashed zero -- that programmer-IDE
-     * convention read as wrong for a business ops tool) with real monospace
-     * digit widths, which keeps a column of quantities or prices aligned
-     * the way tabular-nums already expects. A genuine variable font, so one
-     * file per family covers every weight digits actually appear at.
+     * component. Bitter keeps the brand display face consistent across
+     * quantities, prices, dates, PO numbers, and badge counts. Numeric
+     * columns that use tabular-nums still keep their alignment through the
+     * OpenType feature.
      */
     @font-face {
-        font-family: 'Raleway';
-        src: url('/fonts/RobotoMono/RobotoMono-VariableFont_wght.woff2') format('woff2');
+        font-family: 'Inter Tight';
+        src: url('/fonts/Bitter/Bitter-VariableFont_wght.woff2') format('woff2');
         font-style: normal;
         font-weight: 400 700;
         font-display: swap;
@@ -82,9 +88,17 @@
     }
     @font-face {
         font-family: 'Bitter';
-        src: url('/fonts/RobotoMono/RobotoMono-VariableFont_wght.woff2') format('woff2');
+        src: url('/fonts/Bitter/Bitter-VariableFont_wght.woff2') format('woff2');
         font-style: normal;
-        font-weight: 600 700;
+        font-weight: 400 700;
+        font-display: swap;
+        unicode-range: U+25, U+2B-2E, U+30-39, U+3A;
+    }
+    @font-face {
+        font-family: 'NumericBitter';
+        src: url('/fonts/Bitter/Bitter-VariableFont_wght.woff2') format('woff2');
+        font-style: normal;
+        font-weight: 400 700;
         font-display: swap;
         unicode-range: U+25, U+2B-2E, U+30-39, U+3A;
     }

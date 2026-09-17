@@ -320,6 +320,7 @@ export type DropdownProps = {
   trigger?: ReactNode;
   triggerClassName?: string;
   menuWidth?: number;
+  fullWidthOnMobile?: boolean;
   matchTriggerWidth?: boolean;
   menuTitle?: ReactNode | ((controls: { close: (restoreFocus?: boolean) => void }) => ReactNode);
   searchable?: boolean;
@@ -352,6 +353,7 @@ export function Dropdown({
   trigger,
   triggerClassName,
   menuWidth,
+  fullWidthOnMobile = false,
   matchTriggerWidth = false,
   menuTitle,
   searchable = false,
@@ -424,15 +426,22 @@ export function Dropdown({
         visibleItems.length * ROW_H + 10 + menuChromeHeight,
         226 + menuChromeHeight,
       );
+      const useFullWidthOnMobile = fullWidthOnMobile && window.innerWidth < 640;
       const resolvedMenuWidth = Math.min(
-        matchTriggerWidth ? triggerRect.width : (menuWidth ?? MENU_WIDTH),
+        useFullWidthOnMobile
+          ? window.innerWidth - 16
+          : matchTriggerWidth
+            ? triggerRect.width
+            : (menuWidth ?? MENU_WIDTH),
         window.innerWidth - 16,
       );
       const hasRoomBelow = triggerRect.bottom + MENU_GAP + menuHeight <= window.innerHeight - 8;
       const top = hasRoomBelow
         ? triggerRect.bottom + MENU_GAP
         : Math.max(8, triggerRect.top - MENU_GAP - menuHeight);
-      const preferredLeft = align === "right"
+      const preferredLeft = useFullWidthOnMobile
+        ? 8
+        : align === "right"
         ? triggerRect.right - resolvedMenuWidth
         : triggerRect.left;
 
@@ -442,7 +451,9 @@ export function Dropdown({
           Math.max(8, preferredLeft),
           window.innerWidth - resolvedMenuWidth - 8,
         ),
-        ...(!matchTriggerWidth && menuWidth == null ? {} : { width: resolvedMenuWidth }),
+        ...((useFullWidthOnMobile || matchTriggerWidth || menuWidth != null)
+          ? { width: resolvedMenuWidth }
+          : {}),
       });
     };
 
@@ -460,7 +471,7 @@ export function Dropdown({
       window.removeEventListener("resize", onScrollOrResize);
       window.removeEventListener("scroll", onScrollOrResize, true);
     };
-  }, [align, close, closeOnScroll, matchTriggerWidth, menuTitle, menuWidth, open, portal, searchable, triggerRef, visibleItems.length]);
+  }, [align, close, closeOnScroll, fullWidthOnMobile, matchTriggerWidth, menuTitle, menuWidth, open, portal, searchable, triggerRef, visibleItems.length]);
 
   return (
     <div ref={rootRef} className={`relative inline-block text-left ${className}`}>

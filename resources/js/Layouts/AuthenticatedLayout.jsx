@@ -580,6 +580,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                     </div>
                                 )}
                                 menuWidth={340}
+                                fullWidthOnMobile
                                 searchable
                                 searchPlaceholder="Search accounts"
                                 align="right"
@@ -700,6 +701,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                         </div>
                                     )}
                                     menuWidth={420}
+                                    fullWidthOnMobile
                                     searchable
                                     searchPlaceholder="Search accounts"
                                     align="right"
