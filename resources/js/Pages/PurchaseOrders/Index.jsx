@@ -33,9 +33,12 @@ const STATUS_FILTER_OPTIONS = [
 
 const PAGE_SIZE = 10;
 const TABLE_ROW_HEIGHT = 48;
+// Compact rows stack customer + status onto a second line (see the
+// responsive-data-tables "2-line stack" pattern below), so they need more
+// vertical room than the single-line desktop row.
+const COMPACT_ROW_HEIGHT = 60;
 const HORIZONTAL_SCROLLBAR_HEIGHT = 20;
-const TABLE_VIEWPORT_HEIGHT =
-    (PAGE_SIZE + 1) * TABLE_ROW_HEIGHT + HORIZONTAL_SCROLLBAR_HEIGHT;
+const TABLE_VIEWPORT_HEIGHT = (rowHeight) => (PAGE_SIZE + 1) * rowHeight + HORIZONTAL_SCROLLBAR_HEIGHT;
 
 export default function Index({
     orders = { data: [], last_page: 1, current_page: 1 },
@@ -243,18 +246,39 @@ export default function Index({
     const columns = useMemo(
         () => [
             // Priority 1 -- identity, always shown: which order is this.
+            // Under the table's own container breakpoint, customer + status
+            // (priority 2, "state") stack onto a second line here instead of
+            // being dropped into the "..." menu -- keeps them scannable at a
+            // glance rather than requiring a tap per row to see them.
             {
                 key: 'po_number',
                 header: 'PO Number',
                 sortable: true,
-                cell: (order) => (
-                    <span className="font-medium text-gray-900 dark:text-gray-100">{order.po_number}</span>
+                cell: (order) => isCompactViewport ? (
+                    <div className="min-w-0 py-1">
+                        <span className="block truncate font-medium text-foreground">{order.po_number}</span>
+                        <div className="mt-0.5 flex items-center gap-1.5">
+                            <span className="min-w-0 truncate text-xs text-muted-foreground">{order.customer_name || '—'}</span>
+                            {(() => {
+                                const badge = statusBadge(order.display_status ?? order.status);
+                                return (
+                                    <AnimatedBadge
+                                        status={badge.status}
+                                        size="sm"
+                                        pulse={false}
+                                        icon={badge.icon ? <badge.icon className="h-3 w-3" /> : undefined}
+                                        className="shrink-0 border-0 bg-transparent px-0 shadow-none"
+                                    >
+                                        {badge.label}
+                                    </AnimatedBadge>
+                                );
+                            })()}
+                        </div>
+                    </div>
+                ) : (
+                    <span className="font-medium text-foreground">{order.po_number}</span>
                 ),
             },
-            // Priority 2 -- state, dropped under the table's own container
-            // breakpoint so the row fits without horizontal scroll; still
-            // reachable there via the "..." menu below (see the informational
-            // items prepended to `items` in the actions column).
             ...(isCompactViewport ? [] : [
                 { key: 'customer_name', header: 'Customer', sortable: true },
                 {
@@ -292,16 +316,7 @@ export default function Index({
                 header: '',
                 width: '56px',
                 cell: (order) => {
-                    // Customer and status were dropped from their own columns
-                    // above at this width -- surface them here (disabled,
-                    // display-only rows) so they're still reachable in place,
-                    // instead of forcing a full navigation to the order page
-                    // just to see them.
                     const items = [
-                        ...(isCompactViewport ? [
-                            { value: 'customer', label: 'Customer', hint: order.customer_name || '—', disabled: true },
-                            { value: 'status', label: 'Status', hint: statusBadge(order.display_status ?? order.status).label, disabled: true },
-                        ] : []),
                         {
                             value: 'view',
                             label: 'Open',
@@ -358,7 +373,7 @@ export default function Index({
         <AuthenticatedLayout
             header={
                 <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-100">
+                    <h2 className="type-page-heading text-foreground">
                         Orders
                     </h2>
                     <Button
@@ -392,8 +407,8 @@ export default function Index({
                             }}
                         />
                         {searchFocused && !search.trim() && orderSearchSelections.recent.length > 0 && (
-                            <div className="absolute left-0 top-full z-20 mt-1.5 w-full rounded-xl border border-stone-200 bg-white p-2 shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)] dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
-                                <p className="px-1 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-stone-400 dark:text-stone-500">Recent</p>
+                            <div className="absolute left-0 top-full z-20 mt-1.5 w-full rounded-xl border border-border bg-card p-2 shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
+                                <p className="px-1 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Recent</p>
                                 <div className="flex flex-wrap gap-1.5">
                                     {orderSearchSelections.recent.map((entry) => (
                                         <button
@@ -404,7 +419,7 @@ export default function Index({
                                                 setSearch(entry.label);
                                                 applyFilters({ search: entry.label });
                                             }}
-                                            className="rounded-full border border-stone-200 px-3 py-1 text-xs text-stone-700 outline-none transition-colors hover:bg-stone-50 focus-visible:ring-2 focus-visible:ring-ring dark:border-white/[0.16] dark:text-stone-300 dark:hover:bg-white/10"
+                                            className="rounded-full border border-border px-3 py-1 text-xs text-foreground outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring"
                                         >
                                             {entry.label}
                                         </button>
@@ -423,7 +438,7 @@ export default function Index({
                             setFilterModalOpen(true);
                         }}
                         aria-label="Advanced filters"
-                        className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-white text-muted-foreground shadow-none outline-none transition-colors hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-ring dark:bg-[#1D1D1A] dark:hover:bg-white/10"
+                        className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-none outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring"
                     >
                         <Funnel aria-hidden="true" className="h-[18px] w-[18px]" />
                     </button>
@@ -431,11 +446,11 @@ export default function Index({
 
                 {savedOrderFilters.filters.length > 0 && (
                     <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-[11px] font-medium uppercase tracking-wide text-stone-400 dark:text-stone-500">Saved</span>
+                        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Saved</span>
                         {savedOrderFilters.filters.map((preset) => (
                             <span
                                 key={preset.id}
-                                className="inline-flex items-center gap-1 rounded-full border border-stone-200 py-1 pl-3 pr-1.5 text-xs text-stone-700 dark:border-white/[0.16] dark:text-stone-300"
+                                className="inline-flex items-center gap-1 rounded-full border border-border py-1 pl-3 pr-1.5 text-xs text-foreground"
                             >
                                 <button
                                     type="button"
@@ -448,7 +463,7 @@ export default function Index({
                                     type="button"
                                     onClick={() => savedOrderFilters.remove(preset.id)}
                                     aria-label={`Delete saved filter ${preset.name}`}
-                                    className="grid h-4 w-4 place-items-center rounded-full text-stone-400 outline-none hover:bg-stone-100 hover:text-stone-700 focus-visible:ring-2 focus-visible:ring-ring dark:hover:bg-white/10 dark:hover:text-stone-200"
+                                    className="grid h-4 w-4 place-items-center rounded-full text-muted-foreground outline-none hover:bg-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
                                 >
                                     &times;
                                 </button>
@@ -465,7 +480,8 @@ export default function Index({
                             columns={columns}
                             getRowId={(order) => String(order.id)}
                             className="[&>div]:!overflow-x-auto [&>div]:!overflow-y-hidden"
-                            height={TABLE_VIEWPORT_HEIGHT}
+                            rowHeight={isCompactViewport ? COMPACT_ROW_HEIGHT : TABLE_ROW_HEIGHT}
+                            height={TABLE_VIEWPORT_HEIGHT(isCompactViewport ? COMPACT_ROW_HEIGHT : TABLE_ROW_HEIGHT)}
                             loading
                         />
                     )}
@@ -490,8 +506,8 @@ export default function Index({
                             getRowId={(order) => String(order.id)}
                             defaultSort={{ key: 'submitted_at', direction: 'desc' }}
                             className="[&>div]:!overflow-x-auto [&>div]:!overflow-y-hidden"
-                            rowHeight={TABLE_ROW_HEIGHT}
-                            height={TABLE_VIEWPORT_HEIGHT}
+                            rowHeight={isCompactViewport ? COMPACT_ROW_HEIGHT : TABLE_ROW_HEIGHT}
+                            height={TABLE_VIEWPORT_HEIGHT(isCompactViewport ? COMPACT_ROW_HEIGHT : TABLE_ROW_HEIGHT)}
                             loading={tableLoading}
                             resizable
                             selectable={canDeleteOrders}
@@ -512,7 +528,7 @@ export default function Index({
                                     )}
                                 </div>
                             )}
-                            emptyStateHeight={PAGE_SIZE * TABLE_ROW_HEIGHT}
+                            emptyStateHeight={PAGE_SIZE * (isCompactViewport ? COMPACT_ROW_HEIGHT : TABLE_ROW_HEIGHT)}
                         />
 
                         {orders.last_page > 1 && (
@@ -612,7 +628,7 @@ export default function Index({
                             placeholder="Search customer"
                             emptyLabel="No customers found"
                             className="block w-full"
-                            triggerClassName="flex h-11 w-full items-center gap-2 rounded-lg border border-border bg-white px-4 text-left text-sm text-foreground outline-none transition-colors hover:border-muted-foreground/40 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20 dark:bg-[#1D1D1A]"
+                            triggerClassName="flex h-11 w-full items-center gap-2 rounded-lg border border-border bg-card px-4 text-left text-sm text-foreground outline-none transition-colors hover:border-muted-foreground/40 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20"
                             trigger={(
                                 <>
                                     <Search aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -668,7 +684,7 @@ export default function Index({
                                     </button>
                                 )}
                             </div>
-                            <div className="w-full rounded-xl bg-white dark:bg-[#1D1D1A]">
+                            <div className="w-full rounded-xl bg-card">
                                 <RangeCalendar
                                     aria-label="Order date range"
                                     value={

@@ -5,7 +5,7 @@ import { Head, Link } from '@inertiajs/react';
 import { ArrowRight } from 'lucide-react';
 
 function Term({ children }) {
-    return <strong className="font-medium text-stone-800 dark:text-stone-100">{children}</strong>;
+    return <strong className="font-medium text-foreground">{children}</strong>;
 }
 
 // Grouped by category so a reader scanning for e.g. "Returns" finds the
@@ -111,7 +111,7 @@ export default function Faq() {
     return (
         <AuthenticatedLayout
             header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-100">
+                <h2 className="type-page-heading text-foreground">
                     Frequently Asked Questions
                 </h2>
             }
