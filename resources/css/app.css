@@ -111,6 +111,26 @@
         @apply text-base leading-6 text-foreground;
     }
 
+    /*
+     * Chrome/Safari paint their own background for an autofilled or
+     * browser-remembered text input -- background-color alone can't
+     * override it, only this inset-shadow trick can. Left unhandled, any
+     * such input renders with the browser's default light fill regardless
+     * of the app's own theme: the most common "dark mode leftover" for
+     * text inputs, and invisible until the browser actually autofills one.
+     * The 9999s transition delay keeps that fill from flashing in before
+     * the shadow paints.
+     */
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus,
+    input:-webkit-autofill:active {
+        -webkit-box-shadow: 0 0 0px 1000px hsl(var(--background-hsl)) inset;
+        -webkit-text-fill-color: hsl(var(--foreground-hsl));
+        caret-color: hsl(var(--foreground-hsl));
+        transition: background-color 9999s ease-in-out 0s;
+    }
+
     h1,
     h2,
     h3,
