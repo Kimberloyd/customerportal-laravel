@@ -55,12 +55,40 @@ export function useSuggestField(hasEmptyStateContent = false) {
         };
 
         reposition();
+
+        // The field can sit inside an animated container (a BottomSheet
+        // sliding up over ~500ms -- see motion/bottom-sheet.tsx's DRAWER
+        // transition) that moves the field via a transform, which fires no
+        // scroll/resize event at all. A one-shot measurement taken as the
+        // sheet opens captures a mid-animation position and is never
+        // corrected, leaving the menu stranded wherever the field happened
+        // to be at that instant. Re-measuring every frame for the same
+        // window as that transition keeps the menu glued to the field
+        // through the open animation; the field is static well before the
+        // loop ends in every other case, so this is a no-op cost-wise once
+        // settled.
+        const settleWindowMs = 600;
+        const startedAt = performance.now();
+        let frame = requestAnimationFrame(function trackDuringOpenAnimation(now) {
+            reposition();
+            if (now - startedAt < settleWindowMs) {
+                frame = requestAnimationFrame(trackDuringOpenAnimation);
+            }
+        });
+
         const dismiss = () => setOpen(false);
         // Capture-phase scroll listeners see scroll events from any
         // descendant, including the menu scrolling itself -- ignore those so
-        // scrolling through the results doesn't close the list.
+        // scrolling through the results doesn't close the list. A scroll
+        // inside the field's own container (a modal/sheet's scrollable
+        // body) moves the field itself, so reposition instead of dismissing
+        // -- only an unrelated/background scroll dismisses.
         const dismissUnlessMenuScroll = (event) => {
             if (menuRef.current?.contains(event.target)) return;
+            if (fieldRef.current && event.target instanceof Node && event.target.contains(fieldRef.current)) {
+                reposition();
+                return;
+            }
             dismiss();
         };
         window.addEventListener('resize', dismiss);
@@ -68,6 +96,7 @@ export function useSuggestField(hasEmptyStateContent = false) {
         window.visualViewport?.addEventListener('resize', reposition);
         window.visualViewport?.addEventListener('scroll', reposition);
         return () => {
+            cancelAnimationFrame(frame);
             window.removeEventListener('resize', dismiss);
             window.removeEventListener('scroll', dismissUnlessMenuScroll, true);
             window.visualViewport?.removeEventListener('resize', reposition);
