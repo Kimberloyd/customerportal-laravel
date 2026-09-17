@@ -55,6 +55,40 @@
         font-display: swap;
     }
 
+    /*
+     * Roboto Mono, but ONLY for digits -- unicode-range restricts these
+     * declarations to 0-9 plus the punctuation that appears inside a single
+     * numeric value (. , % + - :), so the browser pulls glyphs for those
+     * characters from Roboto Mono and falls through to Raleway/Bitter for
+     * everything else in the SAME text node, automatically. This is
+     * deliberately declared under the 'Raleway' and 'Bitter' family names
+     * themselves (not a separate font-family an element has to opt into) so
+     * it applies everywhere numbers already appear -- order quantities,
+     * prices, dates, PO numbers, badge counts -- without touching any
+     * component. Roboto Mono was picked for clean, professional, plain
+     * numeral shapes (no dotted/slashed zero -- that programmer-IDE
+     * convention read as wrong for a business ops tool) with real monospace
+     * digit widths, which keeps a column of quantities or prices aligned
+     * the way tabular-nums already expects. A genuine variable font, so one
+     * file per family covers every weight digits actually appear at.
+     */
+    @font-face {
+        font-family: 'Raleway';
+        src: url('/fonts/RobotoMono/RobotoMono-VariableFont_wght.woff2') format('woff2');
+        font-style: normal;
+        font-weight: 400 700;
+        font-display: swap;
+        unicode-range: U+25, U+2B-2E, U+30-39, U+3A;
+    }
+    @font-face {
+        font-family: 'Bitter';
+        src: url('/fonts/RobotoMono/RobotoMono-VariableFont_wght.woff2') format('woff2');
+        font-style: normal;
+        font-weight: 600 700;
+        font-display: swap;
+        unicode-range: U+25, U+2B-2E, U+30-39, U+3A;
+    }
+
     html {
         @apply font-sans;
     }
