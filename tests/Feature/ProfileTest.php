@@ -84,6 +84,74 @@ class ProfileTest extends TestCase
             );
     }
 
+    public function test_customer_sees_order_status_breakdown_and_top_products(): void
+    {
+        $customer = $this->makeCustomer('Fresh Co');
+        $user = User::factory()->create(['role' => 'customer']);
+        $customer->update(['user_id' => $user->id]);
+
+        $this->makeOrder($customer, 'completed', now(), [
+            ['product_name' => 'Amoxicillin 500mg', 'quantity' => 10, 'unit_price' => 5],
+            ['product_name' => 'Paracetamol 500mg', 'quantity' => 3, 'unit_price' => 2],
+        ]);
+        $this->makeOrder($customer, 'completed', now(), [
+            ['product_name' => 'Amoxicillin 500mg', 'quantity' => 8, 'unit_price' => 5],
+        ]);
+        $this->makeOrder($customer, 'cancelled', now());
+
+        $this->actingAsUser($user)->get('/profile')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Profile/Show')
+                ->where('order_insights.total_orders', 3)
+                ->where('order_insights.status_breakdown.0.status', 'completed')
+                ->where('order_insights.status_breakdown.0.count', 2)
+                ->where('order_insights.status_breakdown.0.percentage', 66.7)
+                ->where('order_insights.status_breakdown.1.status', 'cancelled')
+                ->where('order_insights.status_breakdown.1.percentage', 33.3)
+                ->where('order_insights.top_products.0.product_name', 'Amoxicillin 500mg')
+                ->where('order_insights.top_products.0.total_quantity', 18)
+                ->where('order_insights.top_products.0.order_count', 2)
+                ->where('order_insights.top_products.1.product_name', 'Paracetamol 500mg')
+            );
+    }
+
+    public function test_archived_orders_are_excluded_from_order_insights(): void
+    {
+        $customer = $this->makeCustomer('Fresh Co');
+        $user = User::factory()->create(['role' => 'customer']);
+        $customer->update(['user_id' => $user->id]);
+
+        $kept = $this->makeOrder($customer, 'completed', now(), [
+            ['product_name' => 'Amoxicillin 500mg', 'quantity' => 5, 'unit_price' => 5],
+        ]);
+        $archived = $this->makeOrder($customer, 'completed', now(), [
+            ['product_name' => 'Ibuprofen 200mg', 'quantity' => 99, 'unit_price' => 3],
+        ]);
+        $archived->delete();
+
+        $this->actingAsUser($user)->get('/profile')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Profile/Show')
+                ->where('order_insights.total_orders', 1)
+                ->has('order_insights.top_products', 1)
+                ->where('order_insights.top_products.0.product_name', 'Amoxicillin 500mg')
+            );
+    }
+
+    public function test_non_customer_roles_get_no_order_insights(): void
+    {
+        $agent = User::factory()->create(['role' => 'agent']);
+
+        $this->actingAsUser($agent)->get('/profile')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Profile/Show')
+                ->where('order_insights', null)
+            );
+    }
+
     public function test_activity_shows_the_admin_who_acted_on_the_account(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'full_name' => 'Ada Reyes']);

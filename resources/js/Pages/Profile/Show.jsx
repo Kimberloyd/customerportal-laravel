@@ -3,7 +3,7 @@ import { SecondaryMetricsCard } from '@/components/dashboard/OverviewPanels';
 import { AnimatedBadge } from '@/components/motion/animated-badge';
 import { Table } from '@/components/motion/table';
 import { Button } from '@/components/ui/button';
-import { formatDateTime } from '@/utils/orderDisplay';
+import { formatDateTime, statusBadge } from '@/utils/orderDisplay';
 import { Head, Link } from '@inertiajs/react';
 
 const number = new Intl.NumberFormat('en-PH');
@@ -56,6 +56,28 @@ const activityColumns = [
     },
 ];
 
+const topProductColumns = [
+    {
+        key: 'product_name',
+        header: 'Product',
+        cell: (row) => <span className="font-medium text-foreground">{row.product_name}</span>,
+    },
+    {
+        key: 'total_quantity',
+        header: 'Quantity',
+        width: '110px',
+        align: 'right',
+        cell: (row) => <span className="text-foreground">{number.format(row.total_quantity)}</span>,
+    },
+    {
+        key: 'order_count',
+        header: 'Orders',
+        width: '100px',
+        align: 'right',
+        cell: (row) => <span className="text-muted-foreground">{number.format(row.order_count)}</span>,
+    },
+];
+
 function initialsFor(fullName) {
     const initials = fullName
         .trim()
@@ -67,7 +89,7 @@ function initialsFor(fullName) {
     return initials || '?';
 }
 
-export default function Show({ user, stats, activity }) {
+export default function Show({ user, stats, activity, order_insights: orderInsights }) {
     const metrics = [
         {
             label: user.role === 'customer' ? 'Orders placed' : 'Orders in your accounts',
@@ -130,6 +152,53 @@ export default function Show({ user, stats, activity }) {
                 </section>
 
                 <SecondaryMetricsCard metrics={metrics} reducedMotion={false} />
+
+                {orderInsights && (
+                    <div className="grid gap-6 lg:grid-cols-2">
+                        <div>
+                            <div className="mb-3">
+                                <h2 className="type-section-heading text-foreground">Order status breakdown</h2>
+                                <p className="text-sm text-muted-foreground">
+                                    Share of your {number.format(orderInsights.total_orders)} order{orderInsights.total_orders === 1 ? '' : 's'} by status.
+                                </p>
+                            </div>
+                            {orderInsights.status_breakdown.length > 0 ? (
+                                <div className="divide-y divide-border rounded-xl border border-border bg-card">
+                                    {orderInsights.status_breakdown.map((row) => {
+                                        const badge = statusBadge(row.status);
+                                        return (
+                                            <div key={row.status} className="flex items-center justify-between gap-3 px-4 py-3">
+                                                <span className="text-sm text-foreground">{badge.label}</span>
+                                                <span className="text-sm tabular-nums text-muted-foreground">
+                                                    {row.percentage}% ({number.format(row.count)})
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="rounded-xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+                                    No orders placed yet.
+                                </div>
+                            )}
+                        </div>
+
+                        <div>
+                            <div className="mb-3">
+                                <h2 className="type-section-heading text-foreground">Most ordered products</h2>
+                                <p className="text-sm text-muted-foreground">Ranked by total quantity ordered.</p>
+                            </div>
+                            <Table
+                                data={orderInsights.top_products}
+                                columns={topProductColumns}
+                                getRowId={(row) => row.product_name}
+                                rowHeight={ACTIVITY_ROW_HEIGHT}
+                                height={Math.max(orderInsights.top_products.length, 1) * ACTIVITY_ROW_HEIGHT + 60}
+                                emptyState="No products ordered yet."
+                            />
+                        </div>
+                    </div>
+                )}
 
                 <div>
                     <div className="mb-3">
