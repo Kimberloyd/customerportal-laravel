@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { AccountsPanel } from '@/components/AccountsPanel';
 import { UserModal } from '@/components/CreateUserModal';
 import { CustomersPanel } from '@/components/CustomersPanel';
+import { SecondaryMetricsCard } from '@/components/dashboard/OverviewPanels';
 import { ProductsPanel } from '@/components/ProductsPanel';
 import { ResetPasswordModal } from '@/components/ResetPasswordModal';
 import { TeamsPanel } from '@/components/TeamsPanel';
@@ -9,9 +10,16 @@ import { Button } from '@/components/ui/button';
 import { Deferred, Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
 
-export default function Dashboard({ activeTab, products, customers, users, filters, roleLabels, accountForm, teams, agents }) {
+const number = new Intl.NumberFormat('en-PH');
+
+export default function Dashboard({ activeTab, products, customers, users, filters, roleLabels, accountForm, teams, agents, summary }) {
     const [userModal, setUserModal] = useState({ open: false, user: null });
     const [resettingUser, setResettingUser] = useState(null);
+    const summaryMetrics = [
+        { label: 'Active accounts', value: number.format(summary.activeAccounts), href: route('admin.dashboard', { tab: 'accounts' }) },
+        { label: 'Active customers', value: number.format(summary.activeCustomers), href: route('admin.dashboard', { tab: 'customers' }) },
+        { label: 'Teams', value: number.format(summary.teams), href: route('admin.dashboard', { tab: 'teams' }) },
+    ];
 
     const setUserModalOpen = (open) => {
         setUserModal((current) => (open ? { ...current, open: true } : { open: false, user: null }));
@@ -35,6 +43,12 @@ export default function Dashboard({ activeTab, products, customers, users, filte
             }
         >
             <Head title="Admin" />
+
+            <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
+                <div className="max-w-md">
+                    <SecondaryMetricsCard metrics={summaryMetrics} reducedMotion={false} />
+                </div>
+            </div>
 
             <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-8 sm:px-6 lg:grid-cols-12 lg:px-8">
                 <nav className="space-y-1" aria-label="Admin sections">

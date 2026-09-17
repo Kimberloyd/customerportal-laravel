@@ -28,6 +28,11 @@ class DashboardController extends Controller
 
         return Inertia::render('Admin/Dashboard', [
             'activeTab' => $tab,
+            'summary' => [
+                'activeAccounts' => User::where('is_active', true)->count(),
+                'activeCustomers' => Customer::where('is_active', true)->count(),
+                'teams' => Team::count(),
+            ],
             ...match ($tab) {
                 'customers' => $this->listCustomers($request->query()),
                 'accounts' => $this->listAccounts($request->query()),

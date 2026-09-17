@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\User;
 use App\Services\AccountDeletionService;
-use App\Support\AdminUserListing;
 use App\Support\UserAudit;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,8 +13,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
-use Inertia\Inertia;
-use Inertia\Response;
 
 /**
  * Ports the user-management routes of app/admin/admin_routes.py
@@ -28,20 +25,17 @@ class UserController extends Controller
     private const MIN_PASSWORD_LENGTH = 8;
 
     public function __construct(
-        private readonly AdminUserListing $userListing,
         private readonly AccountDeletionService $accountDeletion,
     ) {}
 
-    public function index(Request $request): Response
+    // The standalone listing page was replaced by the Accounts tab on the
+    // admin dashboard; this route is kept only so old links/bookmarks land
+    // somewhere sensible instead of a 404, mirroring create() below.
+    public function index(Request $request): RedirectResponse
     {
         $this->requireAdmin();
 
-        return Inertia::render('Admin/Users/Index', [
-            ...$this->userListing->get($request->query()),
-            'accountForm' => [
-                'customers' => $this->customerOptions(),
-            ],
-        ]);
+        return redirect()->route('admin.dashboard', ['tab' => 'accounts']);
     }
 
     // The standalone create page was replaced by CreateUserModal on the
@@ -331,13 +325,6 @@ class UserController extends Controller
             ]);
         }
 
-    }
-
-    private function customerOptions()
-    {
-        return Customer::where('is_active', true)
-            ->orderBy('company_name')
-            ->get(['id', 'company_name', 'user_id']);
     }
 
     /**

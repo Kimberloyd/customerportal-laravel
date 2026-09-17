@@ -26,25 +26,11 @@ class ListTest extends TestCase
         $this->actingAsUser($customer)->get('/admin/users')->assertStatus(403);
     }
 
-    public function test_search_matches_name_or_email(): void
+    public function test_admin_is_redirected_to_the_accounts_tab(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        User::factory()->create(['full_name' => 'Jane Smith', 'email' => 'jane@example.com']);
-        User::factory()->create(['full_name' => 'Bob Jones', 'email' => 'bob@example.com']);
 
-        $response = $this->actingAsUser($admin)->get('/admin/users?search=jane');
-
-        $response->assertInertia(fn ($page) => $page->has('users.data', 1));
-    }
-
-    public function test_role_filter_narrows_results(): void
-    {
-        $admin = User::factory()->create(['role' => 'admin']);
-        User::factory()->create(['role' => 'agent']);
-        User::factory()->create(['role' => 'customer']);
-
-        $response = $this->actingAsUser($admin)->get('/admin/users?role=customer');
-
-        $response->assertInertia(fn ($page) => $page->has('users.data', 1));
+        $this->actingAsUser($admin)->get('/admin/users')
+            ->assertRedirect(route('admin.dashboard', ['tab' => 'accounts']));
     }
 }
