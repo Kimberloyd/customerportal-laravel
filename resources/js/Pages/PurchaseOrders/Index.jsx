@@ -6,6 +6,7 @@ import { Dropdown } from '@/components/interior/dropdown';
 import { AutoHeightReveal, Modal } from '@/components/interior/modal';
 import { Pagination } from '@/components/interior/pagination';
 import { AnimatedBadge } from '@/components/motion/animated-badge';
+import { BottomSheet } from '@/components/motion/bottom-sheet';
 import { SuggestionMenu, suggestFieldKeyDown, useSuggestField } from '@/components/SuggestField';
 import { Table } from '@/components/motion/table';
 import { Button } from '@/components/ui/button';
@@ -67,6 +68,12 @@ export default function Index({
     // embedded somewhere narrower than the full viewport.
     const containerRef = useRef(null);
     const isCompactViewport = useContainerBreakpoint(containerRef, 639);
+    // Matches the sm breakpoint, same as CreateOrderModal's own modal/sheet
+    // switch -- scoped to document.body (not a page container) since there's
+    // no pre-existing wrapper to observe before the modal/sheet choice itself
+    // is made.
+    const bodyRef = useRef(typeof document !== 'undefined' ? document.body : null);
+    const isMobileViewport = useContainerBreakpoint(bodyRef, 639);
     const [search, setSearch] = useState(filters.search);
     const [searchFocused, setSearchFocused] = useState(false);
     const orderSearchSelections = useSearchSelections('order_search');
@@ -739,14 +746,27 @@ export default function Index({
                 </div>
                 );
 
-                return (
+                const closeFilterModal = () => {
+                    setFilterModalOpen(false);
+                    setSaveFilterOpen(false);
+                    setSaveFilterName('');
+                };
+
+                return isMobileViewport ? (
+                    <BottomSheet
+                        open={filterModalOpen}
+                        onOpenChange={(next) => { if (!next) closeFilterModal(); }}
+                        title="Advanced filters"
+                        snapPoints={[0.92]}
+                        defaultSnap={0}
+                        footer={filterFooter}
+                    >
+                        {filterBody}
+                    </BottomSheet>
+                ) : (
                     <Modal
                         open={filterModalOpen}
-                        onClose={() => {
-                            setFilterModalOpen(false);
-                            setSaveFilterOpen(false);
-                            setSaveFilterName('');
-                        }}
+                        onClose={closeFilterModal}
                         title="Advanced filters"
                         maxWidth={800}
                         maxHeight="min(85vh, 720px)"
