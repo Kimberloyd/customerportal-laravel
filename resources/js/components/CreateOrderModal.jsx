@@ -732,7 +732,18 @@ export default function CreateOrderModal({
                                     isEditing
                                         ? 'No products have been added to this order.'
                                         : productsError
-                                        ? "Couldn't load products."
+                                        ? (
+                                            <span>
+                                                Couldn't load products.{' '}
+                                                <button
+                                                    type="button"
+                                                    onClick={onRetryProducts}
+                                                    className="font-medium text-primary outline-none hover:underline focus-visible:underline"
+                                                >
+                                                    Retry
+                                                </button>
+                                            </span>
+                                        )
                                         : productsLoading
                                             ? 'Loading products…'
                                             : 'Search for a product to add it to this order.'

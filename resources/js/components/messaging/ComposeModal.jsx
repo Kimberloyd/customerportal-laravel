@@ -156,7 +156,7 @@ export default function ComposeModal({ open, onClose, accounts }) {
                         ? `Sent to ${result.sent} account${result.sent === 1 ? '' : 's'}.`
                         : null}
                     {result.failed > 0
-                        ? `${result.sent > 0 ? ' ' : ''}${result.failed} failed to send.`
+                        ? `${result.sent > 0 ? ' ' : ''}${result.failed} failed to send. Start a new message to retry.`
                         : null}
                 </p>
             ) : (

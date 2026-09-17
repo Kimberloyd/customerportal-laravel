@@ -33,6 +33,8 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
     const { notifyRead, renameChat } = useChatWidget();
 
     const [loading, setLoading] = useState(false);
+    const [loadError, setLoadError] = useState(false);
+    const [retryToken, setRetryToken] = useState(0);
     const [messages, setMessages] = useState([]);
     const [body, setBody] = useState('');
     const [sending, setSending] = useState(false);
@@ -66,7 +68,7 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
     useEffect(() => {
         let active = true;
         setLoading(true);
-        setError(null);
+        setLoadError(false);
         setMessages([]);
         setUnreadIds([]);
 
@@ -86,7 +88,7 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
                 notifyRead();
             })
             .catch(() => {
-                if (active) setError('Unable to load this conversation.');
+                if (active) setLoadError(true);
             })
             .finally(() => {
                 if (active) setLoading(false);
@@ -95,7 +97,7 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
         return () => {
             active = false;
         };
-    }, [chat.channel, chat.customerId, chat.staffUserId, chat.threadId]);
+    }, [chat.channel, chat.customerId, chat.staffUserId, chat.threadId, retryToken]);
 
     useEffect(() => {
         if (!echo || !chat.viewerUserId) return undefined;
@@ -445,6 +447,19 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
                                 <p className="px-1 text-sm text-stone-500 dark:text-stone-400">
                                     Loading conversation...
                                 </p>
+                            ) : loadError ? (
+                                <div className="flex flex-col items-center gap-2 px-1 text-center">
+                                    <p className="text-sm text-stone-500 dark:text-stone-400">
+                                        Couldn't load this conversation.
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={() => setRetryToken((token) => token + 1)}
+                                        className="text-sm font-medium text-primary outline-none hover:underline focus-visible:underline"
+                                    >
+                                        Retry
+                                    </button>
+                                </div>
                             ) : messages.length === 0 ? (
                                 <p className="px-1 text-sm text-stone-500 dark:text-stone-400">
                                     No messages yet. Say hello!

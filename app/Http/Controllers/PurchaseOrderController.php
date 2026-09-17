@@ -293,6 +293,8 @@ class PurchaseOrderController extends Controller
         if ($attachmentFile) {
             $request->validate([
                 'po_attachment' => 'file|max:8192',
+            ], [
+                'po_attachment.max' => 'Choose a PDF, PNG, or JPG smaller than 8 MB.',
             ]);
         }
 
