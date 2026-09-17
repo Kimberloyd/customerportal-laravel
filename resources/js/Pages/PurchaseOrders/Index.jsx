@@ -6,6 +6,7 @@ import { Dropdown } from '@/components/interior/dropdown';
 import { AutoHeightReveal, Modal } from '@/components/interior/modal';
 import { Pagination } from '@/components/interior/pagination';
 import { AnimatedBadge } from '@/components/motion/animated-badge';
+import { SuggestionMenu, suggestFieldKeyDown, useSuggestField } from '@/components/SuggestField';
 import { Table } from '@/components/motion/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/motion/input';
@@ -80,6 +81,7 @@ export default function Index({
         setSearch('');
         setStatus('all');
         setCustomerId('');
+        customerFilterField.setQuery('');
         setStartDate('');
         setEndDate('');
     };
@@ -94,7 +96,28 @@ export default function Index({
         ],
         [createOrderCustomers],
     );
-    const selectedCustomerFilter = customerFilterItems.find((item) => item.value === customerId);
+
+    // The field itself is the search input (no separate trigger-then-search-
+    // box combo) -- matches the customer/product pickers in CreateOrderModal
+    // instead of the click-to-open-then-search Dropdown pattern, which read
+    // as two stacked search boxes here.
+    const customerFilterField = useSuggestField(true);
+    const customerFilterMatches = useMemo(() => {
+        const query = customerFilterField.query.trim().toLowerCase();
+        const matches = createOrderCustomers
+            .filter((customer) => !query || customer.company_name.toLowerCase().includes(query))
+            .slice(0, 8)
+            .map((customer) => ({ id: String(customer.id), label: customer.company_name }));
+
+        return !query || 'all customers'.includes(query)
+            ? [{ id: '', label: 'All customers' }, ...matches]
+            : matches;
+    }, [createOrderCustomers, customerFilterField.query]);
+    const selectCustomerFilter = (item) => {
+        setCustomerId(item.id);
+        customerFilterField.setQuery(item.id === '' ? '' : item.label);
+        customerFilterField.setOpen(false);
+    };
     const [createOrderOpen, setCreateOrderOpen] = useState(openCreateOrder);
     const [productsLoading, setProductsLoading] = useState(false);
     const [productsError, setProductsError] = useState(false);
@@ -429,6 +452,11 @@ export default function Index({
                         onClick={() => {
                             setStatus(filters.status ?? 'all');
                             setCustomerId(filters.customer_id ? String(filters.customer_id) : '');
+                            customerFilterField.setQuery(
+                                filters.customer_id
+                                    ? customerFilterItems.find((item) => item.value === String(filters.customer_id))?.label ?? ''
+                                    : '',
+                            );
                             setStartDate(filters.start_date ?? '');
                             setEndDate(filters.end_date ?? '');
                             setFilterModalOpen(true);
@@ -616,28 +644,36 @@ export default function Index({
                 const filterBody = (
                 <div className="space-y-6 py-2">
                     {showCustomerFilter && (
-                        <Dropdown
-                            items={customerFilterItems}
-                            value={customerId}
-                            onChange={setCustomerId}
-                            label="Search customer"
-                            placeholder="Search customer"
-                            searchable
-                            searchPlaceholder="Search customer"
-                            emptyLabel="No customers found"
-                            className="block w-full"
-                            triggerClassName="flex h-11 w-full items-center gap-2 rounded-lg border border-border bg-card px-4 text-left text-sm text-foreground outline-none transition-colors hover:border-muted-foreground/40 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20"
-                            trigger={(
-                                <>
-                                    <Search aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
-                                    <span className="truncate text-foreground">
-                                        {customerId ? selectedCustomerFilter?.label : 'Search customer'}
-                                    </span>
-                                </>
+                        <div ref={customerFilterField.fieldRef} className="relative w-full">
+                            <Input
+                                value={customerFilterField.query}
+                                onChange={(value) => {
+                                    customerFilterField.setQuery(value);
+                                    customerFilterField.setActiveIndex(0);
+                                    customerFilterField.setOpen(true);
+                                    if (value === '') setCustomerId('');
+                                }}
+                                onFocus={() => customerFilterField.setOpen(true)}
+                                onKeyDown={suggestFieldKeyDown(customerFilterField, customerFilterMatches, selectCustomerFilter)}
+                                type="text"
+                                aria-label="Search customer"
+                                placeholder="Search customer"
+                                leftIcon={<Search className="h-4 w-4" />}
+                                classNames={{ field: 'h-11 rounded-lg', input: 'text-sm' }}
+                            />
+                            {customerFilterField.visible && customerFilterField.position && (
+                                <SuggestionMenu
+                                    menuRef={customerFilterField.menuRef}
+                                    position={customerFilterField.position}
+                                    items={customerFilterMatches}
+                                    activeIndex={customerFilterField.activeIndex}
+                                    onHover={customerFilterField.setActiveIndex}
+                                    onSelect={selectCustomerFilter}
+                                    emptyMessage="No customers found."
+                                    onClear={() => customerFilterField.setQuery('')}
+                                />
                             )}
-                            matchTriggerWidth
-                            portal
-                        />
+                        </div>
                     )}
 
                     <div className="space-y-6">
