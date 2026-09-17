@@ -186,7 +186,7 @@ function RequestReturnModal({ open, onClose, order, presetItemId }) {
                                                         disabled={quantity <= 0}
                                                         onClick={() => updateQuantity(item.id, String(Math.max(0, quantity - 1)))}
                                                         aria-label={`Decrease return quantity for ${product}`}
-                                                        className="pointer-events-auto grid h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-gray-100 hover:text-foreground disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-white/10"
+                                                        className="pointer-events-auto grid h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
                                                     >
                                                         <Minus className="h-3.5 w-3.5" />
                                                     </button>
@@ -197,7 +197,7 @@ function RequestReturnModal({ open, onClose, order, presetItemId }) {
                                                         disabled={quantity >= item.returnable_quantity}
                                                         onClick={() => updateQuantity(item.id, String(Math.min(item.returnable_quantity, quantity + 1)))}
                                                         aria-label={`Increase return quantity for ${product}`}
-                                                        className="grid h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-gray-100 hover:text-foreground disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-white/10"
+                                                        className="grid h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
                                                     >
                                                         <Plus className="h-3.5 w-3.5" />
                                                     </button>
@@ -247,7 +247,7 @@ function RequestReturnModal({ open, onClose, order, presetItemId }) {
                         {validation.clientErrors.reason ? (
                             <span className="block text-xs font-normal text-destructive" role="alert">{validation.clientErrors.reason}</span>
                         ) : validation.validFields.reason ? (
-                            <span className="flex items-center gap-1 text-xs font-normal text-emerald-600">
+                            <span className="flex items-center gap-1 text-xs font-normal text-success">
                                 <Check aria-hidden="true" className="h-3.5 w-3.5" /> Looks good.
                             </span>
                         ) : (
@@ -579,7 +579,7 @@ export default function ProductReturnPanel({
                 data={returns}
                 columns={columns}
                 getRowId={(returnRequest) => String(returnRequest.id)}
-                className="border-gray-200 dark:border-white/10"
+                className="border-border"
                 height={autoTableHeight(returns.length)}
                 resizable
                 emptyState="No return requests for this order."

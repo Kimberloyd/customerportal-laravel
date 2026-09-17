@@ -67,7 +67,7 @@ export function ResetPasswordModal({ open, onOpenChange, user }) {
         >
             <AutoHeightReveal>
                 <div className="space-y-4 px-2 pt-2">
-                    <p className="text-sm text-stone-600 dark:text-stone-300">
+                    <p className="text-sm text-muted-foreground">
                         Set a new password for this account. They&rsquo;ll need to sign in again with it on other devices.
                     </p>
                     <SecurityFields data={data} updateField={updateField} errors={errors} isEdit optional={false} />

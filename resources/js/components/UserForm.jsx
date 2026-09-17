@@ -150,12 +150,12 @@ export function AccessFields({ data, updateField, errors, allowCustomerRole = fa
         };
     });
     const selectedCustomer = customerItems.find((customer) => customer.value === String(data.customer_id ?? ''));
-    const dropdownTriggerClassName = 'mt-1 flex h-10 w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 text-left text-sm text-gray-700 outline-none transition-colors hover:border-gray-400 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 disabled:bg-gray-100 disabled:text-gray-500 dark:border-gray-600 dark:bg-transparent dark:text-gray-300 dark:hover:border-gray-500 dark:disabled:bg-white/5 dark:disabled:text-gray-500';
+    const dropdownTriggerClassName = 'mt-1 flex h-10 w-full items-center justify-between rounded-md border border-border bg-card px-3 text-left text-sm text-foreground outline-none transition-colors hover:border-muted-foreground/50 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 disabled:bg-muted disabled:text-muted-foreground';
 
     return (
         <>
             <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Account Type</label>
+                <label className="block text-sm font-medium text-foreground">Account Type</label>
                 <Dropdown
                     items={roleItems}
                     value={data.role}
@@ -171,7 +171,7 @@ export function AccessFields({ data, updateField, errors, allowCustomerRole = fa
                     trigger={(
                         <>
                             <span className="truncate">{selectedRoleLabel}</span>
-                            <ChevronDown aria-hidden="true" className="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400" />
+                            <ChevronDown aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
                         </>
                     )}
                     matchTriggerWidth
@@ -187,7 +187,7 @@ export function AccessFields({ data, updateField, errors, allowCustomerRole = fa
 
             {data.role === 'customer' && (
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Linked Customer</label>
+                    <label className="block text-sm font-medium text-foreground">Linked Customer</label>
                     <Dropdown
                         items={customerItems}
                         value={String(data.customer_id ?? '')}
@@ -202,7 +202,7 @@ export function AccessFields({ data, updateField, errors, allowCustomerRole = fa
                         trigger={(
                             <>
                                 <span className="truncate">{selectedCustomer?.label ?? 'Choose a customer'}</span>
-                                <ChevronDown aria-hidden="true" className="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400" />
+                                <ChevronDown aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
                             </>
                         )}
                         matchTriggerWidth
@@ -219,7 +219,7 @@ export function AccessFields({ data, updateField, errors, allowCustomerRole = fa
             )}
 
             {showActiveControl && (
-                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <label className="flex items-center gap-2 text-sm text-foreground">
                     <input
                         type="checkbox"
                         checked={data.is_active}

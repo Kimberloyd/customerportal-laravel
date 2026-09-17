@@ -75,7 +75,7 @@ export default function RemarksTimeline({ order, form, onSave, canEdit }) {
                 }}
                 maxLength={5000}
                 placeholder="Add a remark…"
-                className="min-w-0 flex-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-gray-600 dark:bg-transparent dark:text-gray-100"
+                className="min-w-0 flex-1 rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             />
             <Button
                 type="button"
@@ -102,28 +102,28 @@ export default function RemarksTimeline({ order, form, onSave, canEdit }) {
                         {renderAddRemarkControl()}
                     </div>
                 ) : (
-                    <span className="text-gray-500 dark:text-gray-400">{formatDateTime(row.created_at)}</span>
+                    <span className="text-muted-foreground">{formatDateTime(row.created_at)}</span>
                 ),
         },
         {
             key: 'actor_name',
             header: 'Added By',
             width: '180px',
-            cell: (row) => (row.__isInput ? null : <span className="text-gray-900 dark:text-gray-100">{row.actor_name ?? '—'}</span>),
+            cell: (row) => (row.__isInput ? null : <span className="text-foreground">{row.actor_name ?? '—'}</span>),
         },
         {
             key: 'actor_role',
             header: 'Role',
             width: '120px',
             cell: (row) =>
-                row.__isInput ? null : <span className="text-gray-500 capitalize dark:text-gray-400">{row.actor_role ?? '—'}</span>,
+                row.__isInput ? null : <span className="text-muted-foreground capitalize">{row.actor_role ?? '—'}</span>,
         },
         {
             key: 'remarks',
             header: 'Remark',
             cell: (row) =>
                 row.__isInput ? null : (
-                    <span className="line-clamp-2 whitespace-pre-wrap text-gray-900 dark:text-gray-100">{row.remarks}</span>
+                    <span className="line-clamp-2 whitespace-pre-wrap text-foreground">{row.remarks}</span>
                 ),
         },
     ];
@@ -131,8 +131,8 @@ export default function RemarksTimeline({ order, form, onSave, canEdit }) {
     return (
         <div>
             <div className="mb-3">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Remarks</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Notes recorded on this order, in the order they were added.</p>
+                <h3 className="text-lg font-semibold text-foreground">Remarks</h3>
+                <p className="text-sm text-muted-foreground">Notes recorded on this order, in the order they were added.</p>
             </div>
             {form.errors.remarks && <p className="mb-2 text-sm text-destructive">{form.errors.remarks}</p>}
             <Table
@@ -142,7 +142,7 @@ export default function RemarksTimeline({ order, form, onSave, canEdit }) {
                 rowHeight={REMARKS_ROW_HEIGHT}
                 height={rows.length * REMARKS_ROW_HEIGHT + 60}
                 emptyState="Nothing has been noted on this order."
-                className="border-gray-200 dark:border-white/10"
+                className="border-border"
             />
             {canEdit && (
                 <div className="mt-3 flex items-center gap-2 md:hidden">{renderAddRemarkControl()}</div>
