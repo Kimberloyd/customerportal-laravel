@@ -75,7 +75,7 @@ const DialogDescription = ({ className, ref, ...props }: DialogDescriptionProps)
   <p
     data-slot="description"
     className={cn(
-      'text-pretty text-base/6 text-muted-fg group-disabled:opacity-50 sm:text-sm/6',
+      'text-pretty text-base/6 text-muted-foreground group-disabled:opacity-50 sm:text-sm/6',
       className
     )}
     ref={ref}
@@ -124,7 +124,7 @@ const DialogCloseIcon = ({ className, ...props }: CloseButtonIndicatorProps) => 
     <PrimitiveButton
       slot="close"
       className={cx(
-        'close absolute end-1 top-1 z-50 grid size-8 place-content-center rounded-xl hover:bg-secondary focus:bg-secondary focus:outline-hidden focus-visible:ring-1 focus-visible:ring-primary sm:end-2 sm:top-2 sm:size-7 sm:rounded-md',
+        'close absolute end-1 top-1 z-50 grid size-8 place-content-center rounded-xl hover:bg-hover focus:bg-hover focus:outline-hidden focus-visible:ring-1 focus-visible:ring-primary sm:end-2 sm:top-2 sm:size-7 sm:rounded-md',
         className
       )}
     >

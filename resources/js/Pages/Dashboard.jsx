@@ -36,13 +36,13 @@ export default function Dashboard({ dashboard, workspace }) {
         <AuthenticatedLayout>
             <Head title={customer ? 'Your overview' : 'Company overview'} />
             <MotionConfig reducedMotion="user">
-                <div className="min-h-[70vh] border-b border-stone-200/70 bg-white dark:border-white/10 dark:bg-[#151619]">
+                <div className="min-h-[70vh] border-b border-border bg-background">
                     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
                         <motion.div {...enter(0)} className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
                             <div>
-                                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary dark:text-indigo-300">{customer ? workspace.name || 'Customer workspace' : 'Company workspace'}</p>
-                                <h1 className="text-2xl font-semibold leading-tight tracking-tight text-stone-900 sm:text-3xl dark:text-stone-100">{customer ? 'Your orders, at a glance.' : 'Company overview'}</h1>
-                                <p className="mt-2 max-w-xl text-sm leading-6 text-stone-600 dark:text-stone-400">
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">{customer ? workspace.name || 'Customer workspace' : 'Company workspace'}</p>
+                                <h1 className="type-page-heading text-foreground">{customer ? 'Your orders, at a glance.' : 'Company overview'}</h1>
+                                <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
                                     {number.format(current.orders)} order{current.orders === 1 ? '' : 's'} {customer ? 'placed' : 'received'} in the last {period} days
                                     {dashboard.attention_count > 0 && `, ${number.format(dashboard.attention_count)} need${dashboard.attention_count === 1 ? 's' : ''} your attention`}.
                                 </p>
@@ -50,8 +50,8 @@ export default function Dashboard({ dashboard, workspace }) {
                         </motion.div>
                         {!workspace.can_order && <div role="status" className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">Your account needs an active customer profile before you can place or view orders. Contact your company representative to link your account.</div>}
                         <motion.div {...enter(0.04)} className="mb-5 mt-7 flex flex-wrap items-center gap-3">
-                            <div role="group" aria-label="Dashboard date range" className="flex rounded-xl border border-stone-200 bg-white p-1 dark:border-white/10 dark:bg-[#1d1e22]">
-                                {[7, 30, 90].map((days) => <button key={days} type="button" disabled={loading} aria-pressed={period === days} onClick={() => visit(days)} className={`relative min-h-9 rounded-lg px-4 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] disabled:cursor-wait ${period === days ? 'text-white' : 'text-stone-600 hover:text-stone-900 dark:text-stone-300 dark:hover:text-stone-100'}`}>
+                            <div role="group" aria-label="Dashboard date range" className="flex rounded-xl border border-border bg-card p-1">
+                                {[7, 30, 90].map((days) => <button key={days} type="button" disabled={loading} aria-pressed={period === days} onClick={() => visit(days)} className={`relative min-h-9 rounded-lg px-4 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] disabled:cursor-wait ${period === days ? 'text-background' : 'text-muted-foreground hover:text-foreground'}`}>
                                     {period === days && <motion.span layoutId="dashboard-period" className="absolute inset-0 rounded-lg bg-primary" transition={{ duration: reducedMotion ? 0 : 0.2 }} />}<span className="relative">{days} days</span>
                                 </button>)}
                             </div>
@@ -66,10 +66,10 @@ export default function Dashboard({ dashboard, workspace }) {
                                 </motion.div>
                             </div>
                             <motion.div {...enter(0.2)}>
-                                <section aria-labelledby="order-trend-heading" className="min-w-0 rounded-2xl border border-stone-200/80 bg-white dark:border-white/10 dark:bg-[#1d1e22]">
+                                <section aria-labelledby="order-trend-heading" className="min-w-0 rounded-xl border border-border bg-card">
                                     <div className="flex flex-wrap items-start justify-between gap-3 px-5 pt-5 sm:px-6">
-                                        <div><h2 id="order-trend-heading" className="type-section-heading text-stone-900 dark:text-stone-100">Order activity</h2><p className="mt-1 text-sm text-stone-500 dark:text-stone-400">Daily orders placed and completed deliveries.</p></div>
-                                        {workspace.can_order && <Link href={ordersUrl} className="inline-flex items-center gap-1.5 rounded text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] dark:text-indigo-300">View orders <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>}
+                                        <div><h2 id="order-trend-heading" className="type-section-heading text-foreground">Order activity</h2><p className="mt-1 text-sm text-muted-foreground">Daily orders placed and completed deliveries.</p></div>
+                                        {workspace.can_order && <Link href={ordersUrl} className="inline-flex items-center gap-1.5 rounded text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]">View orders <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>}
                                     </div>
                                     <OrderTrend trend={dashboard.trend} empty={dashboard.trend.every((point) => point.current === 0 && point.delivered === 0)} reducedMotion={reducedMotion} />
                                     <OrderStages current={current} ordersUrl={ordersUrl} reducedMotion={reducedMotion} />

@@ -7,8 +7,8 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { Area, AreaChart, ResponsiveContainer, YAxis } from 'recharts';
 
 const number = new Intl.NumberFormat('en-PH');
-const surface = 'rounded-2xl border border-stone-200/80 bg-white dark:border-white/10 dark:bg-[#1d1e22]';
-const focus = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2';
+const surface = 'rounded-xl border border-border bg-card';
+const focus = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2';
 const spring = { type: 'spring', stiffness: 700, damping: 46, mass: 0.5 };
 
 /**
@@ -45,11 +45,11 @@ export function PrimaryMetricCard({ label, value, rawValue, href, trend, reduced
     const hasCountUp = typeof rawValue === 'number' && !Number.isNaN(rawValue);
     const displayValue = useCountUp(hasCountUp ? rawValue : 0, reducedMotion);
     return (
-        <Card href={href || undefined} className={`${surface} ${focus} group relative flex h-full flex-col overflow-hidden p-5 transition-colors ${href ? 'hover:bg-stone-50 dark:hover:bg-white/[0.03]' : ''} sm:p-6`}>
-            <p className="text-sm font-medium text-stone-600 dark:text-stone-300">{label}</p>
+        <Card href={href || undefined} className={`${surface} ${focus} group relative flex h-full flex-col overflow-hidden p-5 transition-colors ${href ? 'hover:bg-hover' : ''} sm:p-6`}>
+            <p className="text-sm font-medium text-muted-foreground">{label}</p>
             <div className="flex flex-1 flex-row-reverse items-center justify-between gap-4 sm:flex-row">
                 <div className="min-w-0 text-right sm:text-left">
-                    <p className="break-words text-5xl font-semibold leading-tight tracking-tight text-stone-900 tabular-nums sm:text-6xl dark:text-stone-100">{hasCountUp ? number.format(displayValue) : value}</p>
+                    <p className="break-words text-5xl font-semibold leading-tight tracking-tight text-foreground tabular-nums sm:text-6xl">{hasCountUp ? number.format(displayValue) : value}</p>
                 </div>
                 {sparkline.length > 1 && (
                     <div className="pointer-events-none h-32 w-64 shrink-0 sm:h-40 sm:w-80" aria-hidden="true">
@@ -103,20 +103,20 @@ export function SecondaryMetricsCard({ metrics, reducedMotion }) {
             {highlightRect && (
                 <motion.div
                     aria-hidden="true"
-                    className="pointer-events-none absolute inset-x-0 z-0 bg-stone-50 dark:bg-white/[0.03]"
+                    className="pointer-events-none absolute inset-x-0 z-0 bg-hover"
                     initial={false}
                     animate={{ top: highlightRect.top, height: highlightRect.height, opacity: 1 }}
                     transition={reducedMotion ? { duration: 0 } : spring}
                 />
             )}
-            <div className="flex flex-1 flex-col divide-y divide-stone-100 dark:divide-white/10">
+            <div className="flex flex-1 flex-col divide-y divide-border">
             {metrics.map((metric, index) => {
                 const Row = metric.href ? Link : 'div';
                 return (
                     <div key={metric.label} ref={(el) => { rowRefs.current[index] = el; }} onMouseEnter={() => metric.href && setHoveredIndex(index)} onFocus={() => metric.href && setHoveredIndex(index)} onBlur={() => setHoveredIndex(null)}>
                         <Row href={metric.href || undefined} className={`${focus} relative z-10 flex flex-1 items-center justify-between gap-3 p-4`}>
-                            <p className="min-w-0 truncate text-xs font-medium text-stone-500 dark:text-stone-400">{metric.label}</p>
-                            <p className="shrink-0 text-xl font-semibold tracking-tight text-stone-900 tabular-nums dark:text-stone-100 sm:text-2xl">{metric.value}</p>
+                            <p className="min-w-0 truncate text-xs font-medium text-muted-foreground">{metric.label}</p>
+                            <p className="shrink-0 text-xl font-semibold tracking-tight text-foreground tabular-nums sm:text-2xl">{metric.value}</p>
                         </Row>
                     </div>
                 );
@@ -143,16 +143,16 @@ export function OrderStages({ current, ordersUrl, reducedMotion }) {
         { key: 'cancelled', label: 'Cancelled', color: 'bg-muted-foreground' },
     ];
     return (
-        <div className="mt-3 border-t border-stone-100 px-5 py-4 sm:px-6 dark:border-white/10">
-            <p className="mb-3 text-xs font-medium text-stone-600 dark:text-stone-300">Where these orders stand</p>
-            <div aria-hidden="true" className="mb-4 flex h-1.5 gap-1 overflow-hidden rounded-full bg-stone-100 dark:bg-white/5">
+        <div className="mt-3 border-t border-border px-5 py-4 sm:px-6">
+            <p className="mb-3 text-xs font-medium text-muted-foreground">Where these orders stand</p>
+            <div aria-hidden="true" className="mb-4 flex h-1.5 gap-1 overflow-hidden rounded-full bg-muted">
                 {stages.map((stage) => <motion.span key={stage.key} className={`h-full rounded-full ${stage.color}`} initial={false} animate={{ width: `${current.orders ? current.stages[stage.key] / current.orders * 100 : 0}%` }} transition={{ duration: reducedMotion ? 0 : 0.45 }} />)}
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 {stages.map((stage) => (
                     <div key={stage.key}>
-                        <p className="flex items-center gap-1.5 text-xs text-stone-600 dark:text-stone-400"><span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${stage.color}`} />{stage.label}</p>
-                        {stage.status && current.stages[stage.key] > 0 ? <Link className={`mt-1 inline-block rounded text-lg font-semibold text-stone-800 tabular-nums hover:text-primary ${focus} dark:text-stone-200`} href={`${ordersUrl}&status=${stage.status}`} aria-label={`${current.stages[stage.key]} orders ${stage.label.toLowerCase()}`}>{number.format(current.stages[stage.key])}</Link> : <p className="mt-1 text-lg font-semibold text-stone-800 tabular-nums dark:text-stone-200">{number.format(current.stages[stage.key])}</p>}
+                        <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${stage.color}`} />{stage.label}</p>
+                        {stage.status && current.stages[stage.key] > 0 ? <Link className={`mt-1 inline-block rounded text-lg font-semibold text-foreground tabular-nums hover:text-primary ${focus}`} href={`${ordersUrl}&status=${stage.status}`} aria-label={`${current.stages[stage.key]} orders ${stage.label.toLowerCase()}`}>{number.format(current.stages[stage.key])}</Link> : <p className="mt-1 text-lg font-semibold text-foreground tabular-nums">{number.format(current.stages[stage.key])}</p>}
                     </div>
                 ))}
             </div>
@@ -181,8 +181,8 @@ export function AttentionPanel({ orders, count, customer, reducedMotion, canOrde
 
     return (
         <section aria-labelledby="attention-heading" className={`${surface} flex flex-col overflow-hidden`}>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 px-5 py-5 dark:border-white/10 sm:px-6">
-                <div><h2 id="attention-heading" className="type-section-heading text-stone-900 dark:text-stone-100">{customer ? 'Your next steps' : 'Work to pick up'}</h2><p className="mt-1 text-sm text-stone-500 dark:text-stone-400">{customer ? 'Updates to follow up on' : 'Fulfillment queue'} · All dates</p></div>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-5 sm:px-6">
+                <div><h2 id="attention-heading" className="type-section-heading text-foreground">{customer ? 'Your next steps' : 'Work to pick up'}</h2><p className="mt-1 text-sm text-muted-foreground">{customer ? 'Updates to follow up on' : 'Fulfillment queue'} · All dates</p></div>
                 <span className="grid h-6 min-w-6 place-items-center rounded-full bg-destructive px-1.5 text-xs font-semibold text-white tabular-nums">{number.format(count)}</span>
             </div>
             {orders.length ? (
@@ -190,13 +190,13 @@ export function AttentionPanel({ orders, count, customer, reducedMotion, canOrde
                     {highlightRect && (
                         <motion.div
                             aria-hidden="true"
-                            className="pointer-events-none absolute inset-x-0 z-0 bg-stone-50 dark:bg-white/[0.03]"
+                            className="pointer-events-none absolute inset-x-0 z-0 bg-hover"
                             initial={false}
                             animate={{ top: highlightRect.top, height: highlightRect.height, opacity: 1 }}
                             transition={reducedMotion ? { duration: 0 } : spring}
                         />
                     )}
-                    <ul className="divide-y divide-stone-100 dark:divide-white/5">
+                    <ul className="divide-y divide-border">
                         {orders.map((order, index) => {
                             const action = actionFor(order, customer);
                             const badge = statusBadge(order.received ? 'received' : order.status);
@@ -204,9 +204,9 @@ export function AttentionPanel({ orders, count, customer, reducedMotion, canOrde
                                 <li key={order.id} ref={(el) => { rowRefs.current[index] = el; }} onMouseEnter={() => setHoveredIndex(index)} onFocus={() => setHoveredIndex(index)} onBlur={() => setHoveredIndex(null)}>
                                     <Link href={route('purchase-orders.show', order.public_id)} className={`relative z-10 flex items-center gap-3 px-5 py-3 ${focus} sm:px-6`}>
                                         {customer ? (
-                                            <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-stone-900 dark:text-stone-100" title={order.po_number}>{order.po_number}</p><p className="mt-0.5 truncate text-xs leading-5 text-stone-500 dark:text-stone-400">{action.description}</p></div>
+                                            <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-foreground" title={order.po_number}>{order.po_number}</p><p className="mt-0.5 truncate text-xs leading-5 text-muted-foreground">{action.description}</p></div>
                                         ) : (
-                                            <p className="min-w-0 flex-1 truncate text-sm font-medium text-stone-900 dark:text-stone-100" title={`${order.customer_name || 'Customer order'} - ${order.po_number}`}>{order.customer_name || 'Customer order'} - {order.po_number}</p>
+                                            <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground" title={`${order.customer_name || 'Customer order'} - ${order.po_number}`}>{order.customer_name || 'Customer order'} - {order.po_number}</p>
                                         )}
                                         <AnimatedBadge status={badge.status} size="sm" pulse={false} icon={badge.icon ? <badge.icon className="h-3.5 w-3.5" /> : undefined} className="shrink-0 border-0 bg-transparent px-0 shadow-none">{badge.label}</AnimatedBadge>
                                     </Link>
@@ -216,9 +216,9 @@ export function AttentionPanel({ orders, count, customer, reducedMotion, canOrde
                     </ul>
                 </div>
             ) : (
-                <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 text-center"><span className="mb-4 grid h-12 w-12 place-items-center rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"><CheckCheck className="h-6 w-6" aria-hidden="true" /></span><p className="text-sm font-medium text-stone-800 dark:text-stone-100">{canOrder ? 'Nothing waiting on you' : 'Your workspace is almost ready'}</p><p className="mt-2 max-w-xs text-sm leading-6 text-stone-500 dark:text-stone-400">{canOrder ? 'Orders that need a next step will appear here.' : 'Your orders will appear once your customer profile is linked.'}</p></div>
+                <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 text-center"><span className="mb-4 grid h-12 w-12 place-items-center rounded-full bg-success/10 text-success"><CheckCheck className="h-6 w-6" aria-hidden="true" /></span><p className="text-sm font-medium text-foreground">{canOrder ? 'Nothing waiting on you' : 'Your workspace is almost ready'}</p><p className="mt-2 max-w-xs text-sm leading-6 text-muted-foreground">{canOrder ? 'Orders that need a next step will appear here.' : 'Your orders will appear once your customer profile is linked.'}</p></div>
             )}
-            {canOrder && <div className="flex justify-end border-t border-stone-100/70 px-5 py-4 dark:border-white/[0.07]"><Link href={route('purchase-orders.index')} className={`inline-flex items-center gap-2 rounded text-sm font-medium text-primary hover:underline ${focus} dark:text-indigo-300`}>Open all orders <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link></div>}
+            {canOrder && <div className="flex justify-end border-t border-border px-5 py-4"><Link href={route('purchase-orders.index')} className={`inline-flex items-center gap-2 rounded text-sm font-medium text-primary hover:underline ${focus}`}>Open all orders <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link></div>}
         </section>
     );
 }

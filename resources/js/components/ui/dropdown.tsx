@@ -14,7 +14,7 @@ const dropdownSectionStyles = tv({
   slots: {
     section: 'col-span-full grid grid-cols-[auto_1fr]',
     header:
-      'col-span-full px-3 py-2 font-medium text-muted-fg text-sm/6 sm:px-2.5 sm:py-1.5 sm:text-xs/3',
+      'col-span-full px-3 py-2 font-medium text-muted-foreground text-sm/6 sm:px-2.5 sm:py-1.5 sm:text-xs/3',
   },
 })
 
@@ -48,7 +48,7 @@ const dropdownItemStyles = tv({
     // avatar
     '*:data-[slot=avatar]:*:me-(--me-icon) *:data-[slot=avatar]:me-(--me-icon) has-[[slot=description]]:*:data-[slot=avatar]:row-span-2 *:data-[slot=avatar]:[--avatar-size:1.25rem] sm:*:data-[slot=avatar]:[--avatar-size:1rem]',
     // icon
-    "[&_svg:not([class*='text-'])]:text-muted-fg *:[svg:not([data-slot='check-indicator'])]:col-start-1 *:[svg:not([data-slot='check-indicator'])]:row-start-1 *:[svg:not([data-slot='check-indicator'])]:-ms-0.5 *:[svg:not([data-slot='check-indicator'])]:me-(--me-icon) *:[svg]:shrink-0",
+    "[&_svg:not([class*='text-'])]:text-muted-foreground *:[svg:not([data-slot='check-indicator'])]:col-start-1 *:[svg:not([data-slot='check-indicator'])]:row-start-1 *:[svg:not([data-slot='check-indicator'])]:-ms-0.5 *:[svg:not([data-slot='check-indicator'])]:me-(--me-icon) *:[svg]:shrink-0",
     'not-has-[[slot=description]]:*:[svg]:size-5 sm:not-has-[[slot=description]]:*:[svg]:size-4',
     "has-[[slot=description]]:[&_svg:not([class*='w-'])]:w-5 sm:has-[[slot=description]]:[&_svg:not([class*='w-'])]:w-4 has-[[slot=description]]:*:[svg]:h-lh",
     "[&>[slot=label]+svg:not([data-slot='check-indicator'])]:absolute [&>[slot=label]+svg:not([data-slot='check-indicator'])]:inset-e-0 [&>[slot=label]+svg:not([data-slot='check-indicator'])]:top-1",
@@ -79,20 +79,20 @@ const dropdownItemStyles = tv({
       true: 'opacity-50 forced-colors:text-[GrayText]',
     },
     isSelected: {
-      true: "[&_svg:not([class*='text-'])]:text-accent-fg",
+      true: "[&_svg:not([class*='text-'])]:text-foreground",
     },
     isFocused: {
       true: [
-        "*:data-[slot=keyboard]:text-accent-fg [&_svg:not([class*='text-'])]:text-accent-fg",
-        'bg-accent text-accent-fg forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]',
-        '[&_.text-muted-fg]:text-accent-fg/80 *:[[slot=description]]:text-accent-fg *:[[slot=label]]:text-accent-fg',
+        "*:data-[slot=keyboard]:text-foreground [&_svg:not([class*='text-'])]:text-foreground",
+        'bg-accent text-foreground forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]',
+        '[&_.text-muted-foreground]:text-foreground/80 *:[[slot=description]]:text-foreground *:[[slot=label]]:text-foreground',
       ],
     },
     isHovered: {
       true: [
-        "*:data-[slot=keyboard]:text-accent-fg [&_svg:not([class*='text-'])]:text-accent-fg",
-        'bg-accent text-accent-fg forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]',
-        '[&_.text-muted-fg]:text-accent-fg/80 *:[[slot=description]]:text-accent-fg *:[[slot=label]]:text-accent-fg',
+        "*:data-[slot=keyboard]:text-foreground [&_svg:not([class*='text-'])]:text-foreground",
+        'bg-accent text-foreground forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]',
+        '[&_.text-muted-foreground]:text-foreground/80 *:[[slot=description]]:text-foreground *:[[slot=label]]:text-foreground',
       ],
     },
   },
@@ -138,7 +138,7 @@ const DropdownLabel = ({ className, ...props }: TextProps) => (
 const DropdownDescription = ({ className, ...props }: TextProps) => (
   <Text
     slot="description"
-    className={cn('col-start-2 font-normal text-muted-fg text-sm', className)}
+    className={cn('col-start-2 font-normal text-muted-foreground text-sm', className)}
     {...props}
   />
 )

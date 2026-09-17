@@ -19,7 +19,7 @@ export const labelStyles = tv({
 })
 
 export const descriptionStyles = tv({
-  base: 'block text-muted-fg text-sm/6 in-disabled:opacity-50 group-disabled:opacity-50',
+  base: 'block text-muted-foreground text-sm/6 in-disabled:opacity-50 group-disabled:opacity-50',
 })
 
 export const fieldErrorStyles = tv({

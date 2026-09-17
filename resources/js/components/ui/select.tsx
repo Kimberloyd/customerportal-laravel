@@ -102,7 +102,7 @@ const SelectTrigger = ({ children, className, ...props }: SelectTriggerProps) =>
       >
         {(values) => (
           <>
-            {props.prefix && <span className="text-muted-fg">{props.prefix}</span>}
+            {props.prefix && <span className="text-muted-foreground">{props.prefix}</span>}
             {typeof children === 'function' ? children(values) : children}
 
             {!children && (
@@ -110,7 +110,7 @@ const SelectTrigger = ({ children, className, ...props }: SelectTriggerProps) =>
                 <SelectValue
                   data-slot="select-value"
                   className={twJoin([
-                    'truncate text-start data-placeholder:text-muted-fg sm:text-sm/6 **:[[slot=description]]:hidden',
+                    'truncate text-start data-placeholder:text-muted-foreground sm:text-sm/6 **:[[slot=description]]:hidden',
                     'has-data-[slot=avatar]:grid has-data-[slot=avatar]:grid-cols-[1fr_auto] has-data-[slot=avatar]:items-center has-data-[slot=avatar]:gap-x-2',
                     'has-[svg]:grid has-[svg]:grid-cols-[1fr_auto] has-[svg]:items-center has-[svg]:gap-x-2',
                     '*:[svg]:size-5 sm:*:[svg]:size-4',
@@ -119,7 +119,7 @@ const SelectTrigger = ({ children, className, ...props }: SelectTriggerProps) =>
                 />
                 <ChevronsUpDown
                   data-slot="chevron"
-                  className="ms-auto -me-1 size-5 shrink-0 text-muted-fg sm:size-4"
+                  className="ms-auto -me-1 size-5 shrink-0 text-muted-foreground sm:size-4"
                 />
               </>
             )}
