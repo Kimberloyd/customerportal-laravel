@@ -13,6 +13,7 @@ use App\Http\Controllers\HealthController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProductReturnController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicConversationController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\SavedOrderFilterController;
@@ -136,6 +137,8 @@ Route::middleware('auth')->prefix('search')->name('search.')->group(function () 
     Route::get('/recent', [SearchSelectionController::class, 'index'])->name('recent');
     Route::post('/record', [SearchSelectionController::class, 'store'])->name('record');
 });
+
+Route::middleware('auth')->get('/profile', [ProfileController::class, 'show'])->name('profile.show');
 
 Route::middleware('auth')->prefix('settings')->name('settings.')->group(function () {
     Route::get('/', [SettingsController::class, 'edit'])->name('edit');

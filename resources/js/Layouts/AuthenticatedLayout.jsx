@@ -20,6 +20,7 @@ import {
     MessageCircle,
     MonitorX,
     SquarePen,
+    User,
     X,
 } from 'lucide-react';
 import { Menu as MenuIconNode, X as XIconNode } from 'lucide';
@@ -35,6 +36,11 @@ const NOTIFICATIONS_PANEL_WIDTH = 460;
 const NOTIFICATIONS_PANEL_GAP = 6;
 
 const USER_MENU_ITEMS = [
+    {
+        value: 'profile',
+        label: 'Profile',
+        icon: <User aria-hidden="true" className="h-4 w-4" />,
+    },
     {
         value: 'logout-all',
         label: 'Sign Out All Devices',
@@ -742,7 +748,9 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                     items={USER_MENU_ITEMS}
                                     value=""
                                     onChange={(action) => {
-                                        if (action === 'logout-all') {
+                                        if (action === 'profile') {
+                                            router.visit(route('profile.show'));
+                                        } else if (action === 'logout-all') {
                                             router.post(route('logout.all'));
                                         } else if (action === 'logout') {
                                             router.post(route('logout'));
@@ -817,6 +825,13 @@ export default function AuthenticatedLayout({ header, banner, children }) {
 
                                     <div className="border-t border-border pb-1 pt-4">
                                         <div className="space-y-1">
+                                            <ResponsiveNavLink
+                                                href={route('profile.show')}
+                                                active={route().current('profile.show')}
+                                                onClick={closeMobileNav}
+                                            >
+                                                Profile
+                                            </ResponsiveNavLink>
                                             <ResponsiveNavLink
                                                 method="post"
                                                 href={route('logout.all')}
