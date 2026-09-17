@@ -471,7 +471,7 @@ export function Dropdown({
         aria-describedby={ariaDescribedBy}
         className={
           triggerClassName ??
-          "flex h-9 select-none items-center gap-2 whitespace-nowrap rounded-lg border border-stone-200 bg-white px-3 text-sm font-medium text-foreground shadow-none outline-none transition-colors duration-150 hover:border-stone-300 focus-visible:border-stone-400 disabled:opacity-50 dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:text-stone-200 dark:hover:border-white/20 dark:focus-visible:border-white/30"
+          "flex h-9 select-none items-center gap-2 whitespace-nowrap rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground shadow-none outline-none transition-colors duration-150 hover:border-muted-foreground/40 focus-visible:border-muted-foreground/60 disabled:opacity-50"
         }
       >
         {trigger ?? (
@@ -483,7 +483,7 @@ export function Dropdown({
             <motion.svg
               aria-hidden
               viewBox="0 0 12 12"
-              className="size-3 shrink-0 text-stone-500 dark:text-stone-400"
+              className="size-3 shrink-0 text-muted-foreground"
               initial={false}
               animate={{ rotate: open ? 180 : 0 }}
               transition={reduced ? NONE : NUDGE}
@@ -525,16 +525,16 @@ export function Dropdown({
               ...(!portal && matchTriggerWidth ? { width: "100%" } : {}),
               ...(!portal && !matchTriggerWidth && menuWidth != null ? { width: menuWidth } : {}),
             }}
-            className={`${portal ? "fixed z-[60]" : `absolute top-[calc(100%+6px)] z-50 ${align === "right" ? "right-0" : "left-0"}`} min-w-[224px] whitespace-nowrap rounded-xl border border-stone-200 bg-white p-[5px] shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)] dark:border-white/[0.16] dark:bg-[#1D1D1A] dark:shadow-[0_2px_12px_rgba(0,0,0,0.6)]`}
+            className={`${portal ? "fixed z-[60]" : `absolute top-[calc(100%+6px)] z-50 ${align === "right" ? "right-0" : "left-0"}`} min-w-[224px] whitespace-nowrap rounded-xl border border-border bg-card p-[5px] shadow-[0_1px_2px_rgba(28,25,23,0.06),0_16px_36px_-18px_rgba(28,25,23,0.5)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.6)]`}
           >
             {menuTitle != null ? (
-              <div className="-mx-[5px] mb-1 border-b border-stone-200 px-[15px] pb-2 pt-1 text-left text-xl font-semibold text-stone-900 dark:border-white/[0.16] dark:text-stone-100">
+              <div className="-mx-[5px] mb-1 border-b border-border px-[15px] pb-2 pt-1 text-left text-xl font-semibold text-foreground">
                 {typeof menuTitle === "function" ? menuTitle({ close }) : menuTitle}
               </div>
             ) : null}
             {searchable ? (
               <div className="mb-1 p-1 pb-2">
-                <div className="flex h-8 items-center gap-2 rounded-full border border-stone-200 px-2.5 text-stone-500 focus-within:border-stone-400 dark:border-white/[0.16] dark:text-stone-400">
+                <div className="flex h-8 items-center gap-2 rounded-full border border-border px-2.5 text-muted-foreground focus-within:border-muted-foreground/60">
                   <svg
                     aria-hidden
                     viewBox="0 0 24 24"
@@ -567,7 +567,7 @@ export function Dropdown({
                     }}
                     placeholder={searchPlaceholder}
                     aria-label={searchPlaceholder}
-                    className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-0 dark:text-stone-100"
+                    className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-0"
                   />
                 </div>
               </div>
@@ -582,7 +582,7 @@ export function Dropdown({
                 className={`pointer-events-none absolute inset-x-0 top-0 h-8 rounded-[7px] transition-colors ${
                   visibleItems[activeIndex]?.destructive
                     ? "bg-destructive/10"
-                    : "bg-stone-100 dark:bg-white/10"
+                    : "bg-hover"
                 }`}
                 initial={false}
                 animate={{
@@ -604,12 +604,12 @@ export function Dropdown({
                     {...getItemProps(i)}
                     className={`relative flex h-8 select-none items-center gap-2 rounded-[7px] px-2.5 text-sm ${
                       item.disabled
-                        ? "cursor-not-allowed text-stone-500/70 dark:text-stone-400/70"
+                        ? "cursor-not-allowed text-muted-foreground/70"
                         : item.destructive
                           ? "cursor-pointer text-destructive"
                         : active
-                          ? "cursor-pointer text-stone-900 dark:text-stone-100"
-                          : "cursor-pointer text-stone-700 hover:bg-stone-100 dark:text-stone-200 dark:hover:bg-white/10"
+                          ? "cursor-pointer text-foreground"
+                          : "cursor-pointer text-foreground hover:bg-hover"
                     }`}
                   >
                     {item.icon ? (
@@ -625,7 +625,7 @@ export function Dropdown({
                     {item.hint || picked ? (
                       <span className="ml-auto flex shrink-0 items-center gap-2">
                         {item.hint ? (
-                          <span className="text-[10.5px] tabular-nums text-stone-500 dark:text-stone-400">
+                          <span className="text-[10.5px] tabular-nums text-muted-foreground">
                             {item.hint}
                           </span>
                         ) : null}
@@ -658,7 +658,7 @@ export function Dropdown({
               {visibleItems.length === 0 && (
                 <li
                   role="presentation"
-                  className="flex h-8 items-center justify-between gap-3 px-2.5 text-sm text-muted-foreground dark:text-stone-400"
+                  className="flex h-8 items-center justify-between gap-3 px-2.5 text-sm text-muted-foreground"
                 >
                   <span>{emptyLabel}</span>
                   {searchable && searchQuery && (

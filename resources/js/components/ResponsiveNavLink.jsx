@@ -12,7 +12,7 @@ export default function ResponsiveNavLink({
             className={`flex w-full items-start border-l-4 py-2 pe-4 ps-3 ${
                 active
                     ? 'border-primary bg-primary/10 text-primary focus-visible:border-primary focus-visible:bg-primary/20 focus-visible:text-primary'
-                    : 'border-transparent text-gray-600 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800 focus-visible:border-gray-300 focus-visible:bg-gray-50 focus-visible:text-gray-800 dark:text-stone-400 dark:hover:border-stone-600 dark:hover:bg-white/5 dark:hover:text-stone-100 dark:focus-visible:border-stone-600 dark:focus-visible:bg-white/5 dark:focus-visible:text-stone-100'
+                    : 'border-transparent text-muted-foreground hover:border-border hover:bg-hover hover:text-foreground focus-visible:border-border focus-visible:bg-hover focus-visible:text-foreground'
             } text-base font-medium transition duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset ${className}`}
         >
             {children}

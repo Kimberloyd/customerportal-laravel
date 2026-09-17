@@ -223,7 +223,7 @@ export default function PullToRefresh({ children }) {
                     animate={{ rotate: refreshing || reducedMotion ? 0 : progress * 360 }}
                     transition={dragging ? { duration: 0 } : RELEASE_SPRING}
                     className={`mt-4 grid h-8 w-8 shrink-0 place-items-center rounded-full border bg-white shadow-md dark:bg-[#1D1D1A] ${
-                        armed || refreshing ? 'border-primary text-primary' : 'border-gray-200 text-gray-500 dark:border-white/15 dark:text-gray-400'
+                        armed || refreshing ? 'border-primary text-primary' : 'border-border text-muted-foreground'
                     }`}
                 >
                     <RefreshCw aria-hidden="true" className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />

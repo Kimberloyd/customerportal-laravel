@@ -214,7 +214,7 @@ function RowAction({
           initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.75 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={ITEM_TRANSITION}
-          className="grid size-9 shrink-0 place-items-center rounded-xl text-emerald-600 dark:text-emerald-400"
+          className="grid size-9 shrink-0 place-items-center rounded-xl text-success"
         >
           <Check className="size-4" />
         </motion.span>
@@ -554,7 +554,7 @@ function AttachmentRow({
       aria-valuemin={0}
       aria-valuemax={100}
       aria-label={`Uploading ${item.name}`}
-      className="pointer-events-none absolute inset-0 -z-10 origin-left bg-emerald-400/25 dark:bg-emerald-500/20"
+      className="pointer-events-none absolute inset-0 -z-10 origin-left bg-success/20"
       initial={{ opacity: 1, scaleX: 0 }}
       animate={{ opacity: 1, scaleX: progressFraction }}
       exit={reduce ? undefined : { opacity: 0 }}

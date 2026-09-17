@@ -237,7 +237,7 @@ export function Accordion({
   return (
     <div
       onPointerLeave={() => setHoveredId(null)}
-      className={`divide-y divide-stone-200 overflow-hidden rounded-xl border border-stone-200 bg-white dark:divide-white/10 dark:border-white/[0.16] dark:bg-[#1D1D1A] ${className}`}
+      className={`divide-y divide-border overflow-hidden rounded-xl border border-border bg-card ${className}`}
     >
       {items.map((item) => (
         <AccordionRow
@@ -298,15 +298,15 @@ function AccordionRow({
           <span
             className={`min-w-0 flex-1 truncate text-base font-medium transition-colors duration-150 ${
               open
-                ? "text-stone-900 dark:text-stone-50"
-                : "text-stone-800 dark:text-stone-200"
+                ? "text-foreground"
+                : "text-foreground"
             }`}
           >
             {item.title}
           </span>
 
           {item.meta ? (
-            <span className="shrink-0 text-sm tabular-nums text-stone-700 dark:text-stone-300">
+            <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
               {item.meta}
             </span>
           ) : null}
@@ -317,7 +317,7 @@ function AccordionRow({
             viewBox="0 0 256 256"
             fill="none"
             aria-hidden="true"
-            className="shrink-0 text-stone-600 dark:text-stone-300"
+            className="shrink-0 text-muted-foreground"
             initial={false}
             animate={{ rotate: open ? 180 : 0 }}
             transition={reduced ? { duration: 0 } : CHEVRON}
@@ -341,7 +341,7 @@ function AccordionRow({
         >
           <div
             {...panel}
-            className="border-t border-stone-200 bg-white shadow-[inset_0_1px_2px_rgba(28,25,23,0.05)] dark:border-white/[0.16] dark:bg-white/[0.05] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.3)]"
+            className="border-t border-border bg-card shadow-[inset_0_1px_2px_rgba(28,25,23,0.05)] dark:bg-white/[0.05] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.3)]"
             style={{
               maxHeight: maxPanelHeight,
               overflowY: "auto",
@@ -349,7 +349,7 @@ function AccordionRow({
               scrollbarGutter: "stable",
             }}
           >
-            <div className="px-4 pb-4 pt-3.5 text-base leading-relaxed text-stone-700 dark:text-stone-300">
+            <div className="px-4 pb-4 pt-3.5 text-base leading-relaxed text-muted-foreground">
               {item.content}
             </div>
           </div>

@@ -35,14 +35,14 @@ export default function ConfirmationDialog({
             children={
                 <AutoHeightReveal>
                     <div className="space-y-3 px-2 pt-2">
-                        <p className="text-sm text-stone-600 dark:text-stone-300">{description}</p>
+                        <p className="text-sm text-muted-foreground">{description}</p>
                         {requiresConfirmation ? (
                             <div className="space-y-2">
                                 <label
                                     htmlFor="confirmation-account-name"
-                                    className="block text-sm text-stone-600 dark:text-stone-400"
+                                    className="block text-sm text-muted-foreground"
                                 >
-                                    Type <strong className="font-semibold text-stone-900 dark:text-stone-100">{confirmationText}</strong> to confirm.
+                                    Type <strong className="font-semibold text-foreground">{confirmationText}</strong> to confirm.
                                 </label>
                                 <Input
                                     id="confirmation-account-name"
