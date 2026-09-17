@@ -140,19 +140,16 @@ export function suggestFieldKeyDown(field, matches, onSelect) {
     };
 }
 
-// Keeps the menu's own radius (and its items' nested radius -- outer minus
-// the p-[5px] padding, per the corner-radius-system nested formula) tied to
-// whichever radius the caller's own input field actually uses, instead of a
-// fixed rounded-xl that only matched some of them.
-const RADIUS = {
-    md: { outer: 'rounded-md', inner: 'rounded-[1px]' },
-    lg: { outer: 'rounded-lg', inner: 'rounded-[3px]' },
-    xl: { outer: 'rounded-xl', inner: 'rounded-[7px]' },
-};
+// Keeps the menu's own radius tied to whichever radius the caller's own
+// input field actually uses, instead of a fixed rounded-xl that only
+// matched some of them. No outer padding, so items sit flush against the
+// container -- overflow-y-auto already clips both axes (per spec, an
+// unset overflow-x resolves to 'auto' once overflow-y isn't 'visible'),
+// which rounds the first/last item's outer corners to match automatically
+// without needing a separate nested-radius value on the items themselves.
+const RADIUS = { md: 'rounded-md', lg: 'rounded-lg', xl: 'rounded-xl' };
 
 export function SuggestionMenu({ menuRef, position, items, activeIndex, onHover, onSelect, emptyMessage, onClear, heading, radius = 'xl' }) {
-    const { outer, inner } = RADIUS[radius] ?? RADIUS.xl;
-
     return createPortal(
         <div
             ref={menuRef}
@@ -165,7 +162,7 @@ export function SuggestionMenu({ menuRef, position, items, activeIndex, onHover,
                 width: position.width,
                 maxHeight: position.maxHeight,
             }}
-            className={`z-[60] overflow-y-auto ${outer} border border-border bg-card p-[5px]`}
+            className={`z-[60] overflow-y-auto ${RADIUS[radius] ?? RADIUS.xl} border border-border bg-card`}
         >
             {heading && items.length > 0 && (
                 <div className="px-2.5 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -194,7 +191,7 @@ export function SuggestionMenu({ menuRef, position, items, activeIndex, onHover,
                         onMouseDown={(event) => event.preventDefault()}
                         onMouseEnter={() => onHover(index)}
                         onClick={() => onSelect(item)}
-                        className={`flex w-full items-center gap-2 ${inner} px-2.5 py-1.5 text-left text-sm ${
+                        className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm ${
                             index === activeIndex
                                 ? 'bg-hover text-foreground'
                                 : 'text-foreground'
