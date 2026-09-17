@@ -128,7 +128,15 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
                 : "idle"
         }
         className={cn(
-          "relative h-11 overflow-hidden rounded-full border transition-colors duration-200",
+          // overflow-hidden clips a box's own outer box-shadow, not just its
+          // children -- with the focus ring drawn on this same element, it
+          // sliced the ring off anywhere it extended past the rounded
+          // corners instead of forming a smooth halo. Nothing inside this
+          // field actually overflows its rounded-full bounds (icons sit
+          // within the padding, the autofill fix's inset shadow already
+          // respects border-radius on its own), so there was nothing this
+          // was clipping in the first place.
+          "relative h-11 rounded-full border transition-colors duration-200",
           "border-border",
           focused && !hasError && "border-foreground/40 ring-2 ring-[#2E3192]/40",
           hasError && "border-destructive ring-2 ring-destructive/25",
