@@ -174,7 +174,18 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
             onBlur?.(event);
           }}
           className={cn(
-            "peer h-full w-full border-0 bg-transparent text-base leading-6 text-foreground caret-foreground outline-none ring-0 focus:border-0 focus:shadow-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0",
+            // rounded-[inherit]: the field wrapper's own radius varies per
+            // caller (rounded-full by default, rounded-md/lg for some
+            // instances via classNames.field) and the wrapper no longer
+            // clips its children to that shape (overflow-hidden was removed
+            // -- it clipped the wrapper's own focus ring too, not just
+            // content). Without its own matching radius, the browser
+            // autofill fix's inset box-shadow -- painted on this bare
+            // <input>, which has no radius of its own -- pokes square
+            // corners out past the wrapper's rounded edge instead of
+            // following it. Inheriting keeps it correct for every caller
+            // automatically instead of hardcoding one radius value here.
+            "peer h-full w-full rounded-[inherit] border-0 bg-transparent text-base leading-6 text-foreground caret-foreground outline-none ring-0 focus:border-0 focus:shadow-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0",
             "placeholder:text-muted-foreground/60",
             leftIcon ? "pl-10" : "pl-3.5",
             rightSlot || success ? "pr-10" : "pr-3.5",
