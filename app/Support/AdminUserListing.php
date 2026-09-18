@@ -4,6 +4,8 @@ namespace App\Support;
 
 use App\Models\Customer;
 use App\Models\User;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
 final class AdminUserListing
@@ -17,12 +19,13 @@ final class AdminUserListing
 
     /**
      * @param  array<string, mixed>  $query
-     * @return array{users: mixed, filters: array{search: string, role: string, retention_days: int}, roleLabels: array<string, string>}
+     * @return array{customers: mixed, staff: mixed, filters: array{search: string, retention_days: int}, roleLabels: array<string, string>}
      */
     public function get(array $query): array
     {
         return [
-            'users' => $this->users($query),
+            'customers' => $this->customerUsers($query),
+            'staff' => $this->staffUsers($query),
             'filters' => $this->filters($query),
             'roleLabels' => self::ROLE_LABELS,
         ];
@@ -30,31 +33,49 @@ final class AdminUserListing
 
     /**
      * @param  array<string, mixed>  $query
-     * @return array{search: string, role: string, retention_days: int}
+     * @return array{search: string, retention_days: int}
      */
     public function filters(array $query): array
     {
-        $search = trim((string) ($query['search'] ?? ''));
-        $role = strtolower(trim((string) ($query['role'] ?? 'all'))) ?: 'all';
-        if (! array_key_exists($role, self::ROLE_LABELS)) {
-            $role = 'all';
-        }
-
         return [
-            'search' => $search,
-            'role' => $role,
+            'search' => trim((string) ($query['search'] ?? '')),
             'retention_days' => max(1, (int) config('account-deletion.retention_days')),
         ];
     }
 
     /**
+     * The Accounts tab shows customer-role and staff-role (admin/office/
+     * agent) accounts as two separate tables rather than one list an admin
+     * has to filter by role -- each paginates independently (distinct page
+     * query-string keys) so paging through one doesn't reset the other.
+     *
      * @param  array<string, mixed>  $query
      */
-    public function users(array $query)
+    public function customerUsers(array $query): LengthAwarePaginator
     {
-        $filters = $this->filters($query);
-        $search = $filters['search'];
-        $role = $filters['role'];
+        return $this->paginate(
+            $this->baseQuery($query)->where('role', 'customer'),
+            'customer_page',
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $query
+     */
+    public function staffUsers(array $query): LengthAwarePaginator
+    {
+        return $this->paginate(
+            $this->baseQuery($query)->where('role', '!=', 'customer'),
+            'staff_page',
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $query
+     */
+    private function baseQuery(array $query): Builder
+    {
+        $search = $this->filters($query)['search'];
 
         // Pending-deletion accounts stay visible to administrators during the
         // retention window so the deletion can be cancelled before purge.
@@ -68,18 +89,16 @@ final class AdminUserListing
             });
         }
 
-        if ($role !== 'all') {
-            $usersQuery->where('role', $role);
-        }
+        return $usersQuery->select([
+            'id', 'public_id', 'full_name', 'email', 'phone', 'role', 'is_active',
+            'deleted_at', 'deactivated_at', 'purge_after',
+        ]);
+    }
 
-        $users = $usersQuery
-            ->select([
-                'id', 'public_id', 'full_name', 'email', 'phone', 'role', 'is_active',
-                'deleted_at', 'deactivated_at', 'purge_after',
-            ])
-            ->orderBy('full_name')
-            ->paginate(10)
-            ->withQueryString();
+    private function paginate(Builder $usersQuery, string $pageName): LengthAwarePaginator
+    {
+        $users = $usersQuery->orderBy('full_name')->paginate(10, ['*'], $pageName)->withQueryString();
+
         $userIds = collect($users->items())->pluck('id');
         $linkedCustomers = Customer::whereIn('user_id', $userIds)
             ->get(['id', 'user_id', 'company_name'])

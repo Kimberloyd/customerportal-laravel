@@ -16,7 +16,44 @@ const HORIZONTAL_SCROLLBAR_HEIGHT = 20;
 const TABLE_VIEWPORT_HEIGHT =
     (PAGE_SIZE + 1) * TABLE_ROW_HEIGHT + HORIZONTAL_SCROLLBAR_HEIGHT;
 
-export function AccountsPanel({ users = { data: [], last_page: 1, current_page: 1 }, filters, roleLabels = {}, filterRouteName, filterExtraParams = {}, onEdit, onResetPassword, loading = false }) {
+const EMPTY_PAGE = { data: [], last_page: 1, current_page: 1 };
+
+// One table + its own pagination -- shared by the Customer accounts and
+// Staff accounts sections below, which page independently of each other.
+function AccountsTable({ title, description, page, columns, loading, emptyState, onPageChange, pageLabel }) {
+    return (
+        <div className="space-y-3">
+            <div>
+                <h3 className="type-section-heading text-foreground">{title}</h3>
+                <p className="text-sm text-muted-foreground">{description}</p>
+            </div>
+            <Table
+                data={page.data}
+                columns={columns}
+                getRowId={(user) => String(user.id)}
+                className="[&>div]:!overflow-x-auto [&>div]:!overflow-y-hidden"
+                rowHeight={TABLE_ROW_HEIGHT}
+                height={TABLE_VIEWPORT_HEIGHT}
+                loading={loading}
+                resizable
+                emptyState={emptyState}
+                emptyStateHeight={PAGE_SIZE * TABLE_ROW_HEIGHT}
+            />
+            {page.last_page > 1 && (
+                <div className="flex justify-end">
+                    <Pagination
+                        count={page.last_page}
+                        page={page.current_page}
+                        onPageChange={onPageChange}
+                        label={pageLabel}
+                    />
+                </div>
+            )}
+        </div>
+    );
+}
+
+export function AccountsPanel({ customerUsers = EMPTY_PAGE, staffUsers = EMPTY_PAGE, filters, roleLabels = {}, filterRouteName, filterExtraParams = {}, onEdit, onResetPassword, loading = false }) {
     const [search, setSearch] = useState(filters.search);
     const [pendingAction, setPendingAction] = useState(null);
     const [tableLoading, setTableLoading] = useState(false);
@@ -27,7 +64,7 @@ export function AccountsPanel({ users = { data: [], last_page: 1, current_page: 
 
         router.get(
             route(filterRouteName),
-            { search, role: filters.role, ...filterExtraParams, ...overrides },
+            { search, ...filterExtraParams, ...overrides },
             {
                 preserveState: true,
                 preserveScroll: true,
@@ -48,7 +85,7 @@ export function AccountsPanel({ users = { data: [], last_page: 1, current_page: 
             return;
         }
 
-        const timeout = setTimeout(() => applyFilters({ search, page: 1 }), 400);
+        const timeout = setTimeout(() => applyFilters({ search, customer_page: 1, staff_page: 1 }), 400);
         return () => clearTimeout(timeout);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [search]);
@@ -204,7 +241,7 @@ export function AccountsPanel({ users = { data: [], last_page: 1, current_page: 
     );
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
             <div className="flex flex-wrap items-center justify-center bg-background">
                 <Input
                     type="text"
@@ -221,27 +258,27 @@ export function AccountsPanel({ users = { data: [], last_page: 1, current_page: 
                 />
             </div>
 
-            <Table
-                data={users.data}
+            <AccountsTable
+                title="Customer accounts"
+                description="Login accounts linked to a customer company."
+                page={customerUsers}
                 columns={columns}
-                getRowId={(user) => String(user.id)}
-                className="[&>div]:!overflow-x-auto [&>div]:!overflow-y-hidden"
-                rowHeight={TABLE_ROW_HEIGHT}
-                height={TABLE_VIEWPORT_HEIGHT}
                 loading={loading || tableLoading}
-                resizable
-                emptyState="No accounts found. Try a different search or add an account."
-                emptyStateHeight={PAGE_SIZE * TABLE_ROW_HEIGHT}
+                emptyState="No customer accounts found. Try a different search."
+                onPageChange={(page) => applyFilters({ customer_page: page })}
+                pageLabel="Customer accounts pagination"
             />
 
-            <div className="flex justify-end">
-                <Pagination
-                    count={users.last_page}
-                    page={users.current_page}
-                    onPageChange={(page) => applyFilters({ page })}
-                    label="Accounts pagination"
-                />
-            </div>
+            <AccountsTable
+                title="Staff accounts"
+                description="Admin, office, and agent accounts."
+                page={staffUsers}
+                columns={columns}
+                loading={loading || tableLoading}
+                emptyState="No staff accounts found. Try a different search or add an account."
+                onPageChange={(page) => applyFilters({ staff_page: page })}
+                pageLabel="Staff accounts pagination"
+            />
 
             <ConfirmationDialog
                 open={pendingAction !== null}

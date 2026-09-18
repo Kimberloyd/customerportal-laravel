@@ -12,7 +12,7 @@ import { useState } from 'react';
 
 const number = new Intl.NumberFormat('en-PH');
 
-export default function Dashboard({ activeTab, products, customers, users, filters, roleLabels, accountForm, teams, agents, summary }) {
+export default function Dashboard({ activeTab, products, customers, customerUsers, staffUsers, filters, roleLabels, accountForm, teams, agents, summary }) {
     const [userModal, setUserModal] = useState({ open: false, user: null });
     const [resettingUser, setResettingUser] = useState(null);
     const summaryMetrics = [
@@ -125,7 +125,7 @@ export default function Dashboard({ activeTab, products, customers, users, filte
                     )}
                     {activeTab === 'accounts' && (
                         <Deferred
-                            data="users"
+                            data={['customerUsers', 'staffUsers']}
                             fallback={(
                                 <AccountsPanel
                                     filters={filters}
@@ -136,7 +136,8 @@ export default function Dashboard({ activeTab, products, customers, users, filte
                             )}
                         >
                             <AccountsPanel
-                                users={users}
+                                customerUsers={customerUsers}
+                                staffUsers={staffUsers}
                                 filters={filters}
                                 roleLabels={roleLabels}
                                 filterRouteName="admin.dashboard"

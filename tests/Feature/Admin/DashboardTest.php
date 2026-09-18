@@ -65,24 +65,31 @@ class DashboardTest extends TestCase
             'email' => 'other-account@example.com',
             'role' => 'agent',
         ]);
+        User::factory()->create([
+            'full_name' => 'Jane Customer',
+            'email' => 'jane-customer@example.com',
+            'role' => 'customer',
+        ]);
 
         $response = $this->actingAsUser($admin)
-            ->get('/admin?tab=accounts&search=jane&role=agent');
+            ->get('/admin?tab=accounts&search=jane');
 
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
             ->where('activeTab', 'accounts')
             ->where('filters.search', 'jane')
-            ->where('filters.role', 'agent')
             ->has('accountForm.customers')
-            ->missing('users')
+            ->missing('customerUsers')
+            ->missing('staffUsers')
             ->loadDeferredProps('accounts', fn ($deferred) => $deferred
-                ->has('users.data', 1)
-                ->where('users.data.0.email', 'jane-account@example.com')
-                ->where('users.data.0.phone', '5551234567')
-                ->where('users.data.0.linked_customer_id', null)
-                ->where('users.data.0.is_self', false)
-                ->missing('users.data.0.password_hash')));
+                ->has('staffUsers.data', 1)
+                ->where('staffUsers.data.0.email', 'jane-account@example.com')
+                ->where('staffUsers.data.0.phone', '5551234567')
+                ->where('staffUsers.data.0.linked_customer_id', null)
+                ->where('staffUsers.data.0.is_self', false)
+                ->missing('staffUsers.data.0.password_hash')
+                ->has('customerUsers.data', 1)
+                ->where('customerUsers.data.0.email', 'jane-customer@example.com')));
     }
 
     public function test_admin_defers_the_customers_table(): void

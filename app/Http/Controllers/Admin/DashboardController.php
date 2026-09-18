@@ -93,8 +93,12 @@ class DashboardController extends Controller
     private function listAccounts(array $query): array
     {
         return [
-            'users' => Inertia::defer(
-                fn () => $this->userListing->users($query),
+            'customerUsers' => Inertia::defer(
+                fn () => $this->userListing->customerUsers($query),
+                'accounts',
+            ),
+            'staffUsers' => Inertia::defer(
+                fn () => $this->userListing->staffUsers($query),
                 'accounts',
             ),
             'filters' => $this->userListing->filters($query),
