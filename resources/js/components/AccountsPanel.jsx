@@ -240,6 +240,13 @@ export function AccountsPanel({ customerUsers = EMPTY_PAGE, staffUsers = EMPTY_P
         [onEdit, onResetPassword, roleLabels],
     );
 
+    // Staff accounts (admin/office/agent) never have a linked customer --
+    // the column would just read "-" on every row.
+    const staffColumns = useMemo(
+        () => columns.filter((column) => column.key !== 'linked_customer_name'),
+        [columns],
+    );
+
     return (
         <div className="space-y-8">
             <div className="flex flex-wrap items-center justify-center bg-background">
@@ -273,7 +280,7 @@ export function AccountsPanel({ customerUsers = EMPTY_PAGE, staffUsers = EMPTY_P
                 title="Staff accounts"
                 description="Admin, office, and agent accounts."
                 page={staffUsers}
-                columns={columns}
+                columns={staffColumns}
                 loading={loading || tableLoading}
                 emptyState="No staff accounts found. Try a different search or add an account."
                 onPageChange={(page) => applyFilters({ staff_page: page })}
