@@ -119,13 +119,17 @@
      * of the app's own theme: the most common "dark mode leftover" for
      * text inputs, and invisible until the browser actually autofills one.
      * The 9999s transition delay keeps that fill from flashing in before
-     * the shadow paints.
+     * the shadow paints. Spread is 100px, not the commonly-copied 1000px --
+     * enough to cover any real input, but a spread that oversized breaks
+     * rounded corners on a rounded-full field (a known Chromium rendering
+     * quirk at that scale): the shadow stopped following the pill shape
+     * and left square corners instead.
      */
     input:-webkit-autofill,
     input:-webkit-autofill:hover,
     input:-webkit-autofill:focus,
     input:-webkit-autofill:active {
-        -webkit-box-shadow: 0 0 0px 1000px hsl(var(--background-hsl)) inset;
+        -webkit-box-shadow: 0 0 0px 100px hsl(var(--background-hsl)) inset;
         -webkit-text-fill-color: hsl(var(--foreground-hsl));
         caret-color: hsl(var(--foreground-hsl));
         transition: background-color 9999s ease-in-out 0s;

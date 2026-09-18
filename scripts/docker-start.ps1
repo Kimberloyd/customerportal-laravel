@@ -44,11 +44,18 @@ if (-not (Test-Path -LiteralPath $composeFile)) {
   Write-Error "Local Compose file not found: $composeFile"
 }
 
-# Port 5173 can fall inside a Windows/Hyper-V excluded port range, which
-# prevents Docker Desktop from publishing it even when no process owns it.
-# Keep the host port overridable while using a safer local default.
+# Ports can fall inside a Windows/Hyper-V excluded port range, which
+# prevents Docker Desktop from publishing them even when no process owns
+# them -- and which range is excluded changes on every reboot. Keep every
+# host port overridable while using a safer local default.
 if ([string]::IsNullOrWhiteSpace($env:VITE_HOST_PORT)) {
   $env:VITE_HOST_PORT = "5273"
+}
+if ([string]::IsNullOrWhiteSpace($env:APP_HOST_PORT)) {
+  $env:APP_HOST_PORT = "28180"
+}
+if ([string]::IsNullOrWhiteSpace($env:REVERB_HOST_PORT)) {
+  $env:REVERB_HOST_PORT = "28181"
 }
 
 docker compose -f $composeFile config --quiet
@@ -163,8 +170,8 @@ while ($true) {
 
 Write-Host ""
 Write-Host "Customer Portal is running:"
-Write-Host "  App:  http://localhost:8180"
-Write-Host "  Reverb WebSocket: ws://localhost:8181"
+Write-Host "  App:  http://localhost:$env:APP_HOST_PORT"
+Write-Host "  Reverb WebSocket: ws://localhost:$env:REVERB_HOST_PORT"
 Write-Host "  Vite: http://localhost:$env:VITE_HOST_PORT"
 Write-Host ""
 Write-Host "Logs:  docker compose -f $composeFile logs -f"
