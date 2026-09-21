@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button';
 import { useContainerBreakpoint } from '@/lib/hooks/use-container-breakpoint';
 import { useSearchSelections } from '@/hooks/useSearchSelections';
 import { useForm } from '@inertiajs/react';
-import { Minus, Plus, Search, Trash2 } from 'lucide-react';
+import { canScanBarcodes, isScanCancelled, scanBarcode } from '@/lib/barcode-scanner';
+import { Minus, Plus, ScanBarcode, Search, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 // Matches the sm breakpoint used across this app's layouts (AuthenticatedLayout
@@ -78,6 +79,7 @@ export default function CreateOrderModal({
     const productSelections = useSearchSelections('product');
     const customerField = useSuggestField(customerSelections.recent.length > 0 || Object.keys(customerSelections.popularity).length > 0);
     const productField = useSuggestField(productSelections.recent.length > 0 || Object.keys(productSelections.popularity).length > 0);
+    const [scanMessage, setScanMessage] = useState('');
     const {
         data,
         setData,
@@ -149,6 +151,7 @@ export default function CreateOrderModal({
         customerField.setOpen(false);
         productField.setQuery('');
         productField.setOpen(false);
+        setScanMessage('');
         setConfirmBulkDeleteOpen(false);
         setCurrentStep(1);
         setStepperKey((key) => key + 1);
@@ -292,6 +295,35 @@ export default function CreateOrderModal({
     };
 
     const productSuggestionsVisible = productField.visible && !productsLoading;
+
+    const scanProduct = async () => {
+        setScanMessage('');
+
+        let code;
+        try {
+            code = await scanBarcode();
+        } catch (error) {
+            if (!isScanCancelled(error)) {
+                setScanMessage("Couldn't open the camera. Allow camera access for this app in Android settings, then try again.");
+            }
+            return;
+        }
+        if (!code) return;
+
+        const scanned = code.toLowerCase();
+        const match = productItems.find((item) => String(item.product.sku ?? '').trim().toLowerCase() === scanned);
+        if (match) {
+            selectProduct(match);
+            return;
+        }
+
+        // No product uses this code as its SKU: leave it in the search box so
+        // any partial match still shows up, and say why nothing was added.
+        productField.setQuery(code);
+        productField.setActiveIndex(0);
+        productField.setOpen(true);
+        setScanMessage(`No product has the code ${code}. Search by name instead.`);
+    };
 
     const updateQuantity = (key, quantity) => {
         clearFieldError('items');
@@ -656,11 +688,13 @@ export default function CreateOrderModal({
                                 </button>
                             </div>
                         ) : (
-                            <div ref={productField.fieldRef} className="relative w-full">
+                            <div className="flex items-center gap-2">
+                            <div ref={productField.fieldRef} className="relative min-w-0 flex-1">
                                 <Input
                                     value={productField.query}
                                     disabled={productsLoading}
                                     onChange={(value) => {
+                                        setScanMessage('');
                                         productField.setQuery(value);
                                         productField.setActiveIndex(0);
                                         productField.setOpen(true);
@@ -690,7 +724,25 @@ export default function CreateOrderModal({
                                     />
                                 )}
                             </div>
+                            {canScanBarcodes() && (
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    size="icon"
+                                    aria-label="Scan a product barcode"
+                                    onClick={scanProduct}
+                                    disabled={productsLoading}
+                                >
+                                    <ScanBarcode />
+                                </Button>
+                            )}
+                            </div>
                         ))}
+                        {scanMessage && (
+                            <p role="status" className="text-xs text-muted-foreground">
+                                {scanMessage}
+                            </p>
+                        )}
                         {isEditing && canEditItems && (
                             <p className="text-xs text-muted-foreground">
                                 Search to add products. Products with delivered units cannot be removed or reduced below the delivered quantity.

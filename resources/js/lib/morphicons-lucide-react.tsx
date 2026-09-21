@@ -83,6 +83,7 @@ import {
     RefreshCw as RefreshCwIconNode,
     Rocket as RocketIconNode,
     RotateCcw as RotateCcwIconNode,
+    ScanBarcode as ScanBarcodeIconNode,
     Scaling as ScalingIconNode,
     Search as SearchIconNode,
     Settings as SettingsIconNode,
@@ -207,6 +208,7 @@ export const RectangleHorizontal = createIcon(RectangleHorizontalIconNode, 'Rect
 export const RefreshCw = createIcon(RefreshCwIconNode, 'RefreshCw');
 export const Rocket = createIcon(RocketIconNode, 'Rocket');
 export const RotateCcw = createIcon(RotateCcwIconNode, 'RotateCcw');
+export const ScanBarcode = createIcon(ScanBarcodeIconNode, 'ScanBarcode');
 export const Scaling = createIcon(ScalingIconNode, 'Scaling');
 export const Search = createIcon(SearchIconNode, 'Search');
 export const Settings = createIcon(SettingsIconNode, 'Settings');
