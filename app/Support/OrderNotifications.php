@@ -124,6 +124,8 @@ class OrderNotifications
             self::record($order, 'sms', 'failed', note: $e->getMessage());
         }
 
+        self::notifyPushSafely($order, 'submission', "Order {$order->po_number} received. We'll prepare it for fulfillment.");
+
         try {
             self::sendFacebookSummary($order);
         } catch (\Throwable $e) {
@@ -141,7 +143,7 @@ class OrderNotifications
 
     private static function deliverUpdated(PurchaseOrder $order): void
     {
-        self::notifySmsSafely(
+        self::notifyCustomerSafely(
             $order,
             'update',
             "Order {$order->po_number} was updated. View your portal for the latest details.",
@@ -150,7 +152,7 @@ class OrderNotifications
 
     private static function deliverFulfillmentUpdated(PurchaseOrder $order): void
     {
-        self::notifySmsSafely(
+        self::notifyCustomerSafely(
             $order,
             'fulfillment update',
             "Order {$order->po_number} delivery was updated. View your portal for the latest details.",
@@ -159,7 +161,7 @@ class OrderNotifications
 
     private static function deliverCompleted(PurchaseOrder $order): void
     {
-        self::notifySmsSafely(
+        self::notifyCustomerSafely(
             $order,
             'completion',
             "Order {$order->po_number} is complete. All items have been delivered.",
@@ -168,7 +170,7 @@ class OrderNotifications
 
     private static function deliverCancelled(PurchaseOrder $order): void
     {
-        self::notifySmsSafely(
+        self::notifyCustomerSafely(
             $order,
             'cancellation',
             "Order {$order->po_number} was cancelled. Contact us if this was a mistake.",
@@ -177,7 +179,7 @@ class OrderNotifications
 
     private static function deliverReceived(PurchaseOrder $order): void
     {
-        self::notifySmsSafely(
+        self::notifyCustomerSafely(
             $order,
             'receipt confirmation',
             "Order {$order->po_number} has been marked as received. Thank you.",
@@ -188,7 +190,7 @@ class OrderNotifications
     {
         [, $eventLabel, $smsBody] = self::returnCopy($order, $status);
 
-        self::notifySmsSafely($order, $eventLabel, $smsBody);
+        self::notifyCustomerSafely($order, $eventLabel, $smsBody);
     }
 
     private static function returnCopy(PurchaseOrder $order, string $status): array
@@ -228,6 +230,23 @@ class OrderNotifications
         } catch (\Throwable $e) {
             Log::error("Failed to create purchase order {$eventLabel} notification for {$order->po_number}.", ['exception' => $e]);
             self::record($order, 'portal', 'failed', note: $e->getMessage());
+        }
+    }
+
+    /** The customer's phone gets the same wording by text message and by push. */
+    private static function notifyCustomerSafely(PurchaseOrder $order, string $eventLabel, string $body): void
+    {
+        self::notifySmsSafely($order, $eventLabel, $body);
+        self::notifyPushSafely($order, $eventLabel, $body);
+    }
+
+    private static function notifyPushSafely(PurchaseOrder $order, string $eventLabel, string $body): void
+    {
+        try {
+            self::sendPush($order, $body);
+        } catch (\Throwable $e) {
+            Log::warning("Failed to send purchase order {$eventLabel} push notification for {$order->po_number}.", ['exception' => $e]);
+            self::record($order, 'push', 'failed', note: $e->getMessage());
         }
     }
 
@@ -348,6 +367,68 @@ class OrderNotifications
             self::record($order, 'sms', 'sent', recipient: $phone, externalReference: (string) $messageId);
         } else {
             self::record($order, 'sms', 'failed', recipient: $phone, note: 'Semaphore did not return a message id');
+        }
+    }
+
+    /**
+     * Pushes the customer's login account on every phone signed in to the
+     * Android app. Tapping the notification opens the order.
+     */
+    private static function sendPush(PurchaseOrder $order, string $body): void
+    {
+        if (! config('services.po_notifications.push_enabled', false)) {
+            Log::info("Push notification skipped for {$order->po_number}: feature not enabled in this environment.");
+            self::record($order, 'push', 'skipped', note: 'feature not enabled in this environment');
+
+            return;
+        }
+
+        if (! FirebaseCloudMessaging::isConfigured()) {
+            Log::info("Push notification skipped for {$order->po_number}: Firebase key not configured in this environment.");
+            self::record($order, 'push', 'skipped', note: 'Firebase key not configured in this environment');
+
+            return;
+        }
+
+        $order->loadMissing('customer.user');
+        $user = $order->customer?->user;
+
+        if (! $user || ! $user->is_active) {
+            self::record($order, 'push', 'skipped', note: 'customer has no active login account');
+
+            return;
+        }
+
+        $tokens = $user->pushTokens;
+
+        if ($tokens->isEmpty()) {
+            self::record($order, 'push', 'skipped', recipient: (string) $user->id, note: 'no phone is signed in to the app');
+
+            return;
+        }
+
+        foreach ($tokens as $token) {
+            $result = FirebaseCloudMessaging::send(
+                $token->token,
+                'Customer Portal',
+                $body,
+                ['url' => route('purchase-orders.show', $order->public_id, absolute: false)],
+            );
+
+            if ($result === FirebaseCloudMessaging::UNREGISTERED) {
+                $token->delete();
+                self::record($order, 'push', 'skipped', recipient: (string) $user->id, note: 'app was uninstalled from that phone; token removed');
+
+                continue;
+            }
+
+            self::record(
+                $order,
+                'push',
+                $result === FirebaseCloudMessaging::SENT ? 'sent' : 'failed',
+                recipient: (string) $user->id,
+                note: $result === FirebaseCloudMessaging::SENT ? null : 'Firebase did not accept the message',
+            );
         }
     }
 

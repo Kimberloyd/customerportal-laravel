@@ -47,6 +47,16 @@ return [
         // administrator can turn agent texts on/off independently of
         // customer texts -- see OrderNotifications::sendAgentSms().
         'agent_sms_enabled' => env('PO_NOTIFICATIONS_AGENT_SMS_ENABLED', false),
+        // Phone push notifications for the Android app. Also needs the
+        // Firebase key below; stays off until both exist.
+        'push_enabled' => env('PO_NOTIFICATIONS_PUSH_ENABLED', false),
+    ],
+
+    // See App\Support\FirebaseCloudMessaging. A Firebase service-account key
+    // (JSON) downloaded from the Firebase console. The default sits on the
+    // persistent storage volume, next to the app's other uploaded files.
+    'fcm' => [
+        'credentials_path' => env('FCM_CREDENTIALS_PATH', storage_path('app/private/fcm/service-account.json')),
     ],
 
     // See App\Support\SemaphoreSms. Used by OrderNotifications to text the

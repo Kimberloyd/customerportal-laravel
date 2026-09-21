@@ -115,6 +115,11 @@ class User extends Authenticatable
         return $this->hasMany(Customer::class, 'assigned_employee_id');
     }
 
+    public function pushTokens(): HasMany
+    {
+        return $this->hasMany(PushToken::class);
+    }
+
     public function teams(): BelongsToMany
     {
         return $this->belongsToMany(Team::class, 'team_members')->withTimestamps();

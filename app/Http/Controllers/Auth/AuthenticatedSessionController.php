@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\PushToken;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -49,6 +50,9 @@ class AuthenticatedSessionController extends Controller
 
     public function destroy(Request $request): RedirectResponse
     {
+        // Stop this phone's notifications for the account being signed out.
+        PushToken::where('session_id', $request->session()->getId())->delete();
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
@@ -68,6 +72,9 @@ class AuthenticatedSessionController extends Controller
         $user = $request->user();
         $user->session_version = $user->session_version + 1;
         $user->save();
+
+        // "Sign out all devices" includes every phone receiving notifications.
+        $user->pushTokens()->delete();
 
         Auth::guard('web')->logout();
 

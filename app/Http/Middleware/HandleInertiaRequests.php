@@ -34,6 +34,12 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            // Whether the Android app should register for push notifications.
+            // Turned on only once the app build has its Firebase config and
+            // the server has its Firebase key, so no phone tries earlier.
+            'push' => [
+                'enabled' => (bool) config('services.po_notifications.push_enabled', false),
+            ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),

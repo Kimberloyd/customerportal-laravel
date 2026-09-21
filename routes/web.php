@@ -15,6 +15,7 @@ use App\Http\Controllers\MobileAppController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProductReturnController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PushTokenController;
 use App\Http\Controllers\PublicConversationController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\SavedOrderFilterController;
@@ -35,6 +36,11 @@ Route::get('/health/ready', [HealthController::class, 'ready'])->name('health.re
 Route::prefix('mobile-app')->name('mobile-app.')->group(function () {
     Route::get('/version', [MobileAppController::class, 'version'])->middleware('throttle:30,1')->name('version');
     Route::get('/download', [MobileAppController::class, 'download'])->middleware('throttle:10,1')->name('download');
+});
+
+Route::middleware('auth')->prefix('push-tokens')->name('push-tokens.')->group(function () {
+    Route::post('/', [PushTokenController::class, 'store'])->middleware('throttle:30,1')->name('store');
+    Route::delete('/', [PushTokenController::class, 'destroy'])->middleware('throttle:30,1')->name('destroy');
 });
 
 Route::get('/dashboard', [DashboardController::class, 'index'])

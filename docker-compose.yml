@@ -112,6 +112,7 @@ services:
       PO_NOTIFICATIONS_EMAIL_ENABLED: ${PO_NOTIFICATIONS_EMAIL_ENABLED:-false}
       PO_NOTIFICATIONS_FACEBOOK_ENABLED: ${PO_NOTIFICATIONS_FACEBOOK_ENABLED:-false}
       PO_NOTIFICATIONS_SMS_ENABLED: ${PO_NOTIFICATIONS_SMS_ENABLED:-false}
+      PO_NOTIFICATIONS_PUSH_ENABLED: ${PO_NOTIFICATIONS_PUSH_ENABLED:-false}
       PUBLIC_CONVERSATION_LINK_TTL_HOURS: ${PUBLIC_CONVERSATION_LINK_TTL_HOURS:-720}
       PUBLIC_CONVERSATION_REPLY_MAX_LENGTH: ${PUBLIC_CONVERSATION_REPLY_MAX_LENGTH:-2000}
       PUBLIC_CONVERSATION_REPLY_WINDOW_SECONDS: ${PUBLIC_CONVERSATION_REPLY_WINDOW_SECONDS:-900}
@@ -234,8 +235,13 @@ services:
       # Not `file` -- same reason as the `app` service above.
       CACHE_STORE: redis
       PO_NOTIFICATIONS_SMS_ENABLED: ${PO_NOTIFICATIONS_SMS_ENABLED:-false}
+      PO_NOTIFICATIONS_PUSH_ENABLED: ${PO_NOTIFICATIONS_PUSH_ENABLED:-false}
       SEMAPHORE_API_KEY: ${SEMAPHORE_API_KEY:-}
       SEMAPHORE_SENDER_NAME: ${SEMAPHORE_SENDER_NAME:-}
+    volumes:
+      # Read-only: the worker only needs to read the Firebase key at
+      # storage/app/private/fcm/service-account.json to send push notifications.
+      - laravel_storage:/app/storage/app/private:ro
     command: ["php", "artisan", "queue:work", "--queue=monitoring,broadcasts,notifications", "--sleep=1", "--tries=4", "--timeout=60"]
     depends_on:
       app:

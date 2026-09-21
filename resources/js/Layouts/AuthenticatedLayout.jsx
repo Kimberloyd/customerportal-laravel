@@ -1,5 +1,6 @@
 import echo from '@/echo';
 import FlashBanner from '@/components/FlashBanner';
+import PushRegistration from '@/components/PushRegistration';
 import PullToRefresh from '@/components/PullToRefresh';
 import ResponsiveNavLink from '@/components/ResponsiveNavLink';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -989,6 +990,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
 
             <PullToRefresh>
                 <FlashBanner />
+                <PushRegistration />
                 {banner}
 
                 {header && (
