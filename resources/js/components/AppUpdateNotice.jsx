@@ -8,13 +8,31 @@ const AppUpdate = registerPlugin('AppUpdate');
 
 const ALLOW_INSTALLS_MESSAGE =
     'Turn on "Allow from this source" for this app in the screen that just opened, then come back and tap Update now.';
-const DOWNLOAD_FAILED_MESSAGE = "The update couldn't be downloaded. Check your connection and try again.";
+
+// The app reports why a download failed (see AppUpdatePlugin), so the message
+// can say what to do about it. Older builds report nothing, hence the default.
+function downloadFailedMessage(error) {
+    const { reason, status } = error?.data ?? {};
+
+    if (reason === 'server') {
+        return `The update server isn't responding right now${status ? ` (error ${status})` : ''}. Try again in a minute.`;
+    }
+    if (reason === 'storage') {
+        return "There isn't enough free space on this phone. Free some space, then try again.";
+    }
+    if (reason === 'network') {
+        return 'The download was interrupted. Check your connection and try again.';
+    }
+
+    return "The update couldn't be downloaded. Check your connection and try again.";
+}
 
 export default function AppUpdateNotice() {
     const { update, open, dismiss } = useAppUpdate();
     const [downloading, setDownloading] = useState(false);
     const [percent, setPercent] = useState(null);
     const [message, setMessage] = useState('');
+    const [downloadFailed, setDownloadFailed] = useState(false);
     const [copied, setCopied] = useState(false);
 
     if (!update) return null;
@@ -25,6 +43,7 @@ export default function AppUpdateNotice() {
 
     const installUpdate = async () => {
         setMessage('');
+        setDownloadFailed(false);
         setPercent(null);
         setDownloading(true);
 
@@ -32,7 +51,12 @@ export default function AppUpdateNotice() {
         try {
             await AppUpdate.downloadAndInstall({ url: update.downloadUrl });
         } catch (error) {
-            setMessage(error?.code === 'INSTALL_PERMISSION_REQUIRED' ? ALLOW_INSTALLS_MESSAGE : DOWNLOAD_FAILED_MESSAGE);
+            if (error?.code === 'INSTALL_PERMISSION_REQUIRED') {
+                setMessage(ALLOW_INSTALLS_MESSAGE);
+            } else {
+                setMessage(downloadFailedMessage(error));
+                setDownloadFailed(true);
+            }
         } finally {
             progress.remove();
             setDownloading(false);
@@ -111,6 +135,24 @@ export default function AppUpdateNotice() {
                             </div>
                         )}
                         {message && <p className="text-destructive">{message}</p>}
+                        {downloadFailed && (
+                            <div className="space-y-2">
+                                <p>
+                                    Still not working? Download it in your phone&rsquo;s browser instead, then open the
+                                    file to install.
+                                </p>
+                                <p className="select-all break-all rounded-md border border-border bg-muted/40 px-3 py-2 text-foreground">
+                                    {update.downloadUrl}
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={copyLink}
+                                    className="font-medium text-primary underline underline-offset-2"
+                                >
+                                    {copied ? 'Link copied' : 'Copy download link'}
+                                </button>
+                            </div>
+                        )}
                     </>
                 ) : (
                     <>
