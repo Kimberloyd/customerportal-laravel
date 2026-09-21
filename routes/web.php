@@ -11,6 +11,7 @@ use App\Http\Controllers\FacebookWebhookController;
 use App\Http\Controllers\FaqController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\MessageController;
+use App\Http\Controllers\MobileAppController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProductReturnController;
 use App\Http\Controllers\ProfileController;
@@ -29,6 +30,11 @@ use Illuminate\Support\Facades\Route;
 Route::redirect('/', '/dashboard');
 
 Route::get('/health/ready', [HealthController::class, 'ready'])->name('health.ready');
+
+Route::prefix('app')->name('mobile-app.')->group(function () {
+    Route::get('/version', [MobileAppController::class, 'version'])->middleware('throttle:30,1')->name('version');
+    Route::get('/download', [MobileAppController::class, 'download'])->middleware('throttle:10,1')->name('download');
+});
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware('auth')

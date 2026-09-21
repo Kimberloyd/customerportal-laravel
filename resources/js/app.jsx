@@ -1,6 +1,7 @@
 import '../css/app.css';
 import './bootstrap';
 
+import AppUpdateNotice from '@/components/AppUpdateNotice';
 import ChatWidget from '@/components/messaging/ChatWidget';
 import { ChatWidgetProvider } from '@/lib/chat-widget-context';
 import { ThemeProvider } from '@/lib/theme-context';
@@ -28,6 +29,7 @@ createInertiaApp({
                 <ChatWidgetProvider>
                     <App {...props} />
                     <ChatWidget />
+                    <AppUpdateNotice />
                 </ChatWidgetProvider>
             </ThemeProvider>,
         );
