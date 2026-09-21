@@ -4,6 +4,7 @@ import { AnimatedBadge } from '@/components/motion/animated-badge';
 import { Input } from '@/components/motion/input';
 import { Table } from '@/components/motion/table';
 import ConfirmationDialog from '@/components/ConfirmationDialog';
+import { canShareDownloads, isShareCancelled, shareTextDownload } from '@/lib/native-download';
 import { router } from '@inertiajs/react';
 import { Download, KeyRound, MoreHorizontal, Pencil, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { UserCheck, UserRoundX } from 'lucide';
@@ -57,6 +58,7 @@ export function AccountsPanel({ customerUsers = EMPTY_PAGE, staffUsers = EMPTY_P
     const [search, setSearch] = useState(filters.search);
     const [pendingAction, setPendingAction] = useState(null);
     const [tableLoading, setTableLoading] = useState(false);
+    const [exportError, setExportError] = useState('');
     const latestFilterVisit = useRef(0);
 
     const applyFilters = (overrides = {}) => {
@@ -105,6 +107,23 @@ export function AccountsPanel({ customerUsers = EMPTY_PAGE, staffUsers = EMPTY_P
 
     const restoreUser = (user) => {
         setPendingAction({ type: 'restore', user });
+    };
+
+    const downloadAccountData = async (user) => {
+        const url = route('admin.users.data-export', user.public_id);
+        if (!canShareDownloads()) {
+            window.location.assign(url);
+            return;
+        }
+
+        setExportError('');
+        try {
+            await shareTextDownload(url, `account-data-${user.public_id}.json`);
+        } catch (error) {
+            if (!isShareCancelled(error)) {
+                setExportError("The account data couldn't be prepared. Check your connection and try again.");
+            }
+        }
     };
 
     const confirmPendingAction = () => {
@@ -173,14 +192,14 @@ export function AccountsPanel({ customerUsers = EMPTY_PAGE, staffUsers = EMPTY_P
                             value: 'export',
                             label: 'Download data',
                             icon: <Download />,
-                            onSelect: () => window.location.assign(route('admin.users.data-export', user.public_id)),
+                            onSelect: () => downloadAccountData(user),
                         },
                     ] : [
                         {
                             value: 'export',
                             label: 'Download data',
                             icon: <Download />,
-                            onSelect: () => window.location.assign(route('admin.users.data-export', user.public_id)),
+                            onSelect: () => downloadAccountData(user),
                         },
                         {
                             value: 'edit',
@@ -264,6 +283,12 @@ export function AccountsPanel({ customerUsers = EMPTY_PAGE, staffUsers = EMPTY_P
                     }}
                 />
             </div>
+
+            {exportError && (
+                <p role="alert" className="text-center text-sm text-destructive">
+                    {exportError}
+                </p>
+            )}
 
             <AccountsTable
                 title="Customer accounts"
