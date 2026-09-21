@@ -131,6 +131,45 @@ class PushNotificationsTest extends TestCase
         $this->assertSame(2, PurchaseOrderNotification::where('channel', 'push')->where('status', 'sent')->count());
     }
 
+    public function test_a_new_order_pushes_every_active_staff_phone_but_not_inactive_accounts(): void
+    {
+        [$order, $customerUser] = $this->orderWithCustomerUser();
+        $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+        $agent = User::factory()->create(['role' => 'agent', 'is_active' => true]);
+        $inactive = User::factory()->create(['role' => 'office', 'is_active' => false]);
+        PushToken::create(['user_id' => $admin->id, 'token' => 'admin-phone']);
+        PushToken::create(['user_id' => $agent->id, 'token' => 'agent-phone']);
+        PushToken::create(['user_id' => $inactive->id, 'token' => 'inactive-phone']);
+        PushToken::create(['user_id' => $customerUser->id, 'token' => 'customer-phone']);
+        $this->fakeFirebase();
+
+        OrderNotifications::deliver($order, 'submitted');
+
+        foreach (['admin-phone', 'agent-phone'] as $phone) {
+            Http::assertSent(fn ($request) => ($request['message']['token'] ?? null) === $phone
+                && $request['message']['notification']['body'] === "New order {$order->po_number} from Acme Co."
+                && $request['message']['data']['url'] === '/orders/'.$order->public_id);
+        }
+        Http::assertNotSent(fn ($request) => ($request['message']['token'] ?? null) === 'inactive-phone');
+        // The customer is told about their own order, not the staff wording.
+        Http::assertSent(fn ($request) => ($request['message']['token'] ?? null) === 'customer-phone'
+            && str_contains($request['message']['notification']['body'], 'received'));
+        $this->assertSame(2, PurchaseOrderNotification::where('channel', 'push_staff')->where('status', 'sent')->count());
+    }
+
+    public function test_staff_are_not_pushed_for_later_order_updates(): void
+    {
+        [$order] = $this->orderWithCustomerUser();
+        $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+        PushToken::create(['user_id' => $admin->id, 'token' => 'admin-phone']);
+        $this->fakeFirebase();
+
+        OrderNotifications::deliver($order, 'updated');
+
+        Http::assertNotSent(fn ($request) => ($request['message']['token'] ?? null) === 'admin-phone');
+        $this->assertSame(0, PurchaseOrderNotification::where('channel', 'push_staff')->count());
+    }
+
     public function test_a_phone_that_uninstalled_the_app_is_forgotten(): void
     {
         [$order, $user] = $this->orderWithCustomerUser();

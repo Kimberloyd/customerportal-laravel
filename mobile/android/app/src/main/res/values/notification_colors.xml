@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The portal's primary colour (hsl 238 52% 38%), used to tint the status-bar icon. -->
+    <color name="notification_accent">#2E3192</color>
+</resources>

@@ -8,6 +8,7 @@ use App\Models\AppSetting;
 use App\Models\CustomerMessage;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderNotification;
+use App\Models\PushToken;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -125,6 +126,7 @@ class OrderNotifications
         }
 
         self::notifyPushSafely($order, 'submission', "Order {$order->po_number} received. We'll prepare it for fulfillment.");
+        self::notifyStaffPushSafely($order);
 
         try {
             self::sendFacebookSummary($order);
@@ -247,6 +249,16 @@ class OrderNotifications
         } catch (\Throwable $e) {
             Log::warning("Failed to send purchase order {$eventLabel} push notification for {$order->po_number}.", ['exception' => $e]);
             self::record($order, 'push', 'failed', note: $e->getMessage());
+        }
+    }
+
+    private static function notifyStaffPushSafely(PurchaseOrder $order): void
+    {
+        try {
+            self::sendStaffPush($order);
+        } catch (\Throwable $e) {
+            Log::warning("Failed to send staff push notification for {$order->po_number}.", ['exception' => $e]);
+            self::record($order, 'push_staff', 'failed', note: $e->getMessage());
         }
     }
 
@@ -376,17 +388,7 @@ class OrderNotifications
      */
     private static function sendPush(PurchaseOrder $order, string $body): void
     {
-        if (! config('services.po_notifications.push_enabled', false)) {
-            Log::info("Push notification skipped for {$order->po_number}: feature not enabled in this environment.");
-            self::record($order, 'push', 'skipped', note: 'feature not enabled in this environment');
-
-            return;
-        }
-
-        if (! FirebaseCloudMessaging::isConfigured()) {
-            Log::info("Push notification skipped for {$order->po_number}: Firebase key not configured in this environment.");
-            self::record($order, 'push', 'skipped', note: 'Firebase key not configured in this environment');
-
+        if (! self::pushReady($order, 'push')) {
             return;
         }
 
@@ -407,6 +409,67 @@ class OrderNotifications
             return;
         }
 
+        self::pushToTokens($order, 'push', $tokens, $body);
+    }
+
+    /**
+     * Tells staff a new order arrived. Staff scope here is the same as
+     * everywhere else in the app (see CustomerAccess): every active admin,
+     * office and agent account sees every order, so every one of their
+     * phones is notified. Recorded under its own channel so the audit trail
+     * tells customer pushes from staff pushes.
+     */
+    private static function sendStaffPush(PurchaseOrder $order): void
+    {
+        if (! self::pushReady($order, 'push_staff')) {
+            return;
+        }
+
+        $order->loadMissing('customer');
+        $tokens = PushToken::whereIn('user_id', CustomerAccess::staffRecipientIdsForCustomer($order->customer_id))->get();
+
+        if ($tokens->isEmpty()) {
+            self::record($order, 'push_staff', 'skipped', note: 'no staff phone is signed in to the app');
+
+            return;
+        }
+
+        self::pushToTokens(
+            $order,
+            'push_staff',
+            $tokens,
+            "New order {$order->po_number} from {$order->customer?->company_name}.",
+        );
+    }
+
+    /** False -- after recording why -- when push can't go out at all in this environment. */
+    private static function pushReady(PurchaseOrder $order, string $channel): bool
+    {
+        if (! config('services.po_notifications.push_enabled', false)) {
+            Log::info("Push notification skipped for {$order->po_number}: feature not enabled in this environment.");
+            self::record($order, $channel, 'skipped', note: 'feature not enabled in this environment');
+
+            return false;
+        }
+
+        if (! FirebaseCloudMessaging::isConfigured()) {
+            Log::info("Push notification skipped for {$order->po_number}: Firebase key not configured in this environment.");
+            self::record($order, $channel, 'skipped', note: 'Firebase key not configured in this environment');
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * One push per phone; each outcome is recorded against the account that
+     * owns the phone, and a phone Firebase no longer knows is forgotten.
+     *
+     * @param  iterable<PushToken>  $tokens
+     */
+    private static function pushToTokens(PurchaseOrder $order, string $channel, iterable $tokens, string $body): void
+    {
         foreach ($tokens as $token) {
             $result = FirebaseCloudMessaging::send(
                 $token->token,
@@ -417,16 +480,16 @@ class OrderNotifications
 
             if ($result === FirebaseCloudMessaging::UNREGISTERED) {
                 $token->delete();
-                self::record($order, 'push', 'skipped', recipient: (string) $user->id, note: 'app was uninstalled from that phone; token removed');
+                self::record($order, $channel, 'skipped', recipient: (string) $token->user_id, note: 'app was uninstalled from that phone; token removed');
 
                 continue;
             }
 
             self::record(
                 $order,
-                'push',
+                $channel,
                 $result === FirebaseCloudMessaging::SENT ? 'sent' : 'failed',
-                recipient: (string) $user->id,
+                recipient: (string) $token->user_id,
                 note: $result === FirebaseCloudMessaging::SENT ? null : 'Firebase did not accept the message',
             );
         }
