@@ -31,7 +31,8 @@ Route::redirect('/', '/dashboard');
 
 Route::get('/health/ready', [HealthController::class, 'ready'])->name('health.ready');
 
-Route::prefix('app')->name('mobile-app.')->group(function () {
+// Not under /app: nginx proxies that whole prefix to Reverb's WebSocket server.
+Route::prefix('mobile-app')->name('mobile-app.')->group(function () {
     Route::get('/version', [MobileAppController::class, 'version'])->middleware('throttle:30,1')->name('version');
     Route::get('/download', [MobileAppController::class, 'download'])->middleware('throttle:10,1')->name('download');
 });

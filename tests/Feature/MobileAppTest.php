@@ -24,7 +24,7 @@ class MobileAppTest extends TestCase
     {
         Storage::disk('local')->put('mobile/customer-portal.apk', 'apk-bytes');
 
-        $this->getJson('/app/version')
+        $this->getJson('/mobile-app/version')
             ->assertOk()
             ->assertJson([
                 'latest_version_code' => 3,
@@ -36,7 +36,7 @@ class MobileAppTest extends TestCase
 
     public function test_download_url_is_withheld_until_the_apk_is_uploaded(): void
     {
-        $this->getJson('/app/version')
+        $this->getJson('/mobile-app/version')
             ->assertOk()
             ->assertJson(['download_url' => null]);
     }
@@ -45,7 +45,7 @@ class MobileAppTest extends TestCase
     {
         Storage::disk('local')->put('mobile/customer-portal.apk', 'apk-bytes');
 
-        $response = $this->get('/app/download');
+        $response = $this->get('/mobile-app/download');
 
         $response->assertOk();
         $response->assertHeader('Content-Type', 'application/vnd.android.package-archive');
@@ -54,6 +54,6 @@ class MobileAppTest extends TestCase
 
     public function test_download_is_a_404_when_no_apk_has_been_uploaded(): void
     {
-        $this->get('/app/download')->assertNotFound();
+        $this->get('/mobile-app/download')->assertNotFound();
     }
 }
