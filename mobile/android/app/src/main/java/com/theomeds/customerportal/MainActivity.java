@@ -10,6 +10,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(ThemeStatusBarPlugin.class);
         registerPlugin(AppUpdatePlugin.class);
+        registerPlugin(DeviceSecurityPlugin.class);
         super.onCreate(savedInstanceState);
 
         // The status bar's live color/icon-style is owned by the JS theme
