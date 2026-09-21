@@ -3,20 +3,12 @@ import { Capacitor } from '@capacitor/core';
 import axios from 'axios';
 import { useCallback, useEffect, useState } from 'react';
 
-const DISMISSED_KEY = 'app-update-dismissed';
-
-function readDismissedCode() {
-    try {
-        return Number(localStorage.getItem(DISMISSED_KEY)) || 0;
-    } catch {
-        return 0;
-    }
-}
-
 /**
  * Compares the installed Android build (versionCode) with what the server
  * says is current. `update` keeps its last value after "Later" so the sheet
- * can animate out; `open` is what says whether to show it.
+ * can animate out; `open` is what says whether to show it. "Later" is not
+ * remembered: every time the app opens or comes back to the foreground with
+ * an update still waiting, the notice shows again.
  */
 export function useAppUpdate() {
     const [update, setUpdate] = useState(null);
@@ -48,7 +40,7 @@ export function useAppUpdate() {
                     downloadUrl: data.download_url,
                     required,
                 });
-                setHidden(!required && readDismissedCode() >= data.latest_version_code);
+                setHidden(false);
             } catch {
                 // Offline or the server is unreachable; the next app resume checks again.
             }
@@ -68,11 +60,6 @@ export function useAppUpdate() {
     const dismiss = useCallback(() => {
         if (!update || update.required) return;
 
-        try {
-            localStorage.setItem(DISMISSED_KEY, String(update.latestCode));
-        } catch {
-            // Storage blocked: the notice just returns on the next check.
-        }
         setHidden(true);
     }, [update]);
 
