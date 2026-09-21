@@ -40,7 +40,6 @@ export default function Dashboard({ dashboard, workspace }) {
                     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
                         <motion.div {...enter(0)} className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
                             <div>
-                                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">{customer ? workspace.name || 'Customer workspace' : 'Company workspace'}</p>
                                 <h1 className="type-page-heading text-foreground">{customer ? 'Your orders, at a glance.' : 'Company overview'}</h1>
                                 <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
                                     {number.format(current.orders)} order{current.orders === 1 ? '' : 's'} {customer ? 'placed' : 'received'} in the last {period} days
