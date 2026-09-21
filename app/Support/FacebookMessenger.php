@@ -58,9 +58,21 @@ class FacebookMessenger
         $error = $response->json('error.message');
         if ($error || $response->failed()) {
             $message = $error ?? "Facebook Messenger API returned HTTP {$response->status()}.";
-            Log::warning("Facebook reply failed for thread {$thread->id}: {$message}");
+            $subcode = $response->json('error.error_subcode');
+            $exception = new MessengerApiException(
+                $message,
+                (int) $response->json('error.code'),
+                subcode: is_numeric($subcode) ? (int) $subcode : null,
+            );
 
-            throw new MessengerApiException($message);
+            // A closed 24-hour window is Meta's rule working as designed, not a fault.
+            if ($exception->isOutsideMessagingWindow()) {
+                Log::info("Facebook reply not sent for thread {$thread->id}: outside Meta's 24-hour messaging window.");
+            } else {
+                Log::warning("Facebook reply failed for thread {$thread->id}: {$message}");
+            }
+
+            throw $exception;
         }
 
         $messageId = $response->json('message_id');

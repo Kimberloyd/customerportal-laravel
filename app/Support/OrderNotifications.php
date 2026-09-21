@@ -534,6 +534,21 @@ class OrderNotifications
                 $externalMessageId = FacebookMessenger::sendReply($thread, $body);
                 MessageThread::createReply($thread, $body, 'company', $externalMessageId);
                 self::record($order, 'facebook', 'sent', recipient: (string) $thread->id, externalReference: $externalMessageId);
+            } catch (MessengerApiException $e) {
+                if (! $e->isOutsideMessagingWindow()) {
+                    Log::warning("Failed to send Facebook Messenger order summary to thread {$thread->id} for {$order->po_number}.", ['exception' => $e]);
+                    self::record($order, 'facebook', 'failed', recipient: (string) $thread->id, note: $e->getMessage());
+
+                    continue;
+                }
+
+                self::record(
+                    $order,
+                    'facebook',
+                    'skipped',
+                    recipient: (string) $thread->id,
+                    note: "Not sent: Meta only lets the Page message this agent within 24 hours of the agent's last message to it.",
+                );
             } catch (\Throwable $e) {
                 Log::warning("Failed to send Facebook Messenger order summary to thread {$thread->id} for {$order->po_number}.", ['exception' => $e]);
                 self::record($order, 'facebook', 'failed', recipient: (string) $thread->id, note: $e->getMessage());
