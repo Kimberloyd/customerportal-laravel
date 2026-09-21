@@ -4,6 +4,7 @@
   "webDir": "www",
   "server": {
     "url": "https://customerportal.theomeds.com",
-    "cleartext": false
+    "cleartext": false,
+    "errorPath": "offline.html"
   }
 }

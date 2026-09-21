@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Can't reach the portal</title>
+    <style>
+        /* Same values as the portal's light/dark tokens in resources/css/app.css. */
+        :root {
+            color-scheme: light dark;
+            --bg: hsl(238 10% 100%); --fg: hsl(238 10% 3.9%); --muted: hsl(238 3.8% 35%);
+            --primary: hsl(238 52% 38%); --on-primary: hsl(0 0% 98%);
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: hsl(60 6% 8%); --fg: hsl(60 9% 96%); --muted: hsl(60 4% 65%);
+                --primary: hsl(238 65% 68%); --on-primary: hsl(60 6% 8%);
+            }
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            padding: 24px; background: var(--bg); color: var(--fg);
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        }
+        main { max-width: 22rem; text-align: center; }
+        h1 { margin: 0 0 8px; font-size: 1.25rem; font-weight: 600; }
+        p { margin: 0 0 24px; font-size: 0.9375rem; line-height: 1.5; color: var(--muted); }
+        button {
+            height: 44px; padding: 0 28px; border: 0; border-radius: 8px; cursor: pointer;
+            background: var(--primary); color: var(--on-primary); font: inherit; font-weight: 600;
+        }
+        button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Can't reach the portal</h1>
+        <p>Check your internet connection, then try again. Your orders and account are safe.</p>
+        <button type="button" id="retry">Try again</button>
+    </main>
+    <script>
+        // The page is served from the app itself, so it has no Capacitor
+        // plugins; navigating to the live site is all "retry" has to do.
+        var portal = 'https://customerportal.theomeds.com';
+        document.getElementById('retry').addEventListener('click', function () { window.location.href = portal; });
+        window.addEventListener('online', function () { window.location.href = portal; });
+    </script>
+</body>
+</html>

@@ -3,6 +3,7 @@ import './bootstrap';
 
 import AppUpdateNotice from '@/components/AppUpdateNotice';
 import ChatWidget from '@/components/messaging/ChatWidget';
+import OfflineBanner from '@/components/OfflineBanner';
 import { ChatWidgetProvider } from '@/lib/chat-widget-context';
 import { ThemeProvider } from '@/lib/theme-context';
 import { installCapacitorBackButton } from '@/lib/capacitor-back-button';
@@ -30,6 +31,7 @@ createInertiaApp({
                     <App {...props} />
                     <ChatWidget />
                     <AppUpdateNotice />
+                    <OfflineBanner />
                 </ChatWidgetProvider>
             </ThemeProvider>,
         );
