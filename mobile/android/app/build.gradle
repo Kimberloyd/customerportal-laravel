@@ -7,8 +7,8 @@ android {
         applicationId "com.theomeds.customerportal"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 2
-        versionName "1.1"
+        versionCode 3
+        versionName "1.2"
         // The barcode scanner's ML Kit library ships ~5 MB of native code per
         // CPU type. Phones are arm64/armv7; the x86 copies only serve emulators.
         ndk {
