@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "931467209144",
+    "project_id": "customer-portal-2b73e",
+    "storage_bucket": "customer-portal-2b73e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:931467209144:android:333d9b11c809cba0d3474d",
+        "android_client_info": {
+          "package_name": "com.theomeds.customerportal"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCpUqbQWhi8j1ZiqJA8ARgvjN4EKbggY-s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
