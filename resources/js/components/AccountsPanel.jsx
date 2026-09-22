@@ -146,12 +146,20 @@ export function AccountsPanel({ customerUsers = EMPTY_PAGE, staffUsers = EMPTY_P
 
     const columns = useMemo(
         () => [
-            { key: 'full_name', header: 'Name', sortable: true },
-            { key: 'email', header: 'Email', sortable: true },
+            // Every column below carries an explicit pixel width, including
+            // this one, so the table resolves a fixed total width on the very
+            // first render and switches to table-layout: fixed immediately --
+            // without it, the table stays in auto-layout with a sticky header
+            // until a column is manually resized, a combination some mobile
+            // browser engines (seen on a Huawei tablet) render with
+            // misaligned/overlapping columns.
+            { key: 'full_name', header: 'Name', sortable: true, width: '200px' },
+            { key: 'email', header: 'Email', sortable: true, width: '240px' },
             {
                 key: 'role',
                 header: 'Role',
                 sortable: true,
+                width: '110px',
                 sortValue: (user) => roleLabels[user.role] ?? user.role,
                 cell: (user) => roleLabels[user.role] ?? user.role,
             },
@@ -159,11 +167,13 @@ export function AccountsPanel({ customerUsers = EMPTY_PAGE, staffUsers = EMPTY_P
                 key: 'linked_customer_name',
                 header: 'Linked Customer',
                 sortable: true,
+                width: '200px',
                 cell: (user) => user.linked_customer_name ?? '-',
             },
             {
                 key: 'is_active',
                 header: 'Status',
+                width: '140px',
                 cell: (user) => (
                     <div className="flex justify-start">
                         <AnimatedBadge

@@ -49,12 +49,20 @@ export function CustomersPanel({ customers = { data: [], last_page: 1, current_p
 
     const columns = useMemo(
         () => [
-            { key: 'customer_code', header: 'Code', sortable: true },
-            { key: 'company_name', header: 'Company', sortable: true },
-            { key: 'channel', header: 'Channel', sortable: true },
+            // Every column below carries an explicit pixel width, including
+            // this one, so the table resolves a fixed total width on the very
+            // first render and switches to table-layout: fixed immediately --
+            // without it, the table stays in auto-layout with a sticky header
+            // until a column is manually resized, a combination some mobile
+            // browser engines (seen on a Huawei tablet) render with
+            // misaligned/overlapping columns.
+            { key: 'customer_code', header: 'Code', sortable: true, width: '140px' },
+            { key: 'company_name', header: 'Company', sortable: true, width: '320px' },
+            { key: 'channel', header: 'Channel', sortable: true, width: '160px' },
             {
                 key: 'is_active',
                 header: 'Status',
+                width: '140px',
                 cell: (customer) => (
                     <div className="flex justify-start">
                         <AnimatedBadge

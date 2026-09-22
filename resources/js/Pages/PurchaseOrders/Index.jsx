@@ -290,6 +290,14 @@ export default function Index({
                 key: 'po_number',
                 header: 'PO Number',
                 sortable: true,
+                // An explicit pixel width on every column (see the others
+                // below) lets the table resolve a fixed total width on the
+                // very first render and switch to table-layout: fixed
+                // immediately -- without it, the table stays in auto-layout
+                // with a sticky header until a column is manually resized,
+                // a combination some mobile browser engines (seen on a
+                // Huawei tablet) render with misaligned/overlapping columns.
+                width: '160px',
                 cell: (order) => isCompactViewport ? (
                     <div className="min-w-0 py-1">
                         <span className="block truncate font-medium text-foreground">{order.po_number}</span>
@@ -299,10 +307,11 @@ export default function Index({
                 ),
             },
             ...(isCompactViewport ? [] : [
-                { key: 'customer_name', header: 'Customer', sortable: true },
+                { key: 'customer_name', header: 'Customer', sortable: true, width: '320px' },
                 {
                     key: 'status',
                     header: 'Status',
+                    width: '120px',
                     cell: (order) => {
                         const badge = statusBadge(order.display_status ?? order.status);
                         return (
@@ -326,6 +335,7 @@ export default function Index({
                 key: 'submitted_at',
                 header: 'Date',
                 sortable: true,
+                width: '130px',
                 cell: (order) => order.submitted_at
                     ? new Date(order.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                     : '—',
