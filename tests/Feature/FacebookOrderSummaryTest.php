@@ -73,6 +73,46 @@ class FacebookOrderSummaryTest extends TestCase
         $this->assertSame('sent', PurchaseOrderNotification::where('channel', 'facebook')->value('status'));
     }
 
+    public function test_a_manual_agent_reply_retries_with_the_human_agent_tag_once_the_window_is_closed(): void
+    {
+        [, $thread] = $this->orderAndAgentThread();
+        $admin = User::factory()->create(['role' => 'admin']);
+        $outsideWindow = ['error' => [
+            'message' => '(#10) This message is sent outside of allowed window.',
+            'type' => 'OAuthException', 'code' => 10, 'error_subcode' => 2018278,
+        ]];
+        Http::fake(['graph.facebook.com/*' => Http::sequence()
+            ->push($outsideWindow, 400)
+            ->push(['recipient_id' => 'PSID-1', 'message_id' => 'm_retry'])]);
+
+        $response = $this->actingAsUser($admin)
+            ->postJson(route('messages.widget.facebook.send', $thread->public_id), ['body' => 'Your order is on its way.']);
+        $response->assertOk();
+
+        Http::assertSent(fn ($request) => $request['messaging_type'] === 'MESSAGE_TAG' && $request['tag'] === 'HUMAN_AGENT');
+        $this->assertDatabaseHas('customer_messages', [
+            'parent_id' => $thread->id,
+            'external_message_id' => 'm_retry',
+        ]);
+    }
+
+    public function test_a_manual_agent_reply_past_the_7_day_tag_window_gets_a_clear_error(): void
+    {
+        [, $thread] = $this->orderAndAgentThread();
+        $admin = User::factory()->create(['role' => 'admin']);
+        $outsideWindow = ['error' => [
+            'message' => '(#10) This message is sent outside of allowed window.',
+            'type' => 'OAuthException', 'code' => 10, 'error_subcode' => 2018278,
+        ]];
+        Http::fake(['graph.facebook.com/*' => Http::sequence()->push($outsideWindow, 400)->push($outsideWindow, 400)]);
+
+        $response = $this->actingAsUser($admin)
+            ->postJson(route('messages.widget.facebook.send', $thread->public_id), ['body' => 'Your order is on its way.']);
+
+        $response->assertUnprocessable();
+        $response->assertJsonFragment(['body' => ["It's been more than 7 days since this contact last messaged the Page, so Facebook Messenger won't deliver a reply here anymore."]]);
+    }
+
     /** @return array{PurchaseOrder, CustomerMessage} */
     private function orderAndAgentThread(): array
     {

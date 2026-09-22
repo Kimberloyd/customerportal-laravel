@@ -179,12 +179,16 @@ class MessageController extends Controller
         }
 
         try {
-            $externalMessageId = FacebookMessenger::sendReply($thread, $body);
+            // true: a staff member is sending this by hand, so Meta's HUMAN_AGENT
+            // tag may extend a closed 24-hour window to 7 days (see FacebookMessenger).
+            $externalMessageId = FacebookMessenger::sendReply($thread, $body, allowHumanAgentTag: true);
         } catch (MessengerApiException $e) {
             report($e);
 
             throw ValidationException::withMessages([
-                'body' => 'Facebook Messenger is unavailable right now. Try again shortly.',
+                'body' => $e->isOutsideMessagingWindow()
+                    ? "It's been more than 7 days since this contact last messaged the Page, so Facebook Messenger won't deliver a reply here anymore."
+                    : 'Facebook Messenger is unavailable right now. Try again shortly.',
             ]);
         }
 
