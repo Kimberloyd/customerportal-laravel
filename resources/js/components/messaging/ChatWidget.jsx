@@ -497,17 +497,14 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
                                                     ) : null}
                                                     <Message from={fromSelf ? 'user' : 'assistant'}>
                                                         <MessageContent>
-                                                            <MessageHeader>
-                                                                {isUnread ? (
+                                                            {isUnread ? (
+                                                                <MessageHeader>
                                                                     <span
                                                                         aria-label="Unread"
                                                                         className="size-1.5 rounded-full bg-primary"
                                                                     />
-                                                                ) : null}
-                                                                <span className="font-medium text-foreground/70">
-                                                                    {fromSelf ? 'You' : chat.name}
-                                                                </span>
-                                                            </MessageHeader>
+                                                                </MessageHeader>
+                                                            ) : null}
                                                             <MessageBubble variant="soft">
                                                                 <MessageBubbleContent
                                                                     className={
