@@ -113,6 +113,27 @@ class FacebookOrderSummaryTest extends TestCase
         $response->assertJsonFragment(['body' => ["It's been more than 7 days since this contact last messaged the Page, so Facebook Messenger won't deliver a reply here anymore."]]);
     }
 
+    public function test_a_reply_is_told_the_human_agent_tag_needs_meta_approval(): void
+    {
+        [, $thread] = $this->orderAndAgentThread();
+        $admin = User::factory()->create(['role' => 'admin']);
+        Http::fake(['graph.facebook.com/*' => Http::sequence()
+            ->push(['error' => [
+                'message' => '(#10) This message is sent outside of allowed window.',
+                'type' => 'OAuthException', 'code' => 10, 'error_subcode' => 2018278,
+            ]], 400)
+            ->push(['error' => [
+                'message' => "(#100) Cannot tag messages with 'HUMAN_AGENT' without prior approval.",
+                'type' => 'OAuthException', 'code' => 100,
+            ]], 400)]);
+
+        $response = $this->actingAsUser($admin)
+            ->postJson(route('messages.widget.facebook.send', $thread->public_id), ['body' => 'Your order is on its way.']);
+
+        $response->assertUnprocessable();
+        $response->assertJsonFragment(['body' => ["This contact hasn't messaged in over 24 hours. Replying that late needs a Facebook feature (Human Agent) that hasn't been approved for this Page yet -- ask an administrator to request it in Meta's App Review."]]);
+    }
+
     /** @return array{PurchaseOrder, CustomerMessage} */
     private function orderAndAgentThread(): array
     {

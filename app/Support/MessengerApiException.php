@@ -32,4 +32,15 @@ class MessengerApiException extends \RuntimeException
             && ($this->subcode === self::OUTSIDE_WINDOW_SUBCODE
                 || str_contains($this->getMessage(), 'outside of allowed window'));
     }
+
+    /**
+     * The HUMAN_AGENT tag is its own Meta App Review submission, separate
+     * from basic Messenger access -- an app can reply within 24 hours fine
+     * and still be refused this tag until Meta approves it specifically.
+     */
+    public function isHumanAgentTagNotApproved(): bool
+    {
+        return str_contains($this->getMessage(), "tag messages with 'HUMAN_AGENT'")
+            || str_contains($this->getMessage(), 'without prior approval');
+    }
 }

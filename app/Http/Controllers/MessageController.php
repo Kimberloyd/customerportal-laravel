@@ -186,9 +186,11 @@ class MessageController extends Controller
             report($e);
 
             throw ValidationException::withMessages([
-                'body' => $e->isOutsideMessagingWindow()
-                    ? "It's been more than 7 days since this contact last messaged the Page, so Facebook Messenger won't deliver a reply here anymore."
-                    : 'Facebook Messenger is unavailable right now. Try again shortly.',
+                'body' => match (true) {
+                    $e->isHumanAgentTagNotApproved() => "This contact hasn't messaged in over 24 hours. Replying that late needs a Facebook feature (Human Agent) that hasn't been approved for this Page yet -- ask an administrator to request it in Meta's App Review.",
+                    $e->isOutsideMessagingWindow() => "It's been more than 7 days since this contact last messaged the Page, so Facebook Messenger won't deliver a reply here anymore.",
+                    default => 'Facebook Messenger is unavailable right now. Try again shortly.',
+                },
             ]);
         }
 
