@@ -3,7 +3,7 @@
 # of the built assets, since it's a separate container/filesystem from
 # app. Mirrors the sibling Flask app's nginx/Dockerfile, which copies
 # static/ into the nginx image the same way.
-FROM node:20-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0 AS assets
+FROM node:25-slim@sha256:81db02c4b671288a03915da9534dbd54f96d0e7c24d80ccc54f5b36b2e684370 AS assets
 WORKDIR /app
 ARG VITE_REVERB_APP_KEY
 ARG VITE_REVERB_HOST
