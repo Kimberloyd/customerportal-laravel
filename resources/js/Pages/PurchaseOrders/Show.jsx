@@ -15,7 +15,9 @@ import RemarksTimeline from '@/components/RemarksTimeline';
 import { usePurchaseOrderRealtime } from '@/hooks/usePurchaseOrderRealtime';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { Check, Copy, FileText, Minus, Plus } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { spring } from '@/lib/springs';
 
 const TABLE_ROW_HEIGHT = 48;
 
@@ -433,9 +435,35 @@ export default function Show({
                         variant="tertiary"
                         size="compact"
                         onClick={copyOrderDetails}
-                        leadingIcon={detailsCopied ? Check : Copy}
                     >
-                        {detailsCopied ? 'Copied' : 'Copy order details'}
+                        <span className="inline-flex items-center gap-1.5">
+                            <AnimatePresence mode="wait" initial={false}>
+                                {detailsCopied ? (
+                                    <motion.span
+                                        key="check"
+                                        initial={{ opacity: 0, scale: 0.6 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.8 }}
+                                        transition={spring.fast}
+                                        className="flex items-center justify-center"
+                                    >
+                                        <Check size={14} strokeWidth={2} />
+                                    </motion.span>
+                                ) : (
+                                    <motion.span
+                                        key="copy"
+                                        initial={{ opacity: 0, scale: 0.6 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.8 }}
+                                        transition={spring.fast}
+                                        className="flex items-center justify-center"
+                                    >
+                                        <Copy size={14} strokeWidth={1.5} />
+                                    </motion.span>
+                                )}
+                            </AnimatePresence>
+                            {detailsCopied ? 'Copied' : 'Copy order details'}
+                        </span>
                     </Button>
                 </div>
             }
