@@ -576,23 +576,7 @@ export default function Show({
                         </dl>
                         </div>
 
-                        <div className="flex min-h-32 flex-col items-center justify-center gap-6 border-t border-border pt-6 md:min-h-0 md:border-l md:border-t-0 md:pl-6 md:pt-0">
-                            {!isCustomer && (
-                                <div className="w-full max-w-xs">
-                                    <Input
-                                        type="text"
-                                        label="PO Number"
-                                        value={poNumberDraft}
-                                        onChange={setPoNumberDraft}
-                                        onBlur={() => {
-                                            if (poNumberDirty) savePoNumber();
-                                        }}
-                                        placeholder="Not set"
-                                        disabled={savingPoNumber}
-                                        classNames={{ field: 'rounded-md' }}
-                                    />
-                                </div>
-                            )}
+                        <div className="flex min-h-32 items-center justify-center border-t border-border pt-6 md:min-h-0 md:border-l md:border-t-0 md:pl-6 md:pt-0">
                             <AnimatedBadge
                                 status={currentStatus.status}
                                 size="md"
@@ -605,6 +589,23 @@ export default function Show({
                         </div>
                     </div>
                 </div>
+
+                {!isCustomer && (
+                    <div className="max-w-xs">
+                        <Input
+                            type="text"
+                            label="PO Number"
+                            value={poNumberDraft}
+                            onChange={setPoNumberDraft}
+                            onBlur={() => {
+                                if (poNumberDirty) savePoNumber();
+                            }}
+                            placeholder="Not set"
+                            disabled={savingPoNumber}
+                            classNames={{ field: 'rounded-md' }}
+                        />
+                    </div>
+                )}
 
                 {attachmentPreviewable && (
                     <Modal
