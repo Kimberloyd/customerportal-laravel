@@ -430,41 +430,44 @@ export default function Show({
                             <span aria-current="page" className="text-foreground">{order.po_number}</span>
                         </h2>
                     </nav>
-                    <Button
-                        type="button"
-                        variant="tertiary"
-                        size="compact"
-                        onClick={copyOrderDetails}
-                    >
-                        <span className="inline-flex items-center gap-1.5">
-                            <AnimatePresence mode="wait" initial={false}>
-                                {detailsCopied ? (
-                                    <motion.span
-                                        key="check"
-                                        initial={{ opacity: 0, scale: 0.6 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0, scale: 0.8 }}
-                                        transition={spring.fast}
-                                        className="flex items-center justify-center"
-                                    >
-                                        <Check size={14} strokeWidth={2} />
-                                    </motion.span>
-                                ) : (
-                                    <motion.span
-                                        key="copy"
-                                        initial={{ opacity: 0, scale: 0.6 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0, scale: 0.8 }}
-                                        transition={spring.fast}
-                                        className="flex items-center justify-center"
-                                    >
-                                        <Copy size={14} strokeWidth={1.5} />
-                                    </motion.span>
-                                )}
-                            </AnimatePresence>
-                            {detailsCopied ? 'Copied' : 'Copy order details'}
-                        </span>
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">Copy order details</span>
+                        <Tooltip content={detailsCopied ? 'Copied' : 'Copy order details'}>
+                            <Button
+                                type="button"
+                                variant="tertiary"
+                                size="icon-compact"
+                                onClick={copyOrderDetails}
+                                aria-label={detailsCopied ? 'Copied' : 'Copy order details'}
+                            >
+                                <AnimatePresence mode="wait" initial={false}>
+                                    {detailsCopied ? (
+                                        <motion.span
+                                            key="check"
+                                            initial={{ opacity: 0, scale: 0.6 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            exit={{ opacity: 0, scale: 0.8 }}
+                                            transition={spring.fast}
+                                            className="flex items-center justify-center"
+                                        >
+                                            <Check size={14} strokeWidth={2} />
+                                        </motion.span>
+                                    ) : (
+                                        <motion.span
+                                            key="copy"
+                                            initial={{ opacity: 0, scale: 0.6 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            exit={{ opacity: 0, scale: 0.8 }}
+                                            transition={spring.fast}
+                                            className="flex items-center justify-center"
+                                        >
+                                            <Copy size={14} strokeWidth={1.5} />
+                                        </motion.span>
+                                    )}
+                                </AnimatePresence>
+                            </Button>
+                        </Tooltip>
+                    </div>
                 </div>
             }
         >
