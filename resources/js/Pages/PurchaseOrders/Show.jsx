@@ -265,7 +265,7 @@ export default function Show({
             },
             {
                 key: 'quantity',
-                header: 'Ordered',
+                header: 'Quantity',
                 align: 'right',
                 cell: (item) => (item.__isTotal ? null : item.quantity),
             },
