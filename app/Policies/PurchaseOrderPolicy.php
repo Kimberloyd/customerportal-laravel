@@ -12,5 +12,5 @@ class PurchaseOrderPolicy
     public function receive(User $user, PurchaseOrder $order): bool { return in_array($user->role, User::STAFF_ROLES, true) && $this->view($user, $order); }
     public function complete(User $user, PurchaseOrder $order): bool { return $user->role === User::ROLE_CUSTOMER && $this->view($user, $order); }
     public function confirmReceived(User $user, PurchaseOrder $order): bool { return $this->complete($user, $order); }
-    public function delete(User $user, PurchaseOrder $order): bool { return $user->role === User::ROLE_ADMIN; }
+    public function delete(User $user, PurchaseOrder $order): bool { return $user->role === User::ROLE_ADMIN || ($user->role === User::ROLE_AGENT && $this->view($user, $order)); }
 }

@@ -90,4 +90,33 @@ class DeleteTest extends TestCase
 
         $this->assertDatabaseHas('purchase_orders', ['id' => $order->id]);
     }
+
+    public function test_agent_can_archive_their_own_customers_order(): void
+    {
+        $agent = User::factory()->create(['role' => 'agent']);
+        $customer = $this->makeCustomer();
+        $customer->update(['assigned_employee_id' => $agent->id]);
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now());
+
+        $this->actingAsUser($agent)
+            ->delete(route('purchase-orders.destroy', $order))
+            ->assertRedirect(route('purchase-orders.index'))
+            ->assertSessionHas('success', 'Order archived.');
+
+        $this->assertSoftDeleted('purchase_orders', ['id' => $order->id]);
+    }
+
+    public function test_agent_cannot_archive_an_order_outside_their_customers(): void
+    {
+        $agent = User::factory()->create(['role' => 'agent']);
+        $otherCustomer = $this->makeCustomer('Someone Else Co');
+        $otherCustomer->update(['assigned_employee_id' => User::factory()->create(['role' => 'agent'])->id]);
+        $order = $this->makeOrder($otherCustomer, PurchaseOrder::STATUS_SUBMITTED, now());
+
+        $this->actingAsUser($agent)
+            ->delete(route('purchase-orders.destroy', $order))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('purchase_orders', ['id' => $order->id, 'deleted_at' => null]);
+    }
 }

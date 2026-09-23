@@ -97,7 +97,7 @@ class PurchaseOrderController extends Controller
             'lockedCustomerId' => $customer?->id,
             'openCreateOrder' => $request->boolean('create'),
             'canViewMessageLog' => in_array(Auth::user()->role, User::STAFF_ROLES, true),
-            'canDeleteOrders' => Auth::user()->role === User::ROLE_ADMIN,
+            'canDeleteOrders' => in_array(Auth::user()->role, [User::ROLE_ADMIN, User::ROLE_AGENT], true),
         ]);
     }
 

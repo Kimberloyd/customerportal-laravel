@@ -89,6 +89,46 @@ class BulkArchiveTest extends TestCase
         $this->assertDatabaseHas('purchase_orders', ['id' => $order->id, 'deleted_at' => null]);
     }
 
+    public function test_agent_can_bulk_archive_their_own_customers_orders(): void
+    {
+        $agent = User::factory()->create(['role' => 'agent']);
+        $customer = $this->makeCustomer();
+        $customer->update(['assigned_employee_id' => $agent->id]);
+        $orderA = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now());
+        $orderB = $this->makeOrder($customer, PurchaseOrder::STATUS_PARTIAL, now());
+
+        $this->actingAsUser($agent)
+            ->post(route('purchase-orders.bulk-destroy'), [
+                'order_ids' => [$orderA->public_id, $orderB->public_id],
+            ])
+            ->assertRedirect(route('purchase-orders.index'))
+            ->assertSessionHas('success', '2 orders archived.');
+
+        $this->assertSoftDeleted('purchase_orders', ['id' => $orderA->id]);
+        $this->assertSoftDeleted('purchase_orders', ['id' => $orderB->id]);
+    }
+
+    public function test_agent_cannot_bulk_archive_an_order_outside_their_customers(): void
+    {
+        $agent = User::factory()->create(['role' => 'agent']);
+        $otherAgent = User::factory()->create(['role' => 'agent']);
+        $ownCustomer = $this->makeCustomer('Own Co');
+        $ownCustomer->update(['assigned_employee_id' => $agent->id]);
+        $otherCustomer = $this->makeCustomer('Other Co');
+        $otherCustomer->update(['assigned_employee_id' => $otherAgent->id]);
+        $ownOrder = $this->makeOrder($ownCustomer, PurchaseOrder::STATUS_SUBMITTED, now());
+        $otherOrder = $this->makeOrder($otherCustomer, PurchaseOrder::STATUS_SUBMITTED, now());
+
+        $this->actingAsUser($agent)
+            ->post(route('purchase-orders.bulk-destroy'), [
+                'order_ids' => [$ownOrder->public_id, $otherOrder->public_id],
+            ])
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('purchase_orders', ['id' => $ownOrder->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('purchase_orders', ['id' => $otherOrder->id, 'deleted_at' => null]);
+    }
+
     public function test_empty_order_ids_is_rejected(): void
     {
         $admin = User::factory()->admin()->create();
