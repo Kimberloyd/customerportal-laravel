@@ -578,25 +578,19 @@ export default function Show({
 
                         <div className="flex min-h-32 flex-col items-center justify-center gap-6 border-t border-border pt-6 md:min-h-0 md:border-l md:border-t-0 md:pl-6 md:pt-0">
                             {!isCustomer && (
-                                <div className="flex w-full max-w-xs items-center gap-2">
+                                <div className="w-full max-w-xs">
                                     <Input
                                         type="text"
                                         label="PO Number"
                                         value={poNumberDraft}
                                         onChange={setPoNumberDraft}
+                                        onBlur={() => {
+                                            if (poNumberDirty) savePoNumber();
+                                        }}
                                         placeholder="Not set"
-                                        classNames={{ root: 'flex-1', field: 'rounded-md' }}
+                                        disabled={savingPoNumber}
+                                        classNames={{ field: 'rounded-md' }}
                                     />
-                                    <Button
-                                        type="button"
-                                        variant="tertiary"
-                                        size="compact"
-                                        onClick={savePoNumber}
-                                        disabled={!poNumberDirty || savingPoNumber}
-                                        className="mt-6 shrink-0 rounded-md"
-                                    >
-                                        {savingPoNumber ? 'Saving…' : 'Save'}
-                                    </Button>
                                 </div>
                             )}
                             <AnimatedBadge
