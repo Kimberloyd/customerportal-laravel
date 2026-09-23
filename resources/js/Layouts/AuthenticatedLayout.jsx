@@ -223,6 +223,17 @@ export default function AuthenticatedLayout({ header, banner, children }) {
         });
     }, [fetchRecentNotifications]);
 
+    const markNotificationRead = useCallback((notification) => {
+        if (!notification.is_unread) return;
+        setOrderNotifications((notifications) => notifications.map((item) => (
+            item.id === notification.id ? { ...item, is_unread: false } : item
+        )));
+        setNotificationCount((count) => Math.max(0, count - 1));
+        axios.post(route('notifications.mark-read', notification.id)).catch(() => {
+            if (mountedRef.current) fetchRecentNotifications();
+        });
+    }, [fetchRecentNotifications]);
+
     const fetchMessageAccounts = useCallback(() => {
         fetch(route('messages.recipients'), {
             headers: { Accept: 'application/json' },
@@ -954,7 +965,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                                                 : '#'
                                                         }
                                                         onClick={() => {
-                                                            markAllNotificationsRead();
+                                                            markNotificationRead(notification);
                                                             closeNotifications();
                                                         }}
                                                         className="relative block rounded-[7px] py-2.5 pl-3 pr-8 text-left"

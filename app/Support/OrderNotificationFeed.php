@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\NotificationRead;
 use App\Models\PurchaseOrderNotification;
 use App\Models\User;
 use Carbon\CarbonInterface;
@@ -21,10 +22,17 @@ class OrderNotificationFeed
 {
     public static function recent(int $limit = 20): Collection
     {
+        $userId = Auth::id();
+
         return self::scopedQuery()
             ?->with([
                 'purchaseOrder:id,public_id,po_number,customer_id',
                 'purchaseOrder.customer:id,company_name',
+                // Constrained to this viewer: each notification row can be
+                // shared across every staff member (recipient_user_id null),
+                // so whether it's read has to be checked per viewer, not
+                // read off the row itself.
+                'reads' => fn ($query) => $query->where('user_id', $userId),
             ])
             ->latest('created_at')
             ->limit($limit)
@@ -86,15 +94,42 @@ class OrderNotificationFeed
 
     public static function recentCount(?CarbonInterface $since = null): int
     {
-        return self::scopedQuery()
-            ?->where('created_at', '>', $since ?? self::unreadSince())
-            ->count()
-            ?? 0;
+        $user = Auth::user();
+        $query = self::scopedQuery()?->where('created_at', '>', $since ?? self::unreadSince());
+
+        if (! $query || ! $user) {
+            return 0;
+        }
+
+        return $query->whereDoesntHave('reads', fn ($q) => $q->where('user_id', $user->id))->count();
     }
 
     public static function markAllRead(): void
     {
         Auth::user()?->update(['notifications_read_at' => now()]);
+    }
+
+    /**
+     * The explicit "just this one" override the watermark can't express on
+     * its own -- scoped through the same visibility rules as recent()/
+     * recentCount(), so a user can't mark a notification read that they
+     * couldn't otherwise see.
+     */
+    public static function markOneRead(int $notificationId): bool
+    {
+        $user = Auth::user();
+        $notification = $user ? self::scopedQuery()?->whereKey($notificationId)->first() : null;
+
+        if (! $notification) {
+            return false;
+        }
+
+        NotificationRead::firstOrCreate(
+            ['purchase_order_notification_id' => $notification->id, 'user_id' => $user->id],
+            ['read_at' => now()],
+        );
+
+        return true;
     }
 
     private static function scopedQuery()

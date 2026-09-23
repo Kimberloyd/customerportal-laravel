@@ -144,6 +144,7 @@ Route::middleware('auth')->prefix('messages')->name('messages.')->group(function
 Route::middleware('auth')->prefix('notifications')->name('notifications.')->group(function () {
     Route::get('/recent', [NotificationController::class, 'recent'])->name('recent');
     Route::post('/mark-all-read', [NotificationController::class, 'markAllRead'])->name('mark-all-read');
+    Route::post('/{notification}/mark-read', [NotificationController::class, 'markRead'])->name('mark-read');
 });
 
 Route::middleware('auth')->prefix('search')->name('search.')->group(function () {

@@ -222,4 +222,93 @@ class RecentTest extends TestCase
                 ->assertJsonPath('notifications.3.is_unread', false);
         }
     }
+
+    public function test_marking_one_notification_read_leaves_the_others_unread(): void
+    {
+        $staff = User::factory()->create(['role' => 'office']);
+        $customerA = $this->makeCustomer('A Co');
+        $customerB = $this->makeCustomer('B Co');
+        $product = $this->makeProduct('Widget');
+
+        foreach ([$customerA, $customerB] as $customer) {
+            $this->actingAsUser($staff)->post('/orders', [
+                'po_number' => 'PO-'.uniqid(),
+                'customer_id' => $customer->id,
+                'product_id' => [$product->id],
+                'product_search' => [''],
+                'quantity' => [1],
+            ]);
+        }
+
+        $before = $this->actingAsUser($staff)->getJson(route('notifications.recent'));
+        $this->assertSame(2, $before->json('count'));
+        $targetId = $before->json('notifications.0.id');
+
+        $this->actingAsUser($staff)
+            ->postJson(route('notifications.mark-read', $targetId))
+            ->assertOk()
+            ->assertJson(['count' => 1]);
+
+        $after = $this->actingAsUser($staff)->getJson(route('notifications.recent'));
+        $this->assertSame(1, $after->json('count'));
+        $notifications = collect($after->json('notifications'))->keyBy('id');
+        $this->assertFalse($notifications[$targetId]['is_unread']);
+        $otherId = $notifications->keys()->first(fn ($id) => $id !== $targetId);
+        $this->assertTrue($notifications[$otherId]['is_unread']);
+    }
+
+    public function test_a_shared_notifications_read_state_is_independent_per_viewer(): void
+    {
+        $staffA = User::factory()->create(['role' => 'office']);
+        $staffB = User::factory()->create(['role' => 'office']);
+        $customer = $this->makeCustomer();
+        $product = $this->makeProduct();
+
+        $this->actingAsUser($staffA)->post('/orders', [
+            'po_number' => 'PO-'.uniqid(),
+            'customer_id' => $customer->id,
+            'product_id' => [$product->id],
+            'product_search' => [''],
+            'quantity' => [1],
+        ]);
+
+        $notificationId = $this->actingAsUser($staffA)
+            ->getJson(route('notifications.recent'))
+            ->json('notifications.0.id');
+
+        $this->actingAsUser($staffA)
+            ->postJson(route('notifications.mark-read', $notificationId))
+            ->assertOk();
+
+        $this->actingAsUser($staffA)->getJson(route('notifications.recent'))
+            ->assertJsonPath('notifications.0.is_unread', false);
+
+        $this->actingAsUser($staffB)->getJson(route('notifications.recent'))
+            ->assertJsonPath('notifications.0.is_unread', true);
+    }
+
+    public function test_marking_a_notification_outside_the_users_scope_is_rejected(): void
+    {
+        $customerUser = User::factory()->create(['role' => 'customer']);
+        $ownCustomer = $this->makeCustomer('Own Co', $customerUser);
+        $otherCustomer = $this->makeCustomer('Other Co');
+        $product = $this->makeProduct();
+        $staff = User::factory()->create(['role' => 'office']);
+
+        $this->actingAsUser($staff)->post('/orders', [
+            'po_number' => 'PO-'.uniqid(),
+            'customer_id' => $otherCustomer->id,
+            'product_id' => [$product->id],
+            'product_search' => [''],
+            'quantity' => [1],
+        ]);
+
+        $notificationId = $this->actingAsUser($staff)
+            ->getJson(route('notifications.recent'))
+            ->json('notifications.0.id');
+
+        $this->actingAsUser($customerUser)
+            ->postJson(route('notifications.mark-read', $notificationId))
+            ->assertNotFound();
+    }
 }

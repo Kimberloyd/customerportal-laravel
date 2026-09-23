@@ -13,7 +13,9 @@ class NotificationController extends Controller
             'id' => $notification->id,
             'note' => OrderNotificationFeed::messageForCurrentUser($notification),
             'created_at' => $notification->created_at?->toIso8601String(),
-            'is_unread' => $notification->created_at !== null && $notification->created_at > $since,
+            'is_unread' => $notification->created_at !== null
+                && $notification->created_at > $since
+                && $notification->reads->isEmpty(),
             'order_id' => $notification->purchaseOrder?->id,
             'order_public_id' => $notification->purchaseOrder?->public_id,
             'po_number' => $notification->purchaseOrder?->po_number,
@@ -30,5 +32,18 @@ class NotificationController extends Controller
         OrderNotificationFeed::markAllRead();
 
         return response()->json(['count' => 0]);
+    }
+
+    public function markRead(int $notification)
+    {
+        $marked = OrderNotificationFeed::markOneRead($notification);
+
+        if (! $marked) {
+            abort(404);
+        }
+
+        return response()->json([
+            'count' => OrderNotificationFeed::recentCount(),
+        ]);
     }
 }

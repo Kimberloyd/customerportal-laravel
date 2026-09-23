@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'purchase_order_id', 'channel', 'status', 'event_key', 'recipient_user_id',
@@ -33,5 +34,10 @@ class PurchaseOrderNotification extends Model
     public function followUp(): BelongsTo
     {
         return $this->belongsTo(OrderFollowUp::class, 'follow_up_id');
+    }
+
+    public function reads(): HasMany
+    {
+        return $this->hasMany(NotificationRead::class);
     }
 }
