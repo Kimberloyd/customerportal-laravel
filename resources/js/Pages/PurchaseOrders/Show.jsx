@@ -253,7 +253,7 @@ export default function Show({
                 cell: (item) => {
                     if (item.__isTotal) return null;
 
-                    const product = [item.display_name, item.generic_name, item.dosage]
+                    const product = [item.display_name, item.generic_name, item.dosage, item.unit]
                         .filter(Boolean)
                         .join(' ');
 
