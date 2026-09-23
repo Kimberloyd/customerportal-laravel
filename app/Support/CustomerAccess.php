@@ -56,11 +56,14 @@ class CustomerAccess
      * The agent's own id plus every other user sharing a team with them.
      * team_members has a unique constraint on user_id, so an agent belongs
      * to at most one team -- but this makes no assumption about that beyond
-     * reading whichever team row(s) actually exist.
+     * reading whichever team row(s) actually exist. Public: also used by
+     * AgentCustomerAccountController, which has its own two customer
+     * queries (unassigned + assigned) rather than going through
+     * applyToCustomers()/applyToOrders() above.
      *
      * @return array<int, int>
      */
-    private static function teamEmployeeIds(User $user): array
+    public static function teamEmployeeIds(User $user): array
     {
         $teamIds = DB::table('team_members')->where('user_id', $user->id)->pluck('team_id');
 

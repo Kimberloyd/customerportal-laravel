@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\User;
+use App\Support\CustomerAccess;
 use App\Support\UserAudit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,13 +20,16 @@ class AgentCustomerAccountController extends Controller
     public function create(): Response
     {
         $agent = $this->agent();
+        // Same team-visibility rule as everywhere else (see CustomerAccess):
+        // an agent's own customers, a teammate's, or anyone not yet assigned.
+        $employeeIds = CustomerAccess::teamEmployeeIds($agent);
 
         return Inertia::render('CustomerAccounts/Create', [
             'customers' => Customer::query()->where('is_active', true)->whereNull('user_id')
-                ->where(fn ($query) => $query->whereNull('assigned_employee_id')->orWhere('assigned_employee_id', $agent->id))
+                ->where(fn ($query) => $query->whereNull('assigned_employee_id')->orWhereIn('assigned_employee_id', $employeeIds))
                 ->orderBy('company_name')->get(['id', 'company_name', 'assigned_employee_id']),
             'assignedCustomers' => Customer::query()
-                ->where('assigned_employee_id', $agent->id)
+                ->whereIn('assigned_employee_id', $employeeIds)
                 ->with('user:id,full_name,email,phone,is_active')
                 ->orderBy('company_name')
                 ->get(['id', 'company_name', 'customer_code', 'channel', 'user_id', 'is_active']),
@@ -46,7 +50,9 @@ class AgentCustomerAccountController extends Controller
             'password.confirmed' => 'Enter the same password again.',
         ]);
 
-        DB::transaction(function () use ($values, $agent, $request) {
+        $employeeIds = CustomerAccess::teamEmployeeIds($agent);
+
+        DB::transaction(function () use ($values, $agent, $employeeIds, $request) {
             $customer = Customer::lockForUpdate()->find($values['customer_id']);
             if (! $customer || ! $customer->is_active) {
                 throw ValidationException::withMessages(['customer_id' => 'Choose an active customer from the list.']);
@@ -54,8 +60,8 @@ class AgentCustomerAccountController extends Controller
             if ($customer->user_id) {
                 throw ValidationException::withMessages(['customer_id' => 'This customer already has a portal account.']);
             }
-            if ($customer->assigned_employee_id && $customer->assigned_employee_id !== $agent->id) {
-                throw ValidationException::withMessages(['customer_id' => 'This customer is assigned to another agent.']);
+            if ($customer->assigned_employee_id && ! in_array($customer->assigned_employee_id, $employeeIds, true)) {
+                throw ValidationException::withMessages(['customer_id' => 'This customer is assigned to an agent outside your team.']);
             }
 
             $user = User::create([
@@ -65,7 +71,9 @@ class AgentCustomerAccountController extends Controller
                 'role' => User::ROLE_CUSTOMER, 'is_active' => true,
                 'password_hash' => Hash::make($values['password']), 'session_version' => 0,
             ]);
-            $customer->update(['user_id' => $user->id, 'assigned_employee_id' => $agent->id]);
+            // A teammate's customer keeps its existing assignment -- only an
+            // unassigned customer picks up the agent creating the account.
+            $customer->update(['user_id' => $user->id, 'assigned_employee_id' => $customer->assigned_employee_id ?? $agent->id]);
             UserAudit::record($user, 'created', "customer account created by agent {$agent->id}", $request);
         });
 

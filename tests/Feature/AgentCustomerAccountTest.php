@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\CreatesOrderFixtures;
@@ -43,19 +44,48 @@ class AgentCustomerAccountTest extends TestCase
         $this->assertDatabaseMissing('users', ['email' => 'reserved@example.com']);
     }
 
-    public function test_agent_can_view_only_their_assigned_customers(): void
+    public function test_agent_can_view_their_own_and_a_teammates_assigned_customers_but_not_an_unrelated_agents(): void
     {
         $agent = User::factory()->create(['role' => 'agent']);
+        $teammate = User::factory()->create(['role' => 'agent']);
         $otherAgent = User::factory()->create(['role' => 'agent']);
+        $team = Team::create(['name' => 'North Team']);
+        $team->members()->attach([$agent->id, $teammate->id]);
+
         $mine = $this->makeCustomer('My Customer');
         $mine->update(['assigned_employee_id' => $agent->id]);
+        $teammates = $this->makeCustomer('Teammates Customer');
+        $teammates->update(['assigned_employee_id' => $teammate->id]);
         $other = $this->makeCustomer('Other Customer');
         $other->update(['assigned_employee_id' => $otherAgent->id]);
 
         $this->actingAsUser($agent)->get('/customer-accounts/create')->assertInertia(fn ($page) => $page
+            ->has('assignedCustomers', 2)
             ->where('assignedCustomers.0.company_name', 'My Customer')
-            ->missing('assignedCustomers.1')
+            ->where('assignedCustomers.1.company_name', 'Teammates Customer')
         );
+    }
+
+    public function test_agent_can_create_an_account_for_a_teammates_customer_without_reassigning_it(): void
+    {
+        $agent = User::factory()->create(['role' => 'agent']);
+        $teammate = User::factory()->create(['role' => 'agent']);
+        $team = Team::create(['name' => 'North Team']);
+        $team->members()->attach([$agent->id, $teammate->id]);
+        $customer = $this->makeCustomer('Teammates Clinic');
+        $customer->update(['assigned_employee_id' => $teammate->id]);
+
+        $this->actingAsUser($agent)->post('/customer-accounts', [
+            'full_name' => 'Teammates Clinic User', 'email' => 'teammates-clinic@example.com', 'phone' => '09171234567',
+            'password' => 'password123', 'password_confirmation' => 'password123', 'customer_id' => $customer->id,
+        ])->assertRedirect(route('customer-accounts.create'));
+
+        $user = User::where('email', 'teammates-clinic@example.com')->firstOrFail();
+        $customer->refresh();
+        $this->assertSame($user->id, $customer->user_id);
+        // Stays with the teammate who already had it -- creating the login
+        // doesn't quietly hand the customer over to whoever clicked the button.
+        $this->assertSame($teammate->id, $customer->assigned_employee_id);
     }
 
     public function test_admin_and_customer_cannot_use_agent_customer_account_routes(): void

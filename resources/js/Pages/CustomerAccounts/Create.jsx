@@ -134,7 +134,7 @@ export default function Create({ customers = [], assignedCustomers = [] }) {
     >
         <Head title="Customers" />
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-            <div className="mb-6"><h1 className="type-page-heading text-foreground">My customers</h1><p className="mt-1 text-sm text-muted-foreground">Customer accounts you create are automatically assigned to you.</p></div>
+            <div className="mb-6"><h1 className="type-page-heading text-foreground">My team's customers</h1><p className="mt-1 text-sm text-muted-foreground">Customers assigned to you or a teammate. Creating an account for one assigns it to you only if nobody has it yet.</p></div>
             <Table
                 data={assignedCustomers}
                 columns={columns}
@@ -145,7 +145,7 @@ export default function Create({ customers = [], assignedCustomers = [] }) {
                         <span className="mb-2 grid h-12 w-12 place-items-center rounded-full bg-muted text-muted-foreground">
                             <User className="h-6 w-6" aria-hidden="true" />
                         </span>
-                        <p className="text-sm font-medium text-foreground">You have no assigned customers yet</p>
+                        <p className="text-sm font-medium text-foreground">No customers are assigned to you or your team yet</p>
                         <p className="max-w-xs text-sm leading-6 text-muted-foreground">Add a customer account to get started.</p>
                     </div>
                 )}
@@ -157,7 +157,7 @@ export default function Create({ customers = [], assignedCustomers = [] }) {
             open={open}
             onClose={close}
             title="Add customer account"
-            description="This new customer account will be assigned to you."
+            description="If this customer isn't assigned to anyone yet, it will be assigned to you."
             maxWidth={560}
             closeOnBackdrop={!processing}
             closeOnEscape={!processing}
