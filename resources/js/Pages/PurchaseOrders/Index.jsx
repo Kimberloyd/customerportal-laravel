@@ -16,7 +16,7 @@ import { statusBadge } from '@/utils/orderDisplay';
 import { usePurchaseOrderRealtime } from '@/hooks/usePurchaseOrderRealtime';
 import { useSavedOrderFilters } from '@/hooks/useSavedOrderFilters';
 import { useSearchSelections } from '@/hooks/useSearchSelections';
-import { Deferred, Head, router, usePage } from '@inertiajs/react';
+import { Deferred, Head, router } from '@inertiajs/react';
 import { parseDate } from '@internationalized/date';
 import { useContainerBreakpoint } from '@/lib/hooks/use-container-breakpoint';
 import { Archive, Funnel, ListChecks, MoreHorizontal, Search, SquareArrowOutUpRight } from 'lucide-react';
@@ -61,7 +61,6 @@ export default function Index({
     canDeleteOrders = false,
 }) {
     usePurchaseOrderRealtime();
-    const isCustomer = usePage().props.auth.user.role === 'customer';
 
     // The table owns its own breakpoint (a container query on its own
     // wrapper) rather than reacting to the page's viewport -- so it still
@@ -285,11 +284,15 @@ export default function Index({
     const columns = useMemo(
         () => [
             // Priority 1 -- identity, always shown: which order is this.
-            // Under the table's own container breakpoint, only the PO number
-            // remains in the row; status is available in the actions menu.
+            // Under the table's own container breakpoint, only the
+            // transaction number remains in the row; status is available in
+            // the actions menu. Always transaction_number, not po_number --
+            // po_number is a staff-only reference that's routinely unset
+            // (see the order page's own inline field), so it can't double
+            // as this column's identity the way it used to.
             {
-                key: isCustomer ? 'transaction_number' : 'po_number',
-                header: isCustomer ? 'Transaction Number' : 'PO Number',
+                key: 'transaction_number',
+                header: 'Transaction Number',
                 sortable: true,
                 // An explicit pixel width on every column (see the others
                 // below) lets the table resolve a fixed total width on the
@@ -299,16 +302,15 @@ export default function Index({
                 // a combination some mobile browser engines (seen on a
                 // Huawei tablet) render with misaligned/overlapping columns.
                 width: '160px',
-                cell: (order) => {
-                    const number = isCustomer ? order.transaction_number : order.po_number;
-                    return isCompactViewport ? (
+                cell: (order) => (
+                    isCompactViewport ? (
                         <div className="min-w-0 py-1">
-                            <span className="block truncate font-medium text-foreground">{number}</span>
+                            <span className="block truncate font-medium text-foreground">{order.transaction_number}</span>
                         </div>
                     ) : (
-                        <span className="font-medium text-foreground">{number}</span>
-                    );
-                },
+                        <span className="font-medium text-foreground">{order.transaction_number}</span>
+                    )
+                ),
             },
             ...(isCompactViewport ? [] : [
                 { key: 'customer_name', header: 'Customer', sortable: true, width: '320px' },
@@ -389,7 +391,7 @@ export default function Index({
                                     const item = items.find((candidate) => candidate.value === action);
                                     item?.onSelect();
                                 }}
-                                label={`Actions for ${isCustomer ? order.transaction_number : order.po_number}`}
+                                label={`Actions for ${order.transaction_number}`}
                                 menuTitle={isCompactViewport ? (
                                     <div className={`flex items-center gap-2 font-normal ${STATUS_TITLE_CLASS[badge.status] ?? STATUS_TITLE_CLASS.neutral}`}>
                                         {StatusIcon ? <StatusIcon aria-hidden="true" className="h-4 w-4" /> : null}
@@ -437,7 +439,7 @@ export default function Index({
                             onChange={setSearch}
                             onFocus={() => setSearchFocused(true)}
                             onBlur={() => setSearchFocused(false)}
-                            placeholder={isCustomer ? 'Transaction number or customer' : 'PO number or customer'}
+                            placeholder="Transaction number or customer"
                             aria-label="Search orders"
                             leftIcon={<Search className="h-4 w-4" />}
                             classNames={{
@@ -814,12 +816,12 @@ export default function Index({
             <ConfirmationDialog
                 open={orderPendingDeletion !== null}
                 onOpenChange={(open) => !open && !isDeletingOrder && setOrderPendingDeletion(null)}
-                title={`Archive purchase order ${orderPendingDeletion?.po_number ?? ''}?`}
+                title={`Archive purchase order ${orderPendingDeletion?.transaction_number ?? ''}?`}
                 description="This removes the order from active views while retaining its items, activity history, messages, returns, and attachment for audit purposes."
                 confirmLabel="Archive order"
                 cancelLabel="Keep order"
                 onConfirm={deleteOrder}
-                confirmationText={orderPendingDeletion?.po_number}
+                confirmationText={orderPendingDeletion?.transaction_number}
                 destructive
                 processing={isDeletingOrder}
             />
