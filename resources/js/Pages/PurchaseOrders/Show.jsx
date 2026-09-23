@@ -389,6 +389,7 @@ export default function Show({
             `Status: ${currentStatus.label}`,
             `Submitted: ${formatDateTime(order.submitted_at)}`,
             `Last updated: ${formatDateTime(order.updated_at)}`,
+            `Link: ${route('purchase-orders.show', order.public_id, true)}`,
             '',
             'Items:',
             ...order.items.map((item, index) => {
