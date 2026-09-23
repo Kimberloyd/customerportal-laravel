@@ -18,16 +18,13 @@ class CustomerAccess
         }
 
         if ($user->role === User::ROLE_AGENT) {
-            // An agent sees a customer once it's assigned to them or to a
-            // teammate (same team_members team), plus anything nobody has
-            // been assigned yet -- unassigned customers stay reachable by
-            // every agent rather than disappearing until an admin assigns one.
-            $employeeIds = self::teamEmployeeIds($user);
-
-            return $query->where(function (Builder $q) use ($employeeIds) {
-                $q->whereNull('assigned_employee_id')
-                    ->orWhereIn('assigned_employee_id', $employeeIds);
-            });
+            // An agent sees a customer only once it's assigned to them or to
+            // a teammate (same team_members team). Unassigned customers stay
+            // invisible here until an admin/office assigns one -- separately,
+            // AgentCustomerAccountController's own "create an account" picker
+            // deliberately still includes unassigned customers, since an
+            // agent claiming one for the first time is how it gets assigned.
+            return $query->whereIn('assigned_employee_id', self::teamEmployeeIds($user));
         }
 
         return in_array($user->role, [User::ROLE_ADMIN, User::ROLE_OFFICE], true)

@@ -15,7 +15,7 @@ class AgentCustomerScopeTest extends TestCase
     use CreatesOrderFixtures;
     use RefreshDatabase;
 
-    public function test_agent_sees_their_own_customer_a_teammates_customer_and_unassigned_but_not_another_agents(): void
+    public function test_agent_sees_their_own_customer_and_a_teammates_but_not_unassigned_or_another_agents(): void
     {
         $agent = User::factory()->create(['role' => User::ROLE_AGENT]);
         $teammate = User::factory()->create(['role' => User::ROLE_AGENT]);
@@ -39,20 +39,19 @@ class AgentCustomerScopeTest extends TestCase
         $response = $this->actingAsUser($agent)->get(route('purchase-orders.index'));
         $response->assertInertia(fn ($page) => $page
             ->missing('orders')
-            ->has('createOrderCustomers', 3)
+            ->has('createOrderCustomers', 2)
             ->where('createOrderCustomers.0.id', $ownCustomer->id)
             ->where('createOrderCustomers.1.id', $teamCustomer->id)
-            ->where('createOrderCustomers.2.id', $unassignedCustomer->id)
             ->loadDeferredProps('orders', fn ($deferred) => $deferred
-                ->where('orders.total', 3)));
+                ->where('orders.total', 2)));
 
         $this->actingAsUser($agent)->get(route('purchase-orders.show', $ownOrder))->assertOk();
         $this->actingAsUser($agent)->get(route('purchase-orders.show', $teamOrder))->assertOk();
-        $this->actingAsUser($agent)->get(route('purchase-orders.show', $unassignedOrder))->assertOk();
+        $this->actingAsUser($agent)->get(route('purchase-orders.show', $unassignedOrder))->assertForbidden();
         $this->actingAsUser($agent)->get(route('purchase-orders.show', $otherOrder))->assertForbidden();
     }
 
-    public function test_an_agent_with_no_team_only_sees_their_own_and_unassigned_customers(): void
+    public function test_an_agent_with_no_team_only_sees_their_own_customer(): void
     {
         $agent = User::factory()->create(['role' => User::ROLE_AGENT]);
         $otherAgent = User::factory()->create(['role' => User::ROLE_AGENT]);
@@ -68,8 +67,19 @@ class AgentCustomerScopeTest extends TestCase
         $unassignedOrder = $this->makeOrder($unassignedCustomer, PurchaseOrder::STATUS_SUBMITTED, now());
 
         $this->actingAsUser($agent)->get(route('purchase-orders.show', $ownOrder))->assertOk();
-        $this->actingAsUser($agent)->get(route('purchase-orders.show', $unassignedOrder))->assertOk();
+        $this->actingAsUser($agent)->get(route('purchase-orders.show', $unassignedOrder))->assertForbidden();
         $this->actingAsUser($agent)->get(route('purchase-orders.show', $otherOrder))->assertForbidden();
+    }
+
+    public function test_admin_and_office_still_see_unassigned_customers_orders(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $office = User::factory()->create(['role' => 'office']);
+        $unassignedCustomer = $this->makeCustomer('Nobody Yet');
+        $order = $this->makeOrder($unassignedCustomer, PurchaseOrder::STATUS_SUBMITTED, now());
+
+        $this->actingAsUser($admin)->get(route('purchase-orders.show', $order))->assertOk();
+        $this->actingAsUser($office)->get(route('purchase-orders.show', $order))->assertOk();
     }
 
     public function test_admin_and_office_still_see_every_customers_orders_regardless_of_assignment(): void
