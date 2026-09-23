@@ -396,7 +396,7 @@ export default function Show({
                     .filter(Boolean)
                     .join(' ');
 
-                return `${index + 1}. ${name} — Ordered ${item.quantity}, Delivered ${item.delivered_quantity}, Balance ${item.pending_quantity}`;
+                return `${index + 1}. ${name} — ${item.quantity}`;
             }),
             ...(order.remarks ? ['', `Remarks: ${order.remarks}`] : []),
         ];
