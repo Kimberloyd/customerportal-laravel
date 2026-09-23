@@ -39,9 +39,15 @@ class AgentCustomerScopeTest extends TestCase
         $response = $this->actingAsUser($agent)->get(route('purchase-orders.index'));
         $response->assertInertia(fn ($page) => $page
             ->missing('orders')
-            ->has('createOrderCustomers', 2)
+            // The "Create Order" picker is claimable, not just visible: it
+            // also lists the unassigned customer, since starting an order
+            // for one is how an agent claims it (see PurchaseOrders/CreateTest).
+            ->has('createOrderCustomers', 3)
             ->where('createOrderCustomers.0.id', $ownCustomer->id)
             ->where('createOrderCustomers.1.id', $teamCustomer->id)
+            ->where('createOrderCustomers.2.id', $unassignedCustomer->id)
+            // The Orders list itself stays strict: an unassigned customer's
+            // existing order isn't visible until someone actually claims them.
             ->loadDeferredProps('orders', fn ($deferred) => $deferred
                 ->where('orders.total', 2)));
 

@@ -21,15 +21,60 @@ class CustomerAccess
             // An agent sees a customer only once it's assigned to them or to
             // a teammate (same team_members team). Unassigned customers stay
             // invisible here until an admin/office assigns one -- separately,
-            // AgentCustomerAccountController's own "create an account" picker
-            // deliberately still includes unassigned customers, since an
-            // agent claiming one for the first time is how it gets assigned.
+            // applyToClaimableCustomers() below deliberately still includes
+            // unassigned customers, for the places where claiming one for the
+            // first time (by creating an account or an order for them) is the
+            // actual point.
             return $query->whereIn('assigned_employee_id', self::teamEmployeeIds($user));
         }
 
         return in_array($user->role, [User::ROLE_ADMIN, User::ROLE_OFFICE], true)
             ? $query
             : $query->whereRaw('1 = 0');
+    }
+
+    /**
+     * Same as applyToCustomers(), except an agent also sees a customer
+     * nobody has claimed yet. Use this instead of applyToCustomers() only
+     * where creating something for a customer is itself how that customer
+     * gets assigned (a new login account, a new order) -- everywhere else
+     * (browsing, messaging, reports) should keep unassigned customers out
+     * of an agent's view.
+     */
+    public static function applyToClaimableCustomers(Builder $query, User $user): Builder
+    {
+        if ($user->role !== User::ROLE_AGENT) {
+            return self::applyToCustomers($query, $user);
+        }
+
+        $employeeIds = self::teamEmployeeIds($user);
+
+        return $query->where(function (Builder $q) use ($employeeIds) {
+            $q->whereNull('assigned_employee_id')
+                ->orWhereIn('assigned_employee_id', $employeeIds);
+        });
+    }
+
+    /**
+     * If this customer isn't assigned to anyone yet and the acting user is
+     * an agent, assign it to them -- called wherever an agent creates
+     * something (an order, a login account) for a customer, so the
+     * customer they just acted on doesn't stay invisible to them
+     * afterward (applyToCustomers() above hides unassigned customers).
+     * Locks the row: two agents racing to claim the same unassigned
+     * customer must not both succeed.
+     */
+    public static function claimIfUnassigned(Customer $customer, User $actor): void
+    {
+        if ($actor->role !== User::ROLE_AGENT) {
+            return;
+        }
+
+        $locked = Customer::query()->lockForUpdate()->find($customer->id);
+        if ($locked && ! $locked->assigned_employee_id) {
+            $locked->update(['assigned_employee_id' => $actor->id]);
+            $customer->assigned_employee_id = $locked->assigned_employee_id;
+        }
     }
 
     public static function applyToOrders(Builder $query, User $user): Builder

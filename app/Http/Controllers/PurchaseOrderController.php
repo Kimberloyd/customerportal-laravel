@@ -52,7 +52,9 @@ class PurchaseOrderController extends Controller
     {
         $customer = CustomerScope::forCurrentUser();
 
-        $customerQuery = CustomerAccess::applyToCustomers(Customer::query(), $request->user());
+        // Claimable, not just visible: an agent can start an order for an
+        // unassigned customer, which assigns it to them (see store() below).
+        $customerQuery = CustomerAccess::applyToClaimableCustomers(Customer::query(), $request->user());
         $customers = $customerQuery->orderBy('company_name')->get(['id', 'company_name'])->toArray();
 
         $search = trim((string) $request->query('search', ''));
@@ -282,7 +284,7 @@ class PurchaseOrderController extends Controller
         }
 
         $customerId = $customer?->id ?? (int) $request->input('customer_id');
-        if (! $customerId || ! CustomerAccess::applyToCustomers(Customer::query(), $request->user())
+        if (! $customerId || ! CustomerAccess::applyToClaimableCustomers(Customer::query(), $request->user())
             ->whereKey($customerId)->exists()) {
             throw ValidationException::withMessages([
                 'customer_id' => 'Select a customer from the list.',
@@ -326,6 +328,8 @@ class PurchaseOrderController extends Controller
 
         try {
             $order = DB::transaction(function () use ($poNumber, $customerId, $request, $storedAttachment, $lineItems) {
+                CustomerAccess::claimIfUnassigned(Customer::findOrFail($customerId), $request->user());
+
                 $order = PurchaseOrder::create([
                     'po_number' => $poNumber,
                     'customer_id' => $customerId,

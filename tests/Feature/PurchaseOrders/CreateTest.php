@@ -348,4 +348,69 @@ class CreateTest extends TestCase
         $this->actingAsUser($user)->get('/orders/create')->assertStatus(403);
         $this->actingAsUser($user)->post('/orders', [])->assertStatus(403);
     }
+
+    public function test_agent_can_start_an_order_for_an_unassigned_customer_and_it_claims_them(): void
+    {
+        $agent = User::factory()->create(['role' => 'agent']);
+        $customer = $this->makeCustomer('Nobody Yet');
+        $product = $this->makeProduct();
+
+        $this->actingAsUser($agent)->get('/orders')->assertInertia(fn ($page) => $page
+            ->has('createOrderCustomers', 1)
+            ->where('createOrderCustomers.0.id', $customer->id));
+
+        $this->actingAsUser($agent)->post('/orders', [
+            'po_number' => 'PO-'.uniqid(),
+            'customer_id' => $customer->id,
+            'product_id' => [$product->id],
+            'product_search' => [''],
+            'quantity' => [1],
+        ])->assertRedirect(route('purchase-orders.index'));
+
+        $order = PurchaseOrder::first();
+        $this->assertNotNull($order);
+        $this->assertSame($agent->id, $customer->fresh()->assigned_employee_id);
+
+        // The customer no longer being unassigned doesn't hide the order
+        // from the agent who was just assigned it by creating it.
+        $this->actingAsUser($agent)->get(route('purchase-orders.show', $order))->assertOk();
+    }
+
+    public function test_agent_cannot_create_an_order_for_a_customer_assigned_to_an_unrelated_agent(): void
+    {
+        $agent = User::factory()->create(['role' => 'agent']);
+        $otherAgent = User::factory()->create(['role' => 'agent']);
+        $customer = $this->makeCustomer('Reserved Clinic');
+        $customer->update(['assigned_employee_id' => $otherAgent->id]);
+        $product = $this->makeProduct();
+
+        $this->actingAsUser($agent)->post('/orders', [
+            'po_number' => 'PO-'.uniqid(),
+            'customer_id' => $customer->id,
+            'product_id' => [$product->id],
+            'product_search' => [''],
+            'quantity' => [1],
+        ])->assertSessionHasErrors('customer_id');
+
+        $this->assertSame(0, PurchaseOrder::count());
+        $this->assertSame($otherAgent->id, $customer->fresh()->assigned_employee_id);
+    }
+
+    public function test_agents_own_and_teammates_customers_stay_assigned_as_is(): void
+    {
+        $agent = User::factory()->create(['role' => 'agent']);
+        $customer = $this->makeCustomer('Already Mine');
+        $customer->update(['assigned_employee_id' => $agent->id]);
+        $product = $this->makeProduct();
+
+        $this->actingAsUser($agent)->post('/orders', [
+            'po_number' => 'PO-'.uniqid(),
+            'customer_id' => $customer->id,
+            'product_id' => [$product->id],
+            'product_search' => [''],
+            'quantity' => [1],
+        ])->assertRedirect(route('purchase-orders.index'));
+
+        $this->assertSame($agent->id, $customer->fresh()->assigned_employee_id);
+    }
 }

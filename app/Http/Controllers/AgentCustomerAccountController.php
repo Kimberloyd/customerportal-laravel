@@ -20,13 +20,11 @@ class AgentCustomerAccountController extends Controller
     public function create(): Response
     {
         $agent = $this->agent();
-        // Same team-visibility rule as everywhere else (see CustomerAccess):
-        // an agent's own customers, a teammate's, or anyone not yet assigned.
         $employeeIds = CustomerAccess::teamEmployeeIds($agent);
 
         return Inertia::render('CustomerAccounts/Create', [
-            'customers' => Customer::query()->where('is_active', true)->whereNull('user_id')
-                ->where(fn ($query) => $query->whereNull('assigned_employee_id')->orWhereIn('assigned_employee_id', $employeeIds))
+            'customers' => CustomerAccess::applyToClaimableCustomers(Customer::query(), $agent)
+                ->where('is_active', true)->whereNull('user_id')
                 ->orderBy('company_name')->get(['id', 'company_name', 'assigned_employee_id']),
             'assignedCustomers' => Customer::query()
                 ->whereIn('assigned_employee_id', $employeeIds)
