@@ -220,6 +220,7 @@
          * reading it. Same lightness (83%), so no visible change today. */
         --selected: hsl(60 4% 83%);
         --destructive-light: #FEF2F2;
+        --success-light: #F0FDF4;
 
         /* Mirrors Tailwind's own default radius scale (rounded-md/lg/xl/2xl)
          * so components/ui/dropdown.tsx and popover.tsx -- which compute a
@@ -275,6 +276,7 @@
         --info-hsl: 187 55% 50%;
         --selected: hsl(60 4% 25%);
         --destructive-light: #3f1212;
+        --success-light: #052e16;
     }
 
     /*

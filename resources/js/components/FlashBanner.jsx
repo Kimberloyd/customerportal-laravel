@@ -7,14 +7,17 @@ const AUTO_DISMISS_MS = 5000;
 const BANNER_STYLES = {
     success: {
         icon: CircleCheck,
-        container: 'border-success/30 bg-success/10',
+        // Solid, not the translucent success/10 this used to be -- the
+        // banner sits sticky above scrolling table rows, and a see-through
+        // background let row text show through underneath it.
+        container: 'border-success/30 bg-[var(--success-light)]',
         content: 'text-success',
         dismiss: 'text-success hover:opacity-75',
         role: 'status',
     },
     error: {
         icon: CircleAlert,
-        container: 'border-destructive/30 bg-destructive/10',
+        container: 'border-destructive/30 bg-[var(--destructive-light)]',
         content: 'text-destructive',
         dismiss: 'text-destructive hover:opacity-75',
         role: 'alert',
@@ -24,14 +27,14 @@ const BANNER_STYLES = {
     // same color elsewhere (e.g. Auth/Login.jsx's status banner).
     link: {
         icon: Link2,
-        container: 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40',
+        container: 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950',
         content: 'text-amber-800 dark:text-amber-300',
         dismiss: 'text-amber-800 hover:text-amber-950 dark:text-amber-300 dark:hover:text-amber-100',
         role: 'status',
     },
     warning: {
         icon: TriangleAlert,
-        container: 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40',
+        container: 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950',
         content: 'text-amber-800 dark:text-amber-300',
         dismiss: 'text-amber-800 hover:text-amber-950 dark:text-amber-300 dark:hover:text-amber-100',
         role: 'status',
