@@ -392,7 +392,6 @@ export default function Show({
             `Status: ${currentStatus.label}`,
             `Submitted: ${formatDateTime(order.submitted_at)}`,
             `Last updated: ${formatDateTime(order.updated_at)}`,
-            `Link: ${route('purchase-orders.show', order.public_id, true)}`,
             '',
             'Items:',
             ...order.items.map((item, index) => {
@@ -403,6 +402,8 @@ export default function Show({
                 return `${index + 1}. ${name} — ${item.quantity}`;
             }),
             ...(order.remarks ? ['', `Remarks: ${order.remarks}`] : []),
+            '',
+            `Via ${window.location.hostname}`,
         ];
 
         try {
