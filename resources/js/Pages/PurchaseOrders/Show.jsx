@@ -6,6 +6,7 @@ import { Table } from '@/components/motion/table';
 import { Tooltip } from '@/components/motion/tooltip';
 import UpdateHistoryTable from '@/components/UpdateHistoryTable';
 import { Button } from '@/components/ui/button';
+import { NotificationBell } from '@/components/ui/notification-bell';
 import { AutoHeightReveal, Modal } from '@/components/interior/modal';
 import { formatDateTime, statusBadge } from '@/utils/orderDisplay';
 import { PdfPreview } from '@/components/PdfPreview';
@@ -433,39 +434,40 @@ export default function Show({
                     <div className="flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">Copy order details</span>
                         <Tooltip content={detailsCopied ? 'Copied' : 'Copy order details'}>
-                            <Button
-                                type="button"
-                                variant="tertiary"
-                                size="icon-compact"
+                            <NotificationBell
+                                count={0}
+                                size={36}
+                                label={detailsCopied ? 'Copied' : 'Copy order details'}
+                                icon={
+                                    <AnimatePresence mode="wait" initial={false}>
+                                        {detailsCopied ? (
+                                            <motion.span
+                                                key="check"
+                                                initial={{ opacity: 0, scale: 0.6 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                exit={{ opacity: 0, scale: 0.8 }}
+                                                transition={spring.fast}
+                                                className="flex items-center justify-center"
+                                            >
+                                                <Check aria-hidden="true" className="h-5 w-5" strokeWidth={2} />
+                                            </motion.span>
+                                        ) : (
+                                            <motion.span
+                                                key="copy"
+                                                initial={{ opacity: 0, scale: 0.6 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                exit={{ opacity: 0, scale: 0.8 }}
+                                                transition={spring.fast}
+                                                className="flex items-center justify-center"
+                                            >
+                                                <Copy aria-hidden="true" className="h-5 w-5" strokeWidth={1.5} />
+                                            </motion.span>
+                                        )}
+                                    </AnimatePresence>
+                                }
                                 onClick={copyOrderDetails}
-                                aria-label={detailsCopied ? 'Copied' : 'Copy order details'}
-                            >
-                                <AnimatePresence mode="wait" initial={false}>
-                                    {detailsCopied ? (
-                                        <motion.span
-                                            key="check"
-                                            initial={{ opacity: 0, scale: 0.6 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            exit={{ opacity: 0, scale: 0.8 }}
-                                            transition={spring.fast}
-                                            className="flex items-center justify-center"
-                                        >
-                                            <Check size={14} strokeWidth={2} />
-                                        </motion.span>
-                                    ) : (
-                                        <motion.span
-                                            key="copy"
-                                            initial={{ opacity: 0, scale: 0.6 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            exit={{ opacity: 0, scale: 0.8 }}
-                                            transition={spring.fast}
-                                            className="flex items-center justify-center"
-                                        >
-                                            <Copy size={14} strokeWidth={1.5} />
-                                        </motion.span>
-                                    )}
-                                </AnimatePresence>
-                            </Button>
+                                className="bg-transparent hover:bg-hover"
+                            />
                         </Tooltip>
                     </div>
                 </div>
