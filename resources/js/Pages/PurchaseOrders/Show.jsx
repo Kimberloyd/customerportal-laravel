@@ -557,30 +557,6 @@ export default function Show({
                                     </dd>
                                 </div>
                             )}
-                            {!isCustomer && (
-                                <div className="flex gap-2">
-                                    <dt className="w-28 shrink-0 text-muted-foreground">PO Number</dt>
-                                    <dd className="flex flex-1 items-center gap-2">
-                                        <Input
-                                            type="text"
-                                            value={poNumberDraft}
-                                            onChange={setPoNumberDraft}
-                                            placeholder="Not set"
-                                            classNames={{ root: 'flex-1', field: 'rounded-md' }}
-                                        />
-                                        <Button
-                                            type="button"
-                                            variant="tertiary"
-                                            size="compact"
-                                            onClick={savePoNumber}
-                                            disabled={!poNumberDirty || savingPoNumber}
-                                            className="rounded-md"
-                                        >
-                                            {savingPoNumber ? 'Saving…' : 'Save'}
-                                        </Button>
-                                    </dd>
-                                </div>
-                            )}
                             <div className="flex gap-2">
                                 <dt className="w-28 shrink-0 text-muted-foreground">Submitted</dt>
                                 <dd className="text-foreground">{formatDateTime(order.submitted_at)}</dd>
@@ -600,7 +576,29 @@ export default function Show({
                         </dl>
                         </div>
 
-                        <div className="flex min-h-32 items-center justify-center border-t border-border pt-6 md:min-h-0 md:border-l md:border-t-0 md:pl-6 md:pt-0">
+                        <div className="flex min-h-32 flex-col items-center justify-center gap-6 border-t border-border pt-6 md:min-h-0 md:border-l md:border-t-0 md:pl-6 md:pt-0">
+                            {!isCustomer && (
+                                <div className="flex w-full max-w-xs items-center gap-2">
+                                    <Input
+                                        type="text"
+                                        label="PO Number"
+                                        value={poNumberDraft}
+                                        onChange={setPoNumberDraft}
+                                        placeholder="Not set"
+                                        classNames={{ root: 'flex-1', field: 'rounded-md' }}
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="tertiary"
+                                        size="compact"
+                                        onClick={savePoNumber}
+                                        disabled={!poNumberDirty || savingPoNumber}
+                                        className="mt-6 shrink-0 rounded-md"
+                                    >
+                                        {savingPoNumber ? 'Saving…' : 'Save'}
+                                    </Button>
+                                </div>
+                            )}
                             <AnimatedBadge
                                 status={currentStatus.status}
                                 size="md"
