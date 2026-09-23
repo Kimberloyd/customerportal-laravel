@@ -4,16 +4,22 @@ namespace App\Services;
 
 use App\Events\PurchaseOrderChanged;
 use App\Jobs\SendOrderFollowUpSms;
+use App\Mail\AgentOrderReminderMail;
 use App\Models\AppSetting;
+use App\Models\CustomerMessage;
 use App\Models\OrderFollowUp;
 use App\Models\PurchaseOrderNotification;
 use App\Models\User;
+use App\Support\FacebookMessenger;
+use App\Support\MessageThread;
+use App\Support\MessengerApiException;
 use App\Support\OrderNotifications;
 use App\Support\ReminderSettings;
 use App\Support\SemaphoreSms;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class OrderFollowUpDispatcher
 {
@@ -40,13 +46,34 @@ class OrderFollowUpDispatcher
 
         foreach ($recipients as $recipient) {
             $successful += $this->recordPortal($followUp, $recipient, $message) ? 1 : 0;
+            $isCustomer = $recipient->role === User::ROLE_CUSTOMER;
 
-            if ($recipient->role === User::ROLE_CUSTOMER && $this->customerSmsAllowed()) {
+            if ($isCustomer && $this->customerSmsAllowed()) {
                 if ($this->isQuietTime()) {
                     SendOrderFollowUpSms::dispatch($followUp->id, $recipient->id, $followUp->level)
                         ->delay($this->nextSmsWindow());
                 } else {
                     $this->sendSms($followUp, $recipient, $this->smsMessage($followUp), $followUp->level);
+                }
+            }
+
+            // Staff (agent/office/admin) recipients: the same three extra
+            // channels an order-submission notification already uses for
+            // staff (see OrderNotifications), applied to reminders too.
+            if (! $isCustomer) {
+                if ($this->agentSmsAllowed()) {
+                    if ($this->isQuietTime()) {
+                        SendOrderFollowUpSms::dispatch($followUp->id, $recipient->id, $followUp->level)
+                            ->delay($this->nextSmsWindow());
+                    } else {
+                        $this->sendSms($followUp, $recipient, $message, $followUp->level);
+                    }
+                }
+                if ($this->agentEmailEnabled()) {
+                    $this->sendAgentEmail($followUp, $recipient, $message);
+                }
+                if ($this->agentMessengerEnabled()) {
+                    $this->sendAgentMessenger($followUp, $recipient, $message);
                 }
             }
         }
@@ -120,7 +147,12 @@ class OrderFollowUpDispatcher
 
     public function sendDeferredSms(OrderFollowUp $followUp, User $recipient, string $level): void
     {
-        if (! ReminderSettings::enabled() || ! $this->manager->isApplicable($followUp) || ! $this->customerSmsAllowed()) {
+        if (! ReminderSettings::enabled() || ! $this->manager->isApplicable($followUp)) {
+            return;
+        }
+
+        $isCustomer = $recipient->role === User::ROLE_CUSTOMER;
+        if ($isCustomer ? ! $this->customerSmsAllowed() : ! $this->agentSmsAllowed()) {
             return;
         }
 
@@ -130,7 +162,7 @@ class OrderFollowUpDispatcher
             return;
         }
 
-        $this->sendSms($followUp, $recipient, $this->smsMessage($followUp), $level);
+        $this->sendSms($followUp, $recipient, $isCustomer ? $this->smsMessage($followUp) : $this->message($followUp), $level);
     }
 
     private function sendSms(OrderFollowUp $followUp, User $recipient, string $message, string $level): void
@@ -171,6 +203,111 @@ class OrderFollowUpDispatcher
             $record->update(['status' => 'failed', 'note' => 'SMS provider could not accept the reminder']);
             AppSetting::putString('order_reminders.last_failure', now()->toIso8601String().' SMS reminder could not be sent.');
             Log::warning('Order reminder SMS could not be sent.', [
+                'follow_up_id' => $followUp->id,
+                'purchase_order_id' => $followUp->purchase_order_id,
+                'exception' => $exception::class,
+            ]);
+        }
+    }
+
+    private function sendAgentEmail(OrderFollowUp $followUp, User $recipient, string $message): void
+    {
+        if (! $recipient->email) {
+            return;
+        }
+
+        $key = $this->dedupeKey($followUp, $recipient, 'email');
+        $record = PurchaseOrderNotification::firstOrCreate(
+            ['dedupe_key' => $key],
+            [
+                'purchase_order_id' => $followUp->purchase_order_id,
+                'channel' => 'email',
+                'status' => 'sending',
+                'event_key' => 'reminder.'.$followUp->kind,
+                'recipient_user_id' => $recipient->id,
+                'follow_up_id' => $followUp->id,
+                'level' => $followUp->level,
+                'recipient' => $recipient->email,
+                'note' => 'Staff reminder',
+                'created_at' => now(),
+            ],
+        );
+
+        if (! $record->wasRecentlyCreated) {
+            return;
+        }
+
+        try {
+            Mail::to($recipient->email)->send(new AgentOrderReminderMail($followUp, $message));
+            $record->update(['status' => 'sent']);
+        } catch (\Throwable $exception) {
+            $record->update(['status' => 'failed', 'note' => 'Mail provider could not accept the reminder']);
+            Log::warning('Order reminder email could not be sent.', [
+                'follow_up_id' => $followUp->id,
+                'purchase_order_id' => $followUp->purchase_order_id,
+                'exception' => $exception::class,
+            ]);
+        }
+    }
+
+    /**
+     * Reuses the same "does this staff member have an open Facebook thread
+     * linked to their own account?" lookup as an order-submission summary
+     * (see OrderNotifications::sendFacebookSummary) -- these threads are
+     * internal staff, not customers (MessageController::widgetFacebookLink).
+     * No HUMAN_AGENT tag: this is an automated reminder, not a person
+     * replying, and Meta restricts that tag to genuine human replies.
+     */
+    private function sendAgentMessenger(OrderFollowUp $followUp, User $recipient, string $message): void
+    {
+        if (! FacebookMessenger::isConfigured()) {
+            return;
+        }
+
+        $thread = CustomerMessage::whereNull('parent_id')
+            ->where('channel', 'facebook_messenger')
+            ->where('assigned_user_id', $recipient->id)
+            ->where('status', '!=', 'closed')
+            ->first();
+
+        if (! $thread) {
+            return;
+        }
+
+        $key = $this->dedupeKey($followUp, $recipient, 'facebook');
+        $record = PurchaseOrderNotification::firstOrCreate(
+            ['dedupe_key' => $key],
+            [
+                'purchase_order_id' => $followUp->purchase_order_id,
+                'channel' => 'facebook',
+                'status' => 'sending',
+                'event_key' => 'reminder.'.$followUp->kind,
+                'recipient_user_id' => $recipient->id,
+                'follow_up_id' => $followUp->id,
+                'level' => $followUp->level,
+                'recipient' => (string) $thread->id,
+                'note' => 'Staff reminder',
+                'created_at' => now(),
+            ],
+        );
+
+        if (! $record->wasRecentlyCreated) {
+            return;
+        }
+
+        try {
+            $externalMessageId = FacebookMessenger::sendReply($thread, $message);
+            MessageThread::createReply($thread, $message, 'company', $externalMessageId);
+            $record->update(['status' => 'sent', 'external_reference' => $externalMessageId]);
+        } catch (MessengerApiException $exception) {
+            if ($exception->isOutsideMessagingWindow()) {
+                $record->update(['status' => 'skipped', 'note' => 'Outside Meta\'s 24-hour messaging window']);
+
+                return;
+            }
+
+            $record->update(['status' => 'failed', 'note' => $exception->getMessage()]);
+            Log::warning('Order reminder Messenger send failed.', [
                 'follow_up_id' => $followUp->id,
                 'purchase_order_id' => $followUp->purchase_order_id,
                 'exception' => $exception::class,
@@ -237,6 +374,21 @@ class OrderFollowUpDispatcher
     private function customerSmsAllowed(): bool
     {
         return ReminderSettings::customerSmsEnabled() && OrderNotifications::smsEnabled() && SemaphoreSms::isConfigured();
+    }
+
+    private function agentSmsAllowed(): bool
+    {
+        return ReminderSettings::agentSmsEnabled() && OrderNotifications::smsEnabled() && SemaphoreSms::isConfigured();
+    }
+
+    private function agentEmailEnabled(): bool
+    {
+        return ReminderSettings::agentEmailEnabled();
+    }
+
+    private function agentMessengerEnabled(): bool
+    {
+        return ReminderSettings::agentMessengerEnabled();
     }
 
     private function isQuietTime(): bool

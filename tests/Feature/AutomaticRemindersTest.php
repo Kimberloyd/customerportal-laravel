@@ -13,9 +13,11 @@ use App\Models\PurchaseOrderNotification;
 use App\Models\User;
 use App\Services\OrderFollowUpDispatcher;
 use App\Services\OrderFollowUpManager;
+use App\Mail\AgentOrderReminderMail;
 use App\Support\ReminderSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Tests\Concerns\CreatesOrderFixtures;
 use Tests\TestCase;
@@ -250,6 +252,102 @@ class AutomaticRemindersTest extends TestCase
         $this->assertDatabaseHas('purchase_order_notifications', ['channel' => 'portal', 'recipient_user_id' => $user->id]);
         $this->assertDatabaseMissing('purchase_order_notifications', ['channel' => 'sms']);
         Queue::assertPushed(SendOrderFollowUpSms::class, fn ($job) => $job->followUpId === $followUp->id && $job->recipientUserId === $user->id);
+    }
+
+    public function test_agent_reminder_stays_portal_only_when_agent_channels_are_off(): void
+    {
+        Mail::fake();
+        $agent = User::factory()->create(['role' => User::ROLE_AGENT, 'phone' => '09171234567', 'email' => 'agent@example.com']);
+        $customer = $this->makeCustomer();
+        $customer->update(['assigned_employee_id' => $agent->id]);
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now()->subDays(2));
+        app(OrderFollowUpManager::class)->syncOrder($order);
+        $followUp = OrderFollowUp::firstOrFail();
+        $followUp->update(['status' => 'dispatching']);
+
+        app(OrderFollowUpDispatcher::class)->dispatch($followUp->fresh());
+
+        $this->assertDatabaseHas('purchase_order_notifications', ['recipient_user_id' => $agent->id, 'channel' => 'portal']);
+        $this->assertDatabaseMissing('purchase_order_notifications', ['recipient_user_id' => $agent->id, 'channel' => 'sms']);
+        $this->assertDatabaseMissing('purchase_order_notifications', ['recipient_user_id' => $agent->id, 'channel' => 'email']);
+        $this->assertDatabaseMissing('purchase_order_notifications', ['recipient_user_id' => $agent->id, 'channel' => 'facebook']);
+        Mail::assertNothingSent();
+    }
+
+    public function test_agent_reminder_sends_sms_email_and_messenger_when_all_three_are_on(): void
+    {
+        Mail::fake();
+        config([
+            'reminders.agent_sms_enabled' => true,
+            'reminders.agent_email_enabled' => true,
+            'reminders.agent_messenger_enabled' => true,
+            'services.po_notifications.sms_enabled' => true,
+            'services.semaphore.api_key' => 'test-key',
+            'services.facebook.page_access_token' => 'test-token',
+        ]);
+        Http::fake([
+            'api.semaphore.co/*' => Http::response([['message_id' => 55, 'status' => 'Queued']]),
+            'graph.facebook.com/*' => Http::response(['recipient_id' => 'PSID-1', 'message_id' => 'm_1']),
+        ]);
+        $this->travelTo(now()->setTimezone('Asia/Manila')->setTime(10, 0)->utc());
+        $agent = User::factory()->create(['role' => User::ROLE_AGENT, 'phone' => '09171234567', 'email' => 'agent@example.com']);
+        $this->makeThread(null, ['channel' => 'facebook_messenger', 'assigned_user_id' => $agent->id, 'external_sender_id' => 'PSID-1']);
+        $customer = $this->makeCustomer();
+        $customer->update(['assigned_employee_id' => $agent->id]);
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now()->subDays(2));
+        app(OrderFollowUpManager::class)->syncOrder($order);
+        $followUp = OrderFollowUp::firstOrFail();
+        $followUp->update(['status' => 'dispatching']);
+
+        app(OrderFollowUpDispatcher::class)->dispatch($followUp->fresh());
+
+        $this->assertDatabaseHas('purchase_order_notifications', ['recipient_user_id' => $agent->id, 'channel' => 'sms', 'status' => 'sent']);
+        $this->assertDatabaseHas('purchase_order_notifications', ['recipient_user_id' => $agent->id, 'channel' => 'email', 'status' => 'sent']);
+        $this->assertDatabaseHas('purchase_order_notifications', ['recipient_user_id' => $agent->id, 'channel' => 'facebook', 'status' => 'sent']);
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'api.semaphore.co') && $request['number'] === '09171234567');
+        Mail::assertSent(AgentOrderReminderMail::class, fn ($mail) => $mail->hasTo('agent@example.com'));
+    }
+
+    public function test_agent_sms_waits_until_quiet_hours_end(): void
+    {
+        Queue::fake();
+        config([
+            'reminders.agent_sms_enabled' => true,
+            'services.po_notifications.sms_enabled' => true,
+            'services.semaphore.api_key' => 'test-key',
+        ]);
+        $this->travelTo(now()->setTimezone('Asia/Manila')->setTime(22, 0)->utc());
+        $agent = User::factory()->create(['role' => User::ROLE_AGENT, 'phone' => '09171234567']);
+        $customer = $this->makeCustomer();
+        $customer->update(['assigned_employee_id' => $agent->id]);
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now()->subDays(2));
+        app(OrderFollowUpManager::class)->syncOrder($order);
+        $followUp = OrderFollowUp::firstOrFail();
+        $followUp->update(['status' => 'dispatching']);
+
+        app(OrderFollowUpDispatcher::class)->dispatch($followUp->fresh());
+
+        $this->assertDatabaseMissing('purchase_order_notifications', ['recipient_user_id' => $agent->id, 'channel' => 'sms']);
+        Queue::assertPushed(SendOrderFollowUpSms::class, fn ($job) => $job->followUpId === $followUp->id && $job->recipientUserId === $agent->id);
+    }
+
+    public function test_agent_messenger_is_skipped_without_a_linked_facebook_thread(): void
+    {
+        config([
+            'reminders.agent_messenger_enabled' => true,
+            'services.facebook.page_access_token' => 'test-token',
+        ]);
+        $agent = User::factory()->create(['role' => User::ROLE_AGENT]);
+        $customer = $this->makeCustomer();
+        $customer->update(['assigned_employee_id' => $agent->id]);
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now()->subDays(2));
+        app(OrderFollowUpManager::class)->syncOrder($order);
+        $followUp = OrderFollowUp::firstOrFail();
+        $followUp->update(['status' => 'dispatching']);
+
+        app(OrderFollowUpDispatcher::class)->dispatch($followUp->fresh());
+
+        $this->assertDatabaseMissing('purchase_order_notifications', ['recipient_user_id' => $agent->id, 'channel' => 'facebook']);
     }
 
     public function test_stale_queued_follow_up_resolves_without_notifying(): void

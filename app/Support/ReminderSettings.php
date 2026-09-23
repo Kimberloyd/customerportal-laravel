@@ -10,6 +10,12 @@ class ReminderSettings
 
     public const SMS_ENABLED_KEY = 'order_reminders.customer_sms_enabled';
 
+    public const AGENT_SMS_ENABLED_KEY = 'order_reminders.agent_sms_enabled';
+
+    public const AGENT_EMAIL_ENABLED_KEY = 'order_reminders.agent_email_enabled';
+
+    public const AGENT_MESSENGER_ENABLED_KEY = 'order_reminders.agent_messenger_enabled';
+
     public const QUIET_START_KEY = 'order_reminders.quiet_hours_start';
 
     public const QUIET_END_KEY = 'order_reminders.quiet_hours_end';
@@ -22,6 +28,21 @@ class ReminderSettings
     public static function customerSmsEnabled(): bool
     {
         return AppSetting::boolean(self::SMS_ENABLED_KEY, (bool) config('reminders.customer_sms_enabled', false));
+    }
+
+    public static function agentSmsEnabled(): bool
+    {
+        return AppSetting::boolean(self::AGENT_SMS_ENABLED_KEY, (bool) config('reminders.agent_sms_enabled', false));
+    }
+
+    public static function agentEmailEnabled(): bool
+    {
+        return AppSetting::boolean(self::AGENT_EMAIL_ENABLED_KEY, (bool) config('reminders.agent_email_enabled', false));
+    }
+
+    public static function agentMessengerEnabled(): bool
+    {
+        return AppSetting::boolean(self::AGENT_MESSENGER_ENABLED_KEY, (bool) config('reminders.agent_messenger_enabled', false));
     }
 
     public static function timezone(): string
@@ -64,6 +85,9 @@ class ReminderSettings
         return [
             'enabled' => self::enabled(),
             'customer_sms_enabled' => self::customerSmsEnabled(),
+            'agent_sms_enabled' => self::agentSmsEnabled(),
+            'agent_email_enabled' => self::agentEmailEnabled(),
+            'agent_messenger_enabled' => self::agentMessengerEnabled(),
             'timezone' => self::timezone(),
             'quiet_hours_start' => self::quietStart(),
             'quiet_hours_end' => self::quietEnd(),

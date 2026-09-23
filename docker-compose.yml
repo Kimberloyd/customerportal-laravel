@@ -18,6 +18,9 @@ x-laravel-base-environment: &laravel-base-environment
   ORDER_REMINDERS_QUIET_HOURS_START: ${ORDER_REMINDERS_QUIET_HOURS_START:-20}
   ORDER_REMINDERS_QUIET_HOURS_END: ${ORDER_REMINDERS_QUIET_HOURS_END:-8}
   ORDER_REMINDERS_CUSTOMER_SMS_ENABLED: ${ORDER_REMINDERS_CUSTOMER_SMS_ENABLED:-false}
+  ORDER_REMINDERS_AGENT_SMS_ENABLED: ${ORDER_REMINDERS_AGENT_SMS_ENABLED:-false}
+  ORDER_REMINDERS_AGENT_EMAIL_ENABLED: ${ORDER_REMINDERS_AGENT_EMAIL_ENABLED:-false}
+  ORDER_REMINDERS_AGENT_MESSENGER_ENABLED: ${ORDER_REMINDERS_AGENT_MESSENGER_ENABLED:-false}
   ORDER_REMINDERS_ROLLOUT_GRACE_HOURS: ${ORDER_REMINDERS_ROLLOUT_GRACE_HOURS:-24}
   APP_LOCALE: ${APP_LOCALE:-en}
   APP_FALLBACK_LOCALE: ${APP_FALLBACK_LOCALE:-en}
@@ -238,6 +241,24 @@ services:
       PO_NOTIFICATIONS_PUSH_ENABLED: ${PO_NOTIFICATIONS_PUSH_ENABLED:-false}
       SEMAPHORE_API_KEY: ${SEMAPHORE_API_KEY:-}
       SEMAPHORE_SENDER_NAME: ${SEMAPHORE_SENDER_NAME:-}
+      # Order-reminder jobs run here (queue "notifications") and, once an
+      # agent/office/admin reminder channel is turned on above, now also
+      # send email and Facebook Messenger -- both were missing from this
+      # service entirely before (SendOrderSubmittedMail-style mail and
+      # FacebookMessenger::sendReply would have failed silently/erred here).
+      MAIL_MAILER: ${MAIL_MAILER:-log}
+      MAIL_SCHEME: ${MAIL_SCHEME:-null}
+      MAIL_HOST: ${MAIL_HOST:-127.0.0.1}
+      MAIL_PORT: ${MAIL_PORT:-2525}
+      MAIL_USERNAME: ${MAIL_USERNAME:-null}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-null}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-hello@example.com}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Customer Portal}
+      POSTMARK_API_KEY: ${POSTMARK_API_KEY:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      META_MESSENGER_PAGE_ACCESS_TOKEN: ${META_MESSENGER_PAGE_ACCESS_TOKEN:-}
+      META_MESSENGER_APP_SECRET: ${META_MESSENGER_APP_SECRET:-}
+      META_MESSENGER_GRAPH_API_VERSION: ${META_MESSENGER_GRAPH_API_VERSION:-v19.0}
     volumes:
       # Read-only: the worker only needs to read the Firebase key at
       # storage/app/private/fcm/service-account.json to send push notifications.

@@ -31,8 +31,10 @@ class SendOrderFollowUpSms implements ShouldQueue
     public function handle(OrderFollowUpDispatcher $dispatcher): void
     {
         $followUp = OrderFollowUp::query()->find($this->followUpId);
+        // Role-agnostic: OrderFollowUpDispatcher::sendDeferredSms() branches
+        // on the recipient's actual role (customer vs. staff) itself.
         $recipient = User::query()->whereKey($this->recipientUserId)
-            ->where('role', User::ROLE_CUSTOMER)->where('is_active', true)->first();
+            ->where('is_active', true)->first();
 
         if ($followUp && $recipient) {
             $dispatcher->sendDeferredSms($followUp, $recipient, $this->level);
