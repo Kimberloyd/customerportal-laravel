@@ -75,6 +75,7 @@ Route::middleware('auth')->prefix('orders')->name('purchase-orders.')->group(fun
     Route::get('/{order}/edit', [PurchaseOrderController::class, 'edit'])->name('edit');
     Route::put('/{order}', [PurchaseOrderController::class, 'update'])->middleware('throttle:order-writes')->name('update');
     Route::patch('/{order}/remarks', [PurchaseOrderController::class, 'updateRemarks'])->middleware('throttle:order-writes')->name('remarks.update');
+    Route::patch('/{order}/po-number', [PurchaseOrderController::class, 'updatePoNumber'])->middleware('throttle:order-writes')->name('po-number.update');
     Route::delete('/{order}', [PurchaseOrderController::class, 'destroy'])->middleware('throttle:admin-sensitive')->name('destroy');
     Route::post('/{order}/complete', [PurchaseOrderController::class, 'complete'])->middleware('throttle:order-writes')->name('complete');
     Route::post('/{order}/receive', [PurchaseOrderController::class, 'receive'])->middleware('throttle:order-writes')->name('receive');

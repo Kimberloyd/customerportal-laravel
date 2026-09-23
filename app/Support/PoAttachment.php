@@ -35,7 +35,7 @@ class PoAttachment
     /**
      * @throws \InvalidArgumentException on invalid extension/content
      */
-    public static function save(UploadedFile $file, string $poNumber): string
+    public static function save(UploadedFile $file, ?string $poNumber): string
     {
         $extension = strtolower($file->getClientOriginalExtension());
 

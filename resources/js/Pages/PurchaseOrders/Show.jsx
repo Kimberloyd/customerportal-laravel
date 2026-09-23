@@ -51,7 +51,10 @@ export default function Show({
     usePurchaseOrderRealtime(order.id);
 
     const isCustomer = usePage().props.auth.user.role === 'customer';
-    const orderNumber = isCustomer ? order.transaction_number : order.po_number;
+    // The page's identity is always the transaction number -- po_number is
+    // often not set yet (staff fill it in after the fact, see the inline
+    // field below), so it can't double as the thing this page is titled by.
+    const orderNumber = order.transaction_number;
     const showDeliverColumn = canManageFulfillment && !order.is_terminal;
     const currentStatus = statusBadge(order.display_status ?? order.status);
     const [attachmentPreviewOpen, setAttachmentPreviewOpen] = useState(false);
@@ -386,6 +389,22 @@ export default function Show({
         ? [...order.items, ...(showActionsRow ? [{ id: '__spacer', __isTotal: true }] : [])]
         : [];
 
+    const [poNumberDraft, setPoNumberDraft] = useState(order.po_number ?? '');
+    useEffect(() => {
+        setPoNumberDraft(order.po_number ?? '');
+    }, [order.po_number]);
+    const [savingPoNumber, setSavingPoNumber] = useState(false);
+    const poNumberDirty = poNumberDraft.trim() !== (order.po_number ?? '');
+    const savePoNumber = useCallback(() => {
+        router.patch(route('purchase-orders.po-number.update', order.public_id), {
+            po_number: poNumberDraft.trim(),
+        }, {
+            preserveScroll: true,
+            onStart: () => setSavingPoNumber(true),
+            onFinish: () => setSavingPoNumber(false),
+        });
+    }, [order.public_id, poNumberDraft]);
+
     const [detailsCopied, setDetailsCopied] = useState(false);
     const copyOrderDetails = useCallback(async () => {
         const lines = [
@@ -535,6 +554,30 @@ export default function Show({
                                                 </a>
                                             )}
                                         </Tooltip>
+                                    </dd>
+                                </div>
+                            )}
+                            {!isCustomer && (
+                                <div className="flex gap-2">
+                                    <dt className="w-28 shrink-0 text-muted-foreground">PO Number</dt>
+                                    <dd className="flex flex-1 items-center gap-2">
+                                        <Input
+                                            type="text"
+                                            value={poNumberDraft}
+                                            onChange={setPoNumberDraft}
+                                            placeholder="Not set"
+                                            classNames={{ root: 'flex-1', field: 'rounded-md' }}
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="tertiary"
+                                            size="compact"
+                                            onClick={savePoNumber}
+                                            disabled={!poNumberDirty || savingPoNumber}
+                                            className="rounded-md"
+                                        >
+                                            {savingPoNumber ? 'Saving…' : 'Save'}
+                                        </Button>
                                     </dd>
                                 </div>
                             )}

@@ -302,25 +302,14 @@ class PurchaseOrderController extends Controller
             ]);
         }
 
-        // The customer's own external PO reference -- optional, since not
-        // every customer has one. Left blank, one is generated so the
-        // column (NOT NULL, unique) and every downstream reference to it
-        // (notifications, exports, the archive dialog's type-to-confirm)
-        // keep working unchanged.
-        $poNumber = trim((string) $request->input('po_number', ''));
-        if ($poNumber === '') {
-            $poNumber = self::generatePoNumber();
-        } elseif (PurchaseOrder::where('po_number', $poNumber)->exists()) {
-            throw ValidationException::withMessages([
-                'po_number' => 'This PO number is already in use.',
-            ]);
-        }
-
+        // po_number is no longer collected at creation -- it's a staff-only
+        // reference filled in later (or never) through the order page's own
+        // inline field. transaction_number is what every order gets instead.
         $storedAttachment = null;
 
         if ($attachmentFile) {
             try {
-                $storedAttachment = PoAttachment::save($attachmentFile, $poNumber);
+                $storedAttachment = PoAttachment::save($attachmentFile, null);
             } catch (\InvalidArgumentException $e) {
                 throw ValidationException::withMessages([
                     'po_attachment' => $e->getMessage(),
@@ -329,11 +318,10 @@ class PurchaseOrderController extends Controller
         }
 
         try {
-            $order = DB::transaction(function () use ($poNumber, $customerId, $request, $storedAttachment, $lineItems) {
+            $order = DB::transaction(function () use ($customerId, $request, $storedAttachment, $lineItems) {
                 CustomerAccess::claimIfUnassigned(Customer::findOrFail($customerId), $request->user());
 
                 $order = PurchaseOrder::create([
-                    'po_number' => $poNumber,
                     'transaction_number' => self::generateTransactionNumber(),
                     'customer_id' => $customerId,
                     'remarks' => $request->input('remarks'),
@@ -376,20 +364,6 @@ class PurchaseOrderController extends Controller
         PurchaseOrderChanged::dispatch($order->id, 'created');
 
         return redirect()->route('purchase-orders.index')->with('success', 'Order created.');
-    }
-
-    /**
-     * A date-plus-random format rather than an id-based one (e.g. "ORD-1")
-     * so it can be generated before the order exists, and reads clearly as
-     * auto-assigned rather than looking like a real customer PO reference.
-     */
-    private static function generatePoNumber(): string
-    {
-        do {
-            $candidate = 'PO-'.now()->format('ymd').'-'.Str::upper(Str::random(4));
-        } while (PurchaseOrder::where('po_number', $candidate)->exists());
-
-        return $candidate;
     }
 
     /**
@@ -507,22 +481,6 @@ class PurchaseOrderController extends Controller
                     $locked->remarks = $newRemarks;
                 }
 
-                // Customers never set their own PO number -- one is
-                // auto-generated on creation, and staff fill in the
-                // customer's real reference afterward. Only staff can
-                // change it here; a customer's request simply can't reach
-                // this branch even if they tampered with the payload.
-                if (in_array($request->user()->role, User::STAFF_ROLES, true) && $request->has('po_number')) {
-                    $newPoNumber = trim((string) $request->input('po_number'));
-                    if ($newPoNumber !== '' && $newPoNumber !== $locked->po_number) {
-                        if (PurchaseOrder::where('po_number', $newPoNumber)->where('id', '!=', $locked->id)->exists()) {
-                            throw new UserActionException('This PO number is already in use.');
-                        }
-                        $changes[] = "PO number changed from {$locked->po_number} to {$newPoNumber}.";
-                        $locked->po_number = $newPoNumber;
-                    }
-                }
-
                 if ($canEditItems) {
                     if ($request->boolean('remove_attachment') && $locked->po_file) {
                         $attachmentToDeleteAfterCommit = $locked->po_file;
@@ -618,6 +576,52 @@ class PurchaseOrderController extends Controller
         }
 
         return redirect()->route('purchase-orders.show', $order)->with('success', 'Remarks updated.');
+    }
+
+    /**
+     * po_number is never set at order creation -- staff fill it in here,
+     * on the order page itself, once they know the customer's real
+     * reference. Terminal-status orders can still get a PO number set
+     * (unlike remarks/items) since staff may only learn it after an order
+     * is already delivered.
+     */
+    public function updatePoNumber(Request $request, PurchaseOrder $order): RedirectResponse
+    {
+        $this->authorize('updatePoNumber', $order);
+
+        $request->validate([
+            'po_number' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        try {
+            DB::transaction(function () use ($request, $order) {
+                $locked = PurchaseOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
+
+                $newPoNumber = trim((string) $request->input('po_number', '')) ?: null;
+                if ($locked->po_number === $newPoNumber) {
+                    return;
+                }
+
+                if ($newPoNumber !== null
+                    && PurchaseOrder::where('po_number', $newPoNumber)->where('id', '!=', $locked->id)->exists()
+                ) {
+                    throw new UserActionException('This PO number is already in use.');
+                }
+
+                $changeSummary = $locked->po_number
+                    ? "PO number changed from {$locked->po_number} to ".($newPoNumber ?? '(none)').'.'
+                    : "PO number set to {$newPoNumber}.";
+
+                $locked->po_number = $newPoNumber;
+                $locked->save();
+
+                OrderAudit::record($locked, 'Order Updated', $changeSummary, $request);
+            });
+        } catch (UserActionException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('purchase-orders.show', $order)->with('success', 'PO number updated.');
     }
 
     public function complete(Request $request, PurchaseOrder $order)

@@ -103,14 +103,14 @@ class CreateTest extends TestCase
         $this->assertEquals(37.50, $item->line_total);
     }
 
-    public function test_blank_po_number_gets_an_auto_generated_one(): void
+    public function test_po_number_is_never_set_at_creation_even_if_sent(): void
     {
         $staff = User::factory()->create(['role' => 'office']);
         $customer = $this->makeCustomer();
         $product = $this->makeProduct('Amoxicillin 500mg');
 
         $response = $this->actingAsUser($staff)->post('/orders', [
-            'po_number' => '',
+            'po_number' => 'SHOULD-BE-IGNORED',
             'customer_id' => $customer->id,
             'product_id' => [$product->id],
             'product_search' => [''],
@@ -120,8 +120,7 @@ class CreateTest extends TestCase
         $response->assertRedirect(route('purchase-orders.index'));
         $order = PurchaseOrder::first();
         $this->assertNotNull($order);
-        $this->assertNotSame('', $order->po_number);
-        $this->assertMatchesRegularExpression('/^PO-\d{6}-[A-Z0-9]{4}$/', $order->po_number);
+        $this->assertNull($order->po_number);
     }
 
     public function test_every_order_gets_a_generated_transaction_number(): void
@@ -143,30 +142,6 @@ class CreateTest extends TestCase
         $this->assertMatchesRegularExpression('/^TXN-\d{6}-[A-Z0-9]{4}$/', $order->transaction_number);
     }
 
-    public function test_rejects_a_duplicate_po_number(): void
-    {
-        $staff = User::factory()->create(['role' => 'office']);
-        $customer = $this->makeCustomer();
-        $product = $this->makeProduct('Amoxicillin 500mg');
-        PurchaseOrder::create([
-            'po_number' => 'PO-DUPLICATE',
-            'transaction_number' => 'TXN-'.uniqid(),
-            'customer_id' => $customer->id,
-            'status' => PurchaseOrder::STATUS_SUBMITTED,
-            'submitted_at' => now(),
-        ]);
-
-        $response = $this->actingAsUser($staff)->post('/orders', [
-            'po_number' => 'PO-DUPLICATE',
-            'customer_id' => $customer->id,
-            'product_id' => [$product->id],
-            'product_search' => [''],
-            'quantity' => [1],
-        ]);
-
-        $response->assertSessionHasErrors('po_number');
-        $this->assertSame(1, PurchaseOrder::count());
-    }
 
     public function test_resolves_line_via_unambiguous_product_search(): void
     {

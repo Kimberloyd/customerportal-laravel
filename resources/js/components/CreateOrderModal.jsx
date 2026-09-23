@@ -9,7 +9,7 @@ import { Table } from '@/components/motion/table';
 import { Button } from '@/components/ui/button';
 import { useContainerBreakpoint } from '@/lib/hooks/use-container-breakpoint';
 import { useSearchSelections } from '@/hooks/useSearchSelections';
-import { useForm, usePage } from '@inertiajs/react';
+import { useForm } from '@inertiajs/react';
 import { canScanBarcodes, isScanCancelled, scanBarcode } from '@/lib/barcode-scanner';
 import { Minus, Plus, ScanBarcode, Search, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -51,7 +51,6 @@ export default function CreateOrderModal({
     lockedCustomerId = null,
     initialOrder = null,
 }) {
-    const isCustomer = usePage().props.auth.user.role === 'customer';
     const isEditing = initialOrder !== null;
     const canEditItems = !isEditing || Boolean(initialOrder?.can_edit_items);
     const editDetailsLocked = isEditing && !canEditItems;
@@ -93,7 +92,6 @@ export default function CreateOrderModal({
         reset,
     } = useForm({
         customer_id: lockedCustomerId ?? initialOrder?.customer_id ?? '',
-        po_number: initialOrder?.po_number ?? '',
         remarks: initialOrder?.remarks ?? '',
         po_attachment: null,
         remove_attachment: false,
@@ -104,7 +102,6 @@ export default function CreateOrderModal({
 
         setData({
             customer_id: lockedCustomerId ?? initialOrder?.customer_id ?? '',
-            po_number: initialOrder?.po_number ?? '',
             remarks: initialOrder?.remarks ?? '',
             po_attachment: null,
             remove_attachment: false,
@@ -523,7 +520,6 @@ export default function CreateOrderModal({
                     _method: 'put',
                     customer_id: values.customer_id,
                     remarks: values.remarks,
-                    po_number: values.po_number.trim(),
                     po_attachment: values.po_attachment,
                     remove_attachment: values.remove_attachment,
                     items: lines.map((line) => ({
@@ -536,7 +532,6 @@ export default function CreateOrderModal({
 
             return {
                 ...values,
-                po_number: values.po_number.trim(),
                 product_id: lines.map((line) => line.product_id),
                 product_search: lines.map((line) => line.product_name),
                 quantity: lines.map((line) => line.quantity),
@@ -583,9 +578,7 @@ export default function CreateOrderModal({
     ].filter(Boolean);
     const totalQuantity = lines.reduce((sum, line) => sum + Number(line.quantity || 0), 0);
 
-    const modalTitle = isEditing
-        ? `Edit ${isCustomer ? initialOrder.transaction_number : initialOrder.po_number}`
-        : 'Create order';
+    const modalTitle = isEditing ? `Edit ${initialOrder.transaction_number}` : 'Create order';
     const modalDescription = isEditing
         ? 'Review the existing order details and save your changes.'
         : lockedCustomerId
@@ -818,25 +811,6 @@ export default function CreateOrderModal({
 
                 <Step>
                     <div className="space-y-5 pt-2">
-                        {!isCustomer && (
-                            <div>
-                                <label htmlFor="create-order-po-number" className="mb-1 block text-sm font-medium text-foreground">
-                                    PO Number <span className="font-normal text-muted-foreground">(optional)</span>
-                                </label>
-                                <Input
-                                    id="create-order-po-number"
-                                    type="text"
-                                    value={data.po_number}
-                                    onChange={(value) => {
-                                        setData('po_number', value);
-                                        clearFieldError('po_number');
-                                    }}
-                                    placeholder="Leave blank to auto-generate one"
-                                    error={errors.po_number ?? clientErrors.po_number}
-                                    classNames={{ field: 'rounded-md' }}
-                                />
-                            </div>
-                        )}
                         {canEditItems && <div>
                             <label className="mb-1 block text-sm font-medium text-foreground">
                                 Attachment <span className="font-normal text-muted-foreground">(optional)</span>
@@ -932,12 +906,6 @@ export default function CreateOrderModal({
                         <div>
                             <label className="mb-1 block text-sm font-medium text-foreground">Order details</label>
                             <div className="divide-y divide-border rounded-md border border-border text-sm">
-                                {!isCustomer && (
-                                    <div className="flex items-center justify-between gap-4 px-3 py-2">
-                                        <span className="text-muted-foreground">PO Number</span>
-                                        <span className="truncate font-medium text-foreground">{data.po_number || '—'}</span>
-                                    </div>
-                                )}
                                 <div className="flex items-center justify-between gap-4 px-3 py-2">
                                     <span className="text-muted-foreground">Attachment</span>
                                     <span className="truncate font-medium text-foreground">

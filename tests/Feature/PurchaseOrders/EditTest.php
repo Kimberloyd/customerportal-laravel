@@ -338,69 +338,6 @@ class EditTest extends TestCase
         $this->assertSame(PurchaseOrder::STATUS_PROCESSED, $order->fresh()->status);
     }
 
-    public function test_staff_can_set_the_po_number_after_creation(): void
-    {
-        $staff = User::factory()->create(['role' => 'office']);
-        $customer = $this->makeCustomer();
-        $product = $this->makeProduct();
-        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
-            ['product_id' => $product->id, 'quantity' => 5],
-        ]);
-        $item = $order->items->first();
-
-        $this->actingAsUser($staff)->put("/orders/{$order->public_id}", [
-            'customer_id' => $customer->id,
-            'remarks' => '',
-            "quantity_{$item->id}" => 5,
-            'po_number' => 'CUSTOMER-REF-001',
-        ]);
-
-        $this->assertSame('CUSTOMER-REF-001', $order->fresh()->po_number);
-    }
-
-    public function test_staff_cannot_set_the_po_number_to_one_already_in_use(): void
-    {
-        $staff = User::factory()->create(['role' => 'office']);
-        $customer = $this->makeCustomer();
-        $product = $this->makeProduct();
-        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
-            ['product_id' => $product->id, 'quantity' => 5],
-        ]);
-        $item = $order->items->first();
-        $taken = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now());
-
-        $response = $this->actingAsUser($staff)->put("/orders/{$order->public_id}", [
-            'customer_id' => $customer->id,
-            'remarks' => '',
-            "quantity_{$item->id}" => 5,
-            'po_number' => $taken->po_number,
-        ]);
-
-        $response->assertSessionHas('error', 'This PO number is already in use.');
-        $this->assertNotSame($taken->po_number, $order->fresh()->po_number);
-    }
-
-    public function test_customer_cannot_change_the_po_number_on_their_own_order(): void
-    {
-        $customerUser = User::factory()->create(['role' => 'customer']);
-        $customer = $this->makeCustomer('Own Co', $customerUser);
-        $product = $this->makeProduct();
-        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
-            ['product_id' => $product->id, 'quantity' => 5],
-        ]);
-        $item = $order->items->first();
-        $originalPoNumber = $order->po_number;
-
-        $this->actingAsUser($customerUser)->put("/orders/{$order->public_id}", [
-            'customer_id' => $customer->id,
-            'remarks' => 'Updated by customer',
-            "quantity_{$item->id}" => 5,
-            'po_number' => 'HACKED-PO',
-        ]);
-
-        $this->assertSame($originalPoNumber, $order->fresh()->po_number);
-    }
-
     public function test_orphaned_customer_gets_403(): void
     {
         $user = User::factory()->create(['role' => 'customer']);
