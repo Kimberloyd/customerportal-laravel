@@ -33,8 +33,13 @@ function autoTableHeight(rowCount) {
 
     // No max-height cap: the trailing row can hold the Cancel/Edit/Deliver
     // actions, and capping height pushed that row into the table's own
-    // internal scroll area, making it silently unreachable.
-    return (rowCount + 1) * TABLE_ROW_HEIGHT;
+    // internal scroll area, making it silently unreachable. maxHeight is
+    // a ceiling, not a fixed size -- the container still shrinks to fit
+    // shorter content -- so a full extra row of slack costs nothing
+    // visually and absorbs any row that renders a bit taller than the
+    // nominal rowHeight (borders, a stepper control, etc.) without
+    // tipping the table into its own internal scroll.
+    return (rowCount + 2) * TABLE_ROW_HEIGHT;
 }
 
 export default function Show({
