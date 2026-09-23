@@ -432,43 +432,43 @@ export default function Show({
                         </h2>
                     </nav>
                     <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">Copy order details</span>
-                        <Tooltip content={detailsCopied ? 'Copied' : 'Copy order details'}>
-                            <NotificationBell
-                                count={0}
-                                size={36}
-                                label={detailsCopied ? 'Copied' : 'Copy order details'}
-                                icon={
-                                    <AnimatePresence mode="wait" initial={false}>
-                                        {detailsCopied ? (
-                                            <motion.span
-                                                key="check"
-                                                initial={{ opacity: 0, scale: 0.6 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                exit={{ opacity: 0, scale: 0.8 }}
-                                                transition={spring.fast}
-                                                className="flex items-center justify-center"
-                                            >
-                                                <Check aria-hidden="true" className="h-5 w-5" strokeWidth={2} />
-                                            </motion.span>
-                                        ) : (
-                                            <motion.span
-                                                key="copy"
-                                                initial={{ opacity: 0, scale: 0.6 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                exit={{ opacity: 0, scale: 0.8 }}
-                                                transition={spring.fast}
-                                                className="flex items-center justify-center"
-                                            >
-                                                <Copy aria-hidden="true" className="h-5 w-5" strokeWidth={1.5} />
-                                            </motion.span>
-                                        )}
-                                    </AnimatePresence>
-                                }
-                                onClick={copyOrderDetails}
-                                className="bg-transparent hover:bg-hover"
-                            />
-                        </Tooltip>
+                        <span className="text-sm text-muted-foreground">
+                            {detailsCopied ? 'Copied' : 'Copy order details'}
+                        </span>
+                        <NotificationBell
+                            count={0}
+                            size={36}
+                            label={detailsCopied ? 'Copied' : 'Copy order details'}
+                            icon={
+                                <AnimatePresence mode="wait" initial={false}>
+                                    {detailsCopied ? (
+                                        <motion.span
+                                            key="check"
+                                            initial={{ opacity: 0, scale: 0.6 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            exit={{ opacity: 0, scale: 0.8 }}
+                                            transition={spring.fast}
+                                            className="flex items-center justify-center"
+                                        >
+                                            <Check aria-hidden="true" className="h-5 w-5" strokeWidth={2} />
+                                        </motion.span>
+                                    ) : (
+                                        <motion.span
+                                            key="copy"
+                                            initial={{ opacity: 0, scale: 0.6 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            exit={{ opacity: 0, scale: 0.8 }}
+                                            transition={spring.fast}
+                                            className="flex items-center justify-center"
+                                        >
+                                            <Copy aria-hidden="true" className="h-5 w-5" strokeWidth={1.5} />
+                                        </motion.span>
+                                    )}
+                                </AnimatePresence>
+                            }
+                            onClick={copyOrderDetails}
+                            className="bg-transparent border border-border hover:bg-hover"
+                        />
                     </div>
                 </div>
             }
