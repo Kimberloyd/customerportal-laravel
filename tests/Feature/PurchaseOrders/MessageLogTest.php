@@ -45,6 +45,28 @@ class MessageLogTest extends TestCase
             ->assertJsonPath('entries.0.external_reference', 'sms-123');
     }
 
+    public function test_agent_sms_entries_show_in_the_message_log(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $order = $this->makeOrder($this->makeCustomer(), PurchaseOrder::STATUS_SUBMITTED, now());
+
+        PurchaseOrderNotification::create([
+            'purchase_order_id' => $order->id,
+            'channel' => 'agent_sms',
+            'status' => 'sent',
+            'recipient' => '09179876543',
+            'external_reference' => 'sms-456',
+            'created_at' => now(),
+        ]);
+
+        $this->actingAsUser($admin)
+            ->getJson(route('purchase-orders.message-log', $order))
+            ->assertOk()
+            ->assertJsonCount(1, 'entries')
+            ->assertJsonPath('entries.0.channel', 'agent_sms')
+            ->assertJsonPath('entries.0.status', 'sent');
+    }
+
     public function test_agent_can_view_an_orders_message_log(): void
     {
         $order = $this->makeOrder($this->makeCustomer(), PurchaseOrder::STATUS_SUBMITTED, now());

@@ -574,18 +574,22 @@ class OrderNotifications
             return;
         }
 
-        $agentIds = CustomerMessage::whereNull('parent_id')
-            ->where('channel', 'facebook_messenger')
-            ->whereNotNull('assigned_user_id')
-            ->where('status', '!=', 'closed')
-            ->distinct()
-            ->pluck('assigned_user_id');
+        $order->loadMissing('customer.assignedAgent');
+        $assignedAgent = $order->customer?->assignedAgent;
 
-        $agents = User::whereIn('id', $agentIds)->get();
+        // The customer's own assigned agent, same as everywhere else this
+        // session (CustomerAccess, OrderFollowUpDispatcher) -- not "any agent
+        // who happens to have an open Facebook thread", which is who this
+        // used to text and had nothing to do with who was responsible for
+        // this order. No assigned agent falls back to office staff, matching
+        // OrderFollowUpDispatcher::recipients()'s same fallback.
+        $agents = $assignedAgent?->is_active && $assignedAgent->role === User::ROLE_AGENT
+            ? collect([$assignedAgent])
+            : User::where('is_active', true)->where('role', User::ROLE_OFFICE)->get();
 
         if ($agents->isEmpty()) {
-            Log::info("Agent SMS notification skipped for {$order->po_number}: no sales agent has a linked Facebook thread.");
-            self::record($order, 'agent_sms', 'skipped', note: 'no sales agent has a linked Facebook thread');
+            Log::info("Agent SMS notification skipped for {$order->po_number}: no active agent or office staff to notify.");
+            self::record($order, 'agent_sms', 'skipped', note: 'no active agent or office staff to notify');
 
             return;
         }

@@ -179,7 +179,7 @@ class PurchaseOrderController extends Controller
         $entries = PurchaseOrderNotification::query()
             ->with('recipientUser:id,full_name')
             ->where('purchase_order_id', $order->id)
-            ->whereIn('channel', ['portal', 'sms', 'facebook'])
+            ->whereIn('channel', ['portal', 'sms', 'agent_sms', 'facebook'])
             ->latest('created_at')
             ->latest('id')
             ->get()
