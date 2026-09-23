@@ -14,7 +14,7 @@ import ProductReturnPanel from '@/components/ProductReturnPanel';
 import RemarksTimeline from '@/components/RemarksTimeline';
 import { usePurchaseOrderRealtime } from '@/hooks/usePurchaseOrderRealtime';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { FileText, Minus, Plus } from 'lucide-react';
+import { Check, Copy, FileText, Minus, Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const TABLE_ROW_HEIGHT = 48;
@@ -381,6 +381,36 @@ export default function Show({
         ? [...order.items, ...(showActionsRow ? [{ id: '__spacer', __isTotal: true }] : [])]
         : [];
 
+    const [detailsCopied, setDetailsCopied] = useState(false);
+    const copyOrderDetails = useCallback(async () => {
+        const lines = [
+            `Order ${order.po_number}`,
+            `Customer: ${order.customer.name}`,
+            `Status: ${currentStatus.label}`,
+            `Submitted: ${formatDateTime(order.submitted_at)}`,
+            `Last updated: ${formatDateTime(order.updated_at)}`,
+            '',
+            'Items:',
+            ...order.items.map((item, index) => {
+                const name = [item.display_name, item.generic_name, item.dosage, item.unit]
+                    .filter(Boolean)
+                    .join(' ');
+
+                return `${index + 1}. ${name} — Ordered ${item.quantity}, Delivered ${item.delivered_quantity}, Balance ${item.pending_quantity}`;
+            }),
+            ...(order.remarks ? ['', `Remarks: ${order.remarks}`] : []),
+        ];
+
+        try {
+            await navigator.clipboard.writeText(lines.join('\n'));
+            setDetailsCopied(true);
+            setTimeout(() => setDetailsCopied(false), 2000);
+        } catch {
+            // Clipboard blocked (insecure context, denied permission): no
+            // fallback exists worth building for what's a convenience action.
+        }
+    }, [order, currentStatus.label]);
+
     return (
         <AuthenticatedLayout
             header={
@@ -397,6 +427,15 @@ export default function Show({
                             <span aria-current="page" className="text-foreground">{order.po_number}</span>
                         </h2>
                     </nav>
+                    <Button
+                        type="button"
+                        variant="tertiary"
+                        size="compact"
+                        onClick={copyOrderDetails}
+                        leadingIcon={detailsCopied ? Check : Copy}
+                    >
+                        {detailsCopied ? 'Copied' : 'Copy order details'}
+                    </Button>
                 </div>
             }
         >
