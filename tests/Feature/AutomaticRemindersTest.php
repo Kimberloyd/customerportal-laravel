@@ -225,7 +225,7 @@ class AutomaticRemindersTest extends TestCase
         app(OrderFollowUpDispatcher::class)->dispatch($followUp->fresh());
 
         Http::assertSent(fn ($request) => $request['number'] === '09171234567'
-            && str_contains($request['message'], $order->po_number)
+            && str_contains($request['message'], $order->transaction_number)
             && ! str_contains($request['message'], 'Hospital'));
         $this->assertDatabaseHas('purchase_order_notifications', ['recipient_user_id' => $customerUser->id, 'channel' => 'portal', 'status' => 'sent']);
         $this->assertDatabaseHas('purchase_order_notifications', ['recipient_user_id' => $customerUser->id, 'channel' => 'sms', 'status' => 'sent']);

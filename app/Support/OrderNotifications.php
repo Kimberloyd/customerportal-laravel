@@ -125,7 +125,7 @@ class OrderNotifications
             self::record($order, 'sms', 'failed', note: $e->getMessage());
         }
 
-        self::notifyPushSafely($order, 'submission', "Order {$order->po_number} received. We'll prepare it for fulfillment.");
+        self::notifyPushSafely($order, 'submission', "Order {$order->transaction_number} received. We'll prepare it for fulfillment.");
         self::notifyStaffPushSafely($order);
 
         try {
@@ -148,7 +148,7 @@ class OrderNotifications
         self::notifyCustomerSafely(
             $order,
             'update',
-            "Order {$order->po_number} was updated. View your portal for the latest details.",
+            "Order {$order->transaction_number} was updated. View your portal for the latest details.",
         );
     }
 
@@ -157,7 +157,7 @@ class OrderNotifications
         self::notifyCustomerSafely(
             $order,
             'fulfillment update',
-            "Order {$order->po_number} delivery was updated. View your portal for the latest details.",
+            "Order {$order->transaction_number} delivery was updated. View your portal for the latest details.",
         );
     }
 
@@ -166,7 +166,7 @@ class OrderNotifications
         self::notifyCustomerSafely(
             $order,
             'completion',
-            "Order {$order->po_number} is complete. All items have been delivered.",
+            "Order {$order->transaction_number} is complete. All items have been delivered.",
         );
     }
 
@@ -175,7 +175,7 @@ class OrderNotifications
         self::notifyCustomerSafely(
             $order,
             'cancellation',
-            "Order {$order->po_number} was cancelled. Contact us if this was a mistake.",
+            "Order {$order->transaction_number} was cancelled. Contact us if this was a mistake.",
         );
     }
 
@@ -184,7 +184,7 @@ class OrderNotifications
         self::notifyCustomerSafely(
             $order,
             'receipt confirmation',
-            "Order {$order->po_number} has been marked as received. Thank you.",
+            "Order {$order->transaction_number} has been marked as received. Thank you.",
         );
     }
 
@@ -201,17 +201,17 @@ class OrderNotifications
             'approved' => [
                 'Your return request was approved. Our team will coordinate the return.',
                 'return approval',
-                "Your return request for order {$order->po_number} was approved. Our team will coordinate the return.",
+                "Your return request for order {$order->transaction_number} was approved. Our team will coordinate the return.",
             ],
             'rejected' => [
                 'Your return request was not approved. See the return details for the reason.',
                 'return decision',
-                "Your return request for order {$order->po_number} was not approved. See the portal for details.",
+                "Your return request for order {$order->transaction_number} was not approved. See the portal for details.",
             ],
             'received' => [
                 'Your returned products were received by our team.',
                 'return receipt',
-                "Returned products for order {$order->po_number} were received by our team.",
+                "Returned products for order {$order->transaction_number} were received by our team.",
             ],
         };
     }
@@ -662,7 +662,7 @@ class OrderNotifications
         $order->loadMissing(['customer', 'items']);
 
         $lines = [
-            "Order {$order->po_number} submitted for {$order->customer?->company_name}.",
+            "Order {$order->transaction_number} submitted for {$order->customer?->company_name}.",
             '',
             'Items:',
         ];

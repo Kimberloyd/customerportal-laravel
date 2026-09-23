@@ -124,6 +124,25 @@ class CreateTest extends TestCase
         $this->assertMatchesRegularExpression('/^PO-\d{6}-[A-Z0-9]{4}$/', $order->po_number);
     }
 
+    public function test_every_order_gets_a_generated_transaction_number(): void
+    {
+        $customerUser = User::factory()->create(['role' => 'customer']);
+        $customer = $this->makeCustomer('Own Co', $customerUser);
+        $product = $this->makeProduct('Amoxicillin 500mg');
+
+        $response = $this->actingAsUser($customerUser)->post('/orders', [
+            'customer_id' => $customer->id,
+            'product_id' => [$product->id],
+            'product_search' => [''],
+            'quantity' => [1],
+        ]);
+
+        $response->assertRedirect(route('purchase-orders.index'));
+        $order = PurchaseOrder::first();
+        $this->assertNotNull($order);
+        $this->assertMatchesRegularExpression('/^TXN-\d{6}-[A-Z0-9]{4}$/', $order->transaction_number);
+    }
+
     public function test_rejects_a_duplicate_po_number(): void
     {
         $staff = User::factory()->create(['role' => 'office']);
@@ -131,6 +150,7 @@ class CreateTest extends TestCase
         $product = $this->makeProduct('Amoxicillin 500mg');
         PurchaseOrder::create([
             'po_number' => 'PO-DUPLICATE',
+            'transaction_number' => 'TXN-'.uniqid(),
             'customer_id' => $customer->id,
             'status' => PurchaseOrder::STATUS_SUBMITTED,
             'submitted_at' => now(),

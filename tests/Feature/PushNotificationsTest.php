@@ -126,7 +126,7 @@ class PushNotificationsTest extends TestCase
         Http::assertSent(fn ($request) => str_contains($request->url(), '/projects/test-project/messages:send')
             && $request['message']['token'] === 'phone-one'
             && $request['message']['data']['url'] === '/orders/'.$order->public_id
-            && str_contains($request['message']['notification']['body'], $order->po_number));
+            && str_contains($request['message']['notification']['body'], $order->transaction_number));
         Http::assertSent(fn ($request) => ($request['message']['token'] ?? null) === 'phone-two');
         $this->assertSame(2, PurchaseOrderNotification::where('channel', 'push')->where('status', 'sent')->count());
     }

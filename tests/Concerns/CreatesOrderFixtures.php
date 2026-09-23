@@ -75,6 +75,7 @@ trait CreatesOrderFixtures
     {
         $order = PurchaseOrder::create([
             'po_number' => 'PO-'.uniqid(),
+            'transaction_number' => 'TXN-'.uniqid(),
             'customer_id' => $customer->id,
             'status' => $status,
             'submitted_at' => $submittedAt,

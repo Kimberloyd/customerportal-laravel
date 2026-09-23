@@ -95,6 +95,7 @@ class DashboardOverview
                 'id' => $order->id,
                 'public_id' => $order->public_id,
                 'po_number' => $order->po_number,
+                'transaction_number' => $order->transaction_number,
                 'customer_name' => $order->customer?->company_name,
                 'status' => $order->status,
                 'received' => $order->customer_received_at !== null,

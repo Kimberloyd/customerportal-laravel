@@ -359,11 +359,11 @@ class OrderFollowUpDispatcher
 
     private function smsMessage(OrderFollowUp $followUp): string
     {
-        $po = $followUp->purchaseOrder->po_number;
+        $number = $followUp->purchaseOrder->transaction_number;
 
         return $followUp->kind === OrderFollowUpManager::AWAITING_CUSTOMER_CLOSE
-            ? "Order {$po} is fully delivered. Please review and close it in the Theomeds customer portal."
-            : "Your approved return for order {$po} is still open. Please check the Theomeds customer portal for the next step.";
+            ? "Order {$number} is fully delivered. Please review and close it in the Theomeds customer portal."
+            : "Your approved return for order {$number} is still open. Please check the Theomeds customer portal for the next step.";
     }
 
     private function dedupeKey(OrderFollowUp $followUp, User $recipient, string $channel, ?string $level = null): string

@@ -19,6 +19,7 @@ class NotificationController extends Controller
             'order_id' => $notification->purchaseOrder?->id,
             'order_public_id' => $notification->purchaseOrder?->public_id,
             'po_number' => $notification->purchaseOrder?->po_number,
+            'transaction_number' => $notification->purchaseOrder?->transaction_number,
         ]);
 
         return response()->json([

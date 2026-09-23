@@ -979,7 +979,9 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                                             {notification.note ?? 'Order updated'}
                                                         </p>
                                                         <p className="mt-0.5 text-[12px] text-muted-foreground">
-                                                            PO {notification.po_number} · {formatDateTime(notification.created_at)}
+                                                            {user.role === 'customer'
+                                                                ? notification.transaction_number
+                                                                : `PO ${notification.po_number}`} · {formatDateTime(notification.created_at)}
                                                         </p>
                                                     </Link>
                                                 </li>

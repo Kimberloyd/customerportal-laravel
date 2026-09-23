@@ -14,7 +14,7 @@ import ConfirmationDialog from '@/components/ConfirmationDialog';
 import ProductReturnPanel from '@/components/ProductReturnPanel';
 import RemarksTimeline from '@/components/RemarksTimeline';
 import { usePurchaseOrderRealtime } from '@/hooks/usePurchaseOrderRealtime';
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { Check, Copy, FileText, Minus, Plus } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -50,6 +50,8 @@ export default function Show({
 }) {
     usePurchaseOrderRealtime(order.id);
 
+    const isCustomer = usePage().props.auth.user.role === 'customer';
+    const orderNumber = isCustomer ? order.transaction_number : order.po_number;
     const showDeliverColumn = canManageFulfillment && !order.is_terminal;
     const currentStatus = statusBadge(order.display_status ?? order.status);
     const [attachmentPreviewOpen, setAttachmentPreviewOpen] = useState(false);
@@ -387,7 +389,7 @@ export default function Show({
     const [detailsCopied, setDetailsCopied] = useState(false);
     const copyOrderDetails = useCallback(async () => {
         const lines = [
-            `Order ${order.po_number}`,
+            `Order ${orderNumber}`,
             `Customer: ${order.customer.name}`,
             `Status: ${currentStatus.label}`,
             `Submitted: ${formatDateTime(order.submitted_at)}`,
@@ -414,7 +416,7 @@ export default function Show({
             // Clipboard blocked (insecure context, denied permission): no
             // fallback exists worth building for what's a convenience action.
         }
-    }, [order, currentStatus.label]);
+    }, [order, currentStatus.label, orderNumber]);
 
     return (
         <AuthenticatedLayout
@@ -429,7 +431,7 @@ export default function Show({
                                 Order
                             </Link>
                             <span aria-hidden="true" className="text-muted-foreground">/</span>
-                            <span aria-current="page" className="text-foreground">{order.po_number}</span>
+                            <span aria-current="page" className="text-foreground">{orderNumber}</span>
                         </h2>
                     </nav>
                     <div className="flex items-center gap-2">
@@ -474,7 +476,7 @@ export default function Show({
                 </div>
             }
         >
-            <Head title={order.po_number} />
+            <Head title={orderNumber} />
 
             <div className="mx-auto max-w-7xl space-y-10 px-4 py-8 sm:px-6 lg:px-8">
                 <div className="rounded-xl border border-border bg-card">

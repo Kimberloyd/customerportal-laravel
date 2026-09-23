@@ -204,7 +204,7 @@ export function AttentionPanel({ orders, count, customer, reducedMotion, canOrde
                                 <li key={order.id} ref={(el) => { rowRefs.current[index] = el; }} onMouseEnter={() => setHoveredIndex(index)} onFocus={() => setHoveredIndex(index)} onBlur={() => setHoveredIndex(null)}>
                                     <Link href={route('purchase-orders.show', order.public_id)} className={`relative z-10 flex items-center gap-3 px-5 py-3 ${focus} sm:px-6`}>
                                         {customer ? (
-                                            <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-foreground" title={order.po_number}>{order.po_number}</p><p className="mt-0.5 truncate text-xs leading-5 text-muted-foreground">{action.description}</p></div>
+                                            <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-foreground" title={order.transaction_number}>{order.transaction_number}</p><p className="mt-0.5 truncate text-xs leading-5 text-muted-foreground">{action.description}</p></div>
                                         ) : (
                                             <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground" title={`${order.customer_name || 'Customer order'} - ${order.po_number}`}>{order.customer_name || 'Customer order'} - {order.po_number}</p>
                                         )}

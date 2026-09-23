@@ -2,7 +2,7 @@ Hi {!! $order->customer?->company_name !!},
 
 Thank you — your order has been submitted successfully.
 
-PO Number: {!! $order->po_number !!}
+Transaction Number: {!! $order->transaction_number !!}
 
 Items:
 @foreach ($itemLines as $index => $line)

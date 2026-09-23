@@ -118,6 +118,7 @@ class PurchaseOrderController extends Controller
             $pattern = '%'.strtolower($search).'%';
             $query->where(function ($q) use ($pattern) {
                 $q->whereRaw('LOWER(po_number) LIKE ?', [$pattern])
+                    ->orWhereRaw('LOWER(transaction_number) LIKE ?', [$pattern])
                     ->orWhereHas('customer', function ($q) use ($pattern) {
                         $q->whereRaw('LOWER(company_name) LIKE ?', [$pattern]);
                     });
@@ -201,6 +202,7 @@ class PurchaseOrderController extends Controller
                 'id' => $order->id,
                 'public_id' => $order->public_id,
                 'po_number' => $order->po_number,
+                'transaction_number' => $order->transaction_number,
             ],
             'entries' => $entries,
         ]);
@@ -332,6 +334,7 @@ class PurchaseOrderController extends Controller
 
                 $order = PurchaseOrder::create([
                     'po_number' => $poNumber,
+                    'transaction_number' => self::generateTransactionNumber(),
                     'customer_id' => $customerId,
                     'remarks' => $request->input('remarks'),
                     'po_file' => $storedAttachment,
@@ -385,6 +388,21 @@ class PurchaseOrderController extends Controller
         do {
             $candidate = 'PO-'.now()->format('ymd').'-'.Str::upper(Str::random(4));
         } while (PurchaseOrder::where('po_number', $candidate)->exists());
+
+        return $candidate;
+    }
+
+    /**
+     * The customer-facing identifier -- generated for every order regardless
+     * of who created it, and never editable afterward (unlike po_number,
+     * which staff can set/change once the customer's real reference is
+     * known).
+     */
+    private static function generateTransactionNumber(): string
+    {
+        do {
+            $candidate = 'TXN-'.now()->format('ymd').'-'.Str::upper(Str::random(4));
+        } while (PurchaseOrder::where('transaction_number', $candidate)->exists());
 
         return $candidate;
     }
@@ -487,6 +505,22 @@ class PurchaseOrderController extends Controller
                 if ($locked->remarks !== $newRemarks) {
                     $changes[] = 'Remarks updated.';
                     $locked->remarks = $newRemarks;
+                }
+
+                // Customers never set their own PO number -- one is
+                // auto-generated on creation, and staff fill in the
+                // customer's real reference afterward. Only staff can
+                // change it here; a customer's request simply can't reach
+                // this branch even if they tampered with the payload.
+                if (in_array($request->user()->role, User::STAFF_ROLES, true) && $request->has('po_number')) {
+                    $newPoNumber = trim((string) $request->input('po_number'));
+                    if ($newPoNumber !== '' && $newPoNumber !== $locked->po_number) {
+                        if (PurchaseOrder::where('po_number', $newPoNumber)->where('id', '!=', $locked->id)->exists()) {
+                            throw new UserActionException('This PO number is already in use.');
+                        }
+                        $changes[] = "PO number changed from {$locked->po_number} to {$newPoNumber}.";
+                        $locked->po_number = $newPoNumber;
+                    }
                 }
 
                 if ($canEditItems) {
@@ -848,6 +882,7 @@ class PurchaseOrderController extends Controller
                 'id' => $order->id,
                 'public_id' => $order->public_id,
                 'po_number' => $order->po_number,
+                'transaction_number' => $order->transaction_number,
                 'customer_id' => $order->customer_id,
                 'submitted_at' => $order->submitted_at?->toIso8601String(),
                 'updated_at' => $order->updated_at?->toIso8601String(),
@@ -979,6 +1014,7 @@ class PurchaseOrderController extends Controller
             'id' => $order->id,
             'public_id' => $order->public_id,
             'po_number' => $order->po_number,
+            'transaction_number' => $order->transaction_number,
             'submitted_at' => $order->submitted_at?->toIso8601String(),
             'customer_name' => $order->customer?->company_name,
             'is_awaiting_fulfillment' => $order->is_awaiting_fulfillment,

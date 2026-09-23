@@ -16,7 +16,7 @@ import { statusBadge } from '@/utils/orderDisplay';
 import { usePurchaseOrderRealtime } from '@/hooks/usePurchaseOrderRealtime';
 import { useSavedOrderFilters } from '@/hooks/useSavedOrderFilters';
 import { useSearchSelections } from '@/hooks/useSearchSelections';
-import { Deferred, Head, router } from '@inertiajs/react';
+import { Deferred, Head, router, usePage } from '@inertiajs/react';
 import { parseDate } from '@internationalized/date';
 import { useContainerBreakpoint } from '@/lib/hooks/use-container-breakpoint';
 import { Archive, Funnel, ListChecks, MoreHorizontal, Search, SquareArrowOutUpRight } from 'lucide-react';
@@ -61,6 +61,7 @@ export default function Index({
     canDeleteOrders = false,
 }) {
     usePurchaseOrderRealtime();
+    const isCustomer = usePage().props.auth.user.role === 'customer';
 
     // The table owns its own breakpoint (a container query on its own
     // wrapper) rather than reacting to the page's viewport -- so it still
@@ -287,8 +288,8 @@ export default function Index({
             // Under the table's own container breakpoint, only the PO number
             // remains in the row; status is available in the actions menu.
             {
-                key: 'po_number',
-                header: 'PO Number',
+                key: isCustomer ? 'transaction_number' : 'po_number',
+                header: isCustomer ? 'Transaction Number' : 'PO Number',
                 sortable: true,
                 // An explicit pixel width on every column (see the others
                 // below) lets the table resolve a fixed total width on the
@@ -298,13 +299,16 @@ export default function Index({
                 // a combination some mobile browser engines (seen on a
                 // Huawei tablet) render with misaligned/overlapping columns.
                 width: '160px',
-                cell: (order) => isCompactViewport ? (
-                    <div className="min-w-0 py-1">
-                        <span className="block truncate font-medium text-foreground">{order.po_number}</span>
-                    </div>
-                ) : (
-                    <span className="font-medium text-foreground">{order.po_number}</span>
-                ),
+                cell: (order) => {
+                    const number = isCustomer ? order.transaction_number : order.po_number;
+                    return isCompactViewport ? (
+                        <div className="min-w-0 py-1">
+                            <span className="block truncate font-medium text-foreground">{number}</span>
+                        </div>
+                    ) : (
+                        <span className="font-medium text-foreground">{number}</span>
+                    );
+                },
             },
             ...(isCompactViewport ? [] : [
                 { key: 'customer_name', header: 'Customer', sortable: true, width: '320px' },
@@ -385,7 +389,7 @@ export default function Index({
                                     const item = items.find((candidate) => candidate.value === action);
                                     item?.onSelect();
                                 }}
-                                label={`Actions for ${order.po_number}`}
+                                label={`Actions for ${isCustomer ? order.transaction_number : order.po_number}`}
                                 menuTitle={isCompactViewport ? (
                                     <div className={`flex items-center gap-2 font-normal ${STATUS_TITLE_CLASS[badge.status] ?? STATUS_TITLE_CLASS.neutral}`}>
                                         {StatusIcon ? <StatusIcon aria-hidden="true" className="h-4 w-4" /> : null}
@@ -433,7 +437,7 @@ export default function Index({
                             onChange={setSearch}
                             onFocus={() => setSearchFocused(true)}
                             onBlur={() => setSearchFocused(false)}
-                            placeholder="PO number or customer"
+                            placeholder={isCustomer ? 'Transaction number or customer' : 'PO number or customer'}
                             aria-label="Search orders"
                             leftIcon={<Search className="h-4 w-4" />}
                             classNames={{

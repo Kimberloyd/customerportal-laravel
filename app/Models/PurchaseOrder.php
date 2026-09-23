@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
-    'po_number', 'customer_id', 'po_file', 'status', 'remarks',
+    'po_number', 'transaction_number', 'customer_id', 'po_file', 'status', 'remarks',
     'submitted_at', 'updated_at', 'completed_at',
 ])]
 class PurchaseOrder extends Model

@@ -26,7 +26,7 @@ class OrderNotificationFeed
 
         return self::scopedQuery()
             ?->with([
-                'purchaseOrder:id,public_id,po_number,customer_id',
+                'purchaseOrder:id,public_id,po_number,transaction_number,customer_id',
                 'purchaseOrder.customer:id,company_name',
                 // Constrained to this viewer: each notification row can be
                 // shared across every staff member (recipient_user_id null),

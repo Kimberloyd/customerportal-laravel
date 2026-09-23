@@ -22,7 +22,7 @@ class OrderSubmittedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "Order {$this->order->po_number} submitted",
+            subject: "Order {$this->order->transaction_number} submitted",
         );
     }
 
