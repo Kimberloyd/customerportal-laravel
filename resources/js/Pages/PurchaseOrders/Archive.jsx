@@ -1,18 +1,20 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import ConfirmationDialog from '@/components/ConfirmationDialog';
+import { Dropdown } from '@/components/interior/dropdown';
 import { Pagination } from '@/components/interior/pagination';
 import { AnimatedBadge } from '@/components/motion/animated-badge';
 import { Table } from '@/components/motion/table';
 import { Input } from '@/components/motion/input';
-import { Button } from '@/components/ui/button';
 import { formatDateTime, statusBadge } from '@/utils/orderDisplay';
 import { usePurchaseOrderRealtime } from '@/hooks/usePurchaseOrderRealtime';
 import { Head, Link, router } from '@inertiajs/react';
-import { RotateCcw, Search, Trash2 } from 'lucide-react';
+import { MoreHorizontal, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 
-const TABLE_ROW_HEIGHT = 48;
 const PAGE_SIZE = 10;
+const TABLE_ROW_HEIGHT = 48;
+const HORIZONTAL_SCROLLBAR_HEIGHT = 20;
+const TABLE_VIEWPORT_HEIGHT = (PAGE_SIZE + 1) * TABLE_ROW_HEIGHT + HORIZONTAL_SCROLLBAR_HEIGHT;
 
 export default function Archive({ orders = { data: [], last_page: 1, current_page: 1 }, filters }) {
     usePurchaseOrderRealtime(null, { only: ['orders'] });
@@ -72,9 +74,17 @@ export default function Archive({ orders = { data: [], last_page: 1, current_pag
             cell: (order) => {
                 const badge = statusBadge(order.display_status ?? order.status);
                 return (
-                    <AnimatedBadge status={badge.status} size="sm" pulse={false} icon={badge.icon ? <badge.icon className="h-3.5 w-3.5" /> : undefined}>
-                        {badge.label}
-                    </AnimatedBadge>
+                    <div className="flex justify-start">
+                        <AnimatedBadge
+                            status={badge.status}
+                            size="sm"
+                            pulse={false}
+                            icon={badge.icon ? <badge.icon className="h-3.5 w-3.5" /> : undefined}
+                            className="border-0 bg-transparent px-0 shadow-none"
+                        >
+                            {badge.label}
+                        </AnimatedBadge>
+                    </div>
                 );
             },
         },
@@ -87,29 +97,42 @@ export default function Archive({ orders = { data: [], last_page: 1, current_pag
         {
             key: 'actions',
             header: '',
-            width: '220px',
-            cell: (order) => (
-                <div className="flex items-center justify-end gap-2">
-                    <Button
-                        type="button"
-                        variant="tertiary"
-                        size="compact"
-                        leadingIcon={RotateCcw}
-                        onClick={() => setOrderPendingRestore(order)}
-                    >
-                        Restore
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="destructive"
-                        size="compact"
-                        leadingIcon={Trash2}
-                        onClick={() => setOrderPendingDelete(order)}
-                    >
-                        Delete forever
-                    </Button>
-                </div>
-            ),
+            width: '56px',
+            cell: (order) => {
+                const items = [
+                    {
+                        value: 'restore',
+                        label: 'Restore',
+                        icon: <RotateCcw />,
+                        onSelect: () => setOrderPendingRestore(order),
+                    },
+                    {
+                        value: 'delete',
+                        label: 'Delete forever',
+                        icon: <Trash2 />,
+                        onSelect: () => setOrderPendingDelete(order),
+                        destructive: true,
+                    },
+                ];
+
+                return (
+                    <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
+                        <Dropdown
+                            items={items}
+                            value=""
+                            onChange={(action) => {
+                                const item = items.find((candidate) => candidate.value === action);
+                                item?.onSelect();
+                            }}
+                            label={`Actions for ${order.transaction_number}`}
+                            trigger={<MoreHorizontal />}
+                            align="right"
+                            portal
+                            triggerClassName="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&_svg]:h-5 [&_svg]:w-5"
+                        />
+                    </div>
+                );
+            },
         },
     ], []);
 
@@ -152,7 +175,7 @@ export default function Archive({ orders = { data: [], last_page: 1, current_pag
                     columns={columns}
                     getRowId={(order) => String(order.id)}
                     className="border-border"
-                    height={Math.max(orders.data.length, 1) * TABLE_ROW_HEIGHT + TABLE_ROW_HEIGHT}
+                    height={TABLE_VIEWPORT_HEIGHT}
                     resizable
                     emptyState="No archived orders."
                     emptyStateHeight={PAGE_SIZE * TABLE_ROW_HEIGHT}
