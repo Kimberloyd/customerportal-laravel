@@ -86,12 +86,6 @@ export default function Dashboard({ activeTab, products, customers, customerUser
                     >
                         Teams
                     </Link>
-                    <Link
-                        href={route('admin.release-notes.index')}
-                        className="block rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]"
-                    >
-                        Release notes
-                    </Link>
                 </nav>
 
                 <div className="lg:col-span-10 space-y-6">

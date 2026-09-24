@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
-use App\Http\Controllers\Admin\ReleaseNoteController as AdminReleaseNoteController;
 use App\Http\Controllers\Admin\TeamController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AgentCustomerAccountController;
@@ -112,11 +111,6 @@ Route::middleware('auth')->prefix('admin/teams')->name('admin.teams.')->group(fu
     Route::post('/', [TeamController::class, 'store'])->middleware('throttle:admin-sensitive')->name('store');
     Route::put('/{team}', [TeamController::class, 'update'])->middleware('throttle:admin-sensitive')->name('update');
     Route::delete('/{team}', [TeamController::class, 'destroy'])->middleware('throttle:admin-sensitive')->name('destroy');
-});
-
-Route::middleware('auth')->prefix('admin/release-notes')->name('admin.release-notes.')->group(function () {
-    Route::get('/', [AdminReleaseNoteController::class, 'index'])->name('index');
-    Route::delete('/{releaseNote}', [AdminReleaseNoteController::class, 'destroy'])->middleware('throttle:admin-sensitive')->name('destroy');
 });
 
 Route::middleware('auth')->prefix('customer-accounts')->name('customer-accounts.')->group(function () {

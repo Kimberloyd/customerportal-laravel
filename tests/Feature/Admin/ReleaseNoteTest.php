@@ -3,8 +3,8 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\ReleaseNote;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 class ReleaseNoteTest extends TestCase
@@ -37,80 +37,32 @@ class ReleaseNoteTest extends TestCase
         $this->assertSame(2, ReleaseNote::where('title', 'Second')->value('version'));
     }
 
-    public function test_command_requires_at_least_one_note(): void
+    public function test_publish_command_requires_at_least_one_note(): void
     {
         $this->artisan('release-notes:publish', ['title' => 'Empty'])->assertFailed();
 
         $this->assertDatabaseMissing('release_notes', ['title' => 'Empty']);
     }
 
-    public function test_admin_can_delete_a_release_note(): void
+    public function test_console_command_removes_a_release_note(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
         $note = ReleaseNote::create([
             'version' => ReleaseNote::nextVersion(), 'title' => 'Old note', 'body' => 'Something',
             'published_at' => now(),
         ]);
 
-        $this->actingAsUser($admin)
-            ->delete(route('admin.release-notes.destroy', $note))
-            ->assertRedirect(route('admin.release-notes.index'));
+        $this->artisan('release-notes:remove', ['version' => $note->version])->assertSuccessful();
 
         $this->assertDatabaseMissing('release_notes', ['id' => $note->id]);
-        $this->assertDatabaseHas('admin_audits', [
-            'entity_type' => 'release_note',
-            'entity_id' => $note->id,
-            'action' => 'deleted',
-        ]);
     }
 
-    public function test_non_admin_cannot_delete_a_release_note(): void
+    public function test_remove_command_fails_for_an_unknown_version(): void
     {
-        $agent = User::factory()->create(['role' => 'agent']);
-        $note = ReleaseNote::create([
-            'version' => ReleaseNote::nextVersion(), 'title' => 'Protected', 'body' => 'Something',
-            'published_at' => now(),
-        ]);
-
-        $this->actingAsUser($agent)
-            ->delete(route('admin.release-notes.destroy', $note))
-            ->assertForbidden();
-
-        $this->assertDatabaseHas('release_notes', ['id' => $note->id]);
+        $this->artisan('release-notes:remove', ['version' => 999])->assertFailed();
     }
 
-    public function test_there_is_no_web_route_to_create_a_release_note(): void
+    public function test_there_is_no_admin_web_page_for_release_notes(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
-
-        // /admin/release-notes only routes GET (the index page) and
-        // DELETE/{id} -- no POST handler exists to create one.
-        $this->actingAsUser($admin)->post('/admin/release-notes', [
-            'title' => 'Should not work', 'body' => 'Nope',
-        ])->assertStatus(405);
-    }
-
-    public function test_admin_can_view_the_release_notes_page(): void
-    {
-        $admin = User::factory()->create(['role' => 'admin']);
-        ReleaseNote::create([
-            'version' => ReleaseNote::nextVersion(), 'title' => 'Visible note', 'body' => 'Something',
-            'published_at' => now(),
-        ]);
-
-        $response = $this->actingAsUser($admin)->get(route('admin.release-notes.index'));
-
-        $response->assertOk();
-        $notes = collect($response->viewData('page')['props']['releaseNotes']);
-        $this->assertTrue($notes->contains('title', 'Visible note'));
-    }
-
-    public function test_non_admin_cannot_view_the_release_notes_page(): void
-    {
-        $agent = User::factory()->create(['role' => 'agent']);
-
-        $this->actingAsUser($agent)
-            ->get(route('admin.release-notes.index'))
-            ->assertForbidden();
+        $this->assertFalse(Route::has('admin.release-notes.index'));
     }
 }
