@@ -22,8 +22,10 @@ export default function ReleaseNotes({ releaseNotes }) {
         >
             <Head title="Release notes" />
 
-            <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-                <ReleaseNotesPanel releaseNotes={releaseNotes} />
+            <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+                <div className="mx-auto max-w-3xl">
+                    <ReleaseNotesPanel releaseNotes={releaseNotes} />
+                </div>
             </div>
         </AuthenticatedLayout>
     );
