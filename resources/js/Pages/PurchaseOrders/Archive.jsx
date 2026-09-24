@@ -139,15 +139,18 @@ export default function Archive({ orders = { data: [], last_page: 1, current_pag
     return (
         <AuthenticatedLayout
             header={
-                <div className="flex items-center justify-between">
-                    <h2 className="type-page-heading text-foreground">Archived Orders</h2>
-                    <Link
-                        href={route('purchase-orders.index')}
-                        className="text-sm font-medium text-primary hover:underline"
-                    >
-                        Back to orders
-                    </Link>
-                </div>
+                <nav aria-label="Breadcrumb">
+                    <h2 className="flex items-center gap-2 text-xl font-semibold leading-tight">
+                        <Link
+                            href={route('purchase-orders.index')}
+                            className="text-muted-foreground transition-colors hover:text-primary"
+                        >
+                            Orders
+                        </Link>
+                        <span aria-hidden="true" className="text-muted-foreground">/</span>
+                        <span aria-current="page" className="text-foreground">Archived</span>
+                    </h2>
+                </nav>
             }
         >
             <Head title="Archived Orders" />
