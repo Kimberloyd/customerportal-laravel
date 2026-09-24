@@ -1,5 +1,4 @@
 import ConfirmationDialog from '@/components/ConfirmationDialog';
-import { Button } from '@/components/ui/button';
 import { formatDateTime } from '@/utils/orderDisplay';
 import { useForm } from '@inertiajs/react';
 import { Megaphone, Trash2 } from 'lucide-react';
@@ -10,17 +9,8 @@ function noteLines(body) {
 }
 
 export function ReleaseNotesPanel({ releaseNotes = [] }) {
-    const form = useForm({ title: '', body: '' });
     const deletion = useForm({});
     const [notePendingDeletion, setNotePendingDeletion] = useState(null);
-
-    const submit = (event) => {
-        event.preventDefault();
-        form.post(route('admin.release-notes.store'), {
-            preserveScroll: true,
-            onSuccess: () => form.reset(),
-        });
-    };
 
     const confirmDelete = () => {
         if (!notePendingDeletion) return;
@@ -36,65 +26,18 @@ export function ReleaseNotesPanel({ releaseNotes = [] }) {
             <div className="mb-6">
                 <h3 className="text-lg font-semibold text-foreground">Release notes</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                    Publish what changed in this release. Shown to everyone on the What's New page, on both web and the app.
+                    Published automatically with each release, shown to everyone on the What's New page (web and app). Remove an entry here if one needs correcting.
                 </p>
             </div>
-
-            <form onSubmit={submit} className="mb-8 rounded-xl border border-border bg-card p-5">
-                <label className="block text-sm font-medium text-foreground">
-                    Title
-                    <input
-                        value={form.data.title}
-                        onChange={(event) => {
-                            form.setData('title', event.target.value);
-                            form.clearErrors('title');
-                        }}
-                        className={`mt-1 h-10 w-full rounded-md border px-3 text-sm outline-none focus-visible:ring-2 ${
-                            form.errors.title
-                                ? 'border-destructive/40 focus-visible:border-destructive focus-visible:ring-destructive/20'
-                                : 'border-border focus-visible:border-primary focus-visible:ring-primary/20'
-                        }`}
-                        placeholder="e.g. Archived order details, password changes"
-                        required
-                    />
-                </label>
-                {form.errors.title && <p className="mt-1 text-sm text-destructive" role="alert">{form.errors.title}</p>}
-
-                <label className="mt-4 block text-sm font-medium text-foreground">
-                    What changed
-                    <textarea
-                        value={form.data.body}
-                        onChange={(event) => {
-                            form.setData('body', event.target.value);
-                            form.clearErrors('body');
-                        }}
-                        rows={4}
-                        className={`mt-1 w-full resize-none rounded-md border px-3 py-2 text-sm outline-none focus-visible:ring-2 ${
-                            form.errors.body
-                                ? 'border-destructive/40 focus-visible:border-destructive focus-visible:ring-destructive/20'
-                                : 'border-border focus-visible:border-primary focus-visible:ring-primary/20'
-                        }`}
-                        placeholder={'One line per note, for example:\nOpen an archived order to view or restore it\nFixed order search sometimes missing recent orders'}
-                        required
-                    />
-                </label>
-                {form.errors.body && <p className="mt-1 text-sm text-destructive" role="alert">{form.errors.body}</p>}
-
-                <div className="mt-4 flex justify-end">
-                    <Button type="submit" variant="primary" loading={form.processing}>
-                        Publish
-                    </Button>
-                </div>
-            </form>
 
             {releaseNotes.length === 0 ? (
                 <div className="flex flex-col items-center gap-1 rounded-xl border border-border bg-card py-10">
                     <span className="mb-2 grid h-12 w-12 place-items-center rounded-full bg-muted text-muted-foreground">
                         <Megaphone className="h-6 w-6" aria-hidden="true" />
                     </span>
-                    <p className="text-sm font-medium text-foreground">No release notes published yet</p>
+                    <p className="text-sm font-medium text-foreground">No release notes yet</p>
                     <p className="max-w-xs text-center text-sm leading-6 text-muted-foreground">
-                        Publish one above to let everyone know what changed.
+                        These appear here as soon as the next release is published.
                     </p>
                 </div>
             ) : (

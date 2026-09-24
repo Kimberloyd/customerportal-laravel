@@ -10,30 +10,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
+// No store() here on purpose -- release notes are published by whoever
+// ships the change via `php artisan release-notes:publish`, not typed in
+// through this admin page. Admins can only review and remove entries here.
 class ReleaseNoteController extends Controller
 {
-    public function store(Request $request): RedirectResponse
-    {
-        $this->requireAdmin();
-
-        $values = $request->validate([
-            'title' => ['required', 'string', 'max:150'],
-            'body' => ['required', 'string', 'max:5000'],
-        ]);
-
-        $note = ReleaseNote::create([
-            'version' => ReleaseNote::nextVersion(),
-            'title' => trim($values['title']),
-            'body' => trim($values['body']),
-            'published_at' => now(),
-            'created_by' => Auth::id(),
-        ]);
-
-        $this->recordAudit($request, $note->id, 'published', "release note v{$note->version}: {$note->title}");
-
-        return redirect()->route('admin.dashboard', ['tab' => 'release-notes'])->with('success', 'Release note published.');
-    }
-
     public function destroy(Request $request, ReleaseNote $releaseNote): RedirectResponse
     {
         $this->requireAdmin();
