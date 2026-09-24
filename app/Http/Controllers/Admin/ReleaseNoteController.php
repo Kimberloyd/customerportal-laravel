@@ -9,12 +9,24 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Inertia\Inertia;
+use Inertia\Response;
 
 // No store() here on purpose -- release notes are published by whoever
 // ships the change via `php artisan release-notes:publish`, not typed in
 // through this admin page. Admins can only review and remove entries here.
 class ReleaseNoteController extends Controller
 {
+    public function index(): Response
+    {
+        $this->requireAdmin();
+
+        return Inertia::render('Admin/ReleaseNotes', [
+            'releaseNotes' => ReleaseNote::orderByDesc('version')
+                ->get(['public_id', 'version', 'title', 'body', 'published_at']),
+        ]);
+    }
+
     public function destroy(Request $request, ReleaseNote $releaseNote): RedirectResponse
     {
         $this->requireAdmin();
@@ -26,7 +38,7 @@ class ReleaseNoteController extends Controller
 
         $this->recordAudit($request, $id, 'deleted', "release note v{$version} deleted: {$title}");
 
-        return redirect()->route('admin.dashboard', ['tab' => 'release-notes'])->with('success', 'Release note removed.');
+        return redirect()->route('admin.release-notes.index')->with('success', 'Release note removed.');
     }
 
     private function recordAudit(Request $request, int $entityId, string $action, string $details): void

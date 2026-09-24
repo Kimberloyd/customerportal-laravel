@@ -115,6 +115,7 @@ Route::middleware('auth')->prefix('admin/teams')->name('admin.teams.')->group(fu
 });
 
 Route::middleware('auth')->prefix('admin/release-notes')->name('admin.release-notes.')->group(function () {
+    Route::get('/', [AdminReleaseNoteController::class, 'index'])->name('index');
     Route::delete('/{releaseNote}', [AdminReleaseNoteController::class, 'destroy'])->middleware('throttle:admin-sensitive')->name('destroy');
 });
 

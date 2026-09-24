@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
-use App\Models\ReleaseNote;
 use App\Models\Team;
 use App\Models\User;
 use App\Support\AdminUserListing;
@@ -38,7 +37,6 @@ class DashboardController extends Controller
                 'customers' => $this->listCustomers($request->query()),
                 'accounts' => $this->listAccounts($request->query()),
                 'teams' => $this->listTeams(),
-                'release-notes' => $this->listReleaseNotes(),
                 default => $this->listProducts($request->query()),
             },
         ]);
@@ -145,14 +143,6 @@ class DashboardController extends Controller
                 ->whereDoesntHave('teams')
                 ->orderBy('full_name')
                 ->get(['id', 'full_name']),
-        ];
-    }
-
-    private function listReleaseNotes(): array
-    {
-        return [
-            'releaseNotes' => ReleaseNote::orderByDesc('version')
-                ->get(['public_id', 'version', 'title', 'body', 'published_at']),
         ];
     }
 }
