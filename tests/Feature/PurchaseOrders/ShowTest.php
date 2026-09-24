@@ -20,7 +20,7 @@ class ShowTest extends TestCase
         $staff = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $customer = $this->makeCustomer('Protected Co');
         $product = $this->makeProduct('Protected Product');
-        $order = $this->makeOrder($customer, [
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
             ['product_id' => $product->id, 'quantity' => 1],
         ]);
 
