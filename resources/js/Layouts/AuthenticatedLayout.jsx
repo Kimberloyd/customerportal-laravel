@@ -1030,7 +1030,17 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                 { name: 'Terms & Privacy', url: route('terms-and-privacy') },
                             ],
                         },
+                        {
+                            heading: 'Contacts',
+                            items: [
+                                {
+                                    name: 'Theomedsmktg@gmail.com',
+                                    url: 'mailto:Theomedsmktg@gmail.com',
+                                },
+                            ],
+                        },
                     ]}
+                    feedbackEmail="Theomedsmktg@gmail.com"
                     social={{ facebook: 'https://www.facebook.com/profile.php?id=61560877803829' }}
                     copyright={`© ${new Date().getFullYear()} Theomeds Marketing Inc. All rights reserved.`}
                 />

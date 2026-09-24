@@ -1,8 +1,11 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+import { useState, type FormEvent, type ReactNode } from "react";
+
 type FooterLinkGroup = {
   heading: string;
-  items: Array<{ name: string; url: string }>;
+  items: Array<{ name: string; url: string; icon?: ReactNode }>;
 };
 
 interface FooterSimpleProps {
@@ -11,6 +14,7 @@ interface FooterSimpleProps {
   copyright?: string;
   description?: string;
   linkGroups?: FooterLinkGroup[];
+  feedbackEmail?: string;
   social?: {
     facebook?: string;
     twitter?: string;
@@ -25,6 +29,7 @@ export function FooterSimple({
   logoSrc,
   description = "Build beautiful UIs, effortlessly.",
   linkGroups = [],
+  feedbackEmail,
   social = {
     discord: "https://discord.com",
     github: "https://github.com",
@@ -33,6 +38,16 @@ export function FooterSimple({
   },
   copyright = "© 2024 Smoothui. All rights reserved.",
 }: FooterSimpleProps) {
+  const [feedback, setFeedback] = useState("");
+
+  const submitFeedback = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const message = feedback.trim();
+    if (!feedbackEmail || !message) return;
+
+    window.location.href = `mailto:${feedbackEmail}?subject=Portal%20feedback&body=${encodeURIComponent(message)}`;
+  };
+
   return (
     <footer className="border-border border-t bg-background">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
@@ -167,7 +182,7 @@ export function FooterSimple({
           </div>
 
           {/* Links */}
-          {linkGroups.length > 0 ? (
+          {linkGroups.length > 0 || feedbackEmail ? (
             <div className="grid grid-cols-1 gap-8 sm:grid-cols-3 lg:col-span-3">
               {linkGroups.map((group) => (
                 <div key={group.heading}>
@@ -178,9 +193,10 @@ export function FooterSimple({
                     {group.items.map((link) => (
                       <li key={link.name}>
                         <a
-                          className="text-foreground/70 text-sm underline-offset-4 transition-colors hover:text-primary hover:underline"
+                          className="inline-flex items-center gap-2 text-foreground/70 text-sm underline-offset-4 transition-colors hover:text-primary hover:underline"
                           href={link.url}
                         >
+                          {link.icon}
                           {link.name}
                         </a>
                       </li>
@@ -188,6 +204,37 @@ export function FooterSimple({
                   </ul>
                 </div>
               ))}
+              {feedbackEmail ? (
+                <div>
+                  <h4 className="mb-4 font-semibold text-foreground text-sm uppercase tracking-wide">
+                    Feedback
+                  </h4>
+                  <form onSubmit={submitFeedback}>
+                    <label className="sr-only" htmlFor="footer-feedback">
+                      Feedback
+                    </label>
+                    <textarea
+                      id="footer-feedback"
+                      value={feedback}
+                      onChange={(event) => setFeedback(event.target.value)}
+                      placeholder="Share your feedback..."
+                      rows={3}
+                      className="w-full resize-none rounded-md border border-border bg-transparent px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground/60 focus:border-primary focus:ring-1 focus:ring-primary"
+                    />
+                    <div className="mt-2 flex justify-end">
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        size="compact"
+                        disabled={!feedback.trim()}
+                        className="rounded-md"
+                      >
+                        Send
+                      </Button>
+                    </div>
+                  </form>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
