@@ -86,7 +86,8 @@ export function PrimaryMetricCard({ label, value, rawValue, href, trend, reduced
     );
 }
 
-export function SecondaryMetricsCard({ metrics, reducedMotion }) {
+export function SecondaryMetricsCard({ metrics, reducedMotion, orientation = 'vertical' }) {
+    const horizontal = orientation === 'horizontal';
     const [hoveredIndex, setHoveredIndex] = useState(null);
     const rowRefs = useRef([]);
     const [highlightRect, setHighlightRect] = useState(null);
@@ -95,26 +96,33 @@ export function SecondaryMetricsCard({ metrics, reducedMotion }) {
         if (hoveredIndex == null) { setHighlightRect(null); return; }
         const node = rowRefs.current[hoveredIndex];
         if (!node) return;
-        setHighlightRect({ top: node.offsetTop, height: node.offsetHeight });
-    }, [hoveredIndex]);
+        setHighlightRect(horizontal
+            ? { left: node.offsetLeft, width: node.offsetWidth }
+            : { top: node.offsetTop, height: node.offsetHeight });
+    }, [hoveredIndex, horizontal]);
 
     return (
-        <div className={`${surface} relative flex h-full flex-col overflow-hidden`} onMouseLeave={() => setHoveredIndex(null)}>
+        <div className={`${surface} relative flex h-full ${horizontal ? 'flex-row' : 'flex-col'} overflow-hidden`} onMouseLeave={() => setHoveredIndex(null)}>
             {highlightRect && (
                 <motion.div
                     aria-hidden="true"
-                    className="pointer-events-none absolute inset-x-0 z-0 bg-hover"
+                    className={`pointer-events-none absolute z-0 bg-hover ${horizontal ? 'inset-y-0' : 'inset-x-0'}`}
                     initial={false}
-                    animate={{ top: highlightRect.top, height: highlightRect.height, opacity: 1 }}
+                    animate={{ ...highlightRect, opacity: 1 }}
                     transition={reducedMotion ? { duration: 0 } : spring}
                 />
             )}
-            <div className="flex flex-1 flex-col divide-y divide-border">
+            <div className={`flex flex-1 ${horizontal ? 'flex-row divide-x' : 'flex-col divide-y'} divide-border`}>
             {metrics.map((metric, index) => {
                 const Row = metric.href ? Link : 'div';
                 return (
                     <div key={metric.label} className="flex flex-1" ref={(el) => { rowRefs.current[index] = el; }} onMouseEnter={() => metric.href && setHoveredIndex(index)} onFocus={() => metric.href && setHoveredIndex(index)} onBlur={() => setHoveredIndex(null)}>
-                        <Row href={metric.href || undefined} className={`${focus} relative z-10 flex flex-1 items-center justify-between gap-3 p-4`}>
+                        <Row
+                            href={metric.href || undefined}
+                            className={horizontal
+                                ? `${focus} relative z-10 flex flex-1 flex-col items-start justify-center gap-1 p-4`
+                                : `${focus} relative z-10 flex flex-1 items-center justify-between gap-3 p-4`}
+                        >
                             <p className="min-w-0 truncate text-xs font-medium text-muted-foreground">{metric.label}</p>
                             <p className="shrink-0 text-xl font-semibold tracking-tight text-foreground tabular-nums sm:text-2xl">{metric.value}</p>
                         </Row>
