@@ -54,8 +54,9 @@ function buildRemarksRows(auditLogs, order) {
 
 export default function RemarksTimeline({ order, form, onSave, canEdit }) {
     const rows = buildRemarksRows(order.audit_logs ?? [], order);
+    const hasRemarks = rows.length > 0;
 
-    if (canEdit) {
+    if (canEdit && hasRemarks) {
         rows.push({ id: '__add-remark__', __isInput: true });
     }
 
@@ -75,7 +76,7 @@ export default function RemarksTimeline({ order, form, onSave, canEdit }) {
                 }}
                 maxLength={5000}
                 placeholder="Add a remark…"
-                className="min-w-0 flex-1 rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                className="min-w-0 flex-1 rounded-md border-0 bg-transparent px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-0"
             />
             <Button
                 type="button"
@@ -135,16 +136,24 @@ export default function RemarksTimeline({ order, form, onSave, canEdit }) {
                 <p className="text-sm text-muted-foreground">Notes recorded on this order, in the order they were added.</p>
             </div>
             {form.errors.remarks && <p className="mb-2 text-sm text-destructive">{form.errors.remarks}</p>}
-            <Table
-                data={rows}
-                columns={columns}
-                getRowId={(row) => row.id}
-                rowHeight={REMARKS_ROW_HEIGHT}
-                height={rows.length * REMARKS_ROW_HEIGHT + 60}
-                emptyState="Nothing has been noted on this order."
-                className="border-border"
-            />
-            {canEdit && (
+            {hasRemarks ? (
+                <Table
+                    data={rows}
+                    columns={columns}
+                    getRowId={(row) => row.id}
+                    rowHeight={REMARKS_ROW_HEIGHT}
+                    height={rows.length * REMARKS_ROW_HEIGHT + 60}
+                    emptyState="Nothing has been noted on this order."
+                    className="border-border"
+                />
+            ) : canEdit ? (
+                <div className="flex min-h-12 items-center gap-2 rounded-xl border border-border bg-background px-4">
+                    {renderAddRemarkControl()}
+                </div>
+            ) : (
+                <p className="text-sm text-muted-foreground">Nothing has been noted on this order.</p>
+            )}
+            {canEdit && hasRemarks && (
                 <div className="mt-3 flex items-center gap-2 md:hidden">{renderAddRemarkControl()}</div>
             )}
         </div>
