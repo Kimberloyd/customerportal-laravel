@@ -1027,6 +1027,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                 { name: 'Dashboard', url: route('dashboard') },
                                 { name: 'Orders', url: route('purchase-orders.index') },
                                 { name: 'FAQ', url: route('faq') },
+                                { name: "What's New", url: route('whats-new') },
                                 { name: 'Terms & Privacy', url: route('terms-and-privacy') },
                             ],
                         },

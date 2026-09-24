@@ -57,6 +57,7 @@ import {
     Lock as LockIconNode,
     LogOut as LogOutIconNode,
     Mail as MailIconNode,
+    Megaphone as MegaphoneIconNode,
     Menu as MenuIconNode,
     MessageCircle as MessageCircleIconNode,
     MessageCircleQuestionMark as MessageCircleQuestionMarkIconNode,
@@ -182,6 +183,7 @@ export const LoaderCircle = createIcon(LoaderCircleIconNode, 'LoaderCircle');
 export const Lock = createIcon(LockIconNode, 'Lock');
 export const LogOut = createIcon(LogOutIconNode, 'LogOut');
 export const Mail = createIcon(MailIconNode, 'Mail');
+export const Megaphone = createIcon(MegaphoneIconNode, 'Megaphone');
 export const Menu = createIcon(MenuIconNode, 'Menu');
 export const MessageCircle = createIcon(MessageCircleIconNode, 'MessageCircle');
 export const MessageCircleQuestionMark = createIcon(MessageCircleQuestionMarkIconNode, 'MessageCircleQuestionMark');

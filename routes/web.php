@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\ReleaseNoteController as AdminReleaseNoteController;
 use App\Http\Controllers\Admin\TeamController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AgentCustomerAccountController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PushTokenController;
 use App\Http\Controllers\PublicConversationController;
 use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\ReleaseNoteController;
 use App\Http\Controllers\SavedOrderFilterController;
 use App\Http\Controllers\SearchSelectionController;
 use App\Http\Controllers\SettingsController;
@@ -50,6 +52,10 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
 Route::get('/faq', [FaqController::class, 'index'])
     ->middleware('auth')
     ->name('faq');
+
+Route::get('/whats-new', [ReleaseNoteController::class, 'index'])
+    ->middleware('auth')
+    ->name('whats-new');
 
 Route::get('/terms-and-privacy', [TermsAndPrivacyController::class, 'index'])
     ->name('terms-and-privacy');
@@ -106,6 +112,11 @@ Route::middleware('auth')->prefix('admin/teams')->name('admin.teams.')->group(fu
     Route::post('/', [TeamController::class, 'store'])->middleware('throttle:admin-sensitive')->name('store');
     Route::put('/{team}', [TeamController::class, 'update'])->middleware('throttle:admin-sensitive')->name('update');
     Route::delete('/{team}', [TeamController::class, 'destroy'])->middleware('throttle:admin-sensitive')->name('destroy');
+});
+
+Route::middleware('auth')->prefix('admin/release-notes')->name('admin.release-notes.')->group(function () {
+    Route::post('/', [AdminReleaseNoteController::class, 'store'])->middleware('throttle:admin-sensitive')->name('store');
+    Route::delete('/{releaseNote}', [AdminReleaseNoteController::class, 'destroy'])->middleware('throttle:admin-sensitive')->name('destroy');
 });
 
 Route::middleware('auth')->prefix('customer-accounts')->name('customer-accounts.')->group(function () {

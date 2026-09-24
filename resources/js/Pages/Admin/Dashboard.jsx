@@ -4,6 +4,7 @@ import { UserModal } from '@/components/CreateUserModal';
 import { CustomersPanel } from '@/components/CustomersPanel';
 import { SecondaryMetricsCard } from '@/components/dashboard/OverviewPanels';
 import { ProductsPanel } from '@/components/ProductsPanel';
+import { ReleaseNotesPanel } from '@/components/ReleaseNotesPanel';
 import { ResetPasswordModal } from '@/components/ResetPasswordModal';
 import { TeamsPanel } from '@/components/TeamsPanel';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,7 @@ import { useState } from 'react';
 
 const number = new Intl.NumberFormat('en-PH');
 
-export default function Dashboard({ activeTab, products, customers, customerUsers, staffUsers, filters, roleLabels, accountForm, teams, agents, summary }) {
+export default function Dashboard({ activeTab, products, customers, customerUsers, staffUsers, filters, roleLabels, accountForm, teams, agents, releaseNotes, summary }) {
     const [userModal, setUserModal] = useState({ open: false, user: null });
     const [resettingUser, setResettingUser] = useState(null);
     const summaryMetrics = [
@@ -86,6 +87,13 @@ export default function Dashboard({ activeTab, products, customers, customerUser
                     >
                         Teams
                     </Link>
+                    <Link
+                        href={route('admin.dashboard', { tab: 'release-notes' })}
+                        aria-current={activeTab === 'release-notes' ? 'page' : undefined}
+                        className={`block rounded-md px-2 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)] ${activeTab === 'release-notes' ? 'font-semibold text-foreground' : 'text-muted-foreground hover:bg-hover hover:text-foreground'}`}
+                    >
+                        Release notes
+                    </Link>
                 </nav>
 
                 <div className="lg:col-span-10 space-y-6">
@@ -143,6 +151,7 @@ export default function Dashboard({ activeTab, products, customers, customerUser
                         </Deferred>
                     )}
                     {activeTab === 'teams' && <TeamsPanel teams={teams} agents={agents} />}
+                    {activeTab === 'release-notes' && <ReleaseNotesPanel releaseNotes={releaseNotes} />}
                 </div>
             </div>
 
