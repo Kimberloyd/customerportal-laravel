@@ -87,6 +87,7 @@ import {
     Scaling as ScalingIconNode,
     Search as SearchIconNode,
     Settings as SettingsIconNode,
+    Settings2 as Settings2IconNode,
     Shield as ShieldIconNode,
     ShieldCheck as ShieldCheckIconNode,
     SkipForward as SkipForwardIconNode,
@@ -212,6 +213,7 @@ export const ScanBarcode = createIcon(ScanBarcodeIconNode, 'ScanBarcode');
 export const Scaling = createIcon(ScalingIconNode, 'Scaling');
 export const Search = createIcon(SearchIconNode, 'Search');
 export const Settings = createIcon(SettingsIconNode, 'Settings');
+export const Settings2 = createIcon(Settings2IconNode, 'Settings2');
 export const Shield = createIcon(ShieldIconNode, 'Shield');
 export const ShieldCheck = createIcon(ShieldCheckIconNode, 'ShieldCheck');
 export const SkipForward = createIcon(SkipForwardIconNode, 'SkipForward');

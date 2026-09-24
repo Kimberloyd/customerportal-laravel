@@ -16,10 +16,10 @@ import { statusBadge } from '@/utils/orderDisplay';
 import { usePurchaseOrderRealtime } from '@/hooks/usePurchaseOrderRealtime';
 import { useSavedOrderFilters } from '@/hooks/useSavedOrderFilters';
 import { useSearchSelections } from '@/hooks/useSearchSelections';
-import { Deferred, Head, router } from '@inertiajs/react';
+import { Deferred, Head, Link, router } from '@inertiajs/react';
 import { parseDate } from '@internationalized/date';
 import { useContainerBreakpoint } from '@/lib/hooks/use-container-breakpoint';
-import { Archive, Funnel, ListChecks, MoreHorizontal, Search, SquareArrowOutUpRight } from 'lucide-react';
+import { Archive, ArrowRight, ListChecks, MoreHorizontal, Search, Settings2, SquareArrowOutUpRight } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const STATUS_FILTER_OPTIONS = [
@@ -420,16 +420,6 @@ export default function Index({
                         Orders
                     </h2>
                     <div className="flex items-center gap-2">
-                        {canViewArchive && (
-                            <Button
-                                type="button"
-                                variant="tertiary"
-                                leadingIcon={Archive}
-                                onClick={() => router.visit(route('purchase-orders.archive'))}
-                            >
-                                Archive
-                            </Button>
-                        )}
                         <Button
                             type="button"
                             variant="primary"
@@ -455,10 +445,32 @@ export default function Index({
                             placeholder="Order number or customer"
                             aria-label="Search orders"
                             leftIcon={<Search className="h-4 w-4" />}
+                            rightIcon={(
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setStatus(filters.status ?? 'all');
+                                        setCustomerId(filters.customer_id ? String(filters.customer_id) : '');
+                                        customerFilterField.setQuery(
+                                            filters.customer_id
+                                                ? customerFilterItems.find((item) => item.value === String(filters.customer_id))?.label ?? ''
+                                                : '',
+                                        );
+                                        setStartDate(filters.start_date ?? '');
+                                        setEndDate(filters.end_date ?? '');
+                                        setFilterModalOpen(true);
+                                    }}
+                                    aria-label="Advanced filters"
+                                    className="rounded-full outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring"
+                                >
+                                    <Settings2 aria-hidden="true" />
+                                </button>
+                            )}
                             classNames={{
                                 root: 'w-full',
                                 field: 'h-9 w-full rounded-full border-border bg-transparent shadow-none',
                                 input: 'text-sm',
+                                rightIcon: 'right-1 [&_button]:!size-7',
                             }}
                         />
                         {searchFocused && !search.trim() && orderSearchSelections.recent.length > 0 && (
@@ -483,25 +495,6 @@ export default function Index({
                             </div>
                         )}
                     </div>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setStatus(filters.status ?? 'all');
-                            setCustomerId(filters.customer_id ? String(filters.customer_id) : '');
-                            customerFilterField.setQuery(
-                                filters.customer_id
-                                    ? customerFilterItems.find((item) => item.value === String(filters.customer_id))?.label ?? ''
-                                    : '',
-                            );
-                            setStartDate(filters.start_date ?? '');
-                            setEndDate(filters.end_date ?? '');
-                            setFilterModalOpen(true);
-                        }}
-                        aria-label="Advanced filters"
-                        className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-none outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                        <Funnel aria-hidden="true" className="h-[18px] w-[18px]" />
-                    </button>
                 </div>
 
                 {savedOrderFilters.filters.length > 0 && (
@@ -599,6 +592,18 @@ export default function Index({
                                     onPageChange={(page) => applyFilters({ page })}
                                     label="Orders pagination"
                                 />
+                            </div>
+                        )}
+
+                        {canViewArchive && (
+                            <div className="mt-4 flex justify-center">
+                                <Link
+                                    href={route('purchase-orders.archive')}
+                                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-destructive outline-none hover:underline focus-visible:underline"
+                                >
+                                    View archive list
+                                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                                </Link>
                             </div>
                         )}
                     </>
