@@ -401,8 +401,12 @@ services:
     security_opt:
       - no-new-privileges:true
     mem_limit: 128m
-    ports:
-      - "${HOST_PORT:-8090}:8080"
+    # No host port mapping -- all real traffic reaches this container via
+    # the Cloudflare Tunnel's network alias below, never a host port
+    # (confirmed unused: no active connections, and the tunnel is
+    # dashboard-token-managed, routing to customerportal-laravel-proxy:8080
+    # directly). A fixed host port would also block `docker rollout` from
+    # running two replicas side by side during a deploy -- see deploy.sh.
     healthcheck:
       test:
         - CMD
