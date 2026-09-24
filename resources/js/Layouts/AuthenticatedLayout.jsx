@@ -19,7 +19,6 @@ import {
     CheckCheck,
     LogOut,
     MessageCircle,
-    MonitorX,
     SquarePen,
     User,
     X,
@@ -41,11 +40,6 @@ const USER_MENU_ITEMS = [
         value: 'profile',
         label: 'Profile',
         icon: <User aria-hidden="true" className="h-4 w-4" />,
-    },
-    {
-        value: 'logout-all',
-        label: 'Sign Out All Devices',
-        icon: <MonitorX aria-hidden="true" className="h-4 w-4" />,
     },
     {
         value: 'logout',
@@ -762,8 +756,6 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                     onChange={(action) => {
                                         if (action === 'profile') {
                                             router.visit(route('profile.show'));
-                                        } else if (action === 'logout-all') {
-                                            router.post(route('logout.all'));
                                         } else if (action === 'logout') {
                                             router.post(route('logout'));
                                         }
@@ -843,14 +835,6 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                                 onClick={closeMobileNav}
                                             >
                                                 Profile
-                                            </ResponsiveNavLink>
-                                            <ResponsiveNavLink
-                                                method="post"
-                                                href={route('logout.all')}
-                                                as="button"
-                                                onClick={closeMobileNav}
-                                            >
-                                                Sign Out All Devices
                                             </ResponsiveNavLink>
                                             <ResponsiveNavLink
                                                 method="post"
