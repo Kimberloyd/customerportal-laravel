@@ -948,6 +948,10 @@ class PurchaseOrderController extends Controller
         $this->authorize('view', $order);
 
         $isCustomerViewer = Auth::user()->role === User::ROLE_CUSTOMER;
+        // An archived order is read-only -- every write ability below is
+        // gated off regardless of status, and restore/permanent-delete take
+        // their place instead.
+        $isArchived = $order->trashed();
 
         $order->load(['customer', 'items', 'auditLogs.actor', 'followUps']);
 
@@ -958,7 +962,7 @@ class PurchaseOrderController extends Controller
         ]);
 
         $isTerminal = in_array($order->status, PurchaseOrder::TERMINAL_STATUSES, true);
-        $canEditItems = ! $isTerminal;
+        $canEditItems = ! $isTerminal && ! $isArchived;
         $scopedCustomer = CustomerScope::forCurrentUser();
         $editOrderCustomers = CustomerAccess::applyToCustomers(Customer::query(), $request->user())
             ->orderBy('company_name')->get(['id', 'company_name'])->toArray();
@@ -982,6 +986,7 @@ class PurchaseOrderController extends Controller
                 'customer_received_at' => $order->customer_received_at?->toIso8601String(),
                 'status' => $order->status,
                 'is_terminal' => $isTerminal,
+                'is_archived' => $isArchived,
                 'can_edit_items' => $canEditItems,
                 'remarks' => $order->remarks,
                 'total' => $order->total,
@@ -1059,20 +1064,24 @@ class PurchaseOrderController extends Controller
                     ]),
             ],
             'isCustomerViewer' => $isCustomerViewer,
-            'canManageFulfillment' => ! $isCustomerViewer && in_array($order->status, [
+            'canManageFulfillment' => ! $isCustomerViewer && ! $isArchived && in_array($order->status, [
                 PurchaseOrder::STATUS_SUBMITTED,
                 PurchaseOrder::STATUS_PARTIAL,
                 PurchaseOrder::STATUS_RETURNED,
             ], true),
-            'canComplete' => $isCustomerViewer && ! $isTerminal && $isFullySettled,
+            'canComplete' => $isCustomerViewer && ! $isTerminal && ! $isArchived && $isFullySettled,
             'canConfirmReceived' => $isCustomerViewer
+                && ! $isArchived
                 && $order->status === PurchaseOrder::STATUS_COMPLETED
                 && $order->customer_received_at === null,
-            'canCancel' => ! $isTerminal,
+            'canCancel' => ! $isTerminal && ! $isArchived,
             'canRequestReturn' => $isCustomerViewer
+                && ! $isArchived
                 && ! $hasOpenReturn
                 && $hasReturnableItems,
-            'canManageReturns' => ! $isCustomerViewer,
+            'canManageReturns' => ! $isCustomerViewer && ! $isArchived,
+            'canRestore' => $isArchived && Auth::user()->role === User::ROLE_ADMIN,
+            'canDeleteForever' => $isArchived && Auth::user()->role === User::ROLE_ADMIN,
             'editOrderCustomers' => $editOrderCustomers,
             'editOrderProducts' => Inertia::optional(
                 fn () => $this->activeProducts(cached: true)

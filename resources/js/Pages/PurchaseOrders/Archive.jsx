@@ -8,7 +8,7 @@ import { Input } from '@/components/motion/input';
 import { formatDateTime, statusBadge } from '@/utils/orderDisplay';
 import { usePurchaseOrderRealtime } from '@/hooks/usePurchaseOrderRealtime';
 import { Head, Link, router } from '@inertiajs/react';
-import { MoreHorizontal, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { MoreHorizontal, RotateCcw, Search, SquareArrowOutUpRight, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 
 const PAGE_SIZE = 10;
@@ -101,6 +101,12 @@ export default function Archive({ orders = { data: [], last_page: 1, current_pag
             cell: (order) => {
                 const items = [
                     {
+                        value: 'view',
+                        label: 'Open',
+                        icon: <SquareArrowOutUpRight />,
+                        onSelect: () => router.visit(route('purchase-orders.show', order.public_id)),
+                    },
+                    {
                         value: 'restore',
                         label: 'Restore',
                         icon: <RotateCcw />,
@@ -180,6 +186,7 @@ export default function Archive({ orders = { data: [], last_page: 1, current_pag
                     getRowId={(order) => String(order.id)}
                     className="border-border"
                     height={TABLE_VIEWPORT_HEIGHT}
+                    onRowClick={(order) => router.visit(route('purchase-orders.show', order.public_id))}
                     resizable
                     emptyState="No archived orders."
                     emptyStateHeight={PAGE_SIZE * TABLE_ROW_HEIGHT}

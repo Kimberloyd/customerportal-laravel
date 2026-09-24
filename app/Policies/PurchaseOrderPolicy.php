@@ -5,7 +5,19 @@ use App\Models\User;
 use App\Support\CustomerAccess;
 class PurchaseOrderPolicy
 {
-    public function view(User $user, PurchaseOrder $order): bool { return CustomerAccess::applyToOrders(PurchaseOrder::query(), $user)->whereKey($order->id)->exists(); }
+    // An archived (soft-deleted) order is admin-only to view at all -- the
+    // normal CustomerAccess scope below runs against PurchaseOrder::query(),
+    // which excludes trashed rows by default, so it would reject a trashed
+    // order for every role including the customer/agent who could otherwise
+    // see it. This is what lets the show route (marked withTrashed() in
+    // routes/web.php) actually resolve an archived order for an admin.
+    public function view(User $user, PurchaseOrder $order): bool {
+        if ($order->trashed()) {
+            return $user->role === User::ROLE_ADMIN;
+        }
+
+        return CustomerAccess::applyToOrders(PurchaseOrder::query(), $user)->whereKey($order->id)->exists();
+    }
     public function update(User $user, PurchaseOrder $order): bool { return $this->view($user, $order); }
     public function cancel(User $user, PurchaseOrder $order): bool { return $this->view($user, $order); }
     public function viewMessageLog(User $user, PurchaseOrder $order): bool { return in_array($user->role, User::STAFF_ROLES, true) && $this->view($user, $order); }

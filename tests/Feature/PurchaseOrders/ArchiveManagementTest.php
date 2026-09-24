@@ -171,4 +171,63 @@ class ArchiveManagementTest extends TestCase
 
         $this->assertDatabaseHas('purchase_orders', ['id' => $order->id]);
     }
+
+    public function test_admin_can_open_an_archived_order(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $customer = $this->makeCustomer();
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now());
+        $order->delete();
+
+        $response = $this->actingAsUser($admin)->get(route('purchase-orders.show', $order->public_id));
+
+        $response->assertOk();
+        $props = $response->viewData('page')['props'];
+        $this->assertTrue($props['order']['is_archived']);
+        $this->assertTrue($props['canRestore']);
+        $this->assertTrue($props['canDeleteForever']);
+        $this->assertFalse($props['canManageFulfillment']);
+        $this->assertFalse($props['canManageReturns']);
+        $this->assertFalse($props['order']['can_edit_items']);
+    }
+
+    public function test_office_cannot_open_an_archived_order(): void
+    {
+        $office = User::factory()->create(['role' => 'office']);
+        $customer = $this->makeCustomer();
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now());
+        $order->delete();
+
+        $this->actingAsUser($office)
+            ->get(route('purchase-orders.show', $order->public_id))
+            ->assertForbidden();
+    }
+
+    public function test_customer_cannot_open_their_own_archived_order(): void
+    {
+        $customerUser = User::factory()->create(['role' => 'customer']);
+        $customer = $this->makeCustomer('Own Co', $customerUser);
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now());
+        $order->delete();
+
+        $this->actingAsUser($customerUser)
+            ->get(route('purchase-orders.show', $order->public_id))
+            ->assertForbidden();
+    }
+
+    public function test_a_non_archived_order_still_has_its_normal_capabilities(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $customer = $this->makeCustomer();
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now());
+
+        $response = $this->actingAsUser($admin)->get(route('purchase-orders.show', $order->public_id));
+
+        $response->assertOk();
+        $props = $response->viewData('page')['props'];
+        $this->assertFalse($props['order']['is_archived']);
+        $this->assertFalse($props['canRestore']);
+        $this->assertFalse($props['canDeleteForever']);
+        $this->assertTrue($props['order']['can_edit_items']);
+    }
 }

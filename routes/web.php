@@ -71,7 +71,7 @@ Route::middleware('auth')->prefix('orders')->name('purchase-orders.')->group(fun
     Route::get('/archive', [PurchaseOrderController::class, 'archiveIndex'])->name('archive');
     Route::post('/', [PurchaseOrderController::class, 'store'])->middleware('throttle:order-writes')->name('store');
     Route::get('/{order}/message-log', [PurchaseOrderController::class, 'messageLog'])->name('message-log');
-    Route::get('/{order}', [PurchaseOrderController::class, 'show'])->name('show');
+    Route::get('/{order}', [PurchaseOrderController::class, 'show'])->withTrashed()->name('show');
     Route::get('/{order}/attachment', [PurchaseOrderController::class, 'attachment'])->middleware('throttle:private-downloads')->name('attachment');
     Route::get('/{order}/edit', [PurchaseOrderController::class, 'edit'])->name('edit');
     Route::put('/{order}', [PurchaseOrderController::class, 'update'])->middleware('throttle:order-writes')->name('update');
@@ -161,6 +161,8 @@ Route::middleware('auth')->get('/profile', [ProfileController::class, 'show'])->
 Route::middleware('auth')->prefix('settings')->name('settings.')->group(function () {
     Route::get('/', [SettingsController::class, 'edit'])->name('edit');
     Route::put('/', [SettingsController::class, 'update'])->name('update');
+    Route::put('/password', [SettingsController::class, 'updatePassword'])
+        ->middleware('throttle:admin-sensitive')->name('password.update');
     // Admin-only; the role check lives in the controller alongside the other
     // role gates in this app rather than in a dedicated middleware.
     Route::put('/sms', [SettingsController::class, 'updateSms'])->name('sms.update');

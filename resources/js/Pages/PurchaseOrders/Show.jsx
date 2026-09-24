@@ -49,6 +49,8 @@ export default function Show({
     canCancel,
     canRequestReturn,
     canManageReturns,
+    canRestore = false,
+    canDeleteForever = false,
     editOrderCustomers = [],
     editOrderProducts,
     lockedCustomerId = null,
@@ -63,6 +65,24 @@ export default function Show({
     const showDeliverColumn = canManageFulfillment && !order.is_terminal;
     const currentStatus = statusBadge(order.display_status ?? order.status);
     const [attachmentPreviewOpen, setAttachmentPreviewOpen] = useState(false);
+    const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false);
+    const [isRestoring, setIsRestoring] = useState(false);
+    const [deleteForeverConfirmOpen, setDeleteForeverConfirmOpen] = useState(false);
+    const [isDeletingForever, setIsDeletingForever] = useState(false);
+    const restoreOrder = useCallback(() => {
+        router.post(route('purchase-orders.restore', order.public_id), {}, {
+            preserveScroll: true,
+            onStart: () => setIsRestoring(true),
+            onFinish: () => { setIsRestoring(false); setRestoreConfirmOpen(false); },
+        });
+    }, [order.public_id]);
+    const deleteOrderForever = useCallback(() => {
+        router.delete(route('purchase-orders.force-destroy', order.public_id), {
+            preserveScroll: true,
+            onStart: () => setIsDeletingForever(true),
+            onFinish: () => setIsDeletingForever(false),
+        });
+    }, [order.public_id]);
     const [pendingAction, setPendingAction] = useState(null);
     const [actionProcessing, setActionProcessing] = useState(false);
     const [editOrderOpen, setEditOrderOpen] = useState(false);
@@ -255,6 +275,28 @@ export default function Show({
                     Close Order
                 </Button>
             )}
+            {canRestore && (
+                <Button
+                    type="button"
+                    variant="tertiary"
+                    size="compact"
+                    className="rounded-md"
+                    onClick={() => setRestoreConfirmOpen(true)}
+                >
+                    Restore
+                </Button>
+            )}
+            {canDeleteForever && (
+                <Button
+                    type="button"
+                    variant="destructive"
+                    size="compact"
+                    className="rounded-md"
+                    onClick={() => setDeleteForeverConfirmOpen(true)}
+                >
+                    Delete forever
+                </Button>
+            )}
         </>
     );
 
@@ -388,7 +430,7 @@ export default function Show({
         [showDeliverColumn, data.received, processing, canCancel, order.can_edit_items, canRequestReturn, canComplete, complete],
     );
 
-    const showActionsRow = showDeliverColumn || canCancel || order.can_edit_items || canRequestReturn || canComplete;
+    const showActionsRow = showDeliverColumn || canCancel || order.can_edit_items || canRequestReturn || canComplete || canRestore || canDeleteForever;
 
     const itemRows = order.items.length
         ? [...order.items, ...(showActionsRow ? [{ id: '__spacer', __isTotal: true }] : [])]
@@ -448,14 +490,36 @@ export default function Show({
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <nav aria-label="Breadcrumb">
                         <h2 className="flex items-center gap-2 text-xl font-semibold leading-tight">
-                            <Link
-                                href={route('purchase-orders.index')}
-                                className="text-muted-foreground transition-colors hover:text-primary"
-                            >
-                                Order
-                            </Link>
-                            <span aria-hidden="true" className="text-muted-foreground">/</span>
-                            <span aria-current="page" className="text-foreground">{orderNumber}</span>
+                            {order.is_archived ? (
+                                <>
+                                    <Link
+                                        href={route('purchase-orders.index')}
+                                        className="text-muted-foreground transition-colors hover:text-primary"
+                                    >
+                                        Orders
+                                    </Link>
+                                    <span aria-hidden="true" className="text-muted-foreground">/</span>
+                                    <Link
+                                        href={route('purchase-orders.archive')}
+                                        className="text-muted-foreground transition-colors hover:text-primary"
+                                    >
+                                        Archived
+                                    </Link>
+                                    <span aria-hidden="true" className="text-muted-foreground">/</span>
+                                    <span aria-current="page" className="text-foreground">{orderNumber}</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Link
+                                        href={route('purchase-orders.index')}
+                                        className="text-muted-foreground transition-colors hover:text-primary"
+                                    >
+                                        Order
+                                    </Link>
+                                    <span aria-hidden="true" className="text-muted-foreground">/</span>
+                                    <span aria-current="page" className="text-foreground">{orderNumber}</span>
+                                </>
+                            )}
                         </h2>
                     </nav>
                     <div className="flex items-center gap-2">
@@ -595,7 +659,7 @@ export default function Show({
                     </div>
                 </div>
 
-                {!isCustomer && (
+                {!isCustomer && !order.is_archived && (
                     <div className="max-w-xs">
                         <Input
                             type="text"
@@ -729,6 +793,30 @@ export default function Show({
                 onConfirm={confirmPendingAction}
                 destructive={confirmationCopy[pendingAction]?.destructive}
                 processing={(pendingAction === 'fulfillment' && processing) || actionProcessing}
+            />
+
+            <ConfirmationDialog
+                open={restoreConfirmOpen}
+                onOpenChange={(open) => !open && !isRestoring && setRestoreConfirmOpen(false)}
+                title={`Restore order ${orderNumber}?`}
+                description="This puts the order back in the active Orders list."
+                confirmLabel="Restore"
+                cancelLabel="Cancel"
+                onConfirm={restoreOrder}
+                processing={isRestoring}
+            />
+
+            <ConfirmationDialog
+                open={deleteForeverConfirmOpen}
+                onOpenChange={(open) => !open && !isDeletingForever && setDeleteForeverConfirmOpen(false)}
+                title={`Permanently delete order ${orderNumber}?`}
+                description="This can't be undone. The order, its items, activity history, notifications, returns, and attachment are all erased for good."
+                confirmLabel="Delete forever"
+                cancelLabel="Keep archived"
+                onConfirm={deleteOrderForever}
+                confirmationText={orderNumber}
+                destructive
+                processing={isDeletingForever}
             />
         </AuthenticatedLayout>
     );
