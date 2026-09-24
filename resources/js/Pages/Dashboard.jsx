@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { AttentionPanel, OrderStages, PrimaryMetricCard, SecondaryMetricsCard } from '@/components/dashboard/OverviewPanels';
+import { OrderStages, PrimaryMetricCard, SecondaryMetricsCard } from '@/components/dashboard/OverviewPanels';
 import OrderTrend from '@/components/dashboard/OrderTrend';
 import { useDashboardRealtime } from '@/hooks/useDashboardRealtime';
 import { Head, Link, router } from '@inertiajs/react';
@@ -73,9 +73,6 @@ export default function Dashboard({ dashboard, workspace }) {
                                     <OrderTrend trend={dashboard.trend} empty={dashboard.trend.every((point) => point.current === 0 && point.delivered === 0)} reducedMotion={reducedMotion} />
                                     <OrderStages current={current} ordersUrl={ordersUrl} reducedMotion={reducedMotion} />
                                 </section>
-                            </motion.div>
-                            <motion.div {...enter(0.24)}>
-                                <AttentionPanel orders={dashboard.attention} count={dashboard.attention_count} customer={customer} reducedMotion={reducedMotion} canOrder={workspace.can_order} />
                             </motion.div>
                         </div>
                         <span role="status" className="sr-only">{loading ? 'Updating dashboard.' : `Showing the last ${period} days.`}</span>
