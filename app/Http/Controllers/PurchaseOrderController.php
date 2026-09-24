@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\OrderFollowUp;
 use App\Models\ProductReturn;
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderAudit;
 use App\Models\PurchaseOrderItem;
 use App\Models\PurchaseOrderNotification;
 use App\Models\User;
@@ -25,6 +26,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -98,6 +100,7 @@ class PurchaseOrderController extends Controller
             'openCreateOrder' => $request->boolean('create'),
             'canViewMessageLog' => in_array(Auth::user()->role, User::STAFF_ROLES, true),
             'canDeleteOrders' => in_array(Auth::user()->role, [User::ROLE_ADMIN, User::ROLE_AGENT], true),
+            'canViewArchive' => Auth::user()->role === User::ROLE_ADMIN,
         ]);
     }
 
@@ -855,6 +858,89 @@ class PurchaseOrderController extends Controller
 
         return redirect()->route('purchase-orders.index')
             ->with('success', $count === 1 ? '1 order archived.' : "{$count} orders archived.");
+    }
+
+    public function archiveIndex(Request $request): Response
+    {
+        $this->authorize('viewArchive', PurchaseOrder::class);
+
+        $search = trim((string) $request->query('search', ''));
+
+        $query = PurchaseOrder::onlyTrashed()->with(['customer', 'items']);
+
+        if ($search !== '') {
+            $pattern = '%'.strtolower($search).'%';
+            $query->where(function ($q) use ($pattern) {
+                $q->whereRaw('LOWER(po_number) LIKE ?', [$pattern])
+                    ->orWhereRaw('LOWER(transaction_number) LIKE ?', [$pattern])
+                    ->orWhereHas('customer', function ($q) use ($pattern) {
+                        $q->whereRaw('LOWER(company_name) LIKE ?', [$pattern]);
+                    });
+            });
+        }
+
+        $orders = $query->orderByDesc('deleted_at')
+            ->paginate(10)
+            ->withQueryString()
+            ->through(fn (PurchaseOrder $order) => [
+                ...$this->serializeForList($order),
+                'deleted_at' => $order->deleted_at?->toIso8601String(),
+            ]);
+
+        return Inertia::render('PurchaseOrders/Archive', [
+            'orders' => $orders,
+            'filters' => ['search' => $search],
+        ]);
+    }
+
+    public function restore(Request $request, string $order): RedirectResponse
+    {
+        $trashed = PurchaseOrder::onlyTrashed()->where('public_id', $order)->firstOrFail();
+        $this->authorize('restore', $trashed);
+
+        DB::transaction(function () use ($trashed, $request): void {
+            $trashed->restore();
+            OrderAudit::record($trashed, 'Order Restored', 'Order restored from the archive.', $request);
+            app(OrderFollowUpManager::class)->syncOrder($trashed);
+        });
+
+        PurchaseOrderChanged::dispatch($trashed->id, 'restored', $trashed->customer_id);
+
+        return redirect()->route('purchase-orders.archive')->with('success', 'Order restored.');
+    }
+
+    /**
+     * Unlike destroy()/bulkDestroy() above (a reversible archive), this
+     * actually erases the order and everything that references it --
+     * items, audit trail, notifications and their read state, follow-ups,
+     * returns, and any attachment file. None of the related tables cascade
+     * on delete (they're RESTRICT by default), so children are removed
+     * first, in dependency order, inside one transaction.
+     */
+    public function forceDestroy(Request $request, string $order): RedirectResponse
+    {
+        $trashed = PurchaseOrder::onlyTrashed()->where('public_id', $order)->firstOrFail();
+        $this->authorize('forceDelete', $trashed);
+
+        $attachment = $trashed->po_file;
+        $identifier = $trashed->transaction_number;
+
+        DB::transaction(function () use ($trashed): void {
+            ProductReturn::where('purchase_order_id', $trashed->id)->each(fn (ProductReturn $return) => $return->delete());
+            OrderFollowUp::where('purchase_order_id', $trashed->id)->delete();
+            PurchaseOrderNotification::where('purchase_order_id', $trashed->id)->delete();
+            PurchaseOrderAudit::where('purchase_order_id', $trashed->id)->delete();
+            PurchaseOrderItem::where('purchase_order_id', $trashed->id)->delete();
+            $trashed->forceDelete();
+        });
+
+        if ($attachment) {
+            PoAttachment::delete($attachment);
+        }
+
+        Log::warning("Order {$identifier} permanently deleted by user {$request->user()->id}.");
+
+        return redirect()->route('purchase-orders.archive')->with('success', 'Order permanently deleted.');
     }
 
     public function show(Request $request, PurchaseOrder $order): Response

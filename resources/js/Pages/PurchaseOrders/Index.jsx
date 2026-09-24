@@ -59,6 +59,7 @@ export default function Index({
     openCreateOrder = false,
     canViewMessageLog = false,
     canDeleteOrders = false,
+    canViewArchive = false,
 }) {
     usePurchaseOrderRealtime();
 
@@ -418,13 +419,25 @@ export default function Index({
                     <h2 className="type-page-heading text-foreground">
                         Orders
                     </h2>
-                    <Button
-                        type="button"
-                        variant="primary"
-                        onClick={() => setCreateOrderOpen(true)}
-                    >
-                        Create Order
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        {canViewArchive && (
+                            <Button
+                                type="button"
+                                variant="tertiary"
+                                leadingIcon={Archive}
+                                onClick={() => router.visit(route('purchase-orders.archive'))}
+                            >
+                                Archive
+                            </Button>
+                        )}
+                        <Button
+                            type="button"
+                            variant="primary"
+                            onClick={() => setCreateOrderOpen(true)}
+                        >
+                            Create Order
+                        </Button>
+                    </div>
                 </div>
             }
         >
