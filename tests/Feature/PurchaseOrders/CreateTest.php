@@ -139,7 +139,7 @@ class CreateTest extends TestCase
         $response->assertRedirect(route('purchase-orders.index'));
         $order = PurchaseOrder::first();
         $this->assertNotNull($order);
-        $this->assertMatchesRegularExpression('/^TXN-\d{6}-[A-Z0-9]{4}$/', $order->transaction_number);
+        $this->assertMatchesRegularExpression('/^\d{3}-\d{6}-\d{3}$/', $order->transaction_number);
     }
 
 

@@ -375,7 +375,10 @@ class PurchaseOrderController extends Controller
     private static function generateTransactionNumber(): string
     {
         do {
-            $candidate = 'TXN-'.now()->format('ymd').'-'.Str::upper(Str::random(4));
+            // All-digit, 3-6-3 grouped (e.g. 123-456789-123) -- the middle
+            // group doubles as the creation date (ymd), the outer two are
+            // random for uniqueness.
+            $candidate = sprintf('%03d-%s-%03d', random_int(0, 999), now()->format('ymd'), random_int(0, 999));
         } while (PurchaseOrder::where('transaction_number', $candidate)->exists());
 
         return $candidate;

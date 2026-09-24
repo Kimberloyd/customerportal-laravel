@@ -292,7 +292,7 @@ export default function Index({
             // as this column's identity the way it used to.
             {
                 key: 'transaction_number',
-                header: 'Transaction Number',
+                header: 'Order Number',
                 sortable: true,
                 // An explicit pixel width on every column (see the others
                 // below) lets the table resolve a fixed total width on the
@@ -439,7 +439,7 @@ export default function Index({
                             onChange={setSearch}
                             onFocus={() => setSearchFocused(true)}
                             onBlur={() => setSearchFocused(false)}
-                            placeholder="Transaction number or customer"
+                            placeholder="Order number or customer"
                             aria-label="Search orders"
                             leftIcon={<Search className="h-4 w-4" />}
                             classNames={{
