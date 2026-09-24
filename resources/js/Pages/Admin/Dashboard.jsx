@@ -44,12 +44,6 @@ export default function Dashboard({ activeTab, products, customers, customerUser
         >
             <Head title="Admin" />
 
-            <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
-                <div className="max-w-md">
-                    <SecondaryMetricsCard metrics={summaryMetrics} reducedMotion={false} />
-                </div>
-            </div>
-
             <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-8 sm:px-6 lg:grid-cols-12 lg:px-8">
                 <nav className="space-y-1" aria-label="Admin sections">
                     <Link
@@ -94,7 +88,10 @@ export default function Dashboard({ activeTab, products, customers, customerUser
                     </Link>
                 </nav>
 
-                <div className="lg:col-span-10">
+                <div className="lg:col-span-10 space-y-6">
+                    <div className="max-w-md">
+                        <SecondaryMetricsCard metrics={summaryMetrics} reducedMotion={false} />
+                    </div>
                     {activeTab === 'products' && (
                         <Deferred
                             data="products"
