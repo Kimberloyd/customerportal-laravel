@@ -43,10 +43,12 @@ export default function WhatsNew({ releases = [] }) {
                     <ol className="mt-8 space-y-6">
                         {releases.map((release) => (
                             <li key={release.version} className="rounded-xl border border-border bg-card p-6">
-                                <p className="type-label text-muted-foreground">
-                                    Version {release.version} · {formatDateTime(release.published_at)}
-                                </p>
-                                <h2 className="mt-1 type-section-heading text-foreground">{release.title}</h2>
+                                <div className="sm:flex sm:items-start sm:justify-between sm:gap-4">
+                                    <h2 className="type-section-heading text-foreground">{release.title}</h2>
+                                    <p className="mt-1 type-label text-muted-foreground sm:mt-0 sm:shrink-0 sm:text-right">
+                                        Version {release.version} · {formatDateTime(release.published_at)}
+                                    </p>
+                                </div>
                                 <ul className="mt-3 list-disc space-y-1.5 pl-5 type-body text-muted-foreground">
                                     {noteLines(release.body).map((line, index) => (
                                         <li key={index}>{line}</li>
