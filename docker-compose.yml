@@ -132,6 +132,13 @@ services:
       MOBILE_APP_LATEST_VERSION_NAME: ${MOBILE_APP_LATEST_VERSION_NAME:-1.0}
       MOBILE_APP_MIN_VERSION_CODE: ${MOBILE_APP_MIN_VERSION_CODE:-1}
     restart: unless-stopped
+    # Same signal distinction as the proxy service below: PHP-FPM treats
+    # SIGTERM (Docker's default stop signal) as an immediate termination
+    # of in-flight requests, and SIGQUIT as a graceful one that finishes
+    # them first. entrypoint.sh execs php-fpm directly, so it's PID 1 and
+    # receives this signal itself.
+    stop_signal: SIGQUIT
+    stop_grace_period: 15s
     volumes:
       - laravel_storage:/app/storage/app/private
     tmpfs:
@@ -386,6 +393,16 @@ services:
       reverb:
         condition: service_healthy
     restart: unless-stopped
+    # Docker's default stop signal is SIGTERM, which nginx treats as a
+    # *fast* shutdown -- it drops in-flight connections immediately
+    # instead of finishing them. SIGQUIT is nginx's graceful-shutdown
+    # signal (finish in-flight requests, stop accepting new ones, then
+    # exit). Without this, `docker rollout`'s old-container teardown
+    # aborts any request still in progress on it (confirmed via
+    # cloudflared's own logs: "Incoming request ended abruptly: context
+    # canceled" for requests that landed on the outgoing container).
+    stop_signal: SIGQUIT
+    stop_grace_period: 15s
     tmpfs:
       - /var/cache/nginx
       - /var/run
