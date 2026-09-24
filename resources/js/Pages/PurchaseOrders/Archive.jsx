@@ -153,21 +153,22 @@ export default function Archive({ orders = { data: [], last_page: 1, current_pag
             <Head title="Archived Orders" />
 
             <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-                <p className="text-sm text-muted-foreground">
-                    Orders archived from the main list. Restore one back to active orders, or delete it
-                    forever -- that permanently erases the order and everything tied to it (items, history,
-                    notifications, returns, attachment) and can't be undone.
-                </p>
-
-                <div className="w-full sm:max-w-80">
-                    <Input
-                        type="text"
-                        value={search}
-                        onChange={(value) => { setSearch(value); applySearch(value); }}
-                        placeholder="Order number or customer"
-                        aria-label="Search archived orders"
-                        leftIcon={<Search className="h-4 w-4" />}
-                    />
+                <div className="flex items-center justify-center gap-2 bg-background">
+                    <div className="relative w-full sm:max-w-80">
+                        <Input
+                            type="text"
+                            value={search}
+                            onChange={(value) => { setSearch(value); applySearch(value); }}
+                            placeholder="Order number or customer"
+                            aria-label="Search archived orders"
+                            leftIcon={<Search className="h-4 w-4" />}
+                            classNames={{
+                                root: 'w-full',
+                                field: 'h-9 w-full rounded-full border-border bg-transparent shadow-none',
+                                input: 'text-sm',
+                            }}
+                        />
+                    </div>
                 </div>
 
                 <Table
