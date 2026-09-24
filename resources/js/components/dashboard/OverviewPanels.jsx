@@ -113,7 +113,7 @@ export function SecondaryMetricsCard({ metrics, reducedMotion }) {
             {metrics.map((metric, index) => {
                 const Row = metric.href ? Link : 'div';
                 return (
-                    <div key={metric.label} ref={(el) => { rowRefs.current[index] = el; }} onMouseEnter={() => metric.href && setHoveredIndex(index)} onFocus={() => metric.href && setHoveredIndex(index)} onBlur={() => setHoveredIndex(null)}>
+                    <div key={metric.label} className="flex flex-1" ref={(el) => { rowRefs.current[index] = el; }} onMouseEnter={() => metric.href && setHoveredIndex(index)} onFocus={() => metric.href && setHoveredIndex(index)} onBlur={() => setHoveredIndex(null)}>
                         <Row href={metric.href || undefined} className={`${focus} relative z-10 flex flex-1 items-center justify-between gap-3 p-4`}>
                             <p className="min-w-0 truncate text-xs font-medium text-muted-foreground">{metric.label}</p>
                             <p className="shrink-0 text-xl font-semibold tracking-tight text-foreground tabular-nums sm:text-2xl">{metric.value}</p>
