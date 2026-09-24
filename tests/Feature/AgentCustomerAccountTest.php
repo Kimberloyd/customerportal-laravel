@@ -25,6 +25,7 @@ class AgentCustomerAccountTest extends TestCase
 
         $user = User::where('email', 'north@example.com')->firstOrFail();
         $this->assertSame('customer', $user->role);
+        $this->assertTrue($user->password_change_recommended);
         $this->assertSame($user->id, $customer->fresh()->user_id);
         $this->assertSame($agent->id, $customer->fresh()->assigned_employee_id);
     }

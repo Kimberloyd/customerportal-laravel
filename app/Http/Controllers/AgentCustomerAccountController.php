@@ -67,7 +67,9 @@ class AgentCustomerAccountController extends Controller
                 'email' => strtolower(trim($values['email'])),
                 'phone' => filled($values['phone']) ? trim($values['phone']) : null,
                 'role' => User::ROLE_CUSTOMER, 'is_active' => true,
-                'password_hash' => Hash::make($values['password']), 'session_version' => 0,
+                'password_hash' => Hash::make($values['password']),
+                'password_change_recommended' => true,
+                'session_version' => 0,
             ]);
             // A teammate's customer keeps its existing assignment -- only an
             // unassigned customer picks up the agent creating the account.

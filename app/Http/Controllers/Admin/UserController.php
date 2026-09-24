@@ -64,6 +64,7 @@ class UserController extends Controller
                 'role' => $values['role'],
                 'is_active' => true,
                 'password_hash' => Hash::make($values['password']),
+                'password_change_recommended' => $values['role'] === User::ROLE_CUSTOMER,
                 'session_version' => 0,
             ]);
 

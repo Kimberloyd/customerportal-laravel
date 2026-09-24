@@ -1004,6 +1004,22 @@ export default function AuthenticatedLayout({ header, banner, children }) {
             <PullToRefresh>
                 <FlashBanner />
                 <PushRegistration />
+                {user.password_change_recommended && (
+                    <div className="border-b border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200" role="status">
+                        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm sm:px-6 lg:px-8">
+                            <p>
+                                <span className="font-semibold">Protect your new account.</span>{' '}
+                                Change the password provided when your account was created.
+                            </p>
+                            <Link
+                                href={route('settings.edit')}
+                                className="shrink-0 font-semibold underline underline-offset-4"
+                            >
+                                Change password
+                            </Link>
+                        </div>
+                    </div>
+                )}
                 {banner}
 
                 {header && (

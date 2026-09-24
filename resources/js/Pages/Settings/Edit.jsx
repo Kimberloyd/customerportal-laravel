@@ -594,6 +594,78 @@ function TwoFactorSection({ twoFactor }) {
     );
 }
 
+function PasswordSection({ recommended }) {
+    const { data, setData, put, processing, errors, reset } = useForm({
+        current_password: '',
+        password: '',
+        password_confirmation: '',
+    });
+
+    const submit = (event) => {
+        event.preventDefault();
+        put(route('settings.password.update'), {
+            preserveScroll: true,
+            onSuccess: () => reset(),
+        });
+    };
+
+    return (
+        <section className="mt-8">
+            <SectionHeading
+                title="Password"
+                description="Use a password that is different from the one provided when your account was created."
+            />
+
+            {recommended && (
+                <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200" role="status">
+                    This account is still using its provisioned password. Change it to one only you know.
+                </div>
+            )}
+
+            <form onSubmit={submit} className="rounded-xl border border-border bg-card px-5 pb-5 pt-0 sm:px-6 sm:pb-6">
+                <Row first label="Current password" description="Confirm the password you currently use to sign in.">
+                    <Input
+                        label="Current Password"
+                        type="password"
+                        autoComplete="current-password"
+                        value={data.current_password}
+                        onChange={(value) => setData('current_password', value)}
+                        error={errors.current_password}
+                        classNames={FIELD_CLASS_NAMES}
+                    />
+                </Row>
+                <Row label="New password" description="Use at least 8 characters.">
+                    <div className="space-y-4">
+                        <Input
+                            label="New Password"
+                            type="password"
+                            autoComplete="new-password"
+                            value={data.password}
+                            onChange={(value) => setData('password', value)}
+                            error={errors.password}
+                            classNames={FIELD_CLASS_NAMES}
+                        />
+                        <Input
+                            label="Confirm New Password"
+                            type="password"
+                            autoComplete="new-password"
+                            value={data.password_confirmation}
+                            onChange={(value) => setData('password_confirmation', value)}
+                            error={errors.password_confirmation}
+                            classNames={FIELD_CLASS_NAMES}
+                        />
+                    </div>
+                </Row>
+                <div className="-mx-5 flex justify-end border-t border-border px-5 pt-5 sm:-mx-6 sm:px-6">
+                    <Button type="submit" variant="primary" className="rounded-md" disabled={processing}>
+                        {processing ? 'Changing...' : 'Change password'}
+                    </Button>
+                </div>
+            </form>
+        </section>
+    );
+}
+
 export default function Edit({ user, sms, semaphore, reminders, two_factor: twoFactor }) {
     const { data, setData, put, processing, errors, clearErrors } = useForm({
         full_name: user.full_name,
@@ -607,7 +679,7 @@ export default function Edit({ user, sms, semaphore, reminders, two_factor: twoF
         { key: 'security', label: 'Security' },
         ...(sms ? [{ key: 'notifications', label: 'Notifications' }] : []),
     ];
-    const [active, setActive] = useState('details');
+    const [active, setActive] = useState(user.password_change_recommended ? 'security' : 'details');
     const [smsFlash, setSmsFlash] = useState(null);
 
     const showSmsSaved = (enabledOrMessage) => {
@@ -675,7 +747,7 @@ export default function Edit({ user, sms, semaphore, reminders, two_factor: twoF
                             <Row
                                 first
                                 label="Email"
-                                description={`${user.role_label} account. Contact an administrator to change your email or password.`}
+                                description={`${user.role_label} account. Contact an administrator to change your email.`}
                             >
                                 <Input
                                     label="Email"
@@ -727,7 +799,14 @@ export default function Edit({ user, sms, semaphore, reminders, two_factor: twoF
                     <NotificationsSection sms={sms} semaphore={semaphore} reminders={reminders} onSaved={showSmsSaved} />
                 )}
 
-                {active === 'security' && <TwoFactorSection twoFactor={twoFactor} />}
+                {active === 'security' && (
+                    <>
+                        {user.can_change_password && (
+                            <PasswordSection recommended={user.password_change_recommended} />
+                        )}
+                        <TwoFactorSection twoFactor={twoFactor} />
+                    </>
+                )}
             </div>
         </AuthenticatedLayout>
     );

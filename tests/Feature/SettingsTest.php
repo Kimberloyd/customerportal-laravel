@@ -9,6 +9,7 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -72,6 +73,73 @@ class SettingsTest extends TestCase
         $user->refresh();
         $this->assertSame('original@example.com', $user->email);
         $this->assertSame($originalHash, $user->password_hash);
+    }
+
+    public function test_customer_can_change_a_provisioned_password(): void
+    {
+        $user = User::factory()->customer()->create([
+            'password_change_recommended' => true,
+        ]);
+
+        $response = $this->actingAsUser($user)->put('/settings/password', [
+            'current_password' => 'password',
+            'password' => 'a-new-password-123',
+            'password_confirmation' => 'a-new-password-123',
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success', 'Password changed.');
+
+        $user->refresh();
+        $this->assertTrue(Hash::check('a-new-password-123', $user->password_hash));
+        $this->assertFalse($user->password_change_recommended);
+        $this->assertSame(1, $user->session_version);
+
+        $this->get('/settings')->assertOk();
+    }
+
+    public function test_customer_must_supply_the_current_password(): void
+    {
+        $user = User::factory()->customer()->create([
+            'password_change_recommended' => true,
+        ]);
+        $originalHash = $user->password_hash;
+
+        $this->actingAsUser($user)->put('/settings/password', [
+            'current_password' => 'wrong-password',
+            'password' => 'a-new-password-123',
+            'password_confirmation' => 'a-new-password-123',
+        ])->assertSessionHasErrors('current_password');
+
+        $user->refresh();
+        $this->assertSame($originalHash, $user->password_hash);
+        $this->assertTrue($user->password_change_recommended);
+    }
+
+    public function test_customer_cannot_reuse_the_current_password(): void
+    {
+        $user = User::factory()->customer()->create([
+            'password_change_recommended' => true,
+        ]);
+
+        $this->actingAsUser($user)->put('/settings/password', [
+            'current_password' => 'password',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ])->assertSessionHasErrors('password');
+
+        $this->assertTrue($user->fresh()->password_change_recommended);
+    }
+
+    public function test_staff_cannot_use_the_customer_password_change_route(): void
+    {
+        $agent = User::factory()->create(['role' => 'agent']);
+
+        $this->actingAsUser($agent)->put('/settings/password', [
+            'current_password' => 'password',
+            'password' => 'a-new-password-123',
+            'password_confirmation' => 'a-new-password-123',
+        ])->assertForbidden();
     }
 
     public function test_update_records_an_audit_entry(): void

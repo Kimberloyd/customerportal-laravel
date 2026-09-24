@@ -19,7 +19,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 // model never had them.
 #[Fillable([
     'full_name', 'email', 'phone', 'role', 'is_active', 'profile_image',
-    'password_hash', 'session_version', 'notifications_read_at', 'deactivated_at',
+    'password_hash', 'password_change_recommended', 'session_version', 'notifications_read_at', 'deactivated_at',
     'purge_after', 'deletion_reason',
 ])]
 #[Hidden(['password_hash', 'two_factor_secret', 'two_factor_recovery_codes'])]
@@ -55,6 +55,7 @@ class User extends Authenticatable
     {
         return [
             'is_active' => 'boolean',
+            'password_change_recommended' => 'boolean',
             'session_version' => 'integer',
             'two_factor_secret' => 'encrypted',
             'two_factor_recovery_codes' => 'encrypted:array',

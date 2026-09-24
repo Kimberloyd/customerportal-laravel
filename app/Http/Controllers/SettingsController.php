@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AdminAudit;
 use App\Models\AppSetting;
+use App\Models\User;
 use App\Support\AdminUserListing;
 use App\Support\OrderNotifications;
 use App\Support\ReminderSettings;
@@ -14,15 +15,15 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Self-service account settings. Deliberately limited to full_name and
- * phone -- email and password stay staff-managed, matching the design
- * note in routes/auth.php (no self-service email/password changes).
+ * Self-service account settings. Email stays staff-managed. Customer
+ * accounts may replace a provisioned password after proving they know it.
  */
 class SettingsController extends Controller
 {
@@ -40,6 +41,8 @@ class SettingsController extends Controller
                 'phone' => $user->phone,
                 'email' => $user->email,
                 'role_label' => AdminUserListing::ROLE_LABELS[$user->role] ?? $user->role,
+                'can_change_password' => $user->role === User::ROLE_CUSTOMER,
+                'password_change_recommended' => $user->password_change_recommended,
             ],
             'two_factor' => [
                 'enabled' => $user->hasTwoFactorAuthentication(),
@@ -190,5 +193,44 @@ class SettingsController extends Controller
         });
 
         return back()->with('success', 'Settings saved.');
+    }
+
+    public function updatePassword(Request $request): RedirectResponse
+    {
+        $user = Auth::user();
+        abort_unless($user->role === User::ROLE_CUSTOMER, 403);
+
+        $values = $request->validate([
+            'current_password' => ['required', 'string', 'max:255'],
+            'password' => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
+        ], [
+            'password.confirmed' => 'Enter the same new password again.',
+        ]);
+
+        DB::transaction(function () use ($user, $values, $request): void {
+            $lockedUser = User::query()->lockForUpdate()->findOrFail($user->id);
+
+            if (! Hash::check($values['current_password'], $lockedUser->password_hash)) {
+                throw ValidationException::withMessages([
+                    'current_password' => 'The current password is incorrect.',
+                ]);
+            }
+
+            if (Hash::check($values['password'], $lockedUser->password_hash)) {
+                throw ValidationException::withMessages([
+                    'password' => 'Choose a password different from the current one.',
+                ]);
+            }
+
+            $lockedUser->password_hash = Hash::make($values['password']);
+            $lockedUser->password_change_recommended = false;
+            $lockedUser->session_version++;
+            $lockedUser->save();
+
+            UserAudit::record($lockedUser, 'password changed', 'password changed by account holder', $request);
+            $request->session()->put('session_version', $lockedUser->session_version);
+        });
+
+        return back()->with('success', 'Password changed.');
     }
 }
