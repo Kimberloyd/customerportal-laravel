@@ -102,7 +102,7 @@ export function SecondaryMetricsCard({ metrics, reducedMotion, orientation = 've
     }, [hoveredIndex, horizontal]);
 
     return (
-        <div className={`${surface} relative flex h-full ${horizontal ? 'flex-row' : 'flex-col'} overflow-hidden`} onMouseLeave={() => setHoveredIndex(null)}>
+        <div className={`${surface} relative flex ${horizontal ? 'flex-row' : 'h-full flex-col'} overflow-hidden`} onMouseLeave={() => setHoveredIndex(null)}>
             {highlightRect && (
                 <motion.div
                     aria-hidden="true"

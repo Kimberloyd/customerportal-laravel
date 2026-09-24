@@ -89,9 +89,7 @@ export default function Dashboard({ activeTab, products, customers, customerUser
                 </nav>
 
                 <div className="lg:col-span-10 space-y-6">
-                    <div className="max-w-xl">
-                        <SecondaryMetricsCard metrics={summaryMetrics} reducedMotion={false} orientation="horizontal" />
-                    </div>
+                    <SecondaryMetricsCard metrics={summaryMetrics} reducedMotion={false} orientation="horizontal" />
                     {activeTab === 'products' && (
                         <Deferred
                             data="products"
