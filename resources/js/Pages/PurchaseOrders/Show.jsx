@@ -308,12 +308,17 @@ export default function Show({
                 cell: (item) => {
                     if (item.__isTotal) return null;
 
-                    const product = [item.display_name, item.generic_name, item.dosage, item.unit]
+                    const product = [item.display_name, item.generic_name, item.dosage]
                         .filter(Boolean)
                         .join(' ');
 
                     return <span title={product}>{product}</span>;
                 },
+            },
+            {
+                key: 'unit',
+                header: 'Unit',
+                cell: (item) => (item.__isTotal ? null : item.unit),
             },
             {
                 key: 'quantity',
