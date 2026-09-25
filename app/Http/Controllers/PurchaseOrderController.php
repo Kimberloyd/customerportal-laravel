@@ -101,9 +101,10 @@ class PurchaseOrderController extends Controller
             'canViewMessageLog' => in_array(Auth::user()->role, User::STAFF_ROLES, true),
             'canDeleteOrders' => in_array(Auth::user()->role, [User::ROLE_ADMIN, User::ROLE_AGENT], true),
             'canViewArchive' => Auth::user()->role === User::ROLE_ADMIN,
-            // Team assignment is an internal staffing detail, not something
-            // a customer viewing their own orders needs to see.
-            'canViewTeam' => in_array(Auth::user()->role, User::STAFF_ROLES, true),
+            // Team assignment is an internal staffing detail -- visible to
+            // admin/office (who manage team rosters), not agents or
+            // customers.
+            'canViewTeam' => in_array(Auth::user()->role, [User::ROLE_ADMIN, User::ROLE_OFFICE], true),
         ]);
     }
 

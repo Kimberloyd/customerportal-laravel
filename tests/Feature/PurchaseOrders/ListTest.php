@@ -174,4 +174,26 @@ class ListTest extends TestCase
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page->where('canViewTeam', false));
     }
+
+    public function test_agents_cannot_see_the_team_column_capability(): void
+    {
+        $agent = User::factory()->create(['role' => 'agent']);
+        $customer = $this->makeCustomer('Acme Co');
+        $customer->update(['assigned_employee_id' => $agent->id]);
+
+        $response = $this->actingAsUser($agent)->get('/orders');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page->where('canViewTeam', false));
+    }
+
+    public function test_office_can_see_the_team_column_capability(): void
+    {
+        $office = User::factory()->create(['role' => 'office']);
+
+        $response = $this->actingAsUser($office)->get('/orders');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page->where('canViewTeam', true));
+    }
 }
