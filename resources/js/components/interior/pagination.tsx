@@ -234,7 +234,7 @@ export function Pagination({
                     onClick={() => pagination.goTo(item)}
                     className={`flex h-8 w-full items-center justify-center border text-sm tabular-nums outline-none transition-colors duration-150 focus-visible:shadow-[inset_0_0_0_1px_var(--ring)] dark:focus-visible:shadow-[inset_0_0_0_1px_#93B0FF] ${
                       selected
-                        ? "border-primary bg-transparent font-medium text-primary"
+                        ? "border-primary bg-transparent font-medium text-primary-foreground"
                         : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:bg-primary/[0.06] focus-visible:text-primary dark:bg-transparent"
                     }`}
                   >
