@@ -21,7 +21,7 @@ const EMPTY_PAGE = { data: [], last_page: 1, current_page: 1 };
 
 // One table + its own pagination -- shared by the Customer accounts and
 // Staff accounts sections below, which page independently of each other.
-function AccountsTable({ title, description, page, columns, loading, emptyState, onPageChange, pageLabel }) {
+function AccountsTable({ title, description, page, columns, loading, emptyState, onPageChange, pageLabel, onRowClick }) {
     return (
         <div className="space-y-3">
             <div>
@@ -37,6 +37,7 @@ function AccountsTable({ title, description, page, columns, loading, emptyState,
                 height={TABLE_VIEWPORT_HEIGHT}
                 loading={loading}
                 resizable
+                onRowClick={onRowClick}
                 emptyState={emptyState}
                 emptyStateHeight={PAGE_SIZE * TABLE_ROW_HEIGHT}
             />
@@ -247,7 +248,7 @@ export function AccountsPanel({ customerUsers = EMPTY_PAGE, staffUsers = EMPTY_P
                     ];
 
                     return (
-                        <div className="flex items-center">
+                        <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
                             <Dropdown
                                 items={items}
                                 value=""
@@ -316,6 +317,10 @@ export function AccountsPanel({ customerUsers = EMPTY_PAGE, staffUsers = EMPTY_P
                 emptyState="No customer accounts found. Try a different search."
                 onPageChange={(page) => applyFilters({ customer_page: page })}
                 pageLabel="Customer accounts pagination"
+                // Pending-deletion accounts don't offer Edit from the row
+                // menu either (only Restore/Download), so a click shouldn't
+                // open it for them.
+                onRowClick={(user) => { if (!user.deleted_at) onEdit(user); }}
             />
 
             <AccountsTable
