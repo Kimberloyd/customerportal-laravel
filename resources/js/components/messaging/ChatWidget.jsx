@@ -15,6 +15,10 @@ import { Button } from '@/components/ui/button';
 import echo from '@/echo';
 import { useChatWidget } from '@/lib/chat-widget-context';
 import { SPRING_PANEL } from '@/lib/ease';
+import {
+    isTopmostOverlayBackHandler,
+    registerOverlayBackHandler,
+} from '@/lib/overlay-back-stack';
 import { formatDateTime } from '@/utils/orderDisplay';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import axios from 'axios';
@@ -50,6 +54,15 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
     const viewportRef = useRef(null);
 
     const isFacebook = chat.channel === 'facebook';
+
+    useEffect(() => {
+        // Minimized chats are launchers, not blocking surfaces. Expanded chat
+        // panels behave like the other dialogs: hardware Back closes only the
+        // topmost conversation before navigation or app exit is considered.
+        if (minimized) return undefined;
+
+        return registerOverlayBackHandler(onClose);
+    }, [minimized, onClose]);
 
     // The staff member this conversation is assigned to server-side: the
     // staff being talked to (when a customer opened this), or the viewer
@@ -243,6 +256,7 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
                 // doesn't also close this panel underneath it.
                 if (event.key !== 'Escape') return;
                 if (event.target.closest('[role="dialog"]') !== event.currentTarget) return;
+                if (!isTopmostOverlayBackHandler(onClose)) return;
                 onClose();
             }}
             initial={reduce ? { opacity: 0 } : { opacity: 0, y: 24, scale: 0.96 }}
