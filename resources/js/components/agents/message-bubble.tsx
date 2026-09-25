@@ -153,6 +153,7 @@ export function MessageBubble({
 function bubbleContentClass(
   variant: MessageBubbleVariant,
   interactive: boolean,
+  align: MessageBubbleAlign,
 ) {
   return cn(
     "relative z-0 min-w-9 max-w-[82%] rounded-2xl px-3.5 py-2.5 text-sm leading-6 text-foreground",
@@ -160,6 +161,12 @@ function bubbleContentClass(
     variant === "solid" && "text-background",
     variant === "ghost" && "w-full max-w-none rounded-none px-0 py-0",
     variant === "danger" && "text-destructive",
+    // A small tail-corner on the side nearest the sender's avatar/edge --
+    // the bottom-right for an outgoing (right-aligned) bubble, bottom-left
+    // for an incoming one -- instead of the same full radius on every
+    // corner, matching the classic chat-bubble "pointed" tail.
+    variant !== "ghost" &&
+      (align === "end" ? "rounded-br-[4px]" : "rounded-bl-[4px]"),
     interactive &&
       "cursor-pointer text-left outline-none transition-[background-color,color,transform] duration-150 hover:brightness-[0.98] focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]",
   );
@@ -197,7 +204,10 @@ export function MessageBubbleContent({
   );
   const interactive =
     render?.type === "button" || render?.type === "a";
-  const classes = cn(bubbleContentClass(variant, interactive), className);
+  const classes = cn(
+    bubbleContentClass(variant, interactive, align),
+    className,
+  );
   const composedChildren = (
     <>
       {variant !== "ghost" ? (
