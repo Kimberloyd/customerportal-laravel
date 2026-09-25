@@ -8,7 +8,9 @@ export default function Login({ status }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
-        remember: false,
+        // Defaults on -- stay signed in like most consumer apps, rather
+        // than making every visitor opt in to not being logged out soon.
+        remember: true,
     });
 
     const submit = (e) => {

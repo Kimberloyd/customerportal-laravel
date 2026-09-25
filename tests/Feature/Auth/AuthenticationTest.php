@@ -93,6 +93,20 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_a_session_with_no_stamped_version_is_backfilled_not_logged_out(): void
+    {
+        $user = User::factory()->create(['session_version' => 3]);
+
+        // Simulates "remember me" re-authenticating through a fresh
+        // session that never passed through the login controller's
+        // explicit stamp -- this must not be treated as a version
+        // mismatch, or "remember me" would break the instant the
+        // original session lapsed.
+        $this->actingAs($user)->get('/dashboard')->assertStatus(200);
+
+        $this->assertSame(3, session('session_version'));
+    }
+
     public function test_login_is_locked_out_after_five_failed_attempts(): void
     {
         $user = User::factory()->create();

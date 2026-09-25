@@ -27,6 +27,16 @@ class EnsureSessionVersionMatches
     {
         $user = Auth::user();
 
+        // A "remember me" cookie re-authenticates the user through a brand
+        // new session that never passed through the login controller's
+        // explicit stamp, so session_version is simply absent here -- not
+        // stale. Treat that the same as a fresh login instead of logging
+        // the user straight back out, which would silently defeat
+        // "remember me" the moment the original session lapsed.
+        if ($user && ! $request->session()->has('session_version')) {
+            $request->session()->put('session_version', $user->session_version);
+        }
+
         if ($user && (! $user->is_active || $request->session()->get('session_version') !== $user->session_version)) {
             $message = ! $user->is_active
                 ? 'Your account was deactivated. Contact an administrator for access.'
