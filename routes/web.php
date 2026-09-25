@@ -52,9 +52,9 @@ Route::get('/faq', [FaqController::class, 'index'])
     ->middleware('auth')
     ->name('faq');
 
-Route::get('/whats-new', [ReleaseNoteController::class, 'index'])
+Route::get('/release-notes', [ReleaseNoteController::class, 'index'])
     ->middleware('auth')
-    ->name('whats-new');
+    ->name('release-notes');
 
 Route::get('/terms-and-privacy', [TermsAndPrivacyController::class, 'index'])
     ->name('terms-and-privacy');

@@ -8,16 +8,16 @@ function noteLines(body) {
     return body.split('\n').map((line) => line.trim()).filter(Boolean);
 }
 
-export default function WhatsNew({ releases = [] }) {
+export default function ReleaseNotes({ releases = [] }) {
     return (
         <AuthenticatedLayout
             header={
                 <h2 className="type-page-heading text-foreground">
-                    What's New
+                    Release Notes
                 </h2>
             }
         >
-            <Head title="What's New" />
+            <Head title="Release Notes" />
 
             <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
                 <section className="overflow-hidden rounded-2xl border border-border bg-card px-6 py-8 text-center sm:px-8 sm:py-10">

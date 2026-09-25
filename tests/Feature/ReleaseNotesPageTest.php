@@ -7,7 +7,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class WhatsNewTest extends TestCase
+class ReleaseNotesPageTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -17,7 +17,7 @@ class WhatsNewTest extends TestCase
         ReleaseNote::create(['version' => 1, 'title' => 'First release', 'body' => 'Initial notes', 'published_at' => now()->subDay()]);
         ReleaseNote::create(['version' => 2, 'title' => 'Second release', 'body' => 'More notes', 'published_at' => now()]);
 
-        $response = $this->actingAsUser($customer)->get(route('whats-new'));
+        $response = $this->actingAsUser($customer)->get(route('release-notes'));
 
         $response->assertOk();
         $releases = collect($response->viewData('page')['props']['releases']);
@@ -26,6 +26,6 @@ class WhatsNewTest extends TestCase
 
     public function test_guest_is_redirected_to_login(): void
     {
-        $this->get(route('whats-new'))->assertRedirect(route('login'));
+        $this->get(route('release-notes'))->assertRedirect(route('login'));
     }
 }

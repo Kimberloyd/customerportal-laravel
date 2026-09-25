@@ -11,7 +11,7 @@ use Illuminate\Console\Command;
 // Claude working the codebase), not typed in by an admin through a web
 // form -- this command is the only way a release note gets created.
 #[Signature('release-notes:publish {title : Short headline for this release} {--note=* : One bullet line per --note flag; at least one required}')]
-#[Description('Publish a release note, visible on /whats-new, for a change just shipped')]
+#[Description('Publish a release note, visible on /release-notes, for a change just shipped')]
 class PublishReleaseNote extends Command
 {
     public function handle(): int

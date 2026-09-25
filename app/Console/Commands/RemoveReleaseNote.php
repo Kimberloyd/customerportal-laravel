@@ -7,7 +7,7 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
-#[Signature('release-notes:remove {version : The version number to remove, as shown on /whats-new}')]
+#[Signature('release-notes:remove {version : The version number to remove, as shown on /release-notes}')]
 #[Description('Remove a published release note, e.g. after a correction')]
 class RemoveReleaseNote extends Command
 {
