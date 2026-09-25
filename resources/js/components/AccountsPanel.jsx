@@ -216,7 +216,12 @@ export function AccountsPanel({ customerUsers = EMPTY_PAGE, staffUsers = EMPTY_P
                             value: 'edit',
                             label: 'Edit',
                             icon: <Pencil />,
-                            onSelect: () => onEdit(user),
+                            // Customer accounts open their own page (matching
+                            // the Orders/Archive row-click convention); staff
+                            // accounts keep the quicker in-place modal.
+                            onSelect: () => (user.role === 'customer'
+                                ? router.visit(route('admin.users.show', user.public_id))
+                                : onEdit(user)),
                         },
                         {
                             value: 'reset-password',
@@ -320,7 +325,7 @@ export function AccountsPanel({ customerUsers = EMPTY_PAGE, staffUsers = EMPTY_P
                 // Pending-deletion accounts don't offer Edit from the row
                 // menu either (only Restore/Download), so a click shouldn't
                 // open it for them.
-                onRowClick={(user) => { if (!user.deleted_at) onEdit(user); }}
+                onRowClick={(user) => { if (!user.deleted_at) router.visit(route('admin.users.show', user.public_id)); }}
             />
 
             <AccountsTable

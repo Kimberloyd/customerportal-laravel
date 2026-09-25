@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminAudit;
 use App\Models\Customer;
 use App\Models\User;
 use App\Services\AccountDeletionService;
+use App\Support\AdminUserListing;
 use App\Support\UserAudit;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,6 +15,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+use Inertia\Response;
 
 /**
  * Ports the user-management routes of app/admin/admin_routes.py
@@ -23,6 +27,9 @@ use Illuminate\Validation\ValidationException;
 class UserController extends Controller
 {
     private const MIN_PASSWORD_LENGTH = 8;
+
+    /** Rows of recent activity shown on the account page, mirroring ProfileController::show(). */
+    private const ACTIVITY_LIMIT = 20;
 
     public function __construct(
         private readonly AccountDeletionService $accountDeletion,
@@ -48,6 +55,48 @@ class UserController extends Controller
         $this->requireAdmin();
 
         return redirect()->route('admin.dashboard', ['tab' => 'accounts']);
+    }
+
+    public function show(User $user): Response
+    {
+        $this->requireAdmin();
+
+        $linkedCustomer = Customer::where('user_id', $user->id)->first(['id', 'company_name']);
+
+        $activity = AdminAudit::where('entity_type', 'user')
+            ->where('entity_id', $user->id)
+            ->with('actor:id,full_name')
+            ->latest('created_at')
+            ->limit(self::ACTIVITY_LIMIT)
+            ->get(['id', 'action', 'details', 'actor_user_id', 'actor_role', 'created_at'])
+            ->map(fn (AdminAudit $entry) => [
+                'id' => $entry->id,
+                'action' => $entry->action,
+                'details' => $entry->details,
+                'actor_name' => $entry->actor?->full_name,
+                'actor_role' => $entry->actor_role,
+                'created_at' => $entry->created_at?->toIso8601String(),
+            ]);
+
+        return Inertia::render('Admin/Users/Show', [
+            'account' => [
+                'id' => $user->id,
+                'public_id' => $user->public_id,
+                'full_name' => $user->full_name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'role' => $user->role,
+                'is_active' => $user->is_active,
+                'is_self' => $user->id === Auth::id(),
+                'linked_customer_id' => $linkedCustomer?->id,
+                'linked_customer_name' => $linkedCustomer?->company_name,
+            ],
+            'customers' => Customer::where('is_active', true)
+                ->orderBy('company_name')
+                ->get(['id', 'company_name', 'user_id']),
+            'roleLabels' => AdminUserListing::ROLE_LABELS,
+            'activity' => $activity,
+        ]);
     }
 
     public function store(Request $request)

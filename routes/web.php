@@ -123,6 +123,7 @@ Route::middleware('auth')->prefix('customer-accounts')->name('customer-accounts.
 Route::middleware('auth')->prefix('admin/users')->name('admin.users.')->group(function () {
     Route::get('/', [UserController::class, 'index'])->name('index');
     Route::get('/create', [UserController::class, 'create'])->name('create');
+    Route::get('/{user}', [UserController::class, 'show'])->name('show');
     Route::post('/', [UserController::class, 'store'])->middleware('throttle:admin-sensitive')->name('store');
     Route::put('/{user}', [UserController::class, 'update'])->middleware('throttle:admin-sensitive')->name('update');
     Route::delete('/{user}', [UserController::class, 'destroy'])->middleware('throttle:admin-sensitive')->name('destroy');
