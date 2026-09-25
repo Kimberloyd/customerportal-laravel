@@ -11,6 +11,10 @@ import {
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { EASE_DRAWER } from "@/lib/ease";
+import {
+  isTopmostOverlayBackHandler,
+  registerOverlayBackHandler,
+} from "@/lib/overlay-back-stack";
 import { PresenceGate } from "@/lib/presence-gate";
 import { TOUCH_GESTURE_CONTENT_CLASS } from "@/lib/touch";
 import { cn } from "@/lib/utils";
@@ -107,6 +111,8 @@ export function BottomSheet({
   // the scrim.
   useEffect(() => {
     if (!open) return;
+    const handleBack = () => onOpenChangeRef.current(false);
+    const unregisterBackHandler = registerOverlayBackHandler(handleBack);
     const previouslyFocused = document.activeElement as HTMLElement | null;
     const focusFrame = requestAnimationFrame(() => {
       const container = sheetRef.current;
@@ -154,8 +160,9 @@ export function BottomSheet({
 
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        if (!isTopmostOverlayBackHandler(handleBack)) return;
         event.preventDefault();
-        onOpenChangeRef.current(false);
+        handleBack();
         return;
       }
       if (event.key === "Tab") {
@@ -186,6 +193,7 @@ export function BottomSheet({
     window.addEventListener("keydown", onKey);
 
     return () => {
+      unregisterBackHandler();
       cancelAnimationFrame(focusFrame);
       previouslyFocused?.focus?.();
       window.removeEventListener("keydown", onKey);

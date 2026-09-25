@@ -1,6 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
-import { closeTopmostModal } from '@/components/interior/modal';
+import { closeTopmostOverlay } from '@/lib/overlay-back-stack';
 
 /**
  * Registering a 'backButton' listener replaces Capacitor's entire default
@@ -12,7 +12,7 @@ export function installCapacitorBackButton() {
     if (!Capacitor.isNativePlatform()) return;
 
     App.addListener('backButton', ({ canGoBack }) => {
-        if (closeTopmostModal()) return;
+        if (closeTopmostOverlay()) return;
         if (canGoBack) {
             window.history.back();
             return;

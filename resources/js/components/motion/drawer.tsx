@@ -4,6 +4,10 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, type ReactNode } from "react";
 import { EASE_OUT, SPRING_PANEL } from "@/lib/ease";
+import {
+  isTopmostOverlayBackHandler,
+  registerOverlayBackHandler,
+} from "@/lib/overlay-back-stack";
 import { PresenceGate } from "@/lib/presence-gate";
 import { cn } from "@/lib/utils";
 
@@ -35,17 +39,26 @@ export function Drawer({
 
   useEffect(() => {
     if (!open) return;
+    // A non-dismissable drawer still consumes Android back so the page behind
+    // it cannot navigate while the blocking surface remains visible.
+    const handleBack = () => {
+      if (dismissable) onOpenChange(false);
+    };
+    const unregisterBackHandler = registerOverlayBackHandler(handleBack);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onOpenChange(false);
+      if (e.key !== "Escape" || !isTopmostOverlayBackHandler(handleBack)) return;
+      e.preventDefault();
+      handleBack();
     };
     window.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
+      unregisterBackHandler();
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
     };
-  }, [open, onOpenChange]);
+  }, [open, onOpenChange, dismissable]);
 
   const offscreen = side === "right" ? "100%" : "-100%";
 

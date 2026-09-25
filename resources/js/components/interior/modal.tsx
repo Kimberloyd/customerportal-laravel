@@ -11,6 +11,10 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import {
+  isTopmostOverlayBackHandler,
+  registerOverlayBackHandler,
+} from "@/lib/overlay-back-stack";
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 
@@ -73,21 +77,6 @@ function unlockDocumentScroll() {
   if (locks > 0) return;
   releaseLock?.();
   releaseLock = null;
-}
-
-const stack: object[] = [];
-
-/**
- * Lets code outside this hook (the Capacitor hardware back-button bridge,
- * see lib/capacitor-back-button.ts) ask "is a modal open right now, and if
- * so, close only the topmost one" -- reusing the exact same single-flight
- * semantics the Escape key already gets below, instead of maintaining a
- * second parallel notion of "which modal is on top."
- */
-export function closeTopmostModal(): boolean {
-  if (stack.length === 0) return false;
-  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
-  return true;
 }
 
 export type UseModalOptions = {
@@ -181,23 +170,26 @@ export function useModal({
 
   useEffect(() => {
     if (!open) return;
-    const token = {};
-    stack.push(token);
+    // Register even when Escape dismissal is disabled. In that case Android
+    // back is consumed by this modal instead of navigating the page behind it.
+    const handleBack = () => {
+      if (latest.current.closeOnEscape) latest.current.onClose();
+    };
+    const unregisterBackHandler = registerOverlayBackHandler(handleBack);
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
-      if (stack[stack.length - 1] !== token) return;
+      if (!isTopmostOverlayBackHandler(handleBack)) return;
       if (!latest.current.closeOnEscape) return;
       event.preventDefault();
       event.stopPropagation();
-      latest.current.onClose();
+      handleBack();
     };
 
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      const index = stack.indexOf(token);
-      if (index > -1) stack.splice(index, 1);
+      unregisterBackHandler();
     };
   }, [open]);
 
