@@ -147,6 +147,7 @@ class SmokeTestProduction extends Command
         $this->step('Create order and verify default status', function () use ($runId) {
             $this->testOrder = PurchaseOrder::create([
                 'po_number' => $runId,
+                'transaction_number' => $this->uniqueTransactionNumber(),
                 'customer_id' => $this->testCustomer->id,
                 'status' => PurchaseOrder::STATUS_SUBMITTED,
                 'submitted_at' => now(),
@@ -211,6 +212,16 @@ class SmokeTestProduction extends Command
 
             return "{$count} audit row(s) recorded";
         });
+    }
+
+    /** Generate the same all-digit 3-6-3 identifier used by real orders. */
+    private function uniqueTransactionNumber(): string
+    {
+        do {
+            $candidate = sprintf('%03d-%s-%03d', random_int(0, 999), now()->format('ymd'), random_int(0, 999));
+        } while (PurchaseOrder::where('transaction_number', $candidate)->exists());
+
+        return $candidate;
     }
 
     private function checkMessaging(string $runId): void
