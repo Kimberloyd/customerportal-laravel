@@ -73,6 +73,8 @@ Route::middleware('auth')->prefix('orders')->name('purchase-orders.')->group(fun
     Route::get('/', [PurchaseOrderController::class, 'index'])->name('index');
     Route::get('/create', [PurchaseOrderController::class, 'create'])->name('create');
     Route::post('/bulk-archive', [PurchaseOrderController::class, 'bulkDestroy'])->middleware('throttle:admin-sensitive')->name('bulk-destroy');
+    Route::post('/bulk-restore', [PurchaseOrderController::class, 'bulkRestore'])->middleware('throttle:admin-sensitive')->name('bulk-restore');
+    Route::delete('/bulk-force', [PurchaseOrderController::class, 'bulkForceDestroy'])->middleware('throttle:admin-sensitive')->name('bulk-force-destroy');
     Route::get('/archive', [PurchaseOrderController::class, 'archiveIndex'])->name('archive');
     Route::post('/', [PurchaseOrderController::class, 'store'])->middleware('throttle:order-writes')->name('store');
     Route::get('/{order}/message-log', [PurchaseOrderController::class, 'messageLog'])->name('message-log');

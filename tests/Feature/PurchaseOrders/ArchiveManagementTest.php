@@ -230,4 +230,104 @@ class ArchiveManagementTest extends TestCase
         $this->assertFalse($props['canDeleteForever']);
         $this->assertTrue($props['order']['can_edit_items']);
     }
+
+    public function test_admin_can_bulk_restore_archived_orders(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $customer = $this->makeCustomer();
+        $first = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now());
+        $second = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now());
+        $first->delete();
+        $second->delete();
+
+        $response = $this->actingAsUser($admin)->post(route('purchase-orders.bulk-restore'), [
+            'order_ids' => [$first->public_id, $second->public_id],
+        ]);
+
+        $response->assertRedirect(route('purchase-orders.archive'));
+        $this->assertDatabaseHas('purchase_orders', ['id' => $first->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('purchase_orders', ['id' => $second->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('purchase_order_audits', [
+            'purchase_order_id' => $first->id,
+            'action' => 'Order Restored',
+        ]);
+    }
+
+    public function test_agent_cannot_bulk_restore_archived_orders(): void
+    {
+        $agent = User::factory()->create(['role' => 'agent']);
+        $customer = $this->makeCustomer();
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now());
+        $customer->update(['assigned_employee_id' => $agent->id]);
+        $order->delete();
+
+        $this->actingAsUser($agent)
+            ->post(route('purchase-orders.bulk-restore'), ['order_ids' => [$order->public_id]])
+            ->assertForbidden();
+
+        $this->assertSoftDeleted('purchase_orders', ['id' => $order->id]);
+    }
+
+    public function test_bulk_restore_requires_at_least_one_order(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAsUser($admin)
+            ->post(route('purchase-orders.bulk-restore'), ['order_ids' => []])
+            ->assertSessionHasErrors('order_ids');
+    }
+
+    public function test_admin_can_bulk_permanently_delete_archived_orders_and_everything_tied_to_them(): void
+    {
+        Storage::fake('local');
+
+        $admin = User::factory()->admin()->create();
+        $customer = $this->makeCustomer();
+        $first = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now());
+        $second = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now());
+        PurchaseOrderAudit::create(['purchase_order_id' => $first->id, 'action' => 'Order Created', 'created_at' => now()]);
+        $first->delete();
+        $second->delete();
+
+        $response = $this->actingAsUser($admin)->delete(route('purchase-orders.bulk-force-destroy'), [
+            'order_ids' => [$first->public_id, $second->public_id],
+        ]);
+
+        $response->assertRedirect(route('purchase-orders.archive'));
+        $this->assertDatabaseMissing('purchase_orders', ['id' => $first->id]);
+        $this->assertDatabaseMissing('purchase_orders', ['id' => $second->id]);
+        $this->assertDatabaseMissing('purchase_order_audits', ['purchase_order_id' => $first->id]);
+    }
+
+    public function test_bulk_permanent_delete_silently_skips_an_order_that_is_not_archived(): void
+    {
+        // Matches bulkDestroy()'s existing convention: the up-front "exists"
+        // validation only confirms the row exists at all (any status), and
+        // the onlyTrashed() query inside the handler quietly excludes
+        // anything not actually archived rather than erroring per item.
+        $admin = User::factory()->admin()->create();
+        $customer = $this->makeCustomer();
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now());
+
+        $this->actingAsUser($admin)
+            ->delete(route('purchase-orders.bulk-force-destroy'), ['order_ids' => [$order->public_id]])
+            ->assertRedirect(route('purchase-orders.archive'));
+
+        $this->assertDatabaseHas('purchase_orders', ['id' => $order->id]);
+    }
+
+    public function test_agent_cannot_bulk_permanently_delete_archived_orders(): void
+    {
+        $agent = User::factory()->create(['role' => 'agent']);
+        $customer = $this->makeCustomer();
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now());
+        $customer->update(['assigned_employee_id' => $agent->id]);
+        $order->delete();
+
+        $this->actingAsUser($agent)
+            ->delete(route('purchase-orders.bulk-force-destroy'), ['order_ids' => [$order->public_id]])
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('purchase_orders', ['id' => $order->id]);
+    }
 }

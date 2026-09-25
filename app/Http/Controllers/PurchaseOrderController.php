@@ -860,6 +860,86 @@ class PurchaseOrderController extends Controller
             ->with('success', $count === 1 ? '1 order archived.' : "{$count} orders archived.");
     }
 
+    public function bulkRestore(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'order_ids' => 'required|array|min:1|max:50',
+            'order_ids.*' => 'distinct|exists:purchase_orders,public_id',
+        ]);
+
+        $restored = [];
+
+        DB::transaction(function () use ($validated, $request, &$restored): void {
+            $orders = PurchaseOrder::onlyTrashed()->whereIn('public_id', $validated['order_ids'])->lockForUpdate()->get();
+
+            foreach ($orders as $order) {
+                $this->authorize('restore', $order);
+                $order->restore();
+                OrderAudit::record($order, 'Order Restored', 'Order restored from the archive.', $request);
+                app(OrderFollowUpManager::class)->syncOrder($order);
+                $restored[] = ['id' => $order->id, 'customer_id' => $order->customer_id];
+            }
+        });
+
+        foreach ($restored as $entry) {
+            PurchaseOrderChanged::dispatch($entry['id'], 'restored', $entry['customer_id']);
+        }
+
+        $count = count($restored);
+
+        return redirect()->route('purchase-orders.archive')
+            ->with('success', $count === 1 ? '1 order restored.' : "{$count} orders restored.");
+    }
+
+    /**
+     * Bulk counterpart to forceDestroy() below -- same reasoning applies:
+     * no related table cascades on delete, so children are removed first,
+     * in dependency order, inside one transaction per order. Attachment
+     * files are deleted only after the transaction commits, same as the
+     * single-order version, so a rolled-back transaction never leaves an
+     * order's file deleted out from under it.
+     */
+    public function bulkForceDestroy(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'order_ids' => 'required|array|min:1|max:50',
+            'order_ids.*' => 'distinct|exists:purchase_orders,public_id',
+        ]);
+
+        $attachments = [];
+        $count = 0;
+
+        DB::transaction(function () use ($validated, $request, &$attachments, &$count): void {
+            $orders = PurchaseOrder::onlyTrashed()->whereIn('public_id', $validated['order_ids'])->lockForUpdate()->get();
+
+            foreach ($orders as $order) {
+                $this->authorize('forceDelete', $order);
+
+                if ($order->po_file) {
+                    $attachments[] = $order->po_file;
+                }
+                $identifier = $order->transaction_number;
+
+                ProductReturn::where('purchase_order_id', $order->id)->each(fn (ProductReturn $return) => $return->delete());
+                OrderFollowUp::where('purchase_order_id', $order->id)->delete();
+                PurchaseOrderNotification::where('purchase_order_id', $order->id)->delete();
+                PurchaseOrderAudit::where('purchase_order_id', $order->id)->delete();
+                PurchaseOrderItem::where('purchase_order_id', $order->id)->delete();
+                $order->forceDelete();
+
+                Log::warning("Order {$identifier} permanently deleted by user {$request->user()->id}.");
+                $count++;
+            }
+        });
+
+        foreach ($attachments as $attachment) {
+            PoAttachment::delete($attachment);
+        }
+
+        return redirect()->route('purchase-orders.archive')
+            ->with('success', $count === 1 ? '1 order permanently deleted.' : "{$count} orders permanently deleted.");
+    }
+
     public function archiveIndex(Request $request): Response
     {
         $this->authorize('viewArchive', PurchaseOrder::class);

@@ -11,6 +11,12 @@ import { Head, Link, router } from '@inertiajs/react';
 import { MoreHorizontal, RotateCcw, Search, SquareArrowOutUpRight, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 
+function selectedPublicIds(orders, selectedIds) {
+    return orders
+        .filter((order) => selectedIds.includes(String(order.id)))
+        .map((order) => order.public_id);
+}
+
 const PAGE_SIZE = 10;
 const TABLE_ROW_HEIGHT = 48;
 const HORIZONTAL_SCROLLBAR_HEIGHT = 20;
@@ -24,6 +30,12 @@ export default function Archive({ orders = { data: [], last_page: 1, current_pag
     const [orderPendingDelete, setOrderPendingDelete] = useState(null);
     const [isRestoring, setIsRestoring] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+
+    const [selectedOrderIds, setSelectedOrderIds] = useState([]);
+    const [bulkRestoreOpen, setBulkRestoreOpen] = useState(false);
+    const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+    const [isBulkRestoring, setIsBulkRestoring] = useState(false);
+    const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
     const applySearch = useCallback((value) => {
         router.get(route('purchase-orders.archive'), { search: value }, {
@@ -58,6 +70,37 @@ export default function Archive({ orders = { data: [], last_page: 1, current_pag
             },
         });
     }, [orderPendingDelete]);
+
+    const bulkRestoreOrders = useCallback(() => {
+        const publicIds = selectedPublicIds(orders.data, selectedOrderIds);
+        if (publicIds.length === 0) return;
+
+        router.post(route('purchase-orders.bulk-restore'), { order_ids: publicIds }, {
+            preserveScroll: true,
+            onStart: () => setIsBulkRestoring(true),
+            onFinish: () => {
+                setIsBulkRestoring(false);
+                setBulkRestoreOpen(false);
+                setSelectedOrderIds([]);
+            },
+        });
+    }, [orders.data, selectedOrderIds]);
+
+    const bulkDeleteOrdersForever = useCallback(() => {
+        const publicIds = selectedPublicIds(orders.data, selectedOrderIds);
+        if (publicIds.length === 0) return;
+
+        router.delete(route('purchase-orders.bulk-force-destroy'), {
+            data: { order_ids: publicIds },
+            preserveScroll: true,
+            onStart: () => setIsBulkDeleting(true),
+            onFinish: () => {
+                setIsBulkDeleting(false);
+                setBulkDeleteOpen(false);
+                setSelectedOrderIds([]);
+            },
+        });
+    }, [orders.data, selectedOrderIds]);
 
     const columns = useMemo(() => [
         {
@@ -180,6 +223,30 @@ export default function Archive({ orders = { data: [], last_page: 1, current_pag
                     </div>
                 </div>
 
+                {selectedOrderIds.length > 0 && (
+                    <div className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-2.5 text-sm">
+                        <span className="text-muted-foreground">{selectedOrderIds.length} selected</span>
+                        <div className="flex items-center gap-1">
+                            <button
+                                type="button"
+                                onClick={() => setBulkRestoreOpen(true)}
+                                className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-foreground outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]"
+                            >
+                                <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                                Restore selected
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setBulkDeleteOpen(true)}
+                                className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-destructive outline-none hover:bg-destructive/10 focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]"
+                            >
+                                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                                Delete forever
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 <Table
                     data={orders.data}
                     columns={columns}
@@ -188,6 +255,9 @@ export default function Archive({ orders = { data: [], last_page: 1, current_pag
                     height={TABLE_VIEWPORT_HEIGHT}
                     onRowClick={(order) => router.visit(route('purchase-orders.show', order.public_id))}
                     resizable
+                    selectable
+                    selectedRowIds={selectedOrderIds}
+                    onSelectionChange={setSelectedOrderIds}
                     emptyState="No archived orders."
                     emptyStateHeight={PAGE_SIZE * TABLE_ROW_HEIGHT}
                 />
@@ -226,6 +296,29 @@ export default function Archive({ orders = { data: [], last_page: 1, current_pag
                 confirmationText={orderPendingDelete?.transaction_number}
                 destructive
                 processing={isDeleting}
+            />
+
+            <ConfirmationDialog
+                open={bulkRestoreOpen}
+                onOpenChange={(open) => !open && !isBulkRestoring && setBulkRestoreOpen(false)}
+                title={`Restore ${selectedOrderIds.length} ${selectedOrderIds.length === 1 ? 'order' : 'orders'}?`}
+                description="This puts them back in the active Orders list."
+                confirmLabel="Restore"
+                cancelLabel="Cancel"
+                onConfirm={bulkRestoreOrders}
+                processing={isBulkRestoring}
+            />
+
+            <ConfirmationDialog
+                open={bulkDeleteOpen}
+                onOpenChange={(open) => !open && !isBulkDeleting && setBulkDeleteOpen(false)}
+                title={`Permanently delete ${selectedOrderIds.length} ${selectedOrderIds.length === 1 ? 'order' : 'orders'}?`}
+                description="This can't be undone. Each order, its items, activity history, notifications, returns, and attachment are all erased for good."
+                confirmLabel="Delete forever"
+                cancelLabel="Keep archived"
+                onConfirm={bulkDeleteOrdersForever}
+                destructive
+                processing={isBulkDeleting}
             />
         </AuthenticatedLayout>
     );
