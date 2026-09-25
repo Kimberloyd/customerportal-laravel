@@ -1,5 +1,4 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { SecondaryMetricsCard } from '@/components/dashboard/OverviewPanels';
 import { AnimatedBadge } from '@/components/motion/animated-badge';
 import { Table } from '@/components/motion/table';
 import { formatDateTime, statusBadge } from '@/utils/orderDisplay';
@@ -10,7 +9,7 @@ const ACTIVITY_ROW_HEIGHT = 48;
 
 // Account-audit actions are stored as db-style strings (see
 // App\Support\UserAudit / UserController) -- this is the plain-language
-// label for each one this page shows, matching Profile/Show.jsx.
+// label for each one this page shows.
 const ACTIVITY_LABEL = {
     created: 'Account created',
     updated: 'Details updated',
@@ -29,47 +28,24 @@ const activityColumns = [
     {
         key: 'actor_name',
         header: 'Actor',
-        width: '180px',
-        cell: (row) => <span className="text-foreground">{row.actor_name ?? '—'}</span>,
-    },
-    {
-        key: 'actor_role',
-        header: 'Role',
-        width: '120px',
-        cell: (row) => <span className="text-muted-foreground capitalize">{row.actor_role ?? '—'}</span>,
+        width: '200px',
+        cell: (row) => (
+            <span className="text-foreground">
+                {row.actor_name ?? '—'}
+                {row.actor_role && <span className="ml-1 text-muted-foreground capitalize">({row.actor_role})</span>}
+            </span>
+        ),
     },
     {
         key: 'action',
         header: 'Action',
-        width: '220px',
+        width: '200px',
         cell: (row) => <span className="font-medium text-foreground">{ACTIVITY_LABEL[row.action] ?? row.action}</span>,
     },
     {
         key: 'details',
         header: 'Details',
-        cell: (row) => <span className="line-clamp-2 whitespace-pre-wrap text-foreground">{row.details ?? '—'}</span>,
-    },
-];
-
-const topProductColumns = [
-    {
-        key: 'product_name',
-        header: 'Product',
-        cell: (row) => <span className="font-medium text-foreground">{row.product_name}</span>,
-    },
-    {
-        key: 'total_quantity',
-        header: 'Quantity',
-        width: '110px',
-        align: 'right',
-        cell: (row) => <span className="text-foreground">{number.format(row.total_quantity)}</span>,
-    },
-    {
-        key: 'order_count',
-        header: 'Orders',
-        width: '100px',
-        align: 'right',
-        cell: (row) => <span className="text-muted-foreground">{number.format(row.order_count)}</span>,
+        cell: (row) => <span className="line-clamp-2 whitespace-pre-wrap text-muted-foreground">{row.details ?? '—'}</span>,
     },
 ];
 
@@ -84,16 +60,14 @@ function initialsFor(fullName) {
     return initials || '?';
 }
 
+function memberSince(isoDate) {
+    return isoDate
+        ? new Date(isoDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+        : null;
+}
+
 export default function Show({ account, order_insights: orderInsights, activity }) {
-    const metrics = [
-        { label: 'Orders placed', value: number.format(account.order_count) },
-        {
-            label: 'Member since',
-            value: account.member_since
-                ? new Date(account.member_since).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-                : '—',
-        },
-    ];
+    const since = memberSince(account.member_since);
 
     return (
         <AuthenticatedLayout
@@ -115,17 +89,19 @@ export default function Show({ account, order_insights: orderInsights, activity 
             <Head title={account.full_name} />
 
             <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-                <section className="rounded-xl border border-border bg-card p-6">
+                {/* Identity + the one number this page exists to answer, side by
+                    side instead of as two separate cards of unequal weight. */}
+                <section className="rounded-xl border border-border bg-card p-6 sm:flex sm:items-center sm:justify-between sm:gap-6">
                     <div className="flex flex-wrap items-center gap-4">
                         <span
                             aria-hidden="true"
-                            className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-primary/10 text-lg font-semibold text-primary"
+                            className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-primary/10 text-base font-semibold text-primary"
                         >
                             {initialsFor(account.full_name)}
                         </span>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
-                                <h2 className="type-section-heading text-foreground">{account.full_name}</h2>
+                                <h1 className="type-section-heading text-foreground">{account.full_name}</h1>
                                 <AnimatedBadge status="neutral" size="sm" pulse={false} showIcon={false}>
                                     {account.role_label}
                                 </AnimatedBadge>
@@ -133,7 +109,7 @@ export default function Show({ account, order_insights: orderInsights, activity 
                                     {account.is_active ? 'Active' : 'Inactive'}
                                 </AnimatedBadge>
                             </div>
-                            <dl className="mt-2 space-y-0.5 text-sm text-muted-foreground">
+                            <dl className="mt-1.5 space-y-0.5 text-sm text-muted-foreground">
                                 <div className="flex gap-2">
                                     <dt className="sr-only">Email</dt>
                                     <dd>{account.email}</dd>
@@ -144,18 +120,19 @@ export default function Show({ account, order_insights: orderInsights, activity 
                                         <dd>{account.phone}</dd>
                                     </div>
                                 )}
-                                {account.linked_customer_name && (
-                                    <div className="flex gap-2">
-                                        <dt className="sr-only">Linked customer</dt>
-                                        <dd>{account.linked_customer_name}</dd>
-                                    </div>
-                                )}
+                                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-muted-foreground/80">
+                                    {account.linked_customer_name && <span>{account.linked_customer_name}</span>}
+                                    {since && <span>Member since {since}</span>}
+                                </div>
                             </dl>
                         </div>
                     </div>
-                </section>
 
-                <SecondaryMetricsCard metrics={metrics} reducedMotion={false} />
+                    <div className="mt-5 shrink-0 border-t border-border pt-4 text-left sm:mt-0 sm:border-t-0 sm:border-l sm:pl-6 sm:pt-0 sm:text-right">
+                        <p className="text-sm text-muted-foreground">Orders placed</p>
+                        <p className="text-4xl font-semibold tabular-nums text-foreground">{number.format(account.order_count)}</p>
+                    </div>
+                </section>
 
                 {orderInsights && (
                     <div className="grid gap-6 lg:grid-cols-2">
@@ -181,9 +158,9 @@ export default function Show({ account, order_insights: orderInsights, activity 
                                     })}
                                 </div>
                             ) : (
-                                <div className="rounded-xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+                                <p className="rounded-xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
                                     No orders placed yet.
-                                </div>
+                                </p>
                             )}
                         </div>
 
@@ -192,14 +169,22 @@ export default function Show({ account, order_insights: orderInsights, activity 
                                 <h2 className="type-section-heading text-foreground">Most ordered products</h2>
                                 <p className="text-sm text-muted-foreground">Ranked by total quantity ordered.</p>
                             </div>
-                            <Table
-                                data={orderInsights.top_products}
-                                columns={topProductColumns}
-                                getRowId={(row) => row.product_name}
-                                rowHeight={ACTIVITY_ROW_HEIGHT}
-                                height={Math.max(orderInsights.top_products.length, 1) * ACTIVITY_ROW_HEIGHT + 60}
-                                emptyState="No products ordered yet."
-                            />
+                            {orderInsights.top_products.length > 0 ? (
+                                <div className="divide-y divide-border rounded-xl border border-border bg-card">
+                                    {orderInsights.top_products.map((row) => (
+                                        <div key={row.product_name} className="flex items-center justify-between gap-3 px-4 py-3">
+                                            <span className="truncate text-sm font-medium text-foreground">{row.product_name}</span>
+                                            <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
+                                                {number.format(row.total_quantity)} unit{row.total_quantity === 1 ? '' : 's'} · {number.format(row.order_count)} order{row.order_count === 1 ? '' : 's'}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="rounded-xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+                                    No products ordered yet.
+                                </p>
+                            )}
                         </div>
                     </div>
                 )}
@@ -209,14 +194,20 @@ export default function Show({ account, order_insights: orderInsights, activity 
                         <h2 className="type-section-heading text-foreground">Recent account activity</h2>
                         <p className="text-sm text-muted-foreground">Changes and security events on this account.</p>
                     </div>
-                    <Table
-                        data={activity}
-                        columns={activityColumns}
-                        getRowId={(row) => String(row.id)}
-                        rowHeight={ACTIVITY_ROW_HEIGHT}
-                        height={Math.max(activity.length, 1) * ACTIVITY_ROW_HEIGHT + 60}
-                        emptyState="No recent activity."
-                    />
+                    {activity.length > 0 ? (
+                        <Table
+                            data={activity}
+                            columns={activityColumns}
+                            getRowId={(row) => String(row.id)}
+                            rowHeight={ACTIVITY_ROW_HEIGHT}
+                            height={activity.length * ACTIVITY_ROW_HEIGHT + 60}
+                            emptyState="No recent activity."
+                        />
+                    ) : (
+                        <p className="rounded-xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+                            No recent activity.
+                        </p>
+                    )}
                 </div>
             </div>
         </AuthenticatedLayout>
