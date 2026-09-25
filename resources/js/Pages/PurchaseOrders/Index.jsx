@@ -60,6 +60,7 @@ export default function Index({
     canViewMessageLog = false,
     canDeleteOrders = false,
     canViewArchive = false,
+    canViewTeam = false,
 }) {
     usePurchaseOrderRealtime();
 
@@ -315,6 +316,14 @@ export default function Index({
             },
             ...(isCompactViewport ? [] : [
                 { key: 'customer_name', header: 'Customer', sortable: true, width: '320px' },
+                ...(canViewTeam ? [
+                    {
+                        key: 'team_name',
+                        header: 'Team',
+                        width: '140px',
+                        cell: (order) => order.team_name || '—',
+                    },
+                ] : []),
                 {
                     key: 'status',
                     header: 'Status',
@@ -409,7 +418,7 @@ export default function Index({
                 },
             },
         ],
-        [canDeleteOrders, canViewMessageLog, goToOrder, isCompactViewport],
+        [canDeleteOrders, canViewMessageLog, canViewTeam, goToOrder, isCompactViewport],
     );
 
     return (

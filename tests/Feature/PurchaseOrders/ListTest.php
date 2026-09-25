@@ -3,6 +3,7 @@
 namespace Tests\Feature\PurchaseOrders;
 
 use App\Models\PurchaseOrder;
+use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\CreatesOrderFixtures;
@@ -137,5 +138,40 @@ class ListTest extends TestCase
                 ->has('orders.data', 10)
                 ->where('orders.last_page', 3))
         );
+    }
+
+    public function test_team_name_is_included_for_staff_when_the_customers_agent_belongs_to_a_team(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $agent = User::factory()->create(['role' => 'agent']);
+        $team = Team::create(['name' => 'North Team']);
+        $team->members()->attach($agent);
+
+        $customer = $this->makeCustomer('Acme Co');
+        $customer->update(['assigned_employee_id' => $agent->id]);
+        $product = $this->makeProduct();
+        $this->makeOrder($customer, PurchaseOrder::STATUS_SUBMITTED, now(), [
+            ['product_id' => $product->id, 'quantity' => 1],
+        ]);
+
+        $response = $this->actingAsUser($admin)->get('/orders');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->where('canViewTeam', true)
+            ->loadDeferredProps('orders', fn ($deferred) => $deferred
+                ->where('orders.data.0.team_name', 'North Team'))
+        );
+    }
+
+    public function test_customers_cannot_see_the_team_column_capability(): void
+    {
+        $user = User::factory()->create(['role' => 'customer']);
+        $this->makeCustomer('Own Co', $user);
+
+        $response = $this->actingAsUser($user)->get('/orders');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page->where('canViewTeam', false));
     }
 }

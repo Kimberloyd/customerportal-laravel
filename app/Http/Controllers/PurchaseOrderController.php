@@ -101,6 +101,9 @@ class PurchaseOrderController extends Controller
             'canViewMessageLog' => in_array(Auth::user()->role, User::STAFF_ROLES, true),
             'canDeleteOrders' => in_array(Auth::user()->role, [User::ROLE_ADMIN, User::ROLE_AGENT], true),
             'canViewArchive' => Auth::user()->role === User::ROLE_ADMIN,
+            // Team assignment is an internal staffing detail, not something
+            // a customer viewing their own orders needs to see.
+            'canViewTeam' => in_array(Auth::user()->role, User::STAFF_ROLES, true),
         ]);
     }
 
@@ -113,7 +116,7 @@ class PurchaseOrderController extends Controller
         string $statusFilter,
         ?int $customerId,
     ) {
-        $query = PurchaseOrder::query()->with(['customer', 'items']);
+        $query = PurchaseOrder::query()->with(['customer.assignedAgent.teams', 'items']);
         CustomerAccess::applyToOrders($query, Auth::user());
         $query->when($customerId, fn ($q) => $q->where('customer_id', $customerId));
 
@@ -946,7 +949,11 @@ class PurchaseOrderController extends Controller
 
         $search = trim((string) $request->query('search', ''));
 
-        $query = PurchaseOrder::onlyTrashed()->with(['customer', 'items']);
+        // customer.assignedAgent.teams is eager-loaded even though the
+        // Archive page doesn't render team_name -- serializeForList() is
+        // shared with the active-orders listing, and without it every row
+        // would lazy-load its own agent/team query (N+1).
+        $query = PurchaseOrder::onlyTrashed()->with(['customer.assignedAgent.teams', 'items']);
 
         if ($search !== '') {
             $pattern = '%'.strtolower($search).'%';
@@ -1199,6 +1206,7 @@ class PurchaseOrderController extends Controller
             'transaction_number' => $order->transaction_number,
             'submitted_at' => $order->submitted_at?->toIso8601String(),
             'customer_name' => $order->customer?->company_name,
+            'team_name' => $order->customer?->assignedAgent?->teams?->first()?->name,
             'is_awaiting_fulfillment' => $order->is_awaiting_fulfillment,
             'is_processing' => $isProcessing,
             'item_display_name' => $item?->display_name,
