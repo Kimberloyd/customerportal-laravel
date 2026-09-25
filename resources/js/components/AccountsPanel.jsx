@@ -216,12 +216,7 @@ export function AccountsPanel({ customerUsers = EMPTY_PAGE, staffUsers = EMPTY_P
                             value: 'edit',
                             label: 'Edit',
                             icon: <Pencil />,
-                            // Customer accounts open their own page (matching
-                            // the Orders/Archive row-click convention); staff
-                            // accounts keep the quicker in-place modal.
-                            onSelect: () => (user.role === 'customer'
-                                ? router.visit(route('admin.users.show', user.public_id))
-                                : onEdit(user)),
+                            onSelect: () => onEdit(user),
                         },
                         {
                             value: 'reset-password',

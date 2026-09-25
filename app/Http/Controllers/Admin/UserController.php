@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AdminAudit;
 use App\Models\Customer;
+use App\Models\PurchaseOrder;
 use App\Models\User;
 use App\Services\AccountDeletionService;
 use App\Support\AdminUserListing;
+use App\Support\CustomerOrderInsights;
 use App\Support\UserAudit;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -61,7 +63,12 @@ class UserController extends Controller
     {
         $this->requireAdmin();
 
-        $linkedCustomer = Customer::where('user_id', $user->id)->first(['id', 'company_name']);
+        $linkedCustomer = Customer::where('user_id', $user->id)->first();
+        $orderInsights = $user->role === User::ROLE_CUSTOMER && $linkedCustomer
+            ? CustomerOrderInsights::for($linkedCustomer)
+            : null;
+        $orderCount = $orderInsights['total_orders']
+            ?? PurchaseOrder::where('customer_id', $linkedCustomer?->id ?? 0)->count();
 
         $activity = AdminAudit::where('entity_type', 'user')
             ->where('entity_id', $user->id)
@@ -80,21 +87,17 @@ class UserController extends Controller
 
         return Inertia::render('Admin/Users/Show', [
             'account' => [
-                'id' => $user->id,
-                'public_id' => $user->public_id,
                 'full_name' => $user->full_name,
                 'email' => $user->email,
                 'phone' => $user->phone,
                 'role' => $user->role,
+                'role_label' => AdminUserListing::ROLE_LABELS[$user->role] ?? $user->role,
                 'is_active' => $user->is_active,
-                'is_self' => $user->id === Auth::id(),
-                'linked_customer_id' => $linkedCustomer?->id,
                 'linked_customer_name' => $linkedCustomer?->company_name,
+                'member_since' => $user->created_at?->toIso8601String(),
+                'order_count' => $orderCount,
             ],
-            'customers' => Customer::where('is_active', true)
-                ->orderBy('company_name')
-                ->get(['id', 'company_name', 'user_id']),
-            'roleLabels' => AdminUserListing::ROLE_LABELS,
+            'order_insights' => $orderInsights,
             'activity' => $activity,
         ]);
     }
