@@ -21,7 +21,7 @@ export default function ThemeToggle({ className = '' }) {
             type="button"
             onClick={toggleTheme}
             aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-muted-foreground outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring ${className}`}
+            className={`inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-muted-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring ${className}`}
         >
             <MorphIcon
                 aria-hidden="true"

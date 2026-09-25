@@ -614,7 +614,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                         />
                                     </span>
                                 }
-                                triggerClassName="relative inline-flex h-10 w-10 items-center justify-center rounded-full bg-transparent text-muted-foreground outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring"
+                                triggerClassName="relative inline-flex h-10 w-10 items-center justify-center rounded-full bg-transparent text-muted-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring"
                             />
 
                             <div ref={mobileNotificationsTriggerRef} className="inline-flex">
@@ -622,7 +622,7 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                     count={notificationCount}
                                     size={40}
                                     icon={<Bell aria-hidden="true" className="h-5 w-5" />}
-                                    className="bg-transparent text-muted-foreground hover:bg-hover"
+                                    className="bg-transparent text-muted-foreground"
                                     aria-expanded={notificationsOpen}
                                     onClick={() => setNotificationsOpen((previous) => !previous)}
                                 />
@@ -735,14 +735,14 @@ export default function AuthenticatedLayout({ header, banner, children }) {
                                             />
                                         </span>
                                     }
-                                    triggerClassName="relative inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-muted-foreground outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring"
+                                    triggerClassName="relative inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-muted-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring"
                                 />
                                 <div ref={notificationsTriggerRef} className="inline-flex">
                                     <NotificationBell
                                         count={notificationCount}
                                         size={36}
                                         icon={<Bell aria-hidden="true" className="h-5 w-5" />}
-                                        className="bg-transparent text-muted-foreground hover:bg-hover"
+                                        className="bg-transparent text-muted-foreground"
                                         aria-expanded={notificationsOpen}
                                         onClick={() => setNotificationsOpen((previous) => !previous)}
                                     />
