@@ -318,7 +318,7 @@ export default function Show({
             {
                 key: 'unit',
                 header: 'Unit',
-                cell: (item) => (item.__isTotal ? null : item.unit),
+                cell: (item) => (item.__isTotal ? null : <span className="uppercase">{item.unit}</span>),
             },
             {
                 key: 'quantity',
