@@ -13,10 +13,12 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.security.MessageDigest;
 
 /**
  * Downloads the new APK inside the app and hands it to Android's package
@@ -54,8 +56,13 @@ public class AppUpdatePlugin extends Plugin {
     @PluginMethod
     public void downloadAndInstall(PluginCall call) {
         String url = call.getString("url");
+        String expectedSha256 = call.getString("sha256");
         if (url == null || !url.startsWith("https://")) {
             call.reject("An https url is required");
+            return;
+        }
+        if (expectedSha256 == null || !expectedSha256.matches("(?i)[0-9a-f]{64}")) {
+            call.reject("A valid SHA-256 checksum is required", "INVALID_CHECKSUM");
             return;
         }
 
@@ -91,6 +98,10 @@ public class AppUpdatePlugin extends Plugin {
                 apk.delete();
 
                 download(url, partial);
+
+                if (!sha256(partial).equalsIgnoreCase(expectedSha256)) {
+                    throw new SecurityException("Downloaded APK checksum did not match");
+                }
 
                 if (!partial.renameTo(apk)) {
                     throw new IOException("Could not save the update");
@@ -221,10 +232,28 @@ public class AppUpdatePlugin extends Plugin {
 
     private static String reasonFor(Exception e) {
         if (e instanceof HttpStatusException) return "server";
+        if (e instanceof SecurityException) return "integrity";
 
         String message = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
         if (message.contains("enospc") || message.contains("no space")) return "storage";
 
         return "network";
+    }
+
+    private static String sha256(File file) throws Exception {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        try (InputStream in = new FileInputStream(file)) {
+            byte[] buffer = new byte[16384];
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                digest.update(buffer, 0, read);
+            }
+        }
+
+        StringBuilder value = new StringBuilder(64);
+        for (byte part : digest.digest()) {
+            value.append(String.format("%02x", part & 0xff));
+        }
+        return value.toString();
     }
 }

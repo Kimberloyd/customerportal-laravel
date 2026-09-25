@@ -14,13 +14,16 @@ class MobileAppController extends Controller
 {
     public function version(): JsonResponse
     {
+        $releaseAvailable = $this->apkExists() && $this->validChecksum() !== null;
+
         return response()->json([
             'latest_version_code' => config('mobile-app.latest_version_code'),
             'latest_version_name' => config('mobile-app.latest_version_name'),
             'min_version_code' => config('mobile-app.min_version_code'),
             // Withheld until the APK is actually on the server, so the app
             // never offers a download that would 404.
-            'download_url' => $this->apkExists() ? route('mobile-app.download') : null,
+            'download_url' => $releaseAvailable ? route('mobile-app.download') : null,
+            'apk_sha256' => $releaseAvailable ? $this->validChecksum() : null,
         ]);
     }
 
@@ -38,5 +41,12 @@ class MobileAppController extends Controller
     private function apkExists(): bool
     {
         return Storage::disk('local')->exists(config('mobile-app.apk_path'));
+    }
+
+    private function validChecksum(): ?string
+    {
+        $checksum = strtolower((string) config('mobile-app.apk_sha256'));
+
+        return preg_match('/\A[0-9a-f]{64}\z/', $checksum) === 1 ? $checksum : null;
     }
 }

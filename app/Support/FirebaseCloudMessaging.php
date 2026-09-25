@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -48,6 +50,7 @@ final class FirebaseCloudMessaging
         try {
             $response = Http::withToken(self::accessToken($credentials))
                 ->timeout(10)
+                ->retry([1000, 5000], when: self::retryableFailure(...), throw: false)
                 ->post("https://fcm.googleapis.com/v1/projects/{$credentials['project_id']}/messages:send", [
                     'message' => [
                         'token' => $deviceToken,
@@ -142,5 +145,21 @@ final class FirebaseCloudMessaging
     private static function base64Url(string $value): string
     {
         return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
+    }
+
+    /** Retry only connection failures, throttling, timeouts, and server errors. */
+    private static function retryableFailure(\Throwable $exception): bool
+    {
+        if ($exception instanceof ConnectionException) {
+            return true;
+        }
+
+        if (! $exception instanceof RequestException || ! $exception->response) {
+            return false;
+        }
+
+        $status = $exception->response->status();
+
+        return $status === 408 || $status === 429 || $status >= 500;
     }
 }

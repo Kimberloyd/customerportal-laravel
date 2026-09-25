@@ -17,6 +17,7 @@ class MobileAppTest extends TestCase
             'mobile-app.latest_version_name' => '1.2',
             'mobile-app.min_version_code' => 2,
             'mobile-app.apk_path' => 'mobile/customer-portal.apk',
+            'mobile-app.apk_sha256' => hash('sha256', 'apk-bytes'),
         ]);
     }
 
@@ -31,6 +32,7 @@ class MobileAppTest extends TestCase
                 'latest_version_name' => '1.2',
                 'min_version_code' => 2,
                 'download_url' => route('mobile-app.download'),
+                'apk_sha256' => hash('sha256', 'apk-bytes'),
             ]);
     }
 
@@ -39,6 +41,16 @@ class MobileAppTest extends TestCase
         $this->getJson('/mobile-app/version')
             ->assertOk()
             ->assertJson(['download_url' => null]);
+    }
+
+    public function test_download_url_is_withheld_when_the_checksum_is_missing(): void
+    {
+        Storage::disk('local')->put('mobile/customer-portal.apk', 'apk-bytes');
+        config(['mobile-app.apk_sha256' => null]);
+
+        $this->getJson('/mobile-app/version')
+            ->assertOk()
+            ->assertJson(['download_url' => null, 'apk_sha256' => null]);
     }
 
     public function test_download_streams_the_apk_without_a_session(): void

@@ -1,5 +1,11 @@
 apply plugin: 'com.android.application'
 
+def releaseStoreFile = System.getenv('ANDROID_RELEASE_STORE_FILE')
+def releaseStorePassword = System.getenv('ANDROID_RELEASE_STORE_PASSWORD')
+def releaseKeyAlias = System.getenv('ANDROID_RELEASE_KEY_ALIAS')
+def releaseKeyPassword = System.getenv('ANDROID_RELEASE_KEY_PASSWORD')
+def hasReleaseSigning = [releaseStoreFile, releaseStorePassword, releaseKeyAlias, releaseKeyPassword].every { it }
+
 android {
     namespace = "com.theomeds.customerportal"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -21,11 +27,38 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile file(releaseStoreFile)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+                enableV1Signing true
+                enableV2Signing true
+                enableV3Signing true
+                enableV4Signing true
+            }
+        }
+    }
     buildTypes {
         release {
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+    }
+}
+
+gradle.taskGraph.whenReady { graph ->
+    def requestsReleaseArtifact = graph.allTasks.any { task ->
+        task.path == ':app:assembleRelease' || task.path == ':app:bundleRelease'
+    }
+
+    if (requestsReleaseArtifact && !hasReleaseSigning) {
+        throw new GradleException('Release signing is required. Set ANDROID_RELEASE_STORE_FILE, ANDROID_RELEASE_STORE_PASSWORD, ANDROID_RELEASE_KEY_ALIAS, and ANDROID_RELEASE_KEY_PASSWORD.')
     }
 }
 

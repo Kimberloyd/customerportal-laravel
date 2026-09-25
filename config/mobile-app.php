@@ -17,4 +17,5 @@ return [
 
     // Relative to the "local" disk root (storage/app/private, a persistent volume).
     'apk_path' => env('MOBILE_APP_APK_PATH', 'mobile/customer-portal.apk'),
+    'apk_sha256' => env('MOBILE_APP_APK_SHA256'),
 ];

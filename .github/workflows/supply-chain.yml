@@ -26,6 +26,12 @@ jobs:
       # onto node24 anyway; this just makes that explicit and supported).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
+      # actions/setup-node v7.0.0, pinned to the verified tag commit.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22.23.3'
+          package-manager-cache: false
+
       - name: Validate Compose configuration
         run: |
           docker compose --env-file .env.production.example -f docker-compose.yml config --no-interpolate --quiet
@@ -47,6 +53,19 @@ jobs:
           --workdir /app
           node:20-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0
           npm audit --audit-level=high
+
+      - name: Verify mobile npm lock and advisories
+        working-directory: mobile
+        run: |
+          npm ci --ignore-scripts --audit=false
+          npm audit --audit-level=high
+
+      - name: Synchronize and compile the Android debug application
+        working-directory: mobile
+        run: |
+          npx cap sync android
+          cd android
+          ./gradlew --no-daemon :app:assembleDebug
 
       - name: Validate Composer manifest and lock
         run: >-

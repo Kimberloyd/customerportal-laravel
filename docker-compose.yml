@@ -131,6 +131,7 @@ services:
       MOBILE_APP_LATEST_VERSION_CODE: ${MOBILE_APP_LATEST_VERSION_CODE:-1}
       MOBILE_APP_LATEST_VERSION_NAME: ${MOBILE_APP_LATEST_VERSION_NAME:-1.0}
       MOBILE_APP_MIN_VERSION_CODE: ${MOBILE_APP_MIN_VERSION_CODE:-1}
+      MOBILE_APP_APK_SHA256: ${MOBILE_APP_APK_SHA256:-}
     restart: unless-stopped
     # Same signal distinction as the proxy service below: PHP-FPM treats
     # SIGTERM (Docker's default stop signal) as an immediate termination
@@ -237,7 +238,7 @@ services:
       retries: 3
       start_period: 10s
 
-  broadcast-worker:
+  broadcast-worker: &queue-worker
     image: customerportal-laravel-app:latest
     environment:
       <<: [*laravel-base-environment, *database-environment, *redis-environment, *reverb-environment]
@@ -270,7 +271,7 @@ services:
       # Read-only: the worker only needs to read the Firebase key at
       # storage/app/private/fcm/service-account.json to send push notifications.
       - laravel_storage:/app/storage/app/private:ro
-    command: ["php", "artisan", "queue:work", "--queue=monitoring,broadcasts,notifications", "--sleep=1", "--tries=4", "--timeout=60"]
+    command: ["php", "artisan", "queue:work", "--queue=broadcasts", "--sleep=1", "--tries=4", "--timeout=60", "--max-time=3600"]
     depends_on:
       app:
         condition: service_healthy
@@ -297,6 +298,15 @@ services:
     mem_limit: 192m
     networks:
       - default
+
+  notification-worker:
+    <<: *queue-worker
+    command: ["php", "artisan", "queue:work", "--queue=notifications", "--sleep=1", "--tries=4", "--timeout=60", "--max-time=3600"]
+
+  monitoring-worker:
+    <<: *queue-worker
+    command: ["php", "artisan", "queue:work", "--queue=monitoring", "--sleep=1", "--tries=3", "--timeout=30", "--max-time=3600"]
+    mem_limit: 128m
 
   db:
     # This app used to reach the legacy Flask app's shared MySQL over an

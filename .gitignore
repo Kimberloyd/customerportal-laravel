@@ -6,6 +6,7 @@
 .phpactor.json
 .phpunit.result.cache
 /.codex
+/.claude/settings.local.json
 /.composer
 /.cursor/
 /.idea
@@ -20,6 +21,10 @@
 /public/hot
 /public/storage
 /storage/*.key
+*.jks
+*.keystore
+keystore.properties
+/mobile/releases/
 /storage/pail
 /test-results
 /vendor

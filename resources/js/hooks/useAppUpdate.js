@@ -38,6 +38,7 @@ export function useAppUpdate() {
                     latestCode: data.latest_version_code,
                     versionName: data.latest_version_name,
                     downloadUrl: data.download_url,
+                    sha256: data.apk_sha256,
                     required,
                 });
                 setHidden(false);

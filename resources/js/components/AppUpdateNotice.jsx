@@ -23,6 +23,9 @@ function downloadFailedMessage(error) {
     if (reason === 'network') {
         return 'The download was interrupted. Check your connection and try again.';
     }
+    if (reason === 'integrity') {
+        return "The downloaded update didn't match the official file. It was deleted; please try again later.";
+    }
 
     return "The update couldn't be downloaded. Check your connection and try again.";
 }
@@ -49,7 +52,7 @@ export default function AppUpdateNotice() {
 
         const progress = await AppUpdate.addListener('downloadProgress', (event) => setPercent(event.percent));
         try {
-            await AppUpdate.downloadAndInstall({ url: update.downloadUrl });
+            await AppUpdate.downloadAndInstall({ url: update.downloadUrl, sha256: update.sha256 });
         } catch (error) {
             if (error?.code === 'INSTALL_PERMISSION_REQUIRED') {
                 setMessage(ALLOW_INSTALLS_MESSAGE);

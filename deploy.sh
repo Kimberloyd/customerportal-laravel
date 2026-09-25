@@ -22,10 +22,17 @@
 set -e
 
 echo "==> Pulling latest commit"
-git pull origin master
+git pull --ff-only origin master
+deployed_commit="$(git rev-parse HEAD)"
+if [ -n "${DEPLOY_COMMIT:-}" ] && [ "$deployed_commit" != "$DEPLOY_COMMIT" ]; then
+    echo "Expected commit $DEPLOY_COMMIT but master resolved to $deployed_commit; refusing deployment." >&2
+    exit 1
+fi
 
 echo "==> Building app + proxy images"
 sudo docker compose build app proxy
+sudo docker tag customerportal-laravel-app:latest "customerportal-laravel-app:$deployed_commit"
+sudo docker tag customerportal-laravel-proxy:latest "customerportal-laravel-proxy:$deployed_commit"
 
 echo "==> Rolling out app (zero-downtime)"
 sudo docker rollout app
@@ -36,11 +43,14 @@ sudo docker compose exec -T app php artisan migrate --force
 echo "==> Clearing cached config/routes/views"
 sudo docker compose exec -T app php artisan optimize:clear
 
-echo "==> Restarting reverb/broadcast-worker/scheduler"
-sudo docker compose up -d reverb broadcast-worker scheduler
+echo "==> Restarting reverb/queue workers/scheduler"
+sudo docker compose up -d reverb broadcast-worker notification-worker monitoring-worker scheduler
 
 echo "==> Rolling out proxy (zero-downtime)"
 sudo docker rollout proxy
+
+echo "==> Running post-deploy checks"
+DEPLOYED_COMMIT="$deployed_commit" sh scripts/post-deploy-check.sh
 
 echo "==> Done. Now running:"
 git log -1 --oneline

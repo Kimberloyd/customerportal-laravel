@@ -179,6 +179,29 @@ class PushNotificationsTest extends TestCase
         OrderNotifications::deliver($order, 'updated');
 
         $this->assertDatabaseMissing('push_tokens', ['token' => 'gone']);
+        $this->assertSame(1, count(Http::recorded(fn ($request) => str_contains($request->url(), 'fcm.googleapis.com/'))));
+    }
+
+    public function test_a_transient_firebase_failure_is_retried(): void
+    {
+        [$order, $user] = $this->orderWithCustomerUser();
+        PushToken::create(['user_id' => $user->id, 'token' => 'phone']);
+
+        Http::fake([
+            'oauth2.googleapis.com/*' => Http::response(['access_token' => 'test-access-token']),
+            'fcm.googleapis.com/*' => Http::sequence()
+                ->push(['error' => ['status' => 'UNAVAILABLE']], 503)
+                ->push(['name' => 'projects/test-project/messages/1'], 200),
+        ]);
+
+        OrderNotifications::deliver($order, 'updated');
+
+        $this->assertSame(2, count(Http::recorded(fn ($request) => str_contains($request->url(), 'fcm.googleapis.com/'))));
+        $this->assertDatabaseHas('purchase_order_notifications', [
+            'purchase_order_id' => $order->id,
+            'channel' => 'push',
+            'status' => 'sent',
+        ]);
     }
 
     public function test_nothing_is_sent_while_the_feature_is_off(): void
