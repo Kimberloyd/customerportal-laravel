@@ -10,7 +10,12 @@
 # (that's what caused the 502s during every deploy before this). reverb/
 # broadcast-worker/scheduler don't sit on that path (a live websocket
 # client reconnects on its own), so they stay on the simpler plain
-# restart.
+# restart -- but they restart BEFORE the proxy rollout, not after: nginx's
+# proxy_pass/fastcgi_pass resolve their target container's IP once and
+# only re-resolve it on the schedule the `resolver` directive in
+# docker/nginx/default.conf sets, so a proxy container that starts before
+# reverb gets its final IP for this deploy would otherwise hold a stale
+# address until that resolver interval catches up.
 #
 # Requires the docker-rollout CLI plugin (~/.docker/cli-plugins/docker-rollout)
 # and that app/proxy define no `ports:`/`container_name` (see docker-compose.yml).
@@ -31,11 +36,11 @@ sudo docker compose exec -T app php artisan migrate --force
 echo "==> Clearing cached config/routes/views"
 sudo docker compose exec -T app php artisan optimize:clear
 
-echo "==> Rolling out proxy (zero-downtime)"
-sudo docker rollout proxy
-
 echo "==> Restarting reverb/broadcast-worker/scheduler"
 sudo docker compose up -d reverb broadcast-worker scheduler
+
+echo "==> Rolling out proxy (zero-downtime)"
+sudo docker rollout proxy
 
 echo "==> Done. Now running:"
 git log -1 --oneline
