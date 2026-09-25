@@ -276,6 +276,13 @@ export function AccountsPanel({ customerUsers = EMPTY_PAGE, staffUsers = EMPTY_P
         [columns],
     );
 
+    // Customer accounts are always role "Customer" -- the column would
+    // never show anything else.
+    const customerColumns = useMemo(
+        () => columns.filter((column) => column.key !== 'role'),
+        [columns],
+    );
+
     return (
         <div className="space-y-8">
             <div className="flex flex-wrap items-center justify-center bg-background">
@@ -304,7 +311,7 @@ export function AccountsPanel({ customerUsers = EMPTY_PAGE, staffUsers = EMPTY_P
                 title="Customer accounts"
                 description="Login accounts linked to a customer company."
                 page={customerUsers}
-                columns={columns}
+                columns={customerColumns}
                 loading={loading || tableLoading}
                 emptyState="No customer accounts found. Try a different search."
                 onPageChange={(page) => applyFilters({ customer_page: page })}
