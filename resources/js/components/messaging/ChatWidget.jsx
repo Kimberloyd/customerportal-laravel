@@ -3,7 +3,6 @@ import {
     MessageContent,
     MessageFooter,
     MessageGroup,
-    MessageHeader,
     MessageMarker,
 } from '@/components/agents/message';
 import { MessageBubble, MessageBubbleContent } from '@/components/agents/message-bubble';
@@ -484,7 +483,6 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
                                             const fromSelf = viewerIsCompany
                                                 ? message.sender_type === 'company'
                                                 : message.sender_type === 'customer';
-                                            const isUnread = !fromSelf && unreadIdSet.has(message.id);
                                             const showReadReceipt =
                                                 fromSelf && lastSelfMessage?.id === message.id;
 
@@ -497,14 +495,6 @@ function ChatWidgetPanel({ chat, minimized, position, onClose, onMinimizeChange 
                                                     ) : null}
                                                     <Message from={fromSelf ? 'user' : 'assistant'}>
                                                         <MessageContent>
-                                                            {isUnread ? (
-                                                                <MessageHeader>
-                                                                    <span
-                                                                        aria-label="Unread"
-                                                                        className="size-1.5 rounded-full bg-primary"
-                                                                    />
-                                                                </MessageHeader>
-                                                            ) : null}
                                                             <MessageBubble variant="soft">
                                                                 <MessageBubbleContent
                                                                     className={
