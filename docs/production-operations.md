@@ -16,7 +16,21 @@ cd /volume1/docker/customerportal-laravel && BACKUP_ROOT=/volume1/docker/backups
 
 The backup covers MySQL and the private persistent storage volume, verifies checksums and archive readability, and records the deployed Git commit. Copy completed backup sets to encrypted off-NAS storage with a retention policy. Do not treat the NAS-only copy as disaster recovery.
 
-Perform a quarterly restore drill into an isolated database/container and record the date, operator, backup timestamp, and outcome. Never restore a drill over production.
+Perform a quarterly restore drill. The script below restores the latest database
+into a disposable, network-isolated MySQL container, extracts private uploads
+into a temporary directory, validates both, writes an audit report under
+`$BACKUP_ROOT/restore-drills`, and removes all disposable resources. It never
+writes to the production database or uploads volume.
+
+```sh
+cd /volume1/docker/customerportal-laravel || exit 1
+sudo env BACKUP_ROOT=/volume1/docker/backups/customerportal-laravel \
+  sh scripts/test-latest-production-restore.sh
+```
+
+Keep the resulting `PASSED` report with the backup records. Schedule this drill
+quarterly only after one manual run has passed. Never manually import a drill
+backup into the production database.
 
 ## Availability monitoring
 
