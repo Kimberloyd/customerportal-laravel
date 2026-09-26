@@ -28,16 +28,25 @@ cleanup() {
 }
 trap cleanup EXIT HUP INT TERM
 
+dump_status=0
 if [ -n "${DB_CONTAINER:-}" ]; then
     echo "Backing up MySQL container $DB_CONTAINER..."
     docker exec "$DB_CONTAINER" sh -c \
-        'exec mysqldump --single-transaction --routines --triggers --events -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' \
-        > "$database_sql_partial"
+        'exec mysqldump --single-transaction --no-tablespaces --routines --triggers --events -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' \
+        > "$database_sql_partial" || dump_status=$?
 else
     echo "Backing up MySQL Compose service db..."
     docker compose exec -T db sh -c \
-        'exec mysqldump --single-transaction --routines --triggers --events -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' \
-        > "$database_sql_partial"
+        'exec mysqldump --single-transaction --no-tablespaces --routines --triggers --events -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' \
+        > "$database_sql_partial" || dump_status=$?
+fi
+if [ "$dump_status" -ne 0 ]; then
+    echo "mysqldump failed with exit status $dump_status; no backup was published." >&2
+    exit "$dump_status"
+fi
+if ! grep -q '^-- Dump completed on ' "$database_sql_partial"; then
+    echo "mysqldump output has no completion marker; refusing to publish a partial backup." >&2
+    exit 1
 fi
 test -s "$database_sql_partial"
 gzip -9 < "$database_sql_partial" > "$database_partial"
