@@ -34,6 +34,7 @@ report_dir="$backup_root/restore-drills"
 report_file="$report_dir/${run_stamp}-${backup_stamp}.txt"
 work_dir=""
 table_count="not-completed"
+required_table_count="not-completed"
 upload_file_count="not-completed"
 outcome="FAILED"
 
@@ -50,6 +51,7 @@ write_report() {
         echo "backup_stamp=$backup_stamp"
         echo "checksums_file=$(basename "$checksums")"
         echo "restored_database_tables=$table_count"
+        echo "validated_required_tables=$required_table_count"
         echo "restored_upload_files=$upload_file_count"
     } > "$report_file"
 }
@@ -107,8 +109,8 @@ docker run --detach --rm \
 ready="false"
 attempt=0
 while [ "$attempt" -lt 60 ]; do
-    if docker exec "$container_name" mysqladmin ping \
-        --host=127.0.0.1 --user=root "--password=$restore_password" \
+    if docker exec --env "MYSQL_PWD=$restore_password" "$container_name" \
+        mysqladmin ping --host=127.0.0.1 --user=root \
         --silent >/dev/null 2>&1; then
         ready="true"
         break
@@ -123,21 +125,30 @@ if [ "$ready" != "true" ]; then
 fi
 
 echo "Restoring the database backup..."
-gzip -dc "$database_archive" | docker exec -i "$container_name" \
-    mysql --user=root "--password=$restore_password" "$restore_database"
+gzip -dc "$database_archive" | docker exec -i \
+    --env "MYSQL_PWD=$restore_password" "$container_name" \
+    mysql --user=root "$restore_database"
 
-table_count="$(docker exec "$container_name" mysql --batch --skip-column-names \
-    --user=root "--password=$restore_password" \
+table_count="$(docker exec --env "MYSQL_PWD=$restore_password" "$container_name" \
+    mysql --batch --skip-column-names --user=root \
     --execute="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$restore_database';")"
-required_table_count="$(docker exec "$container_name" mysql --batch --skip-column-names \
-    --user=root "--password=$restore_password" \
-    --execute="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$restore_database' AND table_name IN ('migrations', 'users', 'purchase_orders');")"
-if [ "$table_count" -le 0 ] || [ "$required_table_count" -ne 3 ]; then
-    echo "Restored database is missing expected application tables." >&2
+if [ "$table_count" -le 0 ]; then
+    echo "Restored database contains no tables." >&2
     exit 1
 fi
-docker exec "$container_name" mysqlcheck --check \
-    --user=root "--password=$restore_password" "$restore_database" >/dev/null
+
+# Read each required table directly. This proves the restored schema can open
+# the application's core tables without relying on information_schema's
+# aggregate metadata result.
+docker exec --env "MYSQL_PWD=$restore_password" "$container_name" \
+    mysql --batch --skip-column-names --user=root "$restore_database" \
+    --execute="SELECT COUNT(*) FROM migrations; SELECT COUNT(*) FROM users; SELECT COUNT(*) FROM purchase_orders;" \
+    >/dev/null
+required_table_count=3
+
+echo "Checking restored database tables..."
+docker exec --env "MYSQL_PWD=$restore_password" "$container_name" \
+    mysqlcheck --check --user=root "$restore_database" >/dev/null
 
 echo "Restoring private uploads into a temporary directory..."
 work_dir="$(mktemp -d "$tmp_root/customer-portal-restore-drill.XXXXXX")"
