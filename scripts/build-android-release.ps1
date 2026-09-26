@@ -3,11 +3,15 @@ param(
     [string] $KeyStore = (Join-Path $env:USERPROFILE 'Downloads\CustomerPortal-Key-Backup\customer-portal-current-update-key.keystore'),
     [string] $KeyAlias = 'androiddebugkey',
     [string] $ExpectedCertificateSha256 = '552cc4d96a02eb423607d51ea6bacc0ab214dc3938ee43c748c97ae0f800ce87',
-    [string] $OutputDirectory = (Join-Path $PSScriptRoot '..\mobile\releases')
+    [string] $OutputDirectory = ''
 )
 
 $ErrorActionPreference = 'Stop'
-$repository = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
+$scriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
+if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
+    $OutputDirectory = Join-Path $scriptDirectory '..\mobile\releases'
+}
+$repository = (Resolve-Path -LiteralPath (Join-Path $scriptDirectory '..')).Path
 $mobile = Join-Path $repository 'mobile'
 $android = Join-Path $mobile 'android'
 $buildFile = Join-Path $android 'app\build.gradle'
@@ -70,6 +74,17 @@ try {
     $env:ANDROID_RELEASE_KEY_ALIAS = $KeyAlias
     $env:ANDROID_RELEASE_KEY_PASSWORD = $keyPassword
 
+    # A previous Android build can leave a Gradle daemon holding plugin lint
+    # cache files inside node_modules. npm ci replaces that entire tree and
+    # fails with EBUSY on Windows while those JARs remain open.
+    Push-Location $android
+    try {
+        & .\gradlew.bat --stop
+        if ($LASTEXITCODE -ne 0) { throw 'Could not stop existing Gradle daemons.' }
+    } finally {
+        Pop-Location
+    }
+
     Push-Location $mobile
     try {
         & npm.cmd ci
@@ -99,8 +114,17 @@ if (-not (Test-Path -LiteralPath $sourceApk -PathType Leaf)) {
     throw "Expected APK was not produced: $sourceApk"
 }
 
-$signerOutput = & $apksigner.FullName verify --verbose --print-certs $sourceApk 2>&1
-if ($LASTEXITCODE -ne 0) {
+$javaHomeBeforeVerification = [Environment]::GetEnvironmentVariable('JAVA_HOME', 'Process')
+try {
+    # apksigner.bat launches Java itself, so it still needs the resolved JDK
+    # after the build block has restored the caller's original environment.
+    $env:JAVA_HOME = $jdk
+    $signerOutput = & $apksigner.FullName verify --verbose --print-certs $sourceApk 2>&1
+    $signerExitCode = $LASTEXITCODE
+} finally {
+    [Environment]::SetEnvironmentVariable('JAVA_HOME', $javaHomeBeforeVerification, 'Process')
+}
+if ($signerExitCode -ne 0) {
     throw "APK signature verification failed:`n$($signerOutput -join [Environment]::NewLine)"
 }
 
