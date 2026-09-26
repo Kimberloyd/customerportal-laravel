@@ -35,6 +35,7 @@ report_file="$report_dir/${run_stamp}-${backup_stamp}.txt"
 work_dir=""
 table_count="not-completed"
 required_table_count="not-completed"
+database_check="not-completed"
 upload_file_count="not-completed"
 outcome="FAILED"
 
@@ -52,6 +53,7 @@ write_report() {
         echo "checksums_file=$(basename "$checksums")"
         echo "restored_database_tables=$table_count"
         echo "validated_required_tables=$required_table_count"
+        echo "database_check=$database_check"
         echo "restored_upload_files=$upload_file_count"
     } > "$report_file"
 }
@@ -147,8 +149,14 @@ docker exec --env "MYSQL_PWD=$restore_password" "$container_name" \
 required_table_count=3
 
 echo "Checking restored database tables..."
-docker exec --env "MYSQL_PWD=$restore_password" "$container_name" \
-    mysqlcheck --check --user=root "$restore_database" >/dev/null
+if docker exec --env "MYSQL_PWD=$restore_password" "$container_name" \
+    mysqlcheck --check --user=root "$restore_database"; then
+    database_check="passed"
+else
+    database_check="failed"
+    echo "mysqlcheck reported a problem with the restored database." >&2
+    exit 1
+fi
 
 echo "Restoring private uploads into a temporary directory..."
 work_dir="$(mktemp -d "$tmp_root/customer-portal-restore-drill.XXXXXX")"
