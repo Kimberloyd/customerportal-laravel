@@ -149,14 +149,29 @@ docker exec --env "MYSQL_PWD=$restore_password" "$container_name" \
 required_table_count=3
 
 echo "Checking restored database tables..."
-if docker exec --env "MYSQL_PWD=$restore_password" "$container_name" \
-    mysqlcheck --check --user=root "$restore_database"; then
-    database_check="passed"
-else
-    database_check="failed"
-    echo "mysqlcheck reported a problem with the restored database." >&2
-    exit 1
-fi
+table_names="$(docker exec --env "MYSQL_PWD=$restore_password" "$container_name" \
+    mysql --batch --skip-column-names --user=root \
+    --execute="SELECT table_name FROM information_schema.tables WHERE table_schema = '$restore_database' ORDER BY table_name;")"
+for table_name in $table_names; do
+    case "$table_name" in
+        *[!A-Za-z0-9_]*)
+            database_check="failed"
+            echo "Refusing to interpolate unexpected restored table name: $table_name" >&2
+            exit 1
+            ;;
+    esac
+
+    check_result="$(docker exec --env "MYSQL_PWD=$restore_password" "$container_name" \
+        mysql --batch --skip-column-names --user=root "$restore_database" \
+        --execute="CHECK TABLE \`$table_name\`;")"
+    if ! printf '%s\n' "$check_result" | awk 'END { exit !($3 == "status" && $4 == "OK") }'; then
+        database_check="failed"
+        echo "CHECK TABLE failed for $table_name:" >&2
+        echo "$check_result" >&2
+        exit 1
+    fi
+done
+database_check="passed"
 
 echo "Restoring private uploads into a temporary directory..."
 work_dir="$(mktemp -d "$tmp_root/customer-portal-restore-drill.XXXXXX")"
