@@ -101,8 +101,19 @@ const SpecularButton = ({
     if (!btn || !fx) return;
 
     const dpr = window.devicePixelRatio || 1;
-    const renderer = new Renderer({ alpha: true, premultipliedAlpha: true, antialias: true, dpr });
+    // The glow is decoration only: the button is fully styled and usable
+    // without it. Some browsers can't give us WebGL (hardware acceleration
+    // off, blocked GPU, remote desktops, some WebViews); ogl then hands back
+    // a null context, and using it would throw inside this effect and take
+    // the whole page -- including the sign-in form -- down with it.
+    let renderer;
+    try {
+      renderer = new Renderer({ alpha: true, premultipliedAlpha: true, antialias: true, dpr });
+    } catch {
+      return undefined;
+    }
     const gl = renderer.gl;
+    if (!gl) return undefined;
     gl.clearColor(0, 0, 0, 0);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
