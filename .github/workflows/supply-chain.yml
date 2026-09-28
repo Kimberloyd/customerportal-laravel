@@ -63,6 +63,12 @@ jobs:
       - name: Synchronize and compile the Android debug application
         working-directory: mobile
         run: |
+          # Capacitor 8 needs Java 21 to compile; the runner's default JDK is
+          # older. The ubuntu-24.04 image ships Temurin 21 preinstalled, so
+          # point at it instead of pulling in another third-party action.
+          export JAVA_HOME="$JAVA_HOME_21_X64"
+          export PATH="$JAVA_HOME/bin:$PATH"
+          java -version
           npx cap sync android
           cd android
           ./gradlew --no-daemon :app:assembleDebug
