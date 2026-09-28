@@ -10,12 +10,15 @@
 # (that's what caused the 502s during every deploy before this). reverb/
 # broadcast-worker/scheduler don't sit on that path (a live websocket
 # client reconnects on its own), so they stay on the simpler plain
-# restart -- but they restart BEFORE the proxy rollout, not after: nginx's
-# proxy_pass/fastcgi_pass resolve their target container's IP once and
-# only re-resolve it on the schedule the `resolver` directive in
-# docker/nginx/default.conf sets, so a proxy container that starts before
-# reverb gets its final IP for this deploy would otherwise hold a stale
-# address until that resolver interval catches up.
+# restart.
+#
+# The proxy rolls out BEFORE the app. It's the container that serves the
+# hashed JS/CSS files, and a page from the app names files by hash: if the
+# app switched first, its new pages would ask the old proxy for files it
+# doesn't have yet, and Cloudflare/browsers would remember those 404s for
+# hours. The new proxy image carries the previous release's files as well as
+# its own (see docker/nginx/Dockerfile), so during the switch both the old
+# app's pages and the new app's pages find everything they reference.
 #
 # Requires the docker-rollout CLI plugin (~/.docker/cli-plugins/docker-rollout)
 # and that app/proxy define no `ports:`/`container_name` (see docker-compose.yml).
@@ -29,10 +32,22 @@ if [ -n "${DEPLOY_COMMIT:-}" ] && [ "$deployed_commit" != "$DEPLOY_COMMIT" ]; th
     exit 1
 fi
 
+echo "==> Recording the proxy image being replaced"
+previous_proxy_image=""
+running_proxy="$(sudo docker compose ps -q proxy | head -n 1)"
+if [ -n "$running_proxy" ]; then
+    previous_proxy_id="$(sudo docker inspect --format '{{.Image}}' "$running_proxy")"
+    sudo docker tag "$previous_proxy_id" customerportal-laravel-proxy:previous
+    previous_proxy_image="customerportal-laravel-proxy:previous"
+fi
+
 echo "==> Building app + proxy images"
-sudo docker compose build app proxy
+sudo env PREVIOUS_PROXY_IMAGE="$previous_proxy_image" docker compose build app proxy
 sudo docker tag customerportal-laravel-app:latest "customerportal-laravel-app:$deployed_commit"
 sudo docker tag customerportal-laravel-proxy:latest "customerportal-laravel-proxy:$deployed_commit"
+
+echo "==> Rolling out proxy (zero-downtime)"
+sudo docker rollout proxy
 
 echo "==> Rolling out app (zero-downtime)"
 sudo docker rollout app
@@ -45,9 +60,6 @@ sudo docker compose exec -T app php artisan optimize:clear
 
 echo "==> Restarting reverb/queue workers/scheduler"
 sudo docker compose up -d reverb broadcast-worker notification-worker monitoring-worker scheduler
-
-echo "==> Rolling out proxy (zero-downtime)"
-sudo docker rollout proxy
 
 echo "==> Running post-deploy checks"
 DEPLOYED_COMMIT="$deployed_commit" sh scripts/post-deploy-check.sh
