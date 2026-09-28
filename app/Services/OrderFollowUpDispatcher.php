@@ -335,25 +335,27 @@ class OrderFollowUpDispatcher
 
     private function message(OrderFollowUp $followUp): string
     {
-        $po = $followUp->purchaseOrder->po_number;
+        // transaction_number, not po_number: po_number is an optional staff-typed
+        // reference (often unset), and customers never see it anywhere.
+        $number = $followUp->purchaseOrder->transaction_number;
         $hours = ReminderSettings::threshold($followUp->kind, $followUp->level);
 
         if ($followUp->level === 'escalation') {
             return match ($followUp->kind) {
-                OrderFollowUpManager::AWAITING_FULFILLMENT => "Order {$po} is still waiting for fulfillment after {$hours} hours. Assign or follow up with the responsible staff member.",
-                OrderFollowUpManager::STALLED_PARTIAL => "Order {$po} has had no delivery update for {$hours} hours. Assign or follow up with the responsible staff member.",
-                OrderFollowUpManager::AWAITING_CUSTOMER_CLOSE => "Order {$po} has been fully delivered for 7 days and is still open. Follow up with the customer.",
-                OrderFollowUpManager::RETURN_REVIEW => "Return request for order {$po} has been waiting {$hours} hours for a decision. Assign a reviewer.",
-                default => "The approved return for order {$po} has been open for 7 days. Follow up and record it when received.",
+                OrderFollowUpManager::AWAITING_FULFILLMENT => "Order {$number} is still waiting for fulfillment after {$hours} hours. Assign or follow up with the responsible staff member.",
+                OrderFollowUpManager::STALLED_PARTIAL => "Order {$number} has had no delivery update for {$hours} hours. Assign or follow up with the responsible staff member.",
+                OrderFollowUpManager::AWAITING_CUSTOMER_CLOSE => "Order {$number} has been fully delivered for 7 days and is still open. Follow up with the customer.",
+                OrderFollowUpManager::RETURN_REVIEW => "Return request for order {$number} has been waiting {$hours} hours for a decision. Assign a reviewer.",
+                default => "The approved return for order {$number} has been open for 7 days. Follow up and record it when received.",
             };
         }
 
         return match ($followUp->kind) {
-            OrderFollowUpManager::AWAITING_FULFILLMENT => "Order {$po} has been waiting {$hours} hours for its first delivery. Open the order and record an update.",
-            OrderFollowUpManager::STALLED_PARTIAL => "Order {$po} has had no delivery update for {$hours} hours. Open the order and record an update.",
-            OrderFollowUpManager::AWAITING_CUSTOMER_CLOSE => "Order {$po} has been fully delivered. Review it and close the order when everything is correct.",
-            OrderFollowUpManager::RETURN_REVIEW => "Return request for order {$po} has been waiting {$hours} hours for review. Open the request and record a decision.",
-            default => "The approved return for order {$po} is still open. Coordinate the return and record it when received.",
+            OrderFollowUpManager::AWAITING_FULFILLMENT => "Order {$number} has been waiting {$hours} hours for its first delivery. Open the order and record an update.",
+            OrderFollowUpManager::STALLED_PARTIAL => "Order {$number} has had no delivery update for {$hours} hours. Open the order and record an update.",
+            OrderFollowUpManager::AWAITING_CUSTOMER_CLOSE => "Order {$number} has been fully delivered. If you received everything, please open it and tap Close Order to mark it complete.",
+            OrderFollowUpManager::RETURN_REVIEW => "Return request for order {$number} has been waiting {$hours} hours for review. Open the request and record a decision.",
+            default => "The approved return for order {$number} is still open. Coordinate the return and record it when received.",
         };
     }
 
@@ -362,7 +364,7 @@ class OrderFollowUpDispatcher
         $number = $followUp->purchaseOrder->transaction_number;
 
         return $followUp->kind === OrderFollowUpManager::AWAITING_CUSTOMER_CLOSE
-            ? "Order {$number} is fully delivered. Please review and close it in the Theomeds customer portal."
+            ? "Order {$number} is fully delivered. If you received everything, please open it in the Theomeds portal and tap Close Order to mark it complete."
             : "Your approved return for order {$number} is still open. Please check the Theomeds customer portal for the next step.";
     }
 

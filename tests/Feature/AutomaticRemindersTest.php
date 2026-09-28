@@ -231,6 +231,32 @@ class AutomaticRemindersTest extends TestCase
         $this->assertDatabaseHas('purchase_order_notifications', ['recipient_user_id' => $customerUser->id, 'channel' => 'sms', 'status' => 'sent']);
     }
 
+    public function test_processed_order_reminder_asks_the_customer_to_mark_it_complete_using_the_order_number(): void
+    {
+        config([
+            'reminders.customer_sms_enabled' => true,
+            'services.po_notifications.sms_enabled' => true,
+            'services.semaphore.api_key' => 'test-key',
+        ]);
+        Http::fake(['api.semaphore.co/*' => Http::response([['message_id' => 92, 'status' => 'Queued']])]);
+        $this->travelTo(now()->setTimezone('Asia/Manila')->setTime(10, 0)->utc());
+        $customerUser = User::factory()->create(['role' => User::ROLE_CUSTOMER, 'phone' => '09171234567']);
+        $customer = $this->makeCustomer('Hospital', $customerUser);
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_PROCESSED, now()->subDays(2));
+        $order->update(['po_number' => null]);
+        app(OrderFollowUpManager::class)->syncOrder($order);
+        $followUp = OrderFollowUp::firstOrFail();
+        $followUp->update(['status' => 'dispatching']);
+
+        app(OrderFollowUpDispatcher::class)->dispatch($followUp->fresh());
+
+        $bell = PurchaseOrderNotification::where('channel', 'portal')->where('recipient_user_id', $customerUser->id)->firstOrFail();
+        $this->assertStringContainsString($order->transaction_number, $bell->note);
+        $this->assertStringContainsString('mark it complete', $bell->note);
+        Http::assertSent(fn ($request) => str_contains($request['message'], 'Close Order')
+            && str_contains($request['message'], 'mark it complete'));
+    }
+
     public function test_customer_sms_waits_until_quiet_hours_end(): void
     {
         Queue::fake();
