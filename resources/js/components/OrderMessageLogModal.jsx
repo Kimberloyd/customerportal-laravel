@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 const CHANNELS = {
     portal: { label: 'Notification', icon: Bell },
     sms: { label: 'SMS', icon: Smartphone },
+    agent_sms: { label: 'Staff SMS', icon: Smartphone },
     facebook: { label: 'Facebook', icon: MessageCircle },
 };
 

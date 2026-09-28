@@ -587,9 +587,16 @@ class OrderNotifications
             ? collect([$assignedAgent])
             : User::where('is_active', true)->where('role', User::ROLE_OFFICE)->get();
 
+        // Active admins are texted every order's summary on top of whoever
+        // owns it, so they see all incoming orders without being assigned.
+        $agents = $agents
+            ->concat(User::where('is_active', true)->where('role', User::ROLE_ADMIN)->get())
+            ->unique('id')
+            ->values();
+
         if ($agents->isEmpty()) {
-            Log::info("Agent SMS notification skipped for {$order->po_number}: no active agent or office staff to notify.");
-            self::record($order, 'agent_sms', 'skipped', note: 'no active agent or office staff to notify');
+            Log::info("Agent SMS notification skipped for {$order->po_number}: no active agent, office, or admin staff to notify.");
+            self::record($order, 'agent_sms', 'skipped', note: 'no active agent, office, or admin staff to notify');
 
             return;
         }
@@ -632,7 +639,7 @@ class OrderNotifications
         $order->loadMissing(['customer', 'items']);
 
         $lines = [
-            "New order — PO {$order->po_number}",
+            "New order {$order->transaction_number}",
             "Customer: {$order->customer?->company_name}",
             '',
             'Items:',

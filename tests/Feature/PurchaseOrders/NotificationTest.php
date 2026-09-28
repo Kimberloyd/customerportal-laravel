@@ -164,6 +164,68 @@ class NotificationTest extends TestCase
         $this->assertSame('sent', PurchaseOrderNotification::where('channel', 'agent_sms')->value('status'));
     }
 
+    public function test_active_admins_are_also_texted_the_order_summary_with_the_order_number(): void
+    {
+        config(['services.po_notifications.agent_sms_enabled' => true, 'services.semaphore.api_key' => 'test-key']);
+        Http::fake([
+            'api.semaphore.co/*' => Http::response([['message_id' => 1, 'status' => 'Queued']]),
+        ]);
+        $agent = User::factory()->create(['role' => 'agent', 'phone' => '09179876543']);
+        $admin = User::factory()->create(['role' => 'admin', 'phone' => '09181112222']);
+        User::factory()->create(['role' => 'admin', 'phone' => '09183334444', 'is_active' => false]);
+        $customerUser = User::factory()->create(['role' => 'customer']);
+        $customer = $this->makeCustomer('Own Co', $customerUser);
+        $customer->update(['assigned_employee_id' => $agent->id]);
+        $product = $this->makeProduct('Widget');
+
+        $this->actingAsUser($customerUser)->post('/orders', [
+            'po_number' => 'PO-'.uniqid(),
+            'customer_id' => $customer->id,
+            'product_id' => [$product->id],
+            'product_search' => [''],
+            'quantity' => [1],
+        ]);
+
+        $order = PurchaseOrder::firstOrFail();
+        Http::assertSent(fn (Request $request) => ($request['number'] ?? null) === '09181112222'
+            && str_contains($request['message'], "New order {$order->transaction_number}"));
+        Http::assertSent(fn (Request $request) => ($request['number'] ?? null) === '09179876543');
+        Http::assertNotSent(fn (Request $request) => ($request['number'] ?? null) === '09183334444');
+        $this->assertSame(
+            ['09179876543', '09181112222'],
+            PurchaseOrderNotification::where('channel', 'agent_sms')->where('status', 'sent')->pluck('recipient')->sort()->values()->all(),
+        );
+    }
+
+    public function test_an_admin_without_a_phone_number_is_skipped_without_blocking_others(): void
+    {
+        config(['services.po_notifications.agent_sms_enabled' => true, 'services.semaphore.api_key' => 'test-key']);
+        Http::fake([
+            'api.semaphore.co/*' => Http::response([['message_id' => 1, 'status' => 'Queued']]),
+        ]);
+        $admin = User::factory()->create(['role' => 'admin', 'phone' => null]);
+        $office = User::factory()->create(['role' => 'office', 'phone' => '09179876543']);
+        $customerUser = User::factory()->create(['role' => 'customer']);
+        $customer = $this->makeCustomer('Own Co', $customerUser);
+        $product = $this->makeProduct('Widget');
+
+        $this->actingAsUser($customerUser)->post('/orders', [
+            'po_number' => 'PO-'.uniqid(),
+            'customer_id' => $customer->id,
+            'product_id' => [$product->id],
+            'product_search' => [''],
+            'quantity' => [1],
+        ]);
+
+        Http::assertSent(fn (Request $request) => ($request['number'] ?? null) === '09179876543');
+        $this->assertTrue(
+            PurchaseOrderNotification::where('channel', 'agent_sms')
+                ->where('status', 'skipped')
+                ->where('recipient', (string) $admin->id)
+                ->exists(),
+        );
+    }
+
     public function test_agent_sms_skips_when_disabled(): void
     {
         config(['services.po_notifications.agent_sms_enabled' => false]);
