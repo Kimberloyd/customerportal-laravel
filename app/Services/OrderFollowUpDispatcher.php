@@ -11,6 +11,7 @@ use App\Models\OrderFollowUp;
 use App\Models\PurchaseOrderNotification;
 use App\Models\User;
 use App\Support\FacebookMessenger;
+use App\Support\FirebaseCloudMessaging;
 use App\Support\MessageThread;
 use App\Support\MessengerApiException;
 use App\Support\OrderNotifications;
@@ -47,6 +48,10 @@ class OrderFollowUpDispatcher
         foreach ($recipients as $recipient) {
             $successful += $this->recordPortal($followUp, $recipient, $message) ? 1 : 0;
             $isCustomer = $recipient->role === User::ROLE_CUSTOMER;
+
+            if ($isCustomer) {
+                $this->sendPush($followUp, $recipient, $this->smsMessage($followUp));
+            }
 
             if ($isCustomer && $this->customerSmsAllowed()) {
                 if ($this->isQuietTime()) {
@@ -163,6 +168,76 @@ class OrderFollowUpDispatcher
         }
 
         $this->sendSms($followUp, $recipient, $isCustomer ? $this->smsMessage($followUp) : $this->message($followUp), $level);
+    }
+
+    /**
+     * Pushes the customer's phones signed in to the Android app. Sent right
+     * away rather than held for the SMS quiet hours: those exist for texts,
+     * and the phone's own Do Not Disturb already governs pushes. Recorded
+     * once per recipient and level under the same dedupe key scheme as SMS,
+     * so a retried job never notifies twice.
+     */
+    private function sendPush(OrderFollowUp $followUp, User $recipient, string $message): void
+    {
+        if (! config('services.po_notifications.push_enabled', false) || ! FirebaseCloudMessaging::isConfigured()) {
+            return;
+        }
+
+        $tokens = $recipient->pushTokens;
+        if ($tokens->isEmpty()) {
+            return;
+        }
+
+        $record = PurchaseOrderNotification::firstOrCreate(
+            ['dedupe_key' => $this->dedupeKey($followUp, $recipient, 'push')],
+            [
+                'purchase_order_id' => $followUp->purchase_order_id,
+                'channel' => 'push',
+                'status' => 'sending',
+                'event_key' => 'reminder.'.$followUp->kind,
+                'recipient_user_id' => $recipient->id,
+                'follow_up_id' => $followUp->id,
+                'level' => $followUp->level,
+                'recipient' => (string) $recipient->id,
+                'note' => 'Customer reminder',
+                'created_at' => now(),
+            ],
+        );
+
+        if (! $record->wasRecentlyCreated) {
+            return;
+        }
+
+        $accepted = false;
+        foreach ($tokens as $token) {
+            try {
+                $result = FirebaseCloudMessaging::send(
+                    $token->token,
+                    'Customer Portal',
+                    $message,
+                    ['url' => route('purchase-orders.show', $followUp->purchaseOrder->public_id, absolute: false)],
+                );
+            } catch (\Throwable $exception) {
+                Log::warning('Order reminder push could not be sent.', [
+                    'follow_up_id' => $followUp->id,
+                    'purchase_order_id' => $followUp->purchase_order_id,
+                    'exception' => $exception::class,
+                ]);
+
+                continue;
+            }
+
+            if ($result === FirebaseCloudMessaging::UNREGISTERED) {
+                $token->delete();
+            } elseif ($result === FirebaseCloudMessaging::SENT) {
+                $accepted = true;
+            }
+        }
+
+        $record->update([
+            'status' => $accepted ? 'sent' : 'failed',
+            'note' => $accepted ? 'Customer reminder accepted by push service' : 'Push service did not accept the reminder',
+        ]);
     }
 
     private function sendSms(OrderFollowUp $followUp, User $recipient, string $message, string $level): void

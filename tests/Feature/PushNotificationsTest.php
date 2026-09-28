@@ -3,10 +3,13 @@
 namespace Tests\Feature;
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Models\OrderFollowUp;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderNotification;
 use App\Models\PushToken;
 use App\Models\User;
+use App\Services\OrderFollowUpDispatcher;
+use App\Services\OrderFollowUpManager;
 use App\Support\OrderNotifications;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
@@ -231,6 +234,52 @@ class PushNotificationsTest extends TestCase
     }
 
     /** @return array{PurchaseOrder, User} */
+    public function test_the_processed_order_reminder_pushes_the_customers_phones_once(): void
+    {
+        config(['reminders.enabled' => true, 'reminders.customer_sms_enabled' => false]);
+        $user = User::factory()->create(['role' => 'customer', 'is_active' => true]);
+        $customer = $this->makeCustomer('Acme Co', $user);
+        $order = $this->makeOrder($customer, PurchaseOrder::STATUS_PROCESSED, now()->subDays(2));
+        PushToken::create(['user_id' => $user->id, 'token' => 'phone-one']);
+        PushToken::create(['user_id' => $user->id, 'token' => 'phone-two']);
+        $this->fakeFirebase();
+        app(OrderFollowUpManager::class)->syncOrder($order);
+        $followUp = OrderFollowUp::firstOrFail();
+        $followUp->update(['status' => 'dispatching']);
+
+        app(OrderFollowUpDispatcher::class)->dispatch($followUp->fresh());
+
+        Http::assertSent(fn ($request) => ($request['message']['token'] ?? null) === 'phone-one'
+            && $request['message']['data']['url'] === '/orders/'.$order->public_id
+            && str_contains($request['message']['notification']['body'], $order->transaction_number)
+            && str_contains($request['message']['notification']['body'], 'mark it complete'));
+        Http::assertSent(fn ($request) => ($request['message']['token'] ?? null) === 'phone-two');
+        $this->assertSame(1, PurchaseOrderNotification::where('channel', 'push')->where('status', 'sent')->count());
+
+        // A retried job for the same level must not push again.
+        $followUp->fresh()->update(['status' => 'dispatching', 'level' => 'reminder']);
+        Http::fake();
+        app(OrderFollowUpDispatcher::class)->dispatch($followUp->fresh());
+        Http::assertNothingSent();
+    }
+
+    public function test_the_reminder_push_is_skipped_quietly_when_the_customer_has_no_app_installed(): void
+    {
+        config(['reminders.enabled' => true, 'reminders.customer_sms_enabled' => false]);
+        $user = User::factory()->create(['role' => 'customer', 'is_active' => true]);
+        $order = $this->makeOrder($this->makeCustomer('Acme Co', $user), PurchaseOrder::STATUS_PROCESSED, now()->subDays(2));
+        $this->fakeFirebase();
+        app(OrderFollowUpManager::class)->syncOrder($order);
+        $followUp = OrderFollowUp::firstOrFail();
+        $followUp->update(['status' => 'dispatching']);
+
+        app(OrderFollowUpDispatcher::class)->dispatch($followUp->fresh());
+
+        Http::assertNothingSent();
+        $this->assertSame(0, PurchaseOrderNotification::where('channel', 'push')->count());
+        $this->assertDatabaseHas('purchase_order_notifications', ['channel' => 'portal', 'recipient_user_id' => $user->id]);
+    }
+
     private function orderWithCustomerUser(): array
     {
         $user = User::factory()->create(['role' => 'customer', 'is_active' => true]);
