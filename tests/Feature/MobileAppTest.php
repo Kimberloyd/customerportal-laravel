@@ -53,6 +53,26 @@ class MobileAppTest extends TestCase
             ->assertJson(['download_url' => null, 'apk_sha256' => null]);
     }
 
+    /**
+     * Guards against exactly what happened in production: the APK on disk
+     * was left over from an older release while MOBILE_APP_APK_SHA256 (and
+     * the version numbers) had already been bumped for a new one that was
+     * never actually uploaded. AppUpdatePlugin.java hashes what it downloads
+     * and refuses to install anything that doesn't match what this endpoint
+     * declares, so every install attempt failed the same way with nothing
+     * to point at why -- the version endpoint must not declare a hash that
+     * doesn't match the real file.
+     */
+    public function test_download_url_is_withheld_when_the_configured_checksum_does_not_match_the_real_file(): void
+    {
+        Storage::disk('local')->put('mobile/customer-portal.apk', 'apk-bytes');
+        config(['mobile-app.apk_sha256' => hash('sha256', 'a different, never-uploaded build')]);
+
+        $this->getJson('/mobile-app/version')
+            ->assertOk()
+            ->assertJson(['download_url' => null, 'apk_sha256' => null]);
+    }
+
     public function test_download_streams_the_apk_without_a_session(): void
     {
         Storage::disk('local')->put('mobile/customer-portal.apk', 'apk-bytes');
