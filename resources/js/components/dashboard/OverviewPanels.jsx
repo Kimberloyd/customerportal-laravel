@@ -13,7 +13,7 @@ const spring = { type: 'spring', stiffness: 700, damping: 46, mass: 0.5 };
 
 /**
  * Counts up to `target` on mount and whenever it changes (e.g. switching the
- * 7/30/90-day period) -- a small, responsive flourish tied to a real user
+ * 7/30-day period) -- a small, responsive flourish tied to a real user
  * action, not a page-load orchestration. Skips straight to the target under
  * reduced motion.
  */

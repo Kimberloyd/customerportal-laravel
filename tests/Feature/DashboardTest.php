@@ -165,7 +165,7 @@ class DashboardTest extends TestCase
     public function test_date_ranges_are_bounded_and_daily_series_include_zero_days(): void
     {
         $user = User::factory()->create(['role' => 'admin']);
-        foreach (['7' => 7, '30' => 30, '90' => 90, '100000' => 30, 'bad' => 30, '0' => 30] as $period => $days) {
+        foreach (['7' => 7, '30' => 30, '90' => 30, '100000' => 30, 'bad' => 30, '0' => 30] as $period => $days) {
             $this->actingAsUser($user)->get('/dashboard?period='.$period)->assertOk()
                 ->assertInertia(fn (Assert $page) => $page->where('dashboard.period', $days)
                     ->has('dashboard.trend', $days)

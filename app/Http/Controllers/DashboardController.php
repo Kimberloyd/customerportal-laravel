@@ -28,7 +28,7 @@ class DashboardController extends Controller
         }
 
         $period = $request->query('period', '30');
-        $days = in_array($period, ['7', '30', '90'], true) ? (int) $period : 30;
+        $days = in_array($period, ['7', '30'], true) ? (int) $period : 30;
 
         return Inertia::render('Dashboard', [
             'dashboard' => (new DashboardOverview)->build($orders, $days, $isCustomer),
